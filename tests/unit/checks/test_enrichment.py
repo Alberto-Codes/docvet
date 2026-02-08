@@ -237,7 +237,7 @@ def test_build_node_index_get_returns_none_for_arbitrary_missing_line(parse_sour
 
 
 def _make_symbol_and_index(source: str):
-    """Helper to build a symbol + node_index + sections from inline source."""
+    """Helper to build a symbol + node_index + tree from inline source."""
     from docvet.ast_utils import get_documented_symbols
 
     tree = ast.parse(source)
@@ -245,7 +245,9 @@ def _make_symbol_and_index(source: str):
     node_index = _build_node_index(tree)
     # Return the first non-module symbol (the function)
     func_symbols = [s for s in symbols if s.kind != "module"]
-    return func_symbols[0], node_index, tree
+    symbol = func_symbols[0]
+    assert symbol.docstring is not None
+    return symbol, node_index, tree
 
 
 def test_missing_raises_when_function_raises_without_section_returns_finding():
@@ -427,6 +429,30 @@ def outer():
     assert result is not None
     assert "TypeError" in result.message
     assert "ValueError" not in result.message
+
+
+def test_missing_raises_when_class_symbol_returns_none():
+    # Class symbols should be skipped — missing-raises targets functions only
+    source = '''\
+class Foo:
+    """A class that raises in class body."""
+    raise RuntimeError("class-level")
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    assert class_symbol.docstring is not None
+    sections = _parse_sections(class_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_raises(
+        class_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
 
 
 def test_missing_raises_when_node_index_missing_returns_none():

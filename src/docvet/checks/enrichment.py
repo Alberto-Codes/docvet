@@ -134,6 +134,9 @@ def _check_missing_raises(
         A ``Finding`` with ``rule="missing-raises"`` when exceptions are
         raised without documentation, or ``None`` otherwise.
     """
+    if symbol.kind not in ("function", "method"):
+        return None
+
     node = node_index.get(symbol.line)
     if node is None:
         return None

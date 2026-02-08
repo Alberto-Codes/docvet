@@ -385,9 +385,9 @@ Claude Opus 4.6
 - Config gating in orchestrator, not in rule function (Decision 1)
 - `get_documented_symbols(tree)` called correctly with only `tree` parameter
 - Walrus operator used for concise finding collection
-- 12 new tests (6 for `_check_missing_raises`, 6 for `check_enrichment`) — all pass
+- 17 new tests (11 for `_check_missing_raises`, 6 for `check_enrichment`) — all pass
 - All 8 acceptance criteria satisfied
-- 231 total tests pass, 0 regressions
+- 236 total tests pass, 0 regressions
 
 ### Change Log
 
