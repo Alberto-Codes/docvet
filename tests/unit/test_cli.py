@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import re
+
 from typer.testing import CliRunner
 
 from docvet.cli import app
 
 runner = CliRunner()
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
+
 
 # ---------------------------------------------------------------------------
 # Help & discovery
@@ -31,7 +40,7 @@ def test_app_when_invoked_with_help_shows_all_subcommands():
 
 def test_check_help_when_invoked_shows_discovery_flags():
     result = runner.invoke(app, ["check", "--help"])
-    output = result.output
+    output = _strip_ansi(result.output)
     assert "--staged" in output
     assert "--all" in output
     assert "--files" in output
@@ -49,7 +58,7 @@ def test_enrichment_help_when_invoked_shows_correct_description():
 
 def test_freshness_help_when_invoked_shows_mode_flag():
     result = runner.invoke(app, ["freshness", "--help"])
-    assert "--mode" in result.output
+    assert "--mode" in _strip_ansi(result.output)
 
 
 def test_freshness_help_when_invoked_shows_correct_description():
