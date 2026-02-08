@@ -140,6 +140,22 @@ src/docvet/
     └── griffe_compat.py  # griffe parser warning capture
 ```
 
+## Implementation Progress
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| `cli.py` | Implemented | All subcommands scaffolded as stubs |
+| `config.py` | Implemented | `[tool.docvet]` reader with full validation |
+| `discovery.py` | Implemented | All 4 modes: diff, staged, all, files |
+| `ast_utils.py` | Implemented | Symbol dataclass + 5 core functions |
+| `reporting.py` | Not started | |
+| `checks/` directory | Not started | No directory in `src/docvet/` yet |
+| `checks/enrichment.py` | Not started | Depends on `ast_utils.py` |
+| `checks/freshness.py` | Not started | Depends on `ast_utils.py` |
+| `checks/coverage.py` | Not started | |
+| `checks/griffe_compat.py` | Not started | |
+| CI workflow | Implemented | lint, format, type-check, test, interrogate |
+
 ## Configuration
 
 Via `pyproject.toml`:
