@@ -522,3 +522,23 @@ def test_load_config_multiple_unknown_keys_reported(
     err = capsys.readouterr().err
     assert "bogus1" in err
     assert "bogus2" in err
+
+
+def test_load_config_non_dict_tool_section_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('tool = "not a table"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "[tool]" in capsys.readouterr().err
+
+
+def test_load_config_non_dict_docvet_section_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool]\ndocvet = "not a table"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "[tool.docvet]" in capsys.readouterr().err
