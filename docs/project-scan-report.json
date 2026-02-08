@@ -7,7 +7,7 @@
   },
   "mode": "initial_scan",
   "scan_level": "exhaustive",
-  "project_root": "C:/Users/alber/source/repos/docvet",
+  "project_root": ".",
   "output_folder": "docs",
   "project_types": [
     {
