@@ -35,6 +35,7 @@ class EnrichmentConfig:
     require_typed_attributes: bool = True
     require_cross_references: bool = True
     prefer_fenced_code_blocks: bool = True
+    require_attributes: bool = True
 
 
 @dataclass(frozen=True)
@@ -78,15 +79,16 @@ _VALID_FRESHNESS_KEYS: frozenset[str] = frozenset({"drift-threshold", "age-thres
 
 _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
     {
-        "require-examples",
-        "require-raises",
-        "require-yields",
-        "require-warns",
-        "require-receives",
-        "require-other-parameters",
-        "require-typed-attributes",
-        "require-cross-references",
         "prefer-fenced-code-blocks",
+        "require-attributes",
+        "require-cross-references",
+        "require-examples",
+        "require-other-parameters",
+        "require-raises",
+        "require-receives",
+        "require-typed-attributes",
+        "require-warns",
+        "require-yields",
     }
 )
 
