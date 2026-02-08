@@ -46,14 +46,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 - **App structure**: Single `typer.Typer()` app with top-level `@app.command()` — no nested sub-apps
 - **Global options**: Defined in `@app.callback(invoke_without_command=True)`. Stored in `ctx.ensure_object(dict)` / `ctx.obj["key"]`. Global options must precede the subcommand: `docvet --verbose check`, NOT `docvet check --verbose`
-- **ctx.obj values are raw types**: `ctx.obj["format"]` is a `str` (not `OutputFormat` enum), `ctx.obj["output"]` is a `str` (not `Path`). Compare with string literals, not enum members
+- **ctx.obj values are raw types**: `ctx.obj["format"]` is a `str` (not `OutputFormat` enum), `ctx.obj["output"]` is a `str` (not `Path`). `ctx.obj["docvet_config"]` is a `DocvetConfig` instance. Compare with string literals, not enum members
 - **Discovery flags**: `--staged`, `--all`, `--files` are mutually exclusive, enforced via `_resolve_discovery_mode()` helper raising `typer.BadParameter`. Every subcommand with discovery flags must call this — no exceptions
 - **Let BadParameter bubble**: Never catch `typer.BadParameter` in subcommands — typer handles rendering and exit codes
 - **Repeated flags**: `--files foo.py --files bar.py` (repeated per value), NOT `--files foo.py bar.py` (space-separated)
-- **Stub pattern**: Unimplemented checks print `"<name>: not yet implemented"` — lowercase, colon-separated. Private `_run_*` functions form the internal API boundary
+- **Stub pattern**: Unimplemented checks print `"<name>: not yet implemented"` — lowercase, colon-separated. Private `_run_*` functions accept `(files: list[Path], config: DocvetConfig)`. `_run_freshness` also accepts `freshness_mode: FreshnessMode = FreshnessMode.DIFF`
 - **Subcommand help**: Typer picks up docstring first line as help text — do not duplicate with explicit `help=` parameter
 - **No `__main__.py`**: Entry point wires directly to `docvet.cli:app` via `[project.scripts]`
-- **Migration paths**: `_run_*` stubs in `cli.py` will be replaced by imports from `checks/<name>.py`. `DiscoveryMode` enum lives in `discovery.py` (migrated from `cli.py`). `discover_files()` accepts `DocvetConfig` and `DiscoveryMode`, returns `list[Path]`
+- **Migration paths**: `_run_*` stubs already accept `(files, config)` — migration replaces stub bodies with real check logic from `checks/<name>.py`. `DiscoveryMode` enum lives in `discovery.py`. `discover_files()` accepts `DocvetConfig` and `DiscoveryMode`, returns `list[Path]`
 
 ### Testing Rules
 
@@ -63,7 +63,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Self-contained tests**: `pytest-randomly` randomizes order — never depend on test execution order or shared mutable state between tests
 - **Fixtures**: Factory pattern in `conftest.py` (e.g., `parse_source` returns a callable). No fixture imports — pytest auto-discovers. Global fixtures in `tests/conftest.py`, integration-only fixtures in `tests/integration/conftest.py` — never mix them
 - **AST tests**: Prefer source string fixtures over mocking AST nodes. Use `parse_source` factory or files in `tests/fixtures/`. Mocking AST leads to brittle tests
-- **CLI tests**: Use `typer.testing.CliRunner()` (no kwargs). Assert on `result.exit_code` and `result.output`. No filesystem or git in unit tests
+- **CLI tests**: Use `typer.testing.CliRunner()` (no kwargs). Assert on `result.exit_code` and `result.output`. No filesystem or git in unit tests. `test_cli.py` uses module-level `autouse=True` fixture mocking `docvet.cli.load_config` and `docvet.cli.discover_files`. Tests needing different behavior override locally
 - **Mocking**: Patch where object is USED, not where DEFINED — `mocker.patch("docvet.checks.freshness.subprocess.run")` not `mocker.patch("subprocess.run")`
 - **Integration tests**: Use `tmp_path` fixture for temp git repos. Real `git init` + `git commit` — no mocking git in integration tests
 - **Markers**: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.slow`. All markers must be registered in `pyproject.toml` (`--strict-markers` is on — unregistered markers cause errors, not warnings)

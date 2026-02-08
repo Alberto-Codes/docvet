@@ -68,7 +68,7 @@ The product vision (`docs/product-vision.md`) defines the full design. The codeb
 ```
 src/docvet/
     __init__.py
-    cli.py                # typer-based CLI entry points
+    cli.py                # typer CLI: config loading, file discovery, check dispatch
     config.py             # reads [tool.docvet] from pyproject.toml
     discovery.py          # file discovery via git diff, git diff --cached, --all, or --files
     ast_utils.py          # shared AST helpers (docstring ranges, node walking, symbol mapping)
