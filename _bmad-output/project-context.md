@@ -53,7 +53,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Stub pattern**: Unimplemented checks print `"<name>: not yet implemented"` — lowercase, colon-separated. Private `_run_*` functions form the internal API boundary
 - **Subcommand help**: Typer picks up docstring first line as help text — do not duplicate with explicit `help=` parameter
 - **No `__main__.py`**: Entry point wires directly to `docvet.cli:app` via `[project.scripts]`
-- **Migration paths**: `_run_*` stubs in `cli.py` will be replaced by imports from `checks/<name>.py`. `DiscoveryMode` enum will move to `discovery.py`. Both are designed for zero-friction migration (no typer imports in enum, clean function signatures)
+- **Migration paths**: `_run_*` stubs in `cli.py` will be replaced by imports from `checks/<name>.py`. `DiscoveryMode` enum lives in `discovery.py` (migrated from `cli.py`). `discover_files()` accepts `DocvetConfig` and `DiscoveryMode`, returns `list[Path]`
 
 ### Testing Rules
 

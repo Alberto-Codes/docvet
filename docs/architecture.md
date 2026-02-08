@@ -37,27 +37,27 @@ Config ─── Discovery ─── AST Utils
 
 The Typer-based CLI entry point. Contains:
 
-- **Enums:** `DiscoveryMode` (DIFF, STAGED, ALL, FILES), `OutputFormat` (TERMINAL, MARKDOWN), `FreshnessMode` (DIFF, DRIFT)
+- **Enums:** `OutputFormat` (TERMINAL, MARKDOWN), `FreshnessMode` (DIFF, DRIFT). `DiscoveryMode` lives in `discovery.py`
 - **Shared options:** `StagedOption`, `AllOption`, `FilesOption` as `Annotated` type aliases
 - **Global options:** `--verbose`, `--format`, `--output` via `@app.callback(invoke_without_command=True)`
 - **Subcommands:** `check` (runs all), `enrichment`, `freshness` (with `--mode`), `coverage`, `griffe`
 - **Helper:** `_resolve_discovery_mode()` enforces mutual exclusivity of `--staged`, `--all`, `--files`
 - **Stubs:** `_run_enrichment()`, `_run_freshness()`, `_run_coverage()`, `_run_griffe()` — placeholders for check modules
 
-### config.py (Planned)
+### config.py (Implemented)
 
-Reads `[tool.docvet]` from `pyproject.toml`. Missing section defaults to sensible values (not an error). Configuration keys include `src-root`, `package-name`, `exclude`, `fail-on`, `warn-on`, and per-check settings.
+Reads `[tool.docvet]` from `pyproject.toml`. Missing section defaults to sensible values (not an error). Configuration keys include `src-root`, `package-name`, `exclude`, `fail-on`, `warn-on`, and per-check settings. Validates keys, types, and check names with stderr warnings.
 
-### discovery.py (Planned)
+### discovery.py (Implemented)
 
-File discovery via four modes:
+Contains `DiscoveryMode` enum and `discover_files()` public function. Four modes:
 
-- **DIFF:** `git diff` (unstaged changes) — default mode
-- **STAGED:** `git diff --cached` (staged changes)
-- **ALL:** Walk entire codebase
-- **FILES:** Explicit file list from `--files` flag
+- **DIFF:** `git diff --name-only --diff-filter=ACMR` (unstaged changes) — default mode
+- **STAGED:** `git diff --cached --name-only --diff-filter=ACMR` (staged changes)
+- **ALL:** `git ls-files` for `.gitignore` respect, `rglob` fallback for non-git directories
+- **FILES:** Explicit file list from `--files` flag (bypasses exclude patterns)
 
-Uses `subprocess.run` for git operations (no gitpython dependency). Handles non-git directories gracefully.
+Applies `.gitignore`-semantic exclude patterns via `fnmatch`. Returns sorted absolute paths. Uses `subprocess.run` for git operations. Handles non-git directories gracefully (DIFF/STAGED return empty with warning, ALL falls back to `rglob`).
 
 ### ast_utils.py (Planned)
 

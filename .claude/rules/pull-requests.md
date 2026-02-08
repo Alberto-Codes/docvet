@@ -41,6 +41,10 @@ Before creating a PR, always:
 2. `git log --oneline develop..HEAD` — understand commit history
 3. Read ALL commits (not just the latest) to write an accurate description
 
+## No Co-Authored-By
+
+Never add `Co-Authored-By` trailers (or any variation) to commit messages or PR descriptions. Commits and PRs should not attribute authorship to Claude.
+
 ## Push Before PR
 
 Ensure the branch is pushed to remote with `-u` before creating the PR:

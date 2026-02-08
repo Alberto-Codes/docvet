@@ -8,18 +8,11 @@ from typing import Annotated
 
 import typer
 
+from docvet.discovery import DiscoveryMode
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
-
-
-class DiscoveryMode(enum.Enum):
-    """Internal discovery mode for file selection."""
-
-    DIFF = enum.auto()
-    STAGED = enum.auto()
-    ALL = enum.auto()
-    FILES = enum.auto()
 
 
 class OutputFormat(enum.StrEnum):
