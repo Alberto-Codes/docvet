@@ -45,7 +45,7 @@ development_status:
   1-1-add-require-attributes-config-toggle: done
   1-2-create-finding-dataclass: done
   1-3-section-header-parser-and-node-index: done
-  1-4-missing-raises-detection-and-orchestrator: review
+  1-4-missing-raises-detection-and-orchestrator: done
   1-5-missing-yields-and-receives-detection: backlog
   1-6-missing-warns-and-other-parameters-detection: backlog
   1-7-cli-wiring-for-enrichment-check: backlog
