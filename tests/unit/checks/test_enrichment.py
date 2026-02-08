@@ -122,6 +122,31 @@ def test_parse_sections_when_header_has_trailing_whitespace_returns_header():
     assert "Raises" in _parse_sections(docstring)
 
 
+def test_parse_sections_when_header_has_inline_content_returns_empty_set():
+    # Google-style headers must be standalone lines (colon + end of line).
+    # "Raises: ValueError" on one line is not a valid section header.
+    docstring = "    Raises: ValueError if bad input\n"
+    assert _parse_sections(docstring) == set()
+
+
+def test_parse_sections_when_header_inside_code_block_still_matches():
+    # Known edge case: headers inside fenced code blocks are matched.
+    # This produces a false negative at the rule level (safe direction, NFR5)
+    # because the rule thinks a section exists when it's actually example code.
+    docstring = """\
+Summary.
+
+Examples:
+    ```python
+    Raises:
+        ValueError: example
+    ```
+"""
+    result = _parse_sections(docstring)
+    assert "Raises" in result
+    assert "Examples" in result
+
+
 # ---------------------------------------------------------------------------
 # Node index tests
 # ---------------------------------------------------------------------------
@@ -182,14 +207,20 @@ def test_build_node_index_when_module_only_returns_empty_dict(parse_source):
     assert index == {}
 
 
-def test_build_node_index_get_returns_none_for_missing_line(parse_source):
+def test_build_node_index_get_returns_none_for_module_symbol(parse_source):
+    # AC#7: module-level symbol (line 1) with no corresponding AST node.
+    # A module docstring starts at line 1 but is not a FunctionDef/ClassDef,
+    # so node_index.get(1) must return None.
+    source = '"""Module docstring."""\n\nx = 42\n'
+    tree = parse_source(source)
+    index = _build_node_index(tree)
+
+    assert index.get(1) is None
+
+
+def test_build_node_index_get_returns_none_for_arbitrary_missing_line(parse_source):
     source = "def foo():\n    pass\n"
     tree = parse_source(source)
     index = _build_node_index(tree)
 
-    # Line 99 doesn't exist — .get() returns None
     assert index.get(99) is None
-    # Module-level symbol line (typically line 1 for module docstring, but
-    # if a function starts at line 1 it would be there)
-    # Test the pattern: get with a line that has no node
-    assert index.get(2) is None
