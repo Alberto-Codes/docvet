@@ -91,6 +91,11 @@ def test_enrichment_defaults_prefer_fenced_code_blocks_is_true():
     assert cfg.prefer_fenced_code_blocks is True
 
 
+def test_enrichment_defaults_require_attributes_is_true():
+    cfg = EnrichmentConfig()
+    assert cfg.require_attributes is True
+
+
 def test_docvet_defaults_src_root_is_dot():
     cfg = DocvetConfig()
     assert cfg.src_root == "."
@@ -254,6 +259,7 @@ age-threshold = 45
 
 [tool.docvet.enrichment]
 require-raises = false
+require-attributes = false
 require-examples = ["class"]
 """
     )
@@ -266,6 +272,7 @@ require-examples = ["class"]
     assert cfg.freshness.drift_threshold == 10
     assert cfg.freshness.age_threshold == 45
     assert cfg.enrichment.require_raises is False
+    assert cfg.enrichment.require_attributes is False
     assert cfg.enrichment.require_examples == ["class"]
 
 
@@ -335,6 +342,35 @@ require-yields = false
     assert cfg.enrichment.require_raises is False
     assert cfg.enrichment.require_yields is False
     assert cfg.enrichment.require_warns is True
+
+
+def test_load_config_nested_enrichment_require_attributes_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+require-attributes = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.enrichment.require_attributes is False
+
+
+def test_load_config_nested_enrichment_without_require_attributes_uses_default(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+require-raises = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.enrichment.require_attributes is True
+    assert cfg.enrichment.require_raises is False
 
 
 def test_load_config_explicit_path_uses_that_file(tmp_path):
