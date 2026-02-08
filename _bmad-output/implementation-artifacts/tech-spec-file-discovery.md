@@ -2,7 +2,7 @@
 title: 'File Discovery Module'
 slug: 'file-discovery'
 created: '2026-02-08'
-status: 'ready-for-dev'
+status: 'implementation-complete'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack:
   - 'Python 3.12+'
@@ -140,7 +140,7 @@ Exact matching semantics for `_is_excluded(rel_path, exclude)`:
 
 ### Tasks
 
-- [ ] Task 1: Create `src/docvet/discovery.py` with `DiscoveryMode` enum and private helpers
+- [x] Task 1: Create `src/docvet/discovery.py` with `DiscoveryMode` enum and private helpers
   - File: `src/docvet/discovery.py` (new)
   - Action: Create the module with:
     - Module docstring
@@ -152,7 +152,7 @@ Exact matching semantics for `_is_excluded(rel_path, exclude)`:
     - `_walk_all(config: DocvetConfig) -> list[Path]` — Resolve `root = config.project_root / config.src_root`. If `root` doesn't exist: warn `"docvet: src-root '{config.src_root}' not found"` to stderr → return `[]`. Try `git ls-files --cached --others --exclude-standard -- '*.py'` with `cwd=root` and `warn=False` (suppress git failure warning since we fall back silently). If git succeeds: resolve each line to absolute path, filter `.py` (defensive — `-- '*.py'` pathspec should already limit results, but filter ensures correctness if git behavior varies), filter `_is_excluded`, skip symlinks. If git fails (non-git directory): fallback to iterating `root.rglob("*.py")`, skip symlinks via `path.is_symlink()`, filter `_is_excluded` using path relative to `config.project_root`. **Path conversion**: use `PurePosixPath(path.relative_to(config.project_root)).as_posix()` to produce forward-slash relative path strings, ensuring cross-platform consistency with `_is_excluded`'s normalization.
   - Notes: Use `# ---------------------------------------------------------------------------` section separators between logical blocks (Enums, Private helpers, Public API). All functions get full Google-style docstrings (both public and private — project convention per CLAUDE.md). The module docstring is **mandatory** for `interrogate` compliance (95% threshold). `interrogate` config has `ignore-private = true` so private function docstrings won't be enforced by CI, but we add them anyway per project convention.
 
-- [ ] Task 2: Implement `discover_files()` public function
+- [x] Task 2: Implement `discover_files()` public function
   - File: `src/docvet/discovery.py`
   - Action: Add the public function:
     - Signature: `def discover_files(config: DocvetConfig, mode: DiscoveryMode, *, files: Sequence[Path] = ()) -> list[Path]`
@@ -164,7 +164,7 @@ Exact matching semantics for `_is_excluded(rel_path, exclude)`:
     - All modes: return `sorted(paths)` for determinism
   - Notes: The `files` parameter is keyword-only. Empty tuple default means no `None` check needed — `files` is always iterable. If `mode is DiscoveryMode.FILES` and `files` is empty, return `[]`.
 
-- [ ] Task 3: Update `src/docvet/cli.py` — remove `DiscoveryMode`, import from `discovery`
+- [x] Task 3: Update `src/docvet/cli.py` — remove `DiscoveryMode`, import from `discovery`
   - File: `src/docvet/cli.py`
   - Action:
     - Remove the `class DiscoveryMode(enum.Enum)` definition and its docstring
@@ -173,12 +173,12 @@ Exact matching semantics for `_is_excluded(rel_path, exclude)`:
     - Verify all references to `DiscoveryMode` still work (used in `_resolve_discovery_mode` return type, `_run_*` stubs, subcommand signatures)
   - Notes: `enum` import stays because `OutputFormat(enum.StrEnum)` and `FreshnessMode(enum.StrEnum)` still need it. Only the `DiscoveryMode` class moves.
 
-- [ ] Task 4: Verify existing CLI tests still pass
+- [x] Task 4: Verify existing CLI tests still pass
   - File: `tests/unit/test_cli.py`
   - Action: Run `uv run pytest tests/unit/test_cli.py -v`. Tests reference `DiscoveryMode` only indirectly via CLI flags (not by importing the enum), so they should pass without changes. If any test imports `DiscoveryMode` from `docvet.cli`, update the import to `docvet.discovery`.
   - Notes: This is a verification step, not a code change step (unless imports need updating).
 
-- [ ] Task 5: Create `tests/unit/test_discovery.py` — unit tests
+- [x] Task 5: Create `tests/unit/test_discovery.py` — unit tests
   - File: `tests/unit/test_discovery.py` (new)
   - Action: Create unit test file with:
     - `from __future__ import annotations`
@@ -214,7 +214,7 @@ Exact matching semantics for `_is_excluded(rel_path, exclude)`:
       - `test_discover_files_when_project_root_relative_raises_value_error` — `DocvetConfig(project_root=Path("relative"))` → `ValueError`
   - Notes: Use `mocker.patch("docvet.discovery.subprocess.run")` for mocking. Use `capsys` for stderr assertions. Use `tmp_path` for filesystem trees. Follow `test_<what>_when_<condition>_<expected>` naming. Importing private functions (`_is_excluded`, `_run_git`) is acceptable for direct unit testing — ruff's `PLC2701` is not currently enabled. If it fires, add `"PLC2701"` to the `tests/**/*.py` per-file-ignores in `pyproject.toml`.
 
-- [ ] Task 6: Create `tests/integration/test_discovery.py` — integration tests
+- [x] Task 6: Create `tests/integration/test_discovery.py` — integration tests
   - File: `tests/integration/test_discovery.py` (new)
   - Action: Create integration test file using `git_repo` fixture:
     - `from __future__ import annotations`
@@ -241,14 +241,14 @@ Exact matching semantics for `_is_excluded(rel_path, exclude)`:
       - `test_staged_mode_when_empty_repo_with_staged_file_returns_file` — `git init`, create+stage `.py` file (no commit) → file in results (compares to empty tree)
   - Notes: Use real git operations (no mocks). `git_repo` fixture from `tests/integration/conftest.py`. Create `DocvetConfig` instances with `project_root=git_repo`.
 
-- [ ] Task 7: Update project documentation
+- [x] Task 7: Update project documentation
   - Files: `_bmad-output/project-context.md`, `docs/architecture.md`
   - Action:
     - `_bmad-output/project-context.md`: Update the Framework Rules section line about `DiscoveryMode` migration — change from "will move to `discovery.py`" to "lives in `discovery.py`" (migration complete). Add note about `discover_files()` accepting `DocvetConfig` and the `warn` parameter on `_run_git`.
     - `docs/architecture.md`: Change `discovery.py (Planned)` to `discovery.py (Implemented)`. Update the module description to reflect the actual implementation: four modes, `git ls-files` for ALL mode, `.gitignore`-semantic excludes, `DiscoveryMode` enum lives here. Also fix pre-existing staleness: change `config.py (Planned)` to `config.py (Implemented)` since it was already implemented in a prior PR.
   - Notes: Documentation updates are part of the implementation, not a post-merge afterthought. Keep descriptions concise — match the style of the existing architecture doc entries.
 
-- [ ] Task 8: Run full quality gates
+- [x] Task 8: Run full quality gates
   - Action: Run all quality checks to verify nothing is broken:
     - `uv run ruff check .`
     - `uv run ruff format .`
@@ -260,54 +260,54 @@ Exact matching semantics for `_is_excluded(rel_path, exclude)`:
 ### Acceptance Criteria
 
 **`_is_excluded` helper:**
-- [ ] AC 1: Given pattern `"tests"` (no `/`), when checking path `"tests/unit/test_foo.py"`, then returns `True` (component match).
-- [ ] AC 2: Given pattern `"tests"`, when checking path `"src/docvet/test_utils.py"`, then returns `False` (partial name, not component match).
-- [ ] AC 3: Given pattern `"*.pyc"` (no `/`), when checking path `"src/__pycache__/foo.pyc"`, then returns `True` (filename glob match).
-- [ ] AC 4: Given pattern `"scripts/gen_*.py"` (has `/`), when checking path `"scripts/gen_docs.py"`, then returns `True` (relative path match).
-- [ ] AC 5: Given pattern `"scripts/gen_*.py"`, when checking path `"other/scripts/gen_docs.py"`, then returns `False` (must match from root).
+- [x] AC 1: Given pattern `"tests"` (no `/`), when checking path `"tests/unit/test_foo.py"`, then returns `True` (component match).
+- [x] AC 2: Given pattern `"tests"`, when checking path `"src/docvet/test_utils.py"`, then returns `False` (partial name, not component match).
+- [x] AC 3: Given pattern `"*.pyc"` (no `/`), when checking path `"src/__pycache__/foo.pyc"`, then returns `True` (filename glob match).
+- [x] AC 4: Given pattern `"scripts/gen_*.py"` (has `/`), when checking path `"scripts/gen_docs.py"`, then returns `True` (relative path match).
+- [x] AC 5: Given pattern `"scripts/gen_*.py"`, when checking path `"other/scripts/gen_docs.py"`, then returns `False` (must match from root).
 
 **`_run_git` helper:**
-- [ ] AC 6: Given a successful git command, when `_run_git` is called, then it returns a list of stripped non-empty stdout lines.
-- [ ] AC 7: Given a failing git command (non-zero exit) with `warn=True` (default), when `_run_git` is called, then it returns `[]` and prints `"docvet: git <cmd> failed: <stderr>"` to stderr.
-- [ ] AC 7b: Given a failing git command with `warn=False`, when `_run_git` is called, then it returns `[]` with NO stderr output.
+- [x] AC 6: Given a successful git command, when `_run_git` is called, then it returns a list of stripped non-empty stdout lines.
+- [x] AC 7: Given a failing git command (non-zero exit) with `warn=True` (default), when `_run_git` is called, then it returns `[]` and prints `"docvet: git <cmd> failed: <stderr>"` to stderr.
+- [x] AC 7b: Given a failing git command with `warn=False`, when `_run_git` is called, then it returns `[]` with NO stderr output.
 
 **DIFF mode:**
-- [ ] AC 8: Given a git repo with unstaged modifications to a `.py` file, when `discover_files` is called with `DiscoveryMode.DIFF`, then the modified file is in the result.
-- [ ] AC 9: Given a git repo with unstaged modifications to a `.txt` file, when `discover_files` is called with `DiscoveryMode.DIFF`, then the `.txt` file is NOT in the result.
-- [ ] AC 10: Given a clean git repo (no changes), when `discover_files` is called with `DiscoveryMode.DIFF`, then the result is `[]`.
-- [ ] AC 11: Given a git repo with a modified `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.DIFF`, then the file is NOT in the result.
+- [x] AC 8: Given a git repo with unstaged modifications to a `.py` file, when `discover_files` is called with `DiscoveryMode.DIFF`, then the modified file is in the result.
+- [x] AC 9: Given a git repo with unstaged modifications to a `.txt` file, when `discover_files` is called with `DiscoveryMode.DIFF`, then the `.txt` file is NOT in the result.
+- [x] AC 10: Given a clean git repo (no changes), when `discover_files` is called with `DiscoveryMode.DIFF`, then the result is `[]`.
+- [x] AC 11: Given a git repo with a modified `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.DIFF`, then the file is NOT in the result.
 
 **STAGED mode:**
-- [ ] AC 12: Given a git repo with a staged `.py` file, when `discover_files` is called with `DiscoveryMode.STAGED`, then the staged file is in the result.
-- [ ] AC 13: Given a git repo with no staged changes, when `discover_files` is called with `DiscoveryMode.STAGED`, then the result is `[]`.
-- [ ] AC 14: Given a git repo with a staged `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.STAGED`, then the file is NOT in the result.
+- [x] AC 12: Given a git repo with a staged `.py` file, when `discover_files` is called with `DiscoveryMode.STAGED`, then the staged file is in the result.
+- [x] AC 13: Given a git repo with no staged changes, when `discover_files` is called with `DiscoveryMode.STAGED`, then the result is `[]`.
+- [x] AC 14: Given a git repo with a staged `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.STAGED`, then the file is NOT in the result.
 
 **ALL mode:**
-- [ ] AC 15: Given a git repo with tracked `.py` files, when `discover_files` is called with `DiscoveryMode.ALL`, then tracked files are returned.
-- [ ] AC 16: Given a git repo with a `.gitignore`d `.py` file, when `discover_files` is called with `DiscoveryMode.ALL`, then the gitignored file is NOT in the result.
-- [ ] AC 17: Given a non-git directory with `.py` files, when `discover_files` is called with `DiscoveryMode.ALL`, then files are returned via `rglob` fallback.
-- [ ] AC 18: Given `src_root` that doesn't exist, when `discover_files` is called with `DiscoveryMode.ALL`, then result is `[]` and a warning is printed to stderr.
-- [ ] AC 19: Given a non-git directory with a symlink `.py` file, when `discover_files` is called with `DiscoveryMode.ALL`, then the symlink is NOT in the result.
-- [ ] AC 20: Given a non-git directory with files in an excluded dir, when `discover_files` is called with `DiscoveryMode.ALL`, then excluded files are NOT in the result.
-- [ ] AC 21: Given a git repo with a tracked `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.ALL`, then the excluded file is NOT in the result (excludes apply on top of `git ls-files`).
+- [x] AC 15: Given a git repo with tracked `.py` files, when `discover_files` is called with `DiscoveryMode.ALL`, then tracked files are returned.
+- [x] AC 16: Given a git repo with a `.gitignore`d `.py` file, when `discover_files` is called with `DiscoveryMode.ALL`, then the gitignored file is NOT in the result.
+- [x] AC 17: Given a non-git directory with `.py` files, when `discover_files` is called with `DiscoveryMode.ALL`, then files are returned via `rglob` fallback.
+- [x] AC 18: Given `src_root` that doesn't exist, when `discover_files` is called with `DiscoveryMode.ALL`, then result is `[]` and a warning is printed to stderr.
+- [x] AC 19: Given a non-git directory with a symlink `.py` file, when `discover_files` is called with `DiscoveryMode.ALL`, then the symlink is NOT in the result.
+- [x] AC 20: Given a non-git directory with files in an excluded dir, when `discover_files` is called with `DiscoveryMode.ALL`, then excluded files are NOT in the result.
+- [x] AC 21: Given a git repo with a tracked `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.ALL`, then the excluded file is NOT in the result (excludes apply on top of `git ls-files`).
 
 **FILES mode:**
-- [ ] AC 22: Given a list of existing `.py` files, when `discover_files` is called with `DiscoveryMode.FILES`, then all files are returned.
-- [ ] AC 23: Given a list containing a non-existent file, when `discover_files` is called with `DiscoveryMode.FILES`, then the missing file is skipped and a warning is printed to stderr.
-- [ ] AC 24: Given a list containing a `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.FILES`, then the file IS returned (explicit files bypass excludes).
-- [ ] AC 25: Given a list containing a non-`.py` file, when `discover_files` is called with `DiscoveryMode.FILES`, then the non-Python file is NOT returned.
-- [ ] AC 26: Given `files=()` (empty default) with `DiscoveryMode.FILES`, when `discover_files` is called, then result is `[]`.
+- [x] AC 22: Given a list of existing `.py` files, when `discover_files` is called with `DiscoveryMode.FILES`, then all files are returned.
+- [x] AC 23: Given a list containing a non-existent file, when `discover_files` is called with `DiscoveryMode.FILES`, then the missing file is skipped and a warning is printed to stderr.
+- [x] AC 24: Given a list containing a `.py` file in an excluded directory, when `discover_files` is called with `DiscoveryMode.FILES`, then the file IS returned (explicit files bypass excludes).
+- [x] AC 25: Given a list containing a non-`.py` file, when `discover_files` is called with `DiscoveryMode.FILES`, then the non-Python file is NOT returned.
+- [x] AC 26: Given `files=()` (empty default) with `DiscoveryMode.FILES`, when `discover_files` is called, then result is `[]`.
 
 **General:**
-- [ ] AC 27: Given any discovery mode with results, when `discover_files` returns, then all paths are absolute and the list is sorted.
-- [ ] AC 28: Given `DiscoveryMode.DIFF` in a non-git directory, when `discover_files` is called, then result is `[]` and a warning is printed to stderr.
-- [ ] AC 29: Given `DiscoveryMode.STAGED` in a non-git directory, when `discover_files` is called, then result is `[]` and a warning is printed to stderr.
+- [x] AC 27: Given any discovery mode with results, when `discover_files` returns, then all paths are absolute and the list is sorted.
+- [x] AC 28: Given `DiscoveryMode.DIFF` in a non-git directory, when `discover_files` is called, then result is `[]` and a warning is printed to stderr.
+- [x] AC 29: Given `DiscoveryMode.STAGED` in a non-git directory, when `discover_files` is called, then result is `[]` and a warning is printed to stderr.
 
 **Input validation:**
-- [ ] AC 30: Given a `DocvetConfig` with a relative `project_root`, when `discover_files` is called, then it raises `ValueError`.
+- [x] AC 30: Given a `DocvetConfig` with a relative `project_root`, when `discover_files` is called, then it raises `ValueError`.
 
 **Enum migration:**
-- [ ] AC 31: Given the updated `cli.py` importing `DiscoveryMode` from `discovery`, when all existing CLI tests run, then they pass without modification.
+- [x] AC 31: Given the updated `cli.py` importing `DiscoveryMode` from `discovery`, when all existing CLI tests run, then they pass without modification.
 
 ## Additional Context
 
