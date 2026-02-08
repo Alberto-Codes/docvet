@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: BMAD Help
+    url: https://github.com/bmad-method/bmad
+    about: Learn about BMAD workflows for feature development
+  - name: Product Vision
+    url: ./docs/product-vision.md
+    about: docvet product vision and design
