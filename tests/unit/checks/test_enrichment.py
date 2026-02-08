@@ -340,6 +340,95 @@ def foo():
     assert "ValueError" in result.message
 
 
+def test_missing_raises_when_bare_name_raise_returns_finding():
+    # raise ValueError (no parentheses) — ast.Name branch
+    source = '''\
+def foo():
+    """Do something."""
+    raise ValueError
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_raises(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert "ValueError" in result.message
+
+
+def test_missing_raises_when_attribute_call_raise_returns_finding():
+    # raise errors.CustomError("msg") — ast.Call(func=ast.Attribute) branch
+    source = '''\
+def foo():
+    """Do something."""
+    raise errors.CustomError("bad")
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_raises(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert "CustomError" in result.message
+
+
+def test_missing_raises_when_bare_attribute_raise_returns_finding():
+    # raise errors.CustomError (no parentheses) — ast.Attribute branch
+    source = '''\
+def foo():
+    """Do something."""
+    raise errors.CustomError
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_raises(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert "CustomError" in result.message
+
+
+def test_missing_raises_when_nested_function_raises_returns_none():
+    # Raises inside nested functions should NOT be attributed to outer
+    source = '''\
+def outer():
+    """Outer function."""
+    def inner():
+        raise ValueError("inner")
+    return inner()
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_raises(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_raises_when_outer_and_nested_raise_reports_only_outer():
+    # Only outer's raises should be reported, not nested function's
+    source = '''\
+def outer():
+    """Outer function."""
+    raise TypeError("outer")
+    def inner():
+        raise ValueError("inner")
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_raises(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert "TypeError" in result.message
+    assert "ValueError" not in result.message
+
+
 def test_missing_raises_when_node_index_missing_returns_none():
     # Module symbol — node_index won't have it
     source = '''\
