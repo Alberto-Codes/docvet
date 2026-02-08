@@ -49,20 +49,23 @@ _SECTION_PATTERN = re.compile(
 def _parse_sections(docstring: str) -> set[str]:
     """Extract recognized Google-style section headers from a docstring.
 
-    Identifies which of the 10 recognized section headers are present in the
-    docstring. Handles varied indentation gracefully (module-level with no
-    indent, method-level with 8+ spaces).
+    Scans the raw docstring text line-by-line with a compiled regex and
+    returns any of the 10 recognized section headers that match. Handles
+    varied indentation gracefully (module-level with no indent, method-level
+    with 8+ spaces).
 
-    On malformed input (missing colons, broken indentation, non-standard
-    headers), returns an empty set rather than raising an exception. False
-    negatives are preferred over false positives (NFR5).
+    The parser does not validate overall docstring structure — a partially
+    malformed docstring can still yield matches for its well-formed headers.
+    Headers inside fenced code blocks may also match, which produces false
+    negatives at the rule level (safe direction per NFR5) since the rule
+    will believe the section exists.
 
     Args:
         docstring: The raw docstring text to parse.
 
     Returns:
-        A set of header names found in the docstring. Returns empty set if
-        no headers match or if the docstring is malformed.
+        A set of header names found in the docstring. Returns an empty set
+        when no recognized section headers are found.
     """
     return set(_SECTION_PATTERN.findall(docstring))
 
