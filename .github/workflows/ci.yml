@@ -55,8 +55,8 @@ jobs:
           enable-cache: true
           cache-suffix: ${{ matrix.python-version }}
       - run: uv python install ${{ matrix.python-version }}
-      - run: uv sync --dev
-      - run: uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-fail-under=85
+      - run: UV_PYTHON=${{ matrix.python-version }} uv sync --dev
+      - run: UV_PYTHON=${{ matrix.python-version }} uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-fail-under=85
       - run: uv cache prune --ci
         if: always()
         continue-on-error: true
