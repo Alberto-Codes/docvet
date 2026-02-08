@@ -1,3 +1,6 @@
+# Claude Config Files
+.claude/settings.local.json
+
 # Python-generated files
 __pycache__/
 *.py[oc]
