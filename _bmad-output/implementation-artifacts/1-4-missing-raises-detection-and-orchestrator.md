@@ -1,6 +1,6 @@
 # Story 1.4: Missing Raises Detection and Orchestrator
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,48 +30,48 @@ so that I can ensure my docstrings accurately describe error behavior for caller
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement `_check_missing_raises` private function (AC: #1, #2, #3)
-  - [ ] 1.1: Write function with uniform signature `_check_missing_raises(symbol, sections, node_index, config, file_path) -> Finding | None`
-  - [ ] 1.2: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing (module symbols)
-  - [ ] 1.3: Walk node body with `ast.walk()` to find `ast.Raise` nodes
-  - [ ] 1.4: Extract exception class names from `ast.Raise.exc` (handle `ast.Name`, `ast.Call`, `ast.Attribute`)
-  - [ ] 1.5: Check `"Raises" not in sections` — if section exists, return `None` (AC: #2)
-  - [ ] 1.6: Construct `Finding` with `rule="missing-raises"`, `category="required"`, evidence listing exception names
-  - [ ] 1.7: Add docstring following project conventions
+- [x] Task 1: Implement `_check_missing_raises` private function (AC: #1, #2, #3)
+  - [x] 1.1: Write function with uniform signature `_check_missing_raises(symbol, sections, node_index, config, file_path) -> Finding | None`
+  - [x] 1.2: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing (module symbols)
+  - [x] 1.3: Walk node body with `ast.walk()` to find `ast.Raise` nodes
+  - [x] 1.4: Extract exception class names from `ast.Raise.exc` (handle `ast.Name`, `ast.Call`, `ast.Attribute`)
+  - [x] 1.5: Check `"Raises" not in sections` — if section exists, return `None` (AC: #2)
+  - [x] 1.6: Construct `Finding` with `rule="missing-raises"`, `category="required"`, evidence listing exception names
+  - [x] 1.7: Add docstring following project conventions
 
-- [ ] Task 2: Implement `check_enrichment` public orchestrator (AC: #4, #5, #6, #7, #8)
-  - [ ] 2.1: Write function with signature `check_enrichment(source, tree, config, file_path) -> list[Finding]`
-  - [ ] 2.2: Call `get_documented_symbols(tree)` to get symbol list (NOTE: only takes `tree`, not `source`)
-  - [ ] 2.3: Call `_build_node_index(tree)` once at top
-  - [ ] 2.4: Loop over symbols, skip those with no docstring (FR20)
-  - [ ] 2.5: Call `_parse_sections(symbol.docstring)` once per symbol
-  - [ ] 2.6: Config-gate `_check_missing_raises` with `if config.require_raises:` (AC: #5)
-  - [ ] 2.7: Use walrus operator `if f := _check_missing_raises(...)` for concise finding collection
-  - [ ] 2.8: Return collected `list[Finding]`
-  - [ ] 2.9: Add comprehensive docstring with Args/Returns sections
+- [x] Task 2: Implement `check_enrichment` public orchestrator (AC: #4, #5, #6, #7, #8)
+  - [x] 2.1: Write function with signature `check_enrichment(source, tree, config, file_path) -> list[Finding]`
+  - [x] 2.2: Call `get_documented_symbols(tree)` to get symbol list (NOTE: only takes `tree`, not `source`)
+  - [x] 2.3: Call `_build_node_index(tree)` once at top
+  - [x] 2.4: Loop over symbols, skip those with no docstring (FR20)
+  - [x] 2.5: Call `_parse_sections(symbol.docstring)` once per symbol
+  - [x] 2.6: Config-gate `_check_missing_raises` with `if config.require_raises:` (AC: #5)
+  - [x] 2.7: Use walrus operator `if f := _check_missing_raises(...)` for concise finding collection
+  - [x] 2.8: Return collected `list[Finding]`
+  - [x] 2.9: Add comprehensive docstring with Args/Returns sections
 
-- [ ] Task 3: Write unit tests for `_check_missing_raises` (AC: #1, #2, #3)
-  - [ ] 3.1: `test_missing_raises_when_function_raises_without_section_returns_finding` — AC #1
-  - [ ] 3.2: `test_missing_raises_when_raises_section_present_returns_none` — AC #2
-  - [ ] 3.3: `test_missing_raises_when_no_raise_statements_returns_none` — AC #3
-  - [ ] 3.4: `test_missing_raises_when_raise_without_exception_returns_finding` (bare `raise`)
-  - [ ] 3.5: `test_missing_raises_when_multiple_exceptions_lists_all_in_message`
-  - [ ] 3.6: `test_missing_raises_when_node_index_missing_returns_none` (module symbol)
+- [x] Task 3: Write unit tests for `_check_missing_raises` (AC: #1, #2, #3)
+  - [x] 3.1: `test_missing_raises_when_function_raises_without_section_returns_finding` — AC #1
+  - [x] 3.2: `test_missing_raises_when_raises_section_present_returns_none` — AC #2
+  - [x] 3.3: `test_missing_raises_when_no_raise_statements_returns_none` — AC #3
+  - [x] 3.4: `test_missing_raises_when_raise_without_exception_returns_finding` (bare `raise`)
+  - [x] 3.5: `test_missing_raises_when_multiple_exceptions_lists_all_in_message`
+  - [x] 3.6: `test_missing_raises_when_node_index_missing_returns_none` (module symbol)
 
-- [ ] Task 4: Write unit tests for `check_enrichment` orchestrator (AC: #4, #5, #6, #7, #8)
-  - [ ] 4.1: `test_check_enrichment_when_no_docstring_skips_symbol` — AC #4
-  - [ ] 4.2: `test_check_enrichment_when_raises_disabled_returns_no_finding` — AC #5
-  - [ ] 4.3: `test_check_enrichment_when_complete_module_returns_empty` — AC #6 (use fixture)
-  - [ ] 4.4: `test_check_enrichment_when_missing_raises_fixture_returns_finding` — AC #7 (use fixture)
-  - [ ] 4.5: `test_check_enrichment_returns_list_of_findings` — AC #8
-  - [ ] 4.6: `test_check_enrichment_when_all_rules_disabled_returns_empty`
+- [x] Task 4: Write unit tests for `check_enrichment` orchestrator (AC: #4, #5, #6, #7, #8)
+  - [x] 4.1: `test_check_enrichment_when_no_docstring_skips_symbol` — AC #4
+  - [x] 4.2: `test_check_enrichment_when_raises_disabled_returns_no_finding` — AC #5
+  - [x] 4.3: `test_check_enrichment_when_complete_module_returns_empty` — AC #6 (use fixture)
+  - [x] 4.4: `test_check_enrichment_when_missing_raises_fixture_returns_finding` — AC #7 (use fixture)
+  - [x] 4.5: `test_check_enrichment_returns_list_of_findings` — AC #8
+  - [x] 4.6: `test_check_enrichment_when_all_rules_disabled_returns_empty`
 
-- [ ] Task 5: Run quality gates and verify all pass
-  - [ ] 5.1: `uv run ruff check .` — All checks pass
-  - [ ] 5.2: `uv run ruff format --check .` — All files formatted
-  - [ ] 5.3: `uv run ty check` — All type checks pass
-  - [ ] 5.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
-  - [ ] 5.5: `uv run pytest` — Full suite passes (0 regressions)
+- [x] Task 5: Run quality gates and verify all pass
+  - [x] 5.1: `uv run ruff check .` — All checks pass
+  - [x] 5.2: `uv run ruff format --check .` — All files formatted
+  - [x] 5.3: `uv run ty check` — All type checks pass
+  - [x] 5.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
+  - [x] 5.5: `uv run pytest` — Full suite passes (0 regressions)
 
 ## Dev Notes
 
@@ -370,12 +370,30 @@ def check_enrichment(...): ...
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- ty check caught `str | None` type error on `module_symbol.docstring` — added `assert` guard in test
+
 ### Completion Notes List
+
+- Implemented `_check_missing_raises` with uniform `_check_*` signature per Decision 1
+- Exception name extraction handles `ast.Name`, `ast.Call` (with `ast.Name`/`ast.Attribute` func), `ast.Attribute`, and bare `raise` (re-raise)
+- Exception names collected as sorted set for deterministic output (NFR6)
+- Implemented `check_enrichment` orchestrator following the Architecture Orchestrator Pattern
+- Config gating in orchestrator, not in rule function (Decision 1)
+- `get_documented_symbols(tree)` called correctly with only `tree` parameter
+- Walrus operator used for concise finding collection
+- 12 new tests (6 for `_check_missing_raises`, 6 for `check_enrichment`) — all pass
+- All 8 acceptance criteria satisfied
+- 231 total tests pass, 0 regressions
 
 ### Change Log
 
+- 2026-02-08: Implemented `_check_missing_raises` rule and `check_enrichment` orchestrator with 12 unit tests
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` — MODIFIED: Added `_check_missing_raises()`, `check_enrichment()`, new imports (`Symbol`, `get_documented_symbols`, `Finding`, `EnrichmentConfig`)
+- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 12 tests (6 for `_check_missing_raises`, 6 for `check_enrichment`), new imports
