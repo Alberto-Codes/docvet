@@ -234,6 +234,23 @@ def test_app_when_invoked_with_format_uppercase_fails():
     assert result.exit_code != 0
 
 
+def test_help_when_invoked_shows_config_flag():
+    result = runner.invoke(app, ["--help"])
+    assert "--config" in _strip_ansi(result.output)
+
+
+def test_check_when_invoked_with_config_flag_exits_successfully(tmp_path):
+    p = tmp_path / "pyproject.toml"
+    p.write_text("")
+    result = runner.invoke(app, ["--config", str(p), "check"])
+    assert result.exit_code == 0
+
+
+def test_check_when_invoked_with_config_nonexistent_path_exits_successfully():
+    result = runner.invoke(app, ["--config", "/nonexistent/pyproject.toml", "check"])
+    assert result.exit_code == 0
+
+
 # ---------------------------------------------------------------------------
 # Default discovery mode
 # ---------------------------------------------------------------------------

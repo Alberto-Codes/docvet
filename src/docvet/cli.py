@@ -45,6 +45,9 @@ AllOption = Annotated[bool, typer.Option("--all", help="Run on entire codebase."
 FilesOption = Annotated[
     list[str] | None, typer.Option("--files", help="Run on specific files.")
 ]
+ConfigOption = Annotated[
+    Path | None, typer.Option("--config", help="Path to pyproject.toml.")
+]
 
 # ---------------------------------------------------------------------------
 # App
@@ -169,6 +172,7 @@ def main(
     output: Annotated[
         Path | None, typer.Option("--output", help="Write report to file.")
     ] = None,
+    config: ConfigOption = None,
 ) -> None:
     """Global options for docvet.
 
@@ -177,11 +181,13 @@ def main(
         verbose: Enable verbose output.
         fmt: Output format (terminal or markdown).
         output: Optional file path for report output.
+        config: Explicit path to a ``pyproject.toml``.
     """
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["format"] = fmt.value if fmt is not None else None
     ctx.obj["output"] = str(output) if output is not None else None
+    ctx.obj["config"] = str(config) if config is not None else None
 
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
