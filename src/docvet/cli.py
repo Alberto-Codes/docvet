@@ -220,6 +220,9 @@ def main(
         config: Explicit path to a ``pyproject.toml``.
     """
     ctx.ensure_object(dict)
+    if ctx.resilient_parsing:
+        return
+
     ctx.obj["verbose"] = verbose
     ctx.obj["format"] = fmt.value if fmt is not None else None
     ctx.obj["output"] = str(output) if output is not None else None
