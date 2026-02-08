@@ -30,7 +30,7 @@ class DiscoveryMode(enum.Enum):
 # ---------------------------------------------------------------------------
 
 
-def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str]:
+def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | None:
     """Run a git command and return stdout lines.
 
     Args:
@@ -40,8 +40,9 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str]:
             *False*, fail silently (used by ``_walk_all`` fallback).
 
     Returns:
-        List of stripped, non-empty stdout lines on success, or ``[]``
-        on failure.
+        List of stripped, non-empty stdout lines on success, or *None*
+        on failure. An empty list means git succeeded but produced no
+        output.
     """
     result = subprocess.run(
         ["git", *args],
@@ -57,7 +58,7 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str]:
                 f"docvet: git {args[0]} failed: {stderr}",
                 file=sys.stderr,
             )
-        return []
+        return None
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
@@ -114,7 +115,7 @@ def _walk_all(config: DocvetConfig) -> list[Path]:
         warn=False,
     )
 
-    if lines:
+    if lines is not None:
         paths: list[Path] = []
         for line in lines:
             raw_path = root / line
@@ -203,9 +204,15 @@ def discover_files(
         git_args = ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]
 
     lines = _run_git(git_args, cwd=config.project_root)
-    discovered = (
-        (config.project_root / rel).resolve()
-        for rel in lines
-        if rel.endswith(".py") and not _is_excluded(rel, config.exclude)
-    )
+    if lines is None:
+        return []
+
+    discovered: list[Path] = []
+    for rel in lines:
+        if not rel.endswith(".py") or _is_excluded(rel, config.exclude):
+            continue
+        abs_path = config.project_root / rel
+        if abs_path.is_symlink():
+            continue
+        discovered.append(abs_path.resolve())
     return sorted(discovered)
