@@ -10,6 +10,10 @@ from __future__ import annotations
 import ast
 import re
 
+from docvet.ast_utils import Symbol, get_documented_symbols
+from docvet.checks import Finding
+from docvet.config import EnrichmentConfig
+
 # ---------------------------------------------------------------------------
 # Section header constants
 # ---------------------------------------------------------------------------
@@ -94,3 +98,130 @@ def _build_node_index(tree: ast.Module) -> dict[int, _NodeT]:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             index[node.lineno] = node
     return index
+
+
+# ---------------------------------------------------------------------------
+# Rule functions
+# ---------------------------------------------------------------------------
+
+
+def _check_missing_raises(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a function that raises exceptions without a Raises section.
+
+    Walks the function's AST subtree to find ``raise`` statements and
+    extracts exception class names. Returns a finding when exceptions are
+    raised but no ``Raises:`` section is present in the docstring.
+
+    The walk is scope-aware: it stops at nested ``FunctionDef``,
+    ``AsyncFunctionDef``, and ``ClassDef`` boundaries so that raises
+    inside nested scopes are not attributed to the outer function.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-raises"`` when exceptions are
+        raised without documentation, or ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+
+    if "Raises" in sections:
+        return None
+
+    names: set[str] = set()
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, ast.Raise):
+            if child.exc is None:
+                names.add("(re-raise)")
+            elif isinstance(child.exc, ast.Name):
+                names.add(child.exc.id)
+            elif isinstance(child.exc, ast.Call):
+                if isinstance(child.exc.func, ast.Name):
+                    names.add(child.exc.func.id)
+                elif isinstance(child.exc.func, ast.Attribute):
+                    names.add(child.exc.func.attr)
+            elif isinstance(child.exc, ast.Attribute):
+                names.add(child.exc.attr)
+        stack.extend(ast.iter_child_nodes(child))
+
+    if not names:
+        return None
+
+    exception_names = ", ".join(sorted(names))
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-raises",
+        message=(
+            f"Function '{symbol.name}' raises {exception_names} "
+            f"but has no Raises: section"
+        ),
+        category="required",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public orchestrator
+# ---------------------------------------------------------------------------
+
+
+def check_enrichment(
+    source: str,
+    tree: ast.Module,
+    config: EnrichmentConfig,
+    file_path: str,
+) -> list[Finding]:
+    """Run all enrichment rules on a parsed source file.
+
+    Iterates over documented symbols, parses their docstring sections,
+    and dispatches to each enabled rule function. Symbols without a
+    docstring are skipped (FR20). Config gating controls which rules run.
+
+    Args:
+        source: Raw source text of the file (reserved for future rules).
+        tree: Parsed AST module from ``ast.parse()``.
+        config: Enrichment configuration controlling rule toggles.
+        file_path: Source file path for finding records.
+
+    Returns:
+        A list of findings from all enabled enrichment rules. Returns an
+        empty list when no issues are detected.
+    """
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    findings: list[Finding] = []
+
+    for symbol in symbols:
+        if not symbol.docstring:
+            continue
+        sections = _parse_sections(symbol.docstring)
+
+        if config.require_raises:
+            if f := _check_missing_raises(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        # Future rules dispatched here in taxonomy-table order
+
+    return findings
