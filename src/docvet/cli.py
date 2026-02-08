@@ -120,11 +120,15 @@ def _run_enrichment(mode: DiscoveryMode) -> None:
     typer.echo("enrichment: not yet implemented")
 
 
-def _run_freshness(mode: DiscoveryMode) -> None:
+def _run_freshness(
+    mode: DiscoveryMode,
+    freshness_mode: FreshnessMode = FreshnessMode.DIFF,
+) -> None:
     """Stub for freshness check.
 
     Args:
         mode: The resolved discovery mode.
+        freshness_mode: The freshness check strategy (diff or drift).
     """
     typer.echo("freshness: not yet implemented")
 
@@ -252,7 +256,7 @@ def freshness(
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     _print_global_context(ctx)
-    _run_freshness(discovery_mode)
+    _run_freshness(discovery_mode, freshness_mode=mode)
 
 
 @app.command()
