@@ -1,6 +1,6 @@
 # Story 1.4: Missing Raises Detection and Orchestrator
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -392,8 +392,23 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-08: Implemented `_check_missing_raises` rule and `check_enrichment` orchestrator with 12 unit tests
+- 2026-02-08: Code review — Fixed `ast.walk()` nested scope false positive (NFR5 violation), added 5 tests for full AST branch coverage and nested scope scenarios, coverage 91% → 100%
 
 ### File List
 
-- `src/docvet/checks/enrichment.py` — MODIFIED: Added `_check_missing_raises()`, `check_enrichment()`, new imports (`Symbol`, `get_documented_symbols`, `Finding`, `EnrichmentConfig`)
-- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 12 tests (6 for `_check_missing_raises`, 6 for `check_enrichment`), new imports
+- `src/docvet/checks/enrichment.py` — MODIFIED: Added `_check_missing_raises()`, `check_enrichment()`, new imports (`Symbol`, `get_documented_symbols`, `Finding`, `EnrichmentConfig`). Review fix: scope-aware walk replacing `ast.walk()` to prevent nested function false positives.
+- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 17 tests (11 for `_check_missing_raises`, 6 for `check_enrichment`), new imports. Review additions: 5 tests for uncovered AST branches and nested scope scenarios.
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Alberto-Codes on 2026-02-08
+
+**Outcome:** Approved with fixes applied
+
+**Findings (3 fixed, 2 noted):**
+
+1. **[FIXED][HIGH] `ast.walk()` false positives with nested scopes** — `ast.walk(node)` traversed into nested `FunctionDef`/`AsyncFunctionDef`/`ClassDef` nodes, attributing their raises to the outer function (NFR5 violation). Fixed with scope-aware iterative walk that stops at scope boundaries.
+2. **[FIXED][MEDIUM] Missing test coverage for 3 AST branches** — Lines 147, 151-154 (bare `ast.Name`, `ast.Call(func=ast.Attribute)`, bare `ast.Attribute`) were untested. Added 3 targeted tests.
+3. **[FIXED][MEDIUM] No test for nested scope behavior** — No test verified raises inside nested functions are excluded. Added 2 tests (pure nested, mixed outer+nested).
+4. **[NOTED][LOW] `_make_symbol_and_index` always returns first symbol** — Acceptable for current single-function test sources.
+5. **[NOTED][LOW] Unused `config` param in `_check_missing_raises`** — Intentional per architecture Decision 1 (uniform signature).
