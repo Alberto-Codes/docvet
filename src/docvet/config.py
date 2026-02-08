@@ -360,7 +360,27 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     if pyproject_path is not None:
         with open(pyproject_path, "rb") as f:
             toml_data = tomllib.load(f)
-        data = toml_data.get("tool", {}).get("docvet", {})
+        tool_section = toml_data.get("tool")
+        if tool_section is None:
+            data: dict[str, object] = {}
+        elif not isinstance(tool_section, dict):
+            print(
+                "docvet: [tool] in pyproject.toml must be a table",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            docvet_section = tool_section.get("docvet")
+            if docvet_section is None:
+                data = {}
+            elif not isinstance(docvet_section, dict):
+                print(
+                    "docvet: [tool.docvet] in pyproject.toml must be a table",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            else:
+                data = docvet_section
         parsed = _parse_docvet_section(data) if data else {}
 
     configured_src = parsed.get("src_root")
