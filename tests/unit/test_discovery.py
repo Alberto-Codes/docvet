@@ -92,11 +92,11 @@ def test_run_git_when_failure_returns_empty_and_warns(mocker, capsys):
         ),
     )
     result = _run_git(["diff", "--name-only"], cwd=Path("/tmp"))
-    assert result == []
+    assert result is None
     assert "docvet: git diff failed" in capsys.readouterr().err
 
 
-def test_run_git_when_failure_and_warn_false_returns_empty_silently(mocker, capsys):
+def test_run_git_when_failure_and_warn_false_returns_none_silently(mocker, capsys):
     mocker.patch(
         "docvet.discovery.subprocess.run",
         return_value=subprocess.CompletedProcess(
@@ -107,7 +107,7 @@ def test_run_git_when_failure_and_warn_false_returns_empty_silently(mocker, caps
         ),
     )
     result = _run_git(["ls-files"], cwd=Path("/tmp"), warn=False)
-    assert result == []
+    assert result is None
     assert capsys.readouterr().err == ""
 
 
@@ -137,6 +137,25 @@ def test_discover_files_all_mode_when_src_root_missing_warns_and_returns_empty(
     result = discover_files(config, DiscoveryMode.ALL)
     assert result == []
     assert "src-root" in capsys.readouterr().err
+
+
+def test_discover_files_all_mode_git_success_empty_does_not_fallback(
+    tmp_path, make_config, mocker
+):
+    (tmp_path / "stray.py").write_text("# should not be found")
+
+    mocker.patch(
+        "docvet.discovery.subprocess.run",
+        return_value=subprocess.CompletedProcess(
+            args=["git", "ls-files"],
+            returncode=0,
+            stdout="",
+            stderr="",
+        ),
+    )
+    config = make_config(exclude=[])
+    result = discover_files(config, DiscoveryMode.ALL)
+    assert result == []
 
 
 def test_discover_files_all_mode_git_success_returns_py_files(
