@@ -17,7 +17,7 @@ griffe = [
 ]
 
 [project.scripts]
-docvet = "docvet:main"
+docvet = "docvet.cli:app"
 
 [build-system]
 requires = ["hatchling"]
