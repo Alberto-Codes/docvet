@@ -453,6 +453,16 @@ def test_load_config_wrong_type_drift_threshold_exits(
     assert "int" in capsys.readouterr().err
 
 
+def test_load_config_bool_as_int_drift_threshold_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet.freshness]\ndrift-threshold = true\n")
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "int" in capsys.readouterr().err
+
+
 def test_load_config_wrong_type_boolean_field_exits(
     tmp_path, monkeypatch, write_pyproject, capsys
 ):
