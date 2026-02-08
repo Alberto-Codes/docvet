@@ -246,7 +246,7 @@ def test_check_when_invoked_with_config_flag_exits_successfully(tmp_path):
     assert result.exit_code == 0
 
 
-def test_check_when_invoked_with_config_nonexistent_path_stores_string():
+def test_check_when_invoked_with_config_nonexistent_path_exits_successfully():
     result = runner.invoke(app, ["--config", "/nonexistent/pyproject.toml", "check"])
     assert result.exit_code == 0
 
