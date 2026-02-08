@@ -6,14 +6,14 @@
 docvet/
 ├── src/docvet/                    # Package source (src-layout)
 │   ├── __init__.py                # Package init (docstring only)
-│   └── cli.py                     # Typer CLI application (296 lines)
+│   └── cli.py                     # Typer CLI application
 │
 ├── tests/                         # Test suite
 │   ├── conftest.py                # Global fixtures (parse_source factory)
 │   ├── __init__.py
 │   ├── unit/                      # Unit tests (fast, isolated)
 │   │   ├── __init__.py
-│   │   ├── test_cli.py            # CLI tests (252 lines, 35 tests)
+│   │   ├── test_cli.py            # CLI tests (35 tests)
 │   │   └── checks/               # Check-specific unit tests (empty, ready)
 │   │       └── __init__.py
 │   ├── integration/               # Integration tests (temp git repos)
@@ -24,8 +24,13 @@ docvet/
 │       ├── missing_raises.py      # Function missing Raises section
 │       └── missing_yields.py      # Generator missing Yields section
 │
-├── docs/                          # Documentation
-│   └── product-vision.md          # Feature specification (238 lines)
+├── docs/                          # Documentation (hand-written and generated)
+│   ├── product-vision.md          # Feature specification (hand-written)
+│   ├── project-overview.md        # High-level project overview (generated)
+│   ├── architecture.md            # Architecture and pipeline description (generated)
+│   ├── source-tree-analysis.md    # Repository layout document (generated)
+│   ├── development-guide.md       # Development workflow and practices (generated)
+│   └── index.md                   # Docs index / landing page (generated)
 │
 ├── .github/                       # GitHub configuration
 │   ├── workflows/
@@ -51,7 +56,6 @@ docvet/
 │
 ├── CLAUDE.md                      # Developer guidance for Claude Code
 ├── pyproject.toml                 # Project configuration (102 lines)
-├── uv.lock                        # Locked dependencies
 ├── .python-version                # Python 3.12
 ├── .gitignore                     # VCS ignore rules
 └── README.md                      # Project README (empty)
