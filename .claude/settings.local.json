@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /c/Users/alber/source/repos/docvet log --oneline -5)"
+    ]
+  }
+}
