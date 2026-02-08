@@ -67,7 +67,10 @@ def _parse_sections(docstring: str) -> set[str]:
     return set(_SECTION_PATTERN.findall(docstring))
 
 
-def _build_node_index(tree: ast.Module) -> dict[int, ast.AST]:
+_NodeT = ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+
+
+def _build_node_index(tree: ast.Module) -> dict[int, _NodeT]:
     """Build a line-number-to-AST-node lookup table for O(1) access.
 
     Walks the AST tree once and collects all ``FunctionDef``,
@@ -83,7 +86,7 @@ def _build_node_index(tree: ast.Module) -> dict[int, ast.AST]:
         have no corresponding node, so ``node_index.get(symbol.line)``
         returns ``None`` for them.
     """
-    index: dict[int, ast.AST] = {}
+    index: dict[int, _NodeT] = {}
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             index[node.lineno] = node
