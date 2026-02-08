@@ -198,3 +198,18 @@ def test_finding_rejects_empty_message():
             message="",
             category="required",
         )
+
+
+def test_finding_rejects_invalid_category():
+    """Test that Finding raises ValueError for invalid category values."""
+    with pytest.raises(
+        ValueError, match='category must be "required" or "recommended"'
+    ):
+        Finding(
+            file="test.py",
+            line=1,
+            symbol="test",
+            rule="missing-raises",
+            message="test message",
+            category="invalid",  # type: ignore[arg-type]
+        )
