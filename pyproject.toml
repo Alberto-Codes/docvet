@@ -1,13 +1,20 @@
 [project]
 name = "docvet"
 version = "0.1.0"
-description = "Add your description here"
+description = "Comprehensive docstring quality vetting for Python projects"
 readme = "README.md"
 authors = [
-    { name = "Alberto Nieto", email = "alberto.codes.dev@gmail.com" }
+    { name = "Alberto-Codes", email = "alberto.codes.dev@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "typer>=0.9",
+]
+
+[project.optional-dependencies]
+griffe = [
+    "griffe>=1.0",
+]
 
 [project.scripts]
 docvet = "docvet:main"
@@ -15,3 +22,79 @@ docvet = "docvet:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# --------------------------------------------------------------------------- #
+# Ruff
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [".venv", "__pycache__", "*.egg-info"]
+
+[tool.ruff.lint]
+extend-select = ["E501", "I", "D"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 100
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "D100", "D101", "D102", "D103", "D104"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["docvet"]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+# --------------------------------------------------------------------------- #
+# Interrogate
+# --------------------------------------------------------------------------- #
+[tool.interrogate]
+verbose = 1
+fail-under = 95
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = true
+ignore-private = true
+exclude = ["tests", "scripts"]
+
+# --------------------------------------------------------------------------- #
+# Ty (type checker)
+# --------------------------------------------------------------------------- #
+[tool.ty.src]
+include = ["src", "tests"]
+
+# --------------------------------------------------------------------------- #
+# Pytest
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (temp git repos, slower)",
+    "slow: Slow-running tests",
+]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+]
+
+# --------------------------------------------------------------------------- #
+# Dev dependencies
+# --------------------------------------------------------------------------- #
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-cov>=7.0",
+    "pytest-mock>=3.15",
+    "pytest-randomly>=4.0",
+    "ruff>=0.11",
+    "ty>=0.0.1a33",
+]
