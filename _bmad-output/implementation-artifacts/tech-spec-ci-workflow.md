@@ -32,7 +32,7 @@ Create a single `.github/workflows/ci.yml` GitHub Actions workflow with four par
 - Type check job: `ty check` (hard fail, no continue-on-error)
 - Test job: `pytest --cov=docvet --cov-report=term-missing --cov-fail-under=85`
 - Interrogate job: docstring coverage check
-- Python 3.12 + 3.13 matrix
+- Python 3.12 + 3.13 matrix (test job only; lint/type-check/interrogate run on 3.12 only)
 - ubuntu-latest only
 - Triggers on PR to develop/main AND push to develop/main
 - `astral-sh/setup-uv` for uv installation and caching
@@ -104,6 +104,11 @@ Create a single `.github/workflows/ci.yml` GitHub Actions workflow with four par
 - **interrogate as dev dependency**: Must be added to `[dependency-groups] dev` — config exists but package was never listed as a dependency (Adversarial Review F1)
 - **uv version not pinned in workflow**: `astral-sh/setup-uv@v7` installs latest uv by default; this is acceptable since uv is stable and backward-compatible (Adversarial Review F7)
 - **Action versions verified**: `actions/checkout@v6` (v6.0.2) and `astral-sh/setup-uv@v7` (v7.3.0) confirmed via GitHub API (Adversarial Review F5)
+- **Cache prune is housekeeping, not a gate**: `uv cache prune --ci` step must use `continue-on-error: true` — if prune fails (permissions, disk), the actual check already passed and shouldn't go red (Pre-mortem F1)
+- **ty alpha pinning risk**: `>=0.0.1a33` means a new ty alpha could break CI on unchanged code. Accepted risk — user explicitly wants ty as hard gate, but be aware upgrades happen silently. Consider pinning to `==0.0.1a33` if instability occurs (Pre-mortem F2)
+- **Follow-up issue needed**: Enable branch protection on `develop` once CI is green — without it, CI is advisory-only and the stated problem ("PRs can merge with broken lint") is not fully solved (Pre-mortem F3)
+- **Job timeout 10 minutes**: All jobs get `timeout-minutes: 10` — prevents ty alpha hangs or future subprocess tests from burning 6 hours of CI (Failure Mode Analysis)
+- **Matrix only on test job**: ruff, ty, and interrogate are static analyzers — they produce identical results on 3.12 vs 3.13. Only pytest exercises runtime behavior and needs the matrix. Reduces jobs per trigger from 8 → 5 (What If Scenarios)
 
 ## Implementation Plan
 
@@ -131,14 +136,16 @@ Create a single `.github/workflows/ci.yml` GitHub Actions workflow with four par
     - **Workflow name**: `CI`
     - **Concurrency**: `group: ${{ github.workflow }}-${{ github.ref }}` with `cancel-in-progress: true`
     - **Triggers**: `pull_request` targeting `develop` and `main` branches; `push` to `develop` and `main` branches
-    - **Shared setup pattern** (all jobs): `actions/checkout@v6` → `astral-sh/setup-uv@v7` with `enable-cache: true`, `cache-suffix: ${{ matrix.python-version }}` → `uv python install ${{ matrix.python-version }}` → `uv sync --dev`
-    - **Matrix**: `python-version: ["3.12", "3.13"]`, `os: [ubuntu-latest]`
-    - **Job `lint`**: `uv run ruff check .` then `uv run ruff format --check .`
-    - **Job `type-check`**: `uv run ty check` (no `continue-on-error`, hard gate)
-    - **Job `test`**: `uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-fail-under=85`
-    - **Job `interrogate`**: `uv run interrogate -v .`
+    - **Shared setup pattern** (all jobs): `actions/checkout@v6` → `astral-sh/setup-uv@v7` with `enable-cache: true` → `uv python install` → `uv sync --dev`
+    - **Matrix (test job only)**: `python-version: ["3.12", "3.13"]`, `os: [ubuntu-latest]` — only pytest needs runtime matrix; add `cache-suffix: ${{ matrix.python-version }}` for per-version caching
+    - **No matrix (lint, type-check, interrogate)**: These are static analysis tools that produce identical results regardless of Python runtime. Hardcode `python-version: "3.12"`.
+    - **Job `lint`** (single Python): `uv run ruff check .` then `uv run ruff format --check .`
+    - **Job `type-check`** (single Python): `uv run ty check` (no `continue-on-error`, hard gate)
+    - **Job `test`** (matrix): `uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-fail-under=85`
+    - **Job `interrogate`** (single Python): `uv run interrogate -v .`
     - **All jobs independent**: No `needs:` between jobs — run fully parallel
-    - **Cache cleanup**: Add `uv cache prune --ci` as final step in each job to minimize cache size
+    - **Job timeout**: `timeout-minutes: 10` on all jobs — catches hangs from ty alpha, future subprocess tests, or any stuck tool. GitHub default is 6 hours which wastes CI minutes.
+    - **Cache cleanup**: Add `uv cache prune --ci` as final step in each job with `continue-on-error: true` — this is housekeeping, not a gate; if it fails the actual check already passed
 
 ### Acceptance Criteria
 
@@ -147,8 +154,8 @@ Create a single `.github/workflows/ci.yml` GitHub Actions workflow with four par
 - [ ] AC 3: Given the codebase type checks cleanly, when `uv run ty check` is run locally, then it exits with code 0
 - [ ] AC 4: Given `tests/unit/test_init.py` exists with three smoke tests (including `test_main_runs` which executes `main()`), when `uv run pytest --cov=docvet --cov-fail-under=85` is run locally, then all three tests pass and coverage is >= 85%
 - [ ] AC 5: Given `src/docvet/__init__.py` has docstrings, when `uv run interrogate -v .` is run locally, then it reports >= 95% coverage and exits with code 0
-- [ ] AC 6: Given the workflow file exists at `.github/workflows/ci.yml`, when a PR is opened targeting `develop`, then all four jobs (lint, type-check, test, interrogate) run on Python 3.12 and 3.13
-- [ ] AC 7: Given all local checks pass (ACs 1-5), when the CI workflow runs in GitHub Actions, then all four jobs pass green on both Python versions
+- [ ] AC 6: Given the workflow file exists at `.github/workflows/ci.yml`, when a PR is opened targeting `develop`, then all four jobs run — lint, type-check, and interrogate on Python 3.12 only; test on both Python 3.12 and 3.13 (5 total job runs)
+- [ ] AC 7: Given all local checks pass (ACs 1-5), when the CI workflow runs in GitHub Actions, then all 5 jobs pass green (lint, type-check, interrogate on 3.12; test on 3.12 and 3.13)
 - [ ] AC 8: Given the workflow triggers on push, when commits are pushed to `develop` or `main`, then the CI workflow runs automatically
 
 ## Additional Context
@@ -169,7 +176,7 @@ Create a single `.github/workflows/ci.yml` GitHub Actions workflow with four par
 
 - `astral-sh/setup-uv@v7` is the latest action version — handles install + caching
 - Use `enable-cache: true` with `cache-suffix` keyed on Python version for matrix builds
-- `uv cache prune --ci` at end of workflow to minimize cache size
+- `uv cache prune --ci` at end of each job with `continue-on-error: true` to minimize cache size without risking false-red results
 - ty is pre-release (0.0.1a33) but user explicitly wants it as hard gate
 - uv docs recommend `uv sync --locked` but we gitignore uv.lock, so use `uv sync` without `--locked`
 - uv version is not pinned in workflow — `astral-sh/setup-uv@v7` installs latest uv, which is acceptable
