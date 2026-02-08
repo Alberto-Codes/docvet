@@ -1,6 +1,6 @@
 # Story 1.3: Section Header Parser and Node Index
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -524,10 +524,11 @@ Claude Sonnet 4.5
 ### Change Log
 
 - 2026-02-08: Implemented Story 1.3 — Created section header parser and AST node index as shared enrichment infrastructure with 14 unit tests
+- 2026-02-08: Code review (Claude Opus 4.6) — Fixed 4 MEDIUM issues: narrowed `_build_node_index` return type, added 3 tests (inline content, code block edge case, module-symbol AC#7), split AC#7 test into two focused tests. 17 tests total, 219 suite-wide (0 regressions).
 
 ### File List
 
 - `src/docvet/checks/enrichment.py` (NEW) — `_SECTION_HEADERS`, `_SECTION_PATTERN`, `_parse_sections()`, `_build_node_index()`
-- `tests/unit/checks/test_enrichment.py` (NEW) — 14 unit tests covering all 7 acceptance criteria
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED) — Story status: ready-for-dev → in-progress → review
+- `tests/unit/checks/test_enrichment.py` (NEW) — 17 unit tests covering all 7 acceptance criteria
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED) — Story status: ready-for-dev → in-progress → review → done
 
