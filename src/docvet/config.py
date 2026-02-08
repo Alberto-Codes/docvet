@@ -143,15 +143,16 @@ def _validate_check_names(names: list[str], field_name: str) -> None:
         names: List of check name strings to validate.
         field_name: Config field name for error messages.
     """
-    for name in names:
-        if name not in _VALID_CHECK_NAMES:
-            valid_csv = ", ".join(sorted(_VALID_CHECK_NAMES))
-            msg = (
-                f"docvet: unknown check '{name}' in "
-                f"{field_name}. Valid checks: {valid_csv}"
-            )
-            print(msg, file=sys.stderr)
-            sys.exit(1)
+    invalid = sorted(n for n in names if n not in _VALID_CHECK_NAMES)
+    if invalid:
+        names_csv = ", ".join(invalid)
+        valid_csv = ", ".join(sorted(_VALID_CHECK_NAMES))
+        msg = (
+            f"docvet: unknown checks in {field_name}: "
+            f"{names_csv}. Valid checks: {valid_csv}"
+        )
+        print(msg, file=sys.stderr)
+        sys.exit(1)
 
 
 def _validate_type(
@@ -168,6 +169,11 @@ def _validate_type(
         key: Config key name for error messages.
         section: Section label for error messages.
     """
+    # bool is a subclass of int — reject bools when expecting int.
+    if expected is int and isinstance(value, bool):
+        msg = f"docvet: '{key}' in {section} must be int, got bool"
+        print(msg, file=sys.stderr)
+        sys.exit(1)
     if not isinstance(value, expected):
         actual = type(value).__name__
         msg = f"docvet: '{key}' in {section} must be {expected.__name__}, got {actual}"
@@ -363,19 +369,20 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         configured_src if isinstance(configured_src, str) else None,
     )
 
+    # Use dataclass defaults as single source of truth for omitted keys.
+    defaults = DocvetConfig()
+
     raw_fail = parsed.get("fail_on")
     fail_on: list[str] = (
-        [str(x) for x in raw_fail] if isinstance(raw_fail, list) else []
+        [str(x) for x in raw_fail]
+        if isinstance(raw_fail, list)
+        else list(defaults.fail_on)
     )
     raw_warn = parsed.get("warn_on")
-    default_warn: list[str] = [
-        "freshness",
-        "enrichment",
-        "griffe",
-        "coverage",
-    ]
     warn_on: list[str] = (
-        [str(x) for x in raw_warn] if isinstance(raw_warn, list) else default_warn
+        [str(x) for x in raw_warn]
+        if isinstance(raw_warn, list)
+        else list(defaults.warn_on)
     )
     fail_on_set = set(fail_on)
     final_warn_on: list[str] = [c for c in warn_on if c not in fail_on_set]
@@ -385,7 +392,7 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     exclude: list[str] = (
         [str(x) for x in raw_exclude]
         if isinstance(raw_exclude, list)
-        else ["tests", "scripts"]
+        else list(defaults.exclude)
     )
     raw_freshness = parsed.get("freshness")
     raw_enrichment = parsed.get("enrichment")
