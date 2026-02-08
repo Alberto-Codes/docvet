@@ -8,3 +8,32 @@ wheels/
 
 # Virtual environments
 .venv
+
+# uv
+uv.lock
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Ruff
+.ruff_cache/
+
+# Type checker
+.ty_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
