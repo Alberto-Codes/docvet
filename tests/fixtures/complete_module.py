@@ -1,0 +1,46 @@
+"""Fixture: fully complete docstrings — no findings expected."""
+
+from __future__ import annotations
+
+from collections.abc import Generator
+
+
+def process(value: str) -> int:
+    """Process a value and return its length.
+
+    Args:
+        value: The string to process.
+
+    Returns:
+        The length of the string.
+
+    Raises:
+        ValueError: If the value is empty.
+
+    Examples:
+        ```python
+        result = process("hello")
+        assert result == 5
+        ```
+    """
+    if not value:
+        raise ValueError("Value cannot be empty")
+    return len(value)
+
+
+def generate_numbers(n: int) -> Generator[int, None, None]:
+    """Generate numbers from 0 to n-1.
+
+    Args:
+        n: Upper bound (exclusive).
+
+    Yields:
+        Integers from 0 to n-1.
+
+    Examples:
+        ```python
+        list(generate_numbers(3))  # [0, 1, 2]
+        ```
+    """
+    for i in range(n):
+        yield i
