@@ -1,6 +1,6 @@
 # Story 1.3: Section Header Parser and Node Index
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -28,38 +28,38 @@ so that all enrichment rules can efficiently determine which sections exist and 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `_SECTION_HEADERS` constant and `_SECTION_PATTERN` compiled regex (AC: #5)
-  - [ ] 1.1: Define `_SECTION_HEADERS` frozenset with all 10 section names
-  - [ ] 1.2: Create `_SECTION_PATTERN` regex with multiline flag for lenient matching
-  - [ ] 1.3: Document why Args and Returns are included (parsing context only, not checked for absence)
+- [x] Task 1: Create `_SECTION_HEADERS` constant and `_SECTION_PATTERN` compiled regex (AC: #5)
+  - [x] 1.1: Define `_SECTION_HEADERS` frozenset with all 10 section names
+  - [x] 1.2: Create `_SECTION_PATTERN` regex with multiline flag for lenient matching
+  - [x] 1.3: Document why Args and Returns are included (parsing context only, not checked for absence)
 
-- [ ] Task 2: Implement `_parse_sections` function (AC: #1, #2, #3, #4)
-  - [ ] 2.1: Write function with signature `_parse_sections(docstring: str) -> set[str]`
-  - [ ] 2.2: Use `_SECTION_PATTERN.findall()` to extract matching headers
-  - [ ] 2.3: Return set of matched header names (empty set if no matches)
-  - [ ] 2.4: Add comprehensive docstring explaining graceful degradation on malformed input
+- [x] Task 2: Implement `_parse_sections` function (AC: #1, #2, #3, #4)
+  - [x] 2.1: Write function with signature `_parse_sections(docstring: str) -> set[str]`
+  - [x] 2.2: Use `_SECTION_PATTERN.findall()` to extract matching headers
+  - [x] 2.3: Return set of matched header names (empty set if no matches)
+  - [x] 2.4: Add comprehensive docstring explaining graceful degradation on malformed input
 
-- [ ] Task 3: Implement `_build_node_index` function (AC: #6, #7)
-  - [ ] 3.1: Write function with signature `_build_node_index(tree: ast.Module) -> dict[int, ast.AST]`
-  - [ ] 3.2: Use `ast.walk(tree)` to collect FunctionDef, AsyncFunctionDef, and ClassDef nodes
-  - [ ] 3.3: Index nodes by their `lineno` attribute
-  - [ ] 3.4: Add comprehensive docstring explaining O(1) lookup benefit and None-handling for module symbols
+- [x] Task 3: Implement `_build_node_index` function (AC: #6, #7)
+  - [x] 3.1: Write function with signature `_build_node_index(tree: ast.Module) -> dict[int, ast.AST]`
+  - [x] 3.2: Use `ast.walk(tree)` to collect FunctionDef, AsyncFunctionDef, and ClassDef nodes
+  - [x] 3.3: Index nodes by their `lineno` attribute
+  - [x] 3.4: Add comprehensive docstring explaining O(1) lookup benefit and None-handling for module symbols
 
-- [ ] Task 4: Write comprehensive unit tests (AC: #1-#7)
-  - [ ] 4.1: `test_parse_sections_returns_matching_headers` — AC #1
-  - [ ] 4.2: `test_parse_sections_handles_varied_indentation` — AC #2
-  - [ ] 4.3: `test_parse_sections_returns_empty_set_for_no_headers` — AC #3
-  - [ ] 4.4: `test_parse_sections_handles_malformed_docstrings_gracefully` — AC #4
-  - [ ] 4.5: `test_section_headers_constant_contains_all_ten_headers` — AC #5
-  - [ ] 4.6: `test_build_node_index_maps_line_numbers_to_nodes` — AC #6
-  - [ ] 4.7: `test_build_node_index_get_returns_none_for_module_symbol` — AC #7
-  - [ ] 4.8: Edge case tests for nested functions, async functions, empty modules
+- [x] Task 4: Write comprehensive unit tests (AC: #1-#7)
+  - [x] 4.1: `test_parse_sections_when_headers_present_returns_matching_set` — AC #1
+  - [x] 4.2: `test_parse_sections_when_varied_indentation_returns_headers` — AC #2
+  - [x] 4.3: `test_parse_sections_when_no_headers_returns_empty_set` — AC #3
+  - [x] 4.4: `test_parse_sections_when_malformed_missing_colon_returns_empty_set` — AC #4
+  - [x] 4.5: `test_section_headers_contains_all_ten_headers` — AC #5
+  - [x] 4.6: `test_build_node_index_when_functions_and_classes_maps_lines` — AC #6
+  - [x] 4.7: `test_build_node_index_get_returns_none_for_missing_line` — AC #7
+  - [x] 4.8: Edge case tests: `test_section_headers_is_frozenset`, `test_parse_sections_when_empty_string_returns_empty_set`, `test_parse_sections_when_all_headers_present_returns_all`, `test_parse_sections_when_header_has_trailing_whitespace_returns_header`, `test_build_node_index_when_async_function_includes_async_node`, `test_build_node_index_when_nested_functions_includes_inner`, `test_build_node_index_when_module_only_returns_empty_dict`
 
-- [ ] Task 5: Run quality gates and verify all pass
-  - [ ] 5.1: `uv run ruff check .`
-  - [ ] 5.2: `uv run ruff format --check .`
-  - [ ] 5.3: `uv run ty check`
-  - [ ] 5.4: `uv run pytest tests/unit/checks/ -v`
+- [x] Task 5: Run quality gates and verify all pass
+  - [x] 5.1: `uv run ruff check .` — All checks passed
+  - [x] 5.2: `uv run ruff format --check .` — All files formatted
+  - [x] 5.3: `uv run ty check` — All type checks passed
+  - [x] 5.4: `uv run pytest tests/unit/checks/ -v` — 25 tests pass (14 enrichment + 11 finding)
 
 ## Dev Notes
 
@@ -490,11 +490,44 @@ def test_build_node_index_maps_line_numbers_to_nodes():
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Sonnet 4.5
 
 ### Debug Log References
 
+- Minor ruff I001 import ordering issue in test file — fixed via `ruff check --fix` (removed blank line between stdlib and local imports)
+
 ### Completion Notes List
 
+- ✅ Created `src/docvet/checks/enrichment.py` with shared enrichment infrastructure
+  - `_SECTION_HEADERS` frozenset with all 10 recognized Google-style headers
+  - `_SECTION_PATTERN` compiled regex with `re.MULTILINE` for lenient matching
+  - `_parse_sections(docstring) -> set[str]` with graceful degradation on malformed input
+  - `_build_node_index(tree) -> dict[int, ast.AST]` with single-pass `ast.walk()` collection
+  - Module docstring explains enrichment check purpose and Layer 3 role
+  - Comments explain FR15 inclusion of Args/Returns for parsing context
+- ✅ Created 14 unit tests in `tests/unit/checks/test_enrichment.py`
+  - 2 constant tests: `_SECTION_HEADERS` completeness and frozenset type
+  - 6 section parsing tests: happy path, varied indentation, no headers, malformed, empty string, all headers, trailing whitespace
+  - 5 node index tests: functions+classes, async functions, nested functions, module-only, None for missing lines
+  - All tests use `parse_source` fixture where applicable (project convention)
+  - Test naming follows `test_{what}_{condition}_{expected}` convention
+- ✅ All 7 acceptance criteria verified with passing tests
+  - AC#1: `_parse_sections` returns matching headers ✓
+  - AC#2: Varied indentation handled correctly ✓
+  - AC#3: Empty set for no headers (no exception) ✓
+  - AC#4: Graceful degradation on malformed docstrings ✓
+  - AC#5: `_SECTION_HEADERS` contains all 10 headers ✓
+  - AC#6: `_build_node_index` maps line numbers to nodes ✓
+  - AC#7: `.get()` returns None for module-level symbols ✓
+- ✅ All quality gates pass: ruff check, ruff format, ty check, 216 tests (0 regressions)
+
+### Change Log
+
+- 2026-02-08: Implemented Story 1.3 — Created section header parser and AST node index as shared enrichment infrastructure with 14 unit tests
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` (NEW) — `_SECTION_HEADERS`, `_SECTION_PATTERN`, `_parse_sections()`, `_build_node_index()`
+- `tests/unit/checks/test_enrichment.py` (NEW) — 14 unit tests covering all 7 acceptance criteria
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED) — Story status: ready-for-dev → in-progress → review
 
