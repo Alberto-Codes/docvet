@@ -1,10 +1,10 @@
 ---
 project_name: 'docvet'
 user_name: 'Alberto-Codes'
-date: '2026-02-07'
-sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow', 'critical_rules']
+date: '2026-02-08'
+sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow', 'critical_rules', 'ast_utilities']
 status: 'complete'
-rule_count: 62
+rule_count: 73
 optimized_for_llm: true
 ---
 
@@ -93,6 +93,20 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Quality before PR**: Run `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest` locally
 - **CI**: Runs on PR and push to develop/main. Gates: lint, format, type-check, test (py3.12 + py3.13), interrogate
 
+### AST Utilities Rules (`ast_utils.py`)
+
+- **`Symbol` dataclass** is `frozen=True` with fields: `name`, `kind`, `line`, `end_line`, `definition_start`, `docstring`, `docstring_range`, `signature_range`, `body_range`, `parent`
+- **`line`** = `node.lineno` (keyword line, not decorator). **`definition_start`** = first decorator line or `node.lineno`
+- **`signature_range`** is `None` for classes and modules — only set for functions/methods
+- **Module symbol** uses `name="<module>"`, `line=1`, `definition_start=1`
+- **`body_range`** excludes docstring. `start >= end` means effectively empty body
+- **`get_documented_symbols`** returns a flat list, not a tree. `parent` = enclosing class name only (not functions)
+- **`map_lines_to_symbols`** returns the innermost symbol. Uses `definition_start` through `end_line`
+- **Caller handles `SyntaxError`** — `ast_utils` assumes valid AST from `ast.parse()`
+- **`Module` lacks `end_lineno`** in Python 3.12+ — `_node_end_line()` derives it from the last body statement
+- **Never mock AST nodes** — use source strings with `parse_source` fixture or fixture files with `Path.read_text()` + `parse_source`
+- **`Symbol.kind`** is `Literal["function", "class", "method", "module"]` — no lambda, comprehension, or import nodes
+
 ### Critical Don't-Miss Rules
 
 - **Never add `__main__.py`**: Entry point is `[project.scripts]` → `docvet.cli:app`. No indirection layer
@@ -129,4 +143,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review quarterly for outdated rules
 - Remove rules that become obvious over time
 
-Last Updated: 2026-02-07
+Last Updated: 2026-02-08
