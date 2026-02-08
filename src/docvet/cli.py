@@ -8,7 +8,8 @@ from typing import Annotated
 
 import typer
 
-from docvet.discovery import DiscoveryMode
+from docvet.config import DocvetConfig, load_config
+from docvet.discovery import DiscoveryMode, discover_files
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -93,13 +94,50 @@ def _print_global_context(ctx: typer.Context) -> None:
         ctx: Typer context carrying global options in ``ctx.obj``.
     """
     if ctx.obj.get("verbose"):
-        typer.echo("verbose: enabled")
+        typer.echo("verbose: enabled", err=True)
     fmt = ctx.obj.get("format")
     if fmt is not None:
-        typer.echo(f"format: {fmt}")
+        typer.echo(f"format: {fmt}", err=True)
     output = ctx.obj.get("output")
     if output is not None:
-        typer.echo(f"output: {output}")
+        typer.echo(f"output: {output}", err=True)
+
+
+def _discover_and_handle(
+    ctx: typer.Context,
+    mode: DiscoveryMode,
+    files: list[str] | None,
+) -> list[Path]:
+    """Discover files and handle empty results.
+
+    Pulls config from ``ctx.obj["docvet_config"]``, converts the raw
+    ``--files`` strings to :class:`~pathlib.Path` objects, calls
+    :func:`discover_files`, and handles the empty-list case with a
+    user-friendly message.
+
+    Args:
+        ctx: Typer context carrying ``docvet_config`` and ``verbose``.
+        mode: The resolved discovery mode.
+        files: Raw file paths from ``--files``, or *None*.
+
+    Returns:
+        Discovered Python file paths.
+
+    Raises:
+        typer.Exit: If no Python files are found (exit code 0).
+    """
+    config: DocvetConfig = ctx.obj["docvet_config"]
+    explicit = [Path(f) for f in files] if files else ()
+    discovered = discover_files(config, mode, files=explicit)
+
+    if not discovered:
+        typer.echo("No Python files to check.", err=True)
+        raise typer.Exit(0)
+
+    if ctx.obj.get("verbose"):
+        typer.echo(f"Found {len(discovered)} file(s) to check", err=True)
+
+    return discovered
 
 
 # ---------------------------------------------------------------------------
@@ -107,42 +145,47 @@ def _print_global_context(ctx: typer.Context) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _run_enrichment(mode: DiscoveryMode) -> None:
+def _run_enrichment(files: list[Path], config: DocvetConfig) -> None:
     """Stub for enrichment check.
 
     Args:
-        mode: The resolved discovery mode.
+        files: Discovered Python file paths.
+        config: Loaded docvet configuration.
     """
     typer.echo("enrichment: not yet implemented")
 
 
 def _run_freshness(
-    mode: DiscoveryMode,
+    files: list[Path],
+    config: DocvetConfig,
     freshness_mode: FreshnessMode = FreshnessMode.DIFF,
 ) -> None:
     """Stub for freshness check.
 
     Args:
-        mode: The resolved discovery mode.
+        files: Discovered Python file paths.
+        config: Loaded docvet configuration.
         freshness_mode: The freshness check strategy (diff or drift).
     """
     typer.echo("freshness: not yet implemented")
 
 
-def _run_coverage(mode: DiscoveryMode) -> None:
+def _run_coverage(files: list[Path], config: DocvetConfig) -> None:
     """Stub for coverage check.
 
     Args:
-        mode: The resolved discovery mode.
+        files: Discovered Python file paths.
+        config: Loaded docvet configuration.
     """
     typer.echo("coverage: not yet implemented")
 
 
-def _run_griffe(mode: DiscoveryMode) -> None:
+def _run_griffe(files: list[Path], config: DocvetConfig) -> None:
     """Stub for griffe compatibility check.
 
     Args:
-        mode: The resolved discovery mode.
+        files: Discovered Python file paths.
+        config: Loaded docvet configuration.
     """
     typer.echo("griffe: not yet implemented")
 
@@ -180,10 +223,15 @@ def main(
     ctx.obj["verbose"] = verbose
     ctx.obj["format"] = fmt.value if fmt is not None else None
     ctx.obj["output"] = str(output) if output is not None else None
-    ctx.obj["config"] = str(config) if config is not None else None
 
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
+        return
+
+    try:
+        ctx.obj["docvet_config"] = load_config(config)
+    except FileNotFoundError:
+        raise typer.BadParameter(f"Config file not found: {config}") from None
 
 
 # ---------------------------------------------------------------------------
@@ -208,10 +256,12 @@ def check(
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     _print_global_context(ctx)
-    _run_enrichment(discovery_mode)
-    _run_freshness(discovery_mode)
-    _run_coverage(discovery_mode)
-    _run_griffe(discovery_mode)
+    discovered = _discover_and_handle(ctx, discovery_mode, files)
+    config = ctx.obj["docvet_config"]
+    _run_enrichment(discovered, config)
+    _run_freshness(discovered, config)
+    _run_coverage(discovered, config)
+    _run_griffe(discovered, config)
 
 
 @app.command()
@@ -231,7 +281,9 @@ def enrichment(
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     _print_global_context(ctx)
-    _run_enrichment(discovery_mode)
+    discovered = _discover_and_handle(ctx, discovery_mode, files)
+    config = ctx.obj["docvet_config"]
+    _run_enrichment(discovered, config)
 
 
 @app.command()
@@ -255,7 +307,9 @@ def freshness(
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     _print_global_context(ctx)
-    _run_freshness(discovery_mode, freshness_mode=mode)
+    discovered = _discover_and_handle(ctx, discovery_mode, files)
+    config = ctx.obj["docvet_config"]
+    _run_freshness(discovered, config, freshness_mode=mode)
 
 
 @app.command()
@@ -275,7 +329,9 @@ def coverage(
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     _print_global_context(ctx)
-    _run_coverage(discovery_mode)
+    discovered = _discover_and_handle(ctx, discovery_mode, files)
+    config = ctx.obj["docvet_config"]
+    _run_coverage(discovered, config)
 
 
 @app.command()
@@ -295,4 +351,6 @@ def griffe(
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     _print_global_context(ctx)
-    _run_griffe(discovery_mode)
+    discovered = _discover_and_handle(ctx, discovery_mode, files)
+    config = ctx.obj["docvet_config"]
+    _run_griffe(discovered, config)
