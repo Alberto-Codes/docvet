@@ -59,3 +59,7 @@ class Finding:
             raise ValueError("rule must be non-empty")
         if not self.message:
             raise ValueError("message must be non-empty")
+        if self.category not in ("required", "recommended"):
+            raise ValueError(
+                f'category must be "required" or "recommended", got {self.category!r}'
+            )
