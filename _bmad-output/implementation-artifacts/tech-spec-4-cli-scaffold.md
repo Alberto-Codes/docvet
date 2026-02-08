@@ -2,7 +2,7 @@
 title: 'Scaffold typer CLI with check subcommand'
 slug: '4-cli-scaffold'
 created: '2026-02-07'
-status: 'ready-for-dev'
+status: 'completed'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['python 3.12+', 'typer>=0.9', 'hatchling', 'pytest', 'ruff', 'ty']
 files_to_modify: ['src/docvet/cli.py', 'src/docvet/__init__.py', 'pyproject.toml', 'tests/unit/test_cli.py']
@@ -97,7 +97,7 @@ Create `cli.py` with a typer app exposing `check` (orchestrator), `enrichment`, 
 
 ### Tasks
 
-- [ ] Task 1: Create `src/docvet/cli.py` with enums and typer app
+- [x] Task 1: Create `src/docvet/cli.py` with enums and typer app
   - File: `src/docvet/cli.py` (CREATE)
   - Action:
     - Add `from __future__ import annotations` and required imports (`enum`, `pathlib.Path`, `typing.Annotated`, `typing.Optional`, `typer`)
@@ -113,7 +113,7 @@ Create `cli.py` with a typer app exposing `check` (orchestrator), `enrichment`, 
     - Define `_resolve_discovery_mode()` helper that validates mutual exclusivity of `--staged`/`--all`/`--files` and returns a `DiscoveryMode`. Raises `typer.BadParameter` on conflict
   - Notes: `OutputFormat` and `FreshnessMode` use `enum.StrEnum` (Python 3.11+ stdlib) so typer renders choices correctly. `DiscoveryMode` is plain `enum.Enum` (internal only, not a CLI type).
 
-- [ ] Task 2: Add stub subcommands to `cli.py`
+- [x] Task 2: Add stub subcommands to `cli.py`
   - File: `src/docvet/cli.py` (APPEND)
   - Action:
     - `@app.command(help="Run all enabled checks.")` for `check` — accepts `ctx: typer.Context` + shared discovery options, calls `_resolve_discovery_mode()`, then calls each stub function in order: `_run_enrichment`, `_run_freshness`, `_run_coverage`, `_run_griffe`. Each prints `"<name>: not yet implemented"` (lowercase, colon-separated). If `ctx.obj["verbose"]` is True, also prints `"verbose: enabled"` before checks. If `ctx.obj["format"]` is set, prints `"format: <value>"`. If `ctx.obj["output"]` is set, prints `"output: <path>"`
@@ -124,7 +124,7 @@ Create `cli.py` with a typer app exposing `check` (orchestrator), `enrichment`, 
     - Define private stub functions with signature `_run_<name>(mode: DiscoveryMode) -> None`. Each prints `"<name>: not yet implemented"`. The `check` command passes the resolved `DiscoveryMode` to each. These signatures form the internal API boundary that future `checks/*.py` modules will replace
   - Notes: Each subcommand must accept `ctx: typer.Context` + the three shared discovery options and call `_resolve_discovery_mode()`. Stub output format is `"<name>: not yet implemented"` (lowercase, colon-separated) — locked for test assertions.
 
-- [ ] Task 3: Simplify `src/docvet/__init__.py`
+- [x] Task 3: Simplify `src/docvet/__init__.py`
   - File: `src/docvet/__init__.py` (MODIFY)
   - Action:
     - KEEP: module docstring `"""Docstring quality vetting for Python projects."""`
@@ -132,17 +132,17 @@ Create `cli.py` with a typer app exposing `check` (orchestrator), `enrichment`, 
     - REMOVE: `main()` function and its docstring entirely
   - Notes: Final file is exactly 4 lines: docstring (triple-quote open, text, triple-quote close) + future import. No `__version__` needed at this stage.
 
-- [ ] Task 4: Update entry point in `pyproject.toml`
+- [x] Task 4: Update entry point in `pyproject.toml`
   - File: `pyproject.toml` (MODIFY, line 20)
   - Action: Change `docvet = "docvet:main"` to `docvet = "docvet.cli:app"`
   - Notes: Typer's `app()` callable works as a direct console_scripts entry point.
 
-- [ ] Task 5: Delete `tests/unit/test_init.py`
+- [x] Task 5: Delete `tests/unit/test_init.py`
   - File: `tests/unit/test_init.py` (DELETE)
   - Action: Remove the file entirely. The 3 placeholder tests (`test_package_when_imported_has_main_attribute`, `test_main_when_accessed_is_callable`, `test_main_when_called_outputs_greeting`) are no longer valid.
   - Notes: No replacement needed — `__init__.py` has no testable surface.
 
-- [ ] Task 6: Create `tests/unit/test_cli.py` with CLI tests
+- [x] Task 6: Create `tests/unit/test_cli.py` with CLI tests
   - File: `tests/unit/test_cli.py` (CREATE)
   - Action:
     - Add `from __future__ import annotations` and imports (`typer.testing.CliRunner`, `docvet.cli.app`)
@@ -186,7 +186,7 @@ Create `cli.py` with a typer app exposing `check` (orchestrator), `enrichment`, 
       - `test_check_when_invoked_with_no_flags_uses_diff_mode` — output does NOT contain "staged" or "all" or "files"; confirm default diff mode is selected (F7: negative assertion — placeholder until real discovery lands and can produce positive evidence of DIFF mode)
   - Notes: All tests use `CliRunner(mix_stderr=False)`. Mutual exclusivity tests assert on `result.stderr` content. Global option tests use `["--verbose", "check"]` form (global options before subcommand). All tests are unit tests — no filesystem or git.
 
-- [ ] Task 7: Run linting, type checking, and tests
+- [x] Task 7: Run linting, type checking, and tests
   - Action: Run `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest` to verify all quality gates pass
   - Notes: Fix any issues found. All existing tests must still pass.
 
