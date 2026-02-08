@@ -118,6 +118,10 @@ def _check_missing_raises(
     extracts exception class names. Returns a finding when exceptions are
     raised but no ``Raises:`` section is present in the docstring.
 
+    The walk is scope-aware: it stops at nested ``FunctionDef``,
+    ``AsyncFunctionDef``, and ``ClassDef`` boundaries so that raises
+    inside nested scopes are not attributed to the outer function.
+
     Args:
         symbol: The documented symbol to inspect.
         sections: Parsed section headers from the symbol's docstring.
@@ -138,20 +142,24 @@ def _check_missing_raises(
         return None
 
     names: set[str] = set()
-    for child in ast.walk(node):
-        if not isinstance(child, ast.Raise):
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
-        if child.exc is None:
-            names.add("(re-raise)")
-        elif isinstance(child.exc, ast.Name):
-            names.add(child.exc.id)
-        elif isinstance(child.exc, ast.Call):
-            if isinstance(child.exc.func, ast.Name):
-                names.add(child.exc.func.id)
-            elif isinstance(child.exc.func, ast.Attribute):
-                names.add(child.exc.func.attr)
-        elif isinstance(child.exc, ast.Attribute):
-            names.add(child.exc.attr)
+        if isinstance(child, ast.Raise):
+            if child.exc is None:
+                names.add("(re-raise)")
+            elif isinstance(child.exc, ast.Name):
+                names.add(child.exc.id)
+            elif isinstance(child.exc, ast.Call):
+                if isinstance(child.exc.func, ast.Name):
+                    names.add(child.exc.func.id)
+                elif isinstance(child.exc.func, ast.Attribute):
+                    names.add(child.exc.func.attr)
+            elif isinstance(child.exc, ast.Attribute):
+                names.add(child.exc.attr)
+        stack.extend(ast.iter_child_nodes(child))
 
     if not names:
         return None
