@@ -43,7 +43,7 @@ development_status:
   # Epic 1: Function-Level Enrichment Detection
   epic-1: in-progress
   1-1-add-require-attributes-config-toggle: done
-  1-2-create-finding-dataclass: backlog
+  1-2-create-finding-dataclass: done
   1-3-section-header-parser-and-node-index: backlog
   1-4-missing-raises-detection-and-orchestrator: backlog
   1-5-missing-yields-and-receives-detection: backlog
