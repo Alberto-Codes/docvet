@@ -909,8 +909,6 @@ def _check_missing_typed_attributes(
 
 # ---------------------------------------------------------------------------
 # Rule: missing-examples
-# NOTE: missing-cross-references (Story 3.2) goes between missing-examples
-# and prefer-fenced-code-blocks in taxonomy-table order.
 # ---------------------------------------------------------------------------
 
 
