@@ -457,6 +457,181 @@ def _check_missing_other_parameters(
 
 
 # ---------------------------------------------------------------------------
+# Rule-specific helpers for missing-attributes
+# ---------------------------------------------------------------------------
+
+
+def _is_dataclass(node: ast.ClassDef) -> bool:
+    """Check whether a class is decorated with ``@dataclass``.
+
+    Recognises three decorator forms:
+
+    - Simple: ``@dataclass``
+    - Qualified: ``@<module>.dataclass`` (suffix match — typically
+      ``@dataclasses.dataclass``)
+    - Call: ``@dataclass(...)`` or ``@<module>.dataclass(...)``
+
+    The qualified forms use suffix-based matching (checks ``attr ==
+    "dataclass"`` without verifying the module name). This is intentional
+    — the false positive risk is negligible and avoids brittleness with
+    re-exports. Alias detection (e.g. ``from dataclasses import dataclass
+    as dc``) is explicitly out of MVP scope.
+
+    Args:
+        node: The ``ClassDef`` AST node to inspect.
+
+    Returns:
+        ``True`` when a dataclass decorator is found, ``False`` otherwise.
+    """
+    for dec in node.decorator_list:
+        # Pattern 1: @dataclass
+        if isinstance(dec, ast.Name) and dec.id == "dataclass":
+            return True
+        # Pattern 2: @dataclasses.dataclass
+        if isinstance(dec, ast.Attribute) and dec.attr == "dataclass":
+            return True
+        # Pattern 3: @dataclass(...) or @dataclasses.dataclass(...)
+        if isinstance(dec, ast.Call):
+            if isinstance(dec.func, ast.Name) and dec.func.id == "dataclass":
+                return True
+            if isinstance(dec.func, ast.Attribute) and dec.func.attr == "dataclass":
+                return True
+    return False
+
+
+def _is_namedtuple(node: ast.ClassDef) -> bool:
+    """Check whether a class inherits from ``NamedTuple``.
+
+    Recognises two base class forms:
+
+    - Simple: ``class Foo(NamedTuple)``
+    - Qualified: ``class Foo(<module>.NamedTuple)`` (suffix match —
+      typically ``typing.NamedTuple``)
+
+    The qualified form uses suffix-based matching (checks ``attr ==
+    "NamedTuple"`` without verifying the module name).
+
+    Args:
+        node: The ``ClassDef`` AST node to inspect.
+
+    Returns:
+        ``True`` when a NamedTuple base class is found, ``False`` otherwise.
+    """
+    for base in node.bases:
+        if isinstance(base, ast.Name) and base.id == "NamedTuple":
+            return True
+        if isinstance(base, ast.Attribute) and base.attr == "NamedTuple":
+            return True
+    return False
+
+
+def _is_typeddict(node: ast.ClassDef) -> bool:
+    """Check whether a class inherits from ``TypedDict``.
+
+    Recognises two base class forms:
+
+    - Simple: ``class Foo(TypedDict)``
+    - Qualified: ``class Foo(<module>.TypedDict)`` (suffix match —
+      typically ``typing.TypedDict``)
+
+    The qualified form uses suffix-based matching (checks ``attr ==
+    "TypedDict"`` without verifying the module name).
+
+    Args:
+        node: The ``ClassDef`` AST node to inspect.
+
+    Returns:
+        ``True`` when a TypedDict base class is found, ``False`` otherwise.
+    """
+    for base in node.bases:
+        if isinstance(base, ast.Name) and base.id == "TypedDict":
+            return True
+        if isinstance(base, ast.Attribute) and base.attr == "TypedDict":
+            return True
+    return False
+
+
+def _check_missing_attributes(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a class construct missing an ``Attributes:`` section.
+
+    Dispatches to helper functions in first-match-wins order:
+
+    1. Dataclass (decorator inspection)
+    2. NamedTuple (base class inspection)
+    3. TypedDict (base class inspection)
+
+    Branches 4-5 (plain class with ``__init__`` self-assignments and
+    ``__init__.py`` module-level exports) are deferred to Story 2.2.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-attributes"`` when a data
+        structure class lacks an ``Attributes:`` section, or ``None``
+        otherwise.
+    """
+    # Only class symbols (module branch added in Story 2.2)
+    if symbol.kind != "class":
+        return None
+
+    if "Attributes" in sections:
+        return None
+
+    node = node_index.get(symbol.line)
+    # ClassDef check narrows the union type for ty
+    if node is None or not isinstance(node, ast.ClassDef):
+        return None
+
+    # Branch 1: Dataclass
+    if _is_dataclass(node):
+        return Finding(
+            file=file_path,
+            line=symbol.line,
+            symbol=symbol.name,
+            rule="missing-attributes",
+            message=f"Dataclass '{symbol.name}' has no Attributes: section",
+            category="required",
+        )
+
+    # Branch 2: NamedTuple
+    if _is_namedtuple(node):
+        return Finding(
+            file=file_path,
+            line=symbol.line,
+            symbol=symbol.name,
+            rule="missing-attributes",
+            message=f"NamedTuple '{symbol.name}' has no Attributes: section",
+            category="required",
+        )
+
+    # Branch 3: TypedDict
+    if _is_typeddict(node):
+        return Finding(
+            file=file_path,
+            line=symbol.line,
+            symbol=symbol.name,
+            rule="missing-attributes",
+            message=f"TypedDict '{symbol.name}' has no Attributes: section",
+            category="required",
+        )
+
+    # Branches 4-5 (plain class, __init__.py module) added in Story 2.2
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Public orchestrator
 # ---------------------------------------------------------------------------
 
@@ -514,6 +689,11 @@ def check_enrichment(
                 findings.append(f)
         if config.require_other_parameters:
             if f := _check_missing_other_parameters(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        if config.require_attributes:
+            if f := _check_missing_attributes(
                 symbol, sections, node_index, config, file_path
             ):
                 findings.append(f)

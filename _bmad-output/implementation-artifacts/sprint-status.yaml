@@ -41,7 +41,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: Function-Level Enrichment Detection
-  epic-1: in-progress
+  epic-1: done
   1-1-add-require-attributes-config-toggle: done
   1-2-create-finding-dataclass: done
   1-3-section-header-parser-and-node-index: done
@@ -49,11 +49,11 @@ development_status:
   1-5-missing-yields-and-receives-detection: done
   1-6-missing-warns-and-other-parameters-detection: done
   1-7-cli-wiring-for-enrichment-check: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # Epic 2: Class & Module Enrichment Detection
-  epic-2: backlog
-  2-1-dataclass-namedtuple-and-typeddict-attributes-detection: backlog
+  epic-2: in-progress
+  2-1-dataclass-namedtuple-and-typeddict-attributes-detection: done
   2-2-plain-class-and-init-py-module-attributes-detection: backlog
   epic-2-retrospective: optional
 
