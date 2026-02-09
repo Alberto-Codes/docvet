@@ -551,6 +551,74 @@ def _is_typeddict(node: ast.ClassDef) -> bool:
     return False
 
 
+def _has_self_assignments(node: ast.ClassDef) -> bool:
+    """Check whether a class has ``self.*`` assignments in ``__init__``.
+
+    Finds the ``__init__`` method via direct ``.body`` iteration (not
+    ``ast.walk``) and walks its body with a scope-aware iterative walk
+    that stops at nested ``FunctionDef``, ``AsyncFunctionDef``, and
+    ``ClassDef`` boundaries. Detects both ``self.x = value``
+    (``ast.Assign``) and ``self.x: int = value`` (``ast.AnnAssign``).
+
+    Args:
+        node: The ``ClassDef`` AST node to inspect.
+
+    Returns:
+        ``True`` when a ``self.*`` assignment is found in ``__init__``,
+        ``False`` otherwise.
+    """
+    init_node = None
+    for item in node.body:
+        if (
+            isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and item.name == "__init__"
+        ):
+            init_node = item
+            break
+
+    if init_node is None:
+        return False
+
+    stack = list(ast.iter_child_nodes(init_node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, ast.Assign):
+            for target in child.targets:
+                if (
+                    isinstance(target, ast.Attribute)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "self"
+                ):
+                    return True
+        if (
+            isinstance(child, ast.AnnAssign)
+            and isinstance(child.target, ast.Attribute)
+            and isinstance(child.target.value, ast.Name)
+            and child.target.value.id == "self"
+        ):
+            return True
+        stack.extend(ast.iter_child_nodes(child))
+
+    return False
+
+
+def _is_init_module(file_path: str) -> bool:
+    """Check whether a file path points to an ``__init__.py`` module.
+
+    Uses ``str.endswith()`` which handles both absolute and relative
+    paths cross-platform since ``__init__.py`` is always the filename.
+
+    Args:
+        file_path: The source file path to check.
+
+    Returns:
+        ``True`` for ``__init__.py`` paths, ``False`` otherwise.
+    """
+    return file_path == "__init__.py" or file_path.endswith("/__init__.py")
+
+
 def _check_missing_attributes(
     symbol: Symbol,
     sections: set[str],
@@ -558,16 +626,15 @@ def _check_missing_attributes(
     config: EnrichmentConfig,
     file_path: str,
 ) -> Finding | None:
-    """Detect a class construct missing an ``Attributes:`` section.
+    """Detect a construct missing an ``Attributes:`` section.
 
     Dispatches to helper functions in first-match-wins order:
 
     1. Dataclass (decorator inspection)
     2. NamedTuple (base class inspection)
     3. TypedDict (base class inspection)
-
-    Branches 4-5 (plain class with ``__init__`` self-assignments and
-    ``__init__.py`` module-level exports) are deferred to Story 2.2.
+    4. Plain class with ``__init__`` self-assignments
+    5. ``__init__.py`` module
 
     Args:
         symbol: The documented symbol to inspect.
@@ -578,56 +645,80 @@ def _check_missing_attributes(
         file_path: Source file path for the finding record.
 
     Returns:
-        A ``Finding`` with ``rule="missing-attributes"`` when a data
-        structure class lacks an ``Attributes:`` section, or ``None``
-        otherwise.
+        A ``Finding`` with ``rule="missing-attributes"`` when a class
+        or ``__init__.py`` module lacks an ``Attributes:`` section, or
+        ``None`` otherwise.
     """
-    # Only class symbols (module branch added in Story 2.2)
-    if symbol.kind != "class":
+    if symbol.kind not in ("class", "module"):
         return None
 
     if "Attributes" in sections:
         return None
 
-    node = node_index.get(symbol.line)
-    # ClassDef check narrows the union type for ty
-    if node is None or not isinstance(node, ast.ClassDef):
+    # Class branches (1-4)
+    if symbol.kind == "class":
+        node = node_index.get(symbol.line)
+        # ClassDef check narrows the union type for ty
+        if node is None or not isinstance(node, ast.ClassDef):
+            return None
+
+        # Branch 1: Dataclass
+        if _is_dataclass(node):
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="missing-attributes",
+                message=f"Dataclass '{symbol.name}' has no Attributes: section",
+                category="required",
+            )
+
+        # Branch 2: NamedTuple
+        if _is_namedtuple(node):
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="missing-attributes",
+                message=f"NamedTuple '{symbol.name}' has no Attributes: section",
+                category="required",
+            )
+
+        # Branch 3: TypedDict
+        if _is_typeddict(node):
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="missing-attributes",
+                message=f"TypedDict '{symbol.name}' has no Attributes: section",
+                category="required",
+            )
+
+        # Branch 4: Plain class with __init__ self-assignments
+        if _has_self_assignments(node):
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="missing-attributes",
+                message=f"Class '{symbol.name}' has no Attributes: section",
+                category="required",
+            )
+
         return None
 
-    # Branch 1: Dataclass
-    if _is_dataclass(node):
+    # Branch 5: __init__.py module
+    if _is_init_module(file_path):
         return Finding(
             file=file_path,
             line=symbol.line,
             symbol=symbol.name,
             rule="missing-attributes",
-            message=f"Dataclass '{symbol.name}' has no Attributes: section",
+            message=f"Module '{symbol.name}' has no Attributes: section",
             category="required",
         )
 
-    # Branch 2: NamedTuple
-    if _is_namedtuple(node):
-        return Finding(
-            file=file_path,
-            line=symbol.line,
-            symbol=symbol.name,
-            rule="missing-attributes",
-            message=f"NamedTuple '{symbol.name}' has no Attributes: section",
-            category="required",
-        )
-
-    # Branch 3: TypedDict
-    if _is_typeddict(node):
-        return Finding(
-            file=file_path,
-            line=symbol.line,
-            symbol=symbol.name,
-            rule="missing-attributes",
-            message=f"TypedDict '{symbol.name}' has no Attributes: section",
-            category="required",
-        )
-
-    # Branches 4-5 (plain class, __init__.py module) added in Story 2.2
     return None
 
 
