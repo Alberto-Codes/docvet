@@ -181,6 +181,146 @@ def _check_missing_raises(
     )
 
 
+def _check_missing_yields(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a generator function that yields without a Yields section.
+
+    Walks the function's AST subtree to find ``yield`` and ``yield from``
+    expressions. Returns a finding when yields are present but no
+    ``Yields:`` section is present in the docstring.
+
+    The walk is scope-aware: it stops at nested ``FunctionDef``,
+    ``AsyncFunctionDef``, and ``ClassDef`` boundaries so that yields
+    inside nested scopes are not attributed to the outer function.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-yields"`` when yield
+        expressions exist without documentation, or ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+
+    if "Yields" in sections:
+        return None
+
+    has_yield = False
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, (ast.Yield, ast.YieldFrom)):
+            has_yield = True
+            break
+        stack.extend(ast.iter_child_nodes(child))
+
+    if not has_yield:
+        return None
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-yields",
+        message=f"Function '{symbol.name}' yields but has no Yields: section",
+        category="required",
+    )
+
+
+def _check_missing_receives(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a generator using the send pattern without a Receives section.
+
+    Walks the function's AST subtree to find ``yield`` expressions used
+    as assignment targets (``value = yield``), indicating that the
+    generator protocol's ``.send()`` method is intentionally used.
+    Returns a finding when the send pattern is present but no
+    ``Receives:`` section exists in the docstring.
+
+    Only ``ast.Assign`` and ``ast.AnnAssign`` nodes whose value is
+    ``ast.Yield`` are considered send patterns. Bare ``yield`` (not
+    assigned) and ``yield from`` do not trigger this rule.
+
+    The walk is scope-aware: it stops at nested scope boundaries.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-receives"`` when the send
+        pattern is used without documentation, or ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+
+    if "Receives" in sections:
+        return None
+
+    has_send = False
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, ast.Assign) and isinstance(child.value, ast.Yield):
+            has_send = True
+            break
+        if (
+            isinstance(child, ast.AnnAssign)
+            and child.value is not None
+            and isinstance(child.value, ast.Yield)
+        ):
+            has_send = True
+            break
+        stack.extend(ast.iter_child_nodes(child))
+
+    if not has_send:
+        return None
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-receives",
+        message=(
+            f"Function '{symbol.name}' uses yield send pattern "
+            f"but has no Receives: section"
+        ),
+        category="required",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public orchestrator
 # ---------------------------------------------------------------------------
@@ -219,6 +359,16 @@ def check_enrichment(
 
         if config.require_raises:
             if f := _check_missing_raises(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        if config.require_yields:
+            if f := _check_missing_yields(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        if config.require_receives:
+            if f := _check_missing_receives(
                 symbol, sections, node_index, config, file_path
             ):
                 findings.append(f)
