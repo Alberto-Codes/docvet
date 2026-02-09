@@ -1,6 +1,6 @@
 # Story 3.1: Missing Examples Detection
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -219,16 +219,17 @@ Claude Opus 4.6
 - Module branch: `__init__.py` triggers when `require_examples` is non-empty (any type)
 - Wired into orchestrator after `_check_missing_attributes` with taxonomy-table gap comment
 - Updated `complete_module.py` fixture with `Examples:` sections
-- All ACs satisfied, 169 enrichment tests, 376 total project tests
+- All ACs satisfied, 170 enrichment tests, 377 total project tests
 
 ### File List
 
 - `src/docvet/checks/enrichment.py` — added `_is_protocol`, `_ENUM_NAMES`, `_is_enum`, `_check_missing_examples`; wired into orchestrator
-- `tests/unit/checks/test_enrichment.py` — added 39 new tests (helpers, direct rule, orchestrator, edge cases)
+- `tests/unit/checks/test_enrichment.py` — added 41 new tests (helpers, direct rule, orchestrator, edge cases)
 - `tests/fixtures/complete_module.py` — added `Examples:` sections to `ValidationResult` and `Connection`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — status updated
 - `_bmad-output/implementation-artifacts/3-1-missing-examples-detection.md` — story file updated
 
 ## Change Log
 
-- 2026-02-08: Implemented missing-examples detection — `_is_protocol`, `_is_enum` helpers; `_check_missing_examples` rule with list-config gating; orchestrator wiring; 39 new tests; fixture update
+- 2026-02-08: Implemented missing-examples detection — `_is_protocol`, `_is_enum` helpers; `_check_missing_examples` rule with list-config gating; orchestrator wiring; 41 new tests; fixture update
+- 2026-02-08: Code review fixes — renamed misleading nested-class test (H1); added method-kind regression test (M3); corrected test count
