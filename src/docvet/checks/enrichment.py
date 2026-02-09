@@ -321,6 +321,141 @@ def _check_missing_receives(
     )
 
 
+def _check_missing_warns(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a function calling ``warnings.warn()`` without a Warns section.
+
+    Walks the function's AST subtree to find ``ast.Call`` nodes where
+    the callee is ``warnings.warn`` (qualified) or bare ``warn``
+    (after ``from warnings import warn``). Returns a finding when a
+    warn call is present but no ``Warns:`` section exists in the
+    docstring.
+
+    The walk is scope-aware: it stops at nested ``FunctionDef``,
+    ``AsyncFunctionDef``, and ``ClassDef`` boundaries so that warn
+    calls inside nested scopes are not attributed to the outer function.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-warns"`` when warn calls
+        exist without documentation, or ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+
+    if "Warns" in sections:
+        return None
+
+    has_warn = False
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, ast.Call):
+            # Pattern 1: warnings.warn(...)
+            if (
+                isinstance(child.func, ast.Attribute)
+                and isinstance(child.func.value, ast.Name)
+                and child.func.value.id == "warnings"
+                and child.func.attr == "warn"
+            ):
+                has_warn = True
+                break
+            # Pattern 2: warn(...) after from warnings import warn
+            if isinstance(child.func, ast.Name) and child.func.id == "warn":
+                has_warn = True
+                break
+        stack.extend(ast.iter_child_nodes(child))
+
+    if not has_warn:
+        return None
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-warns",
+        message=(
+            f"Function '{symbol.name}' calls warnings.warn() but has no Warns: section"
+        ),
+        category="required",
+    )
+
+
+def _check_missing_other_parameters(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a function with ``**kwargs`` without an Other Parameters section.
+
+    Inspects the function signature for a ``**kwargs`` parameter via
+    ``node.args.kwarg``. Returns a finding when ``**kwargs`` is present
+    but no ``Other Parameters:`` section exists in the docstring.
+
+    No body walk is needed — this rule only inspects the function
+    signature.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-other-parameters"`` when
+        ``**kwargs`` exists without documentation, or ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+
+    node = node_index.get(symbol.line)
+    # ClassDef check narrows the union type for ty — the symbol.kind guard
+    # above already excludes class symbols, so this branch is unreachable.
+    if node is None or isinstance(node, ast.ClassDef):
+        return None
+
+    if "Other Parameters" in sections:
+        return None
+
+    if node.args.kwarg is None:
+        return None
+
+    kwarg_name = node.args.kwarg.arg
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-other-parameters",
+        message=(
+            f"Function '{symbol.name}' accepts **{kwarg_name} "
+            f"but has no Other Parameters: section"
+        ),
+        category="recommended",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public orchestrator
 # ---------------------------------------------------------------------------
@@ -369,6 +504,16 @@ def check_enrichment(
                 findings.append(f)
         if config.require_receives:
             if f := _check_missing_receives(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        if config.require_warns:
+            if f := _check_missing_warns(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        if config.require_other_parameters:
+            if f := _check_missing_other_parameters(
                 symbol, sections, node_index, config, file_path
             ):
                 findings.append(f)
