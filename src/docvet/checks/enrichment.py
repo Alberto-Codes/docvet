@@ -467,11 +467,15 @@ def _is_dataclass(node: ast.ClassDef) -> bool:
     Recognises three decorator forms:
 
     - Simple: ``@dataclass``
-    - Qualified: ``@dataclasses.dataclass``
-    - Call: ``@dataclass(frozen=True)`` or ``@dataclasses.dataclass(frozen=True)``
+    - Qualified: ``@<module>.dataclass`` (suffix match — typically
+      ``@dataclasses.dataclass``)
+    - Call: ``@dataclass(...)`` or ``@<module>.dataclass(...)``
 
-    Alias detection (e.g. ``from dataclasses import dataclass as dc``) is
-    explicitly out of MVP scope.
+    The qualified forms use suffix-based matching (checks ``attr ==
+    "dataclass"`` without verifying the module name). This is intentional
+    — the false positive risk is negligible and avoids brittleness with
+    re-exports. Alias detection (e.g. ``from dataclasses import dataclass
+    as dc``) is explicitly out of MVP scope.
 
     Args:
         node: The ``ClassDef`` AST node to inspect.
@@ -501,7 +505,11 @@ def _is_namedtuple(node: ast.ClassDef) -> bool:
     Recognises two base class forms:
 
     - Simple: ``class Foo(NamedTuple)``
-    - Qualified: ``class Foo(typing.NamedTuple)``
+    - Qualified: ``class Foo(<module>.NamedTuple)`` (suffix match —
+      typically ``typing.NamedTuple``)
+
+    The qualified form uses suffix-based matching (checks ``attr ==
+    "NamedTuple"`` without verifying the module name).
 
     Args:
         node: The ``ClassDef`` AST node to inspect.
@@ -523,7 +531,11 @@ def _is_typeddict(node: ast.ClassDef) -> bool:
     Recognises two base class forms:
 
     - Simple: ``class Foo(TypedDict)``
-    - Qualified: ``class Foo(typing.TypedDict)``
+    - Qualified: ``class Foo(<module>.TypedDict)`` (suffix match —
+      typically ``typing.TypedDict``)
+
+    The qualified form uses suffix-based matching (checks ``attr ==
+    "TypedDict"`` without verifying the module name).
 
     Args:
         node: The ``ClassDef`` AST node to inspect.
