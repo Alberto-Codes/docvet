@@ -431,6 +431,8 @@ def _check_missing_other_parameters(
         return None
 
     node = node_index.get(symbol.line)
+    # ClassDef check narrows the union type for ty — the symbol.kind guard
+    # above already excludes class symbols, so this branch is unreachable.
     if node is None or isinstance(node, ast.ClassDef):
         return None
 
