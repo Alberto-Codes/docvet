@@ -561,7 +561,7 @@ def bar():
     assert all(isinstance(f, Finding) for f in findings)
 
 
-def test_check_enrichment_when_all_rules_disabled_returns_empty():
+def test_check_enrichment_when_active_rules_disabled_returns_empty():
     source = '''\
 def foo():
     """Do something."""
