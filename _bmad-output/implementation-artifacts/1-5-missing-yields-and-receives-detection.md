@@ -1,6 +1,6 @@
 # Story 1.5: Missing Yields and Receives Detection
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -390,8 +390,32 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-08: Implemented `_check_missing_yields` and `_check_missing_receives` rules with 17 unit tests, wired into orchestrator
+- 2026-02-08: Code review fixes — added 3 missing `_check_missing_receives` tests (scope boundary, module symbol, class symbol), fixed misleading `test_check_enrichment_when_all_rules_disabled_returns_empty` to actually disable all 3 rules
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.6
+**Date:** 2026-02-08
+**Outcome:** Approved with fixes applied
+
+**Issues Found:** 1 High, 3 Medium, 3 Low
+
+**Fixed (4):**
+- [H1] `test_check_enrichment_when_all_rules_disabled_returns_empty` only disabled `require_raises` — updated to disable all 3 active rules and use a source triggering all of them
+- [M2] No scope boundary test for `_check_missing_receives` — added `test_missing_receives_when_nested_send_pattern_returns_none`
+- [M3] No module/class symbol guard tests for `_check_missing_receives` — added `test_missing_receives_when_node_index_missing_returns_none` and `test_missing_receives_when_class_symbol_returns_none`
+
+**Not fixed (documentation debt, out of scope):**
+- [M1] Architecture doc (`architecture.md`) says "use `ast.walk()`, never hand-roll walkers" but all `_check_*` functions use scope-aware iterative stack. The code is correct (scope-awareness is essential per NFR5). Architecture doc needs updating to reflect the canonical scope-aware pattern. Deferred to a planning artifact update.
+
+**Accepted (low severity):**
+- [L1] Duplicate `complete_module` fixture test (story spec explicitly required it)
+- [L2] Story doc contains exact test count "52 tests" (fragile but harmless)
+- [L3] Unnecessary `f` prefix on non-interpolated string continuation in message (inherited from `_check_missing_raises` pattern)
+
+**Post-review test results:** 55 enrichment tests, 257 total tests, 0 regressions
 
 ### File List
 
 - `src/docvet/checks/enrichment.py` — MODIFIED: Added `_check_missing_yields()`, `_check_missing_receives()`, wired both into `check_enrichment()` orchestrator with config gating
-- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 17 tests (8 for `_check_missing_yields`, 5 for `_check_missing_receives`, 4 for orchestrator integration), new imports for `_check_missing_yields` and `_check_missing_receives`
+- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 20 tests (8 for `_check_missing_yields`, 8 for `_check_missing_receives`, 4 for orchestrator integration), fixed `test_check_enrichment_when_all_rules_disabled_returns_empty` to disable all rules
