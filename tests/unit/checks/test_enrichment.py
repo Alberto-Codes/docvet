@@ -15,7 +15,9 @@ from docvet.checks.enrichment import (
     _check_missing_receives,
     _check_missing_warns,
     _check_missing_yields,
+    _has_self_assignments,
     _is_dataclass,
+    _is_init_module,
     _is_namedtuple,
     _is_typeddict,
     _parse_sections,
@@ -576,6 +578,11 @@ class MyData:
     """A data class."""
     x: int
 
+class PlainClass:
+    """A plain class."""
+    def __init__(self):
+        self.x = 1
+
 def foo(**kwargs):
     """Do something."""
     raise ValueError("bad")
@@ -592,7 +599,7 @@ def foo(**kwargs):
         require_attributes=False,
     )
 
-    findings = check_enrichment(source, tree, config, "test.py")
+    findings = check_enrichment(source, tree, config, "__init__.py")
 
     assert findings == []
 
@@ -1735,6 +1742,332 @@ class Foo:
 
 
 def test_check_enrichment_when_complete_module_with_dataclass_returns_empty():
+    source = Path("tests/fixtures/complete_module.py").read_text()
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(
+        source, tree, config, "tests/fixtures/complete_module.py"
+    )
+
+    assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# _has_self_assignments helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_has_self_assignments_when_init_with_simple_assign_returns_true():
+    node = ast.parse("class Foo:\n def __init__(self):\n  self.x = 1").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is True
+
+
+def test_has_self_assignments_when_init_with_annotated_assign_returns_true():
+    node = ast.parse("class Foo:\n def __init__(self):\n  self.x: int = 0").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is True
+
+
+def test_has_self_assignments_when_no_init_returns_false():
+    node = ast.parse("class Foo:\n pass").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is False
+
+
+def test_has_self_assignments_when_init_without_self_assigns_returns_false():
+    node = ast.parse("class Foo:\n def __init__(self):\n  pass").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is False
+
+
+def test_has_self_assignments_when_nested_function_self_assigns_returns_false():
+    source = """\
+class Foo:
+    def __init__(self):
+        def helper():
+            self.x = 1
+"""
+    node = ast.parse(source).body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is False
+
+
+def test_has_self_assignments_when_init_assigns_local_var_returns_false():
+    node = ast.parse("class Foo:\n def __init__(self):\n  x = 1").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is False
+
+
+def test_has_self_assignments_when_init_assigns_cls_attribute_returns_false():
+    node = ast.parse("class Foo:\n def __init__(self):\n  cls.x = 1").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is False
+
+
+# ---------------------------------------------------------------------------
+# _is_init_module helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_init_module_when_init_py_returns_true():
+    assert _is_init_module("__init__.py") is True
+
+
+def test_is_init_module_when_nested_init_py_returns_true():
+    assert _is_init_module("src/pkg/__init__.py") is True
+
+
+def test_is_init_module_when_regular_py_returns_false():
+    assert _is_init_module("module.py") is False
+
+
+def test_is_init_module_when_similar_name_returns_false():
+    assert _is_init_module("not__init__.py") is False
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_attributes tests (branches 4-5: plain class, init module)
+# ---------------------------------------------------------------------------
+
+
+def test_missing_attributes_when_plain_class_with_self_assigns_returns_finding():
+    source = '''\
+class Foo:
+    """A plain class."""
+    def __init__(self):
+        self.x = 1
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-attributes"
+    assert result.category == "required"
+    assert "Class" in result.message
+    assert "Foo" in result.message
+
+
+def test_missing_attributes_when_plain_class_with_annotated_self_assigns_returns_finding():
+    source = '''\
+class Foo:
+    """A plain class."""
+    def __init__(self):
+        self.x: int = 0
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-attributes"
+    assert "Class" in result.message
+
+
+def test_missing_attributes_when_plain_class_no_self_assigns_returns_none():
+    source = '''\
+class Foo:
+    """A plain class."""
+    def __init__(self):
+        pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_attributes_when_init_module_without_section_returns_finding():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-attributes"
+    assert result.category == "required"
+    assert "Module" in result.message
+
+
+def test_missing_attributes_when_init_module_with_section_returns_none():
+    source = '''\
+"""Package docstring.
+
+Attributes:
+    FOO: A constant.
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is None
+
+
+def test_missing_attributes_when_regular_module_returns_none():
+    source = '''\
+"""Regular module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
+    assert result is None
+
+
+def test_missing_attributes_when_dataclass_wins_over_plain_class_returns_dataclass_finding():
+    source = '''\
+@dataclass
+class Foo:
+    """A data class with init."""
+    x: int
+    def __init__(self):
+        self.y = 2
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-attributes"
+    assert "Dataclass" in result.message
+
+
+def test_missing_attributes_when_nested_self_assigns_in_init_returns_none():
+    source = '''\
+class Foo:
+    """A plain class."""
+    def __init__(self):
+        def helper():
+            self.x = 1
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_attributes_when_module_symbol_kind_accepted():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    # Module symbol kind should no longer be rejected — it's accepted
+    # but only fires for __init__.py files
+    result = _check_missing_attributes(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    # Should return a finding (module kind is now accepted and this is __init__.py)
+    assert result is not None
+    assert result.rule == "missing-attributes"
+
+
+# ---------------------------------------------------------------------------
+# check_enrichment orchestrator tests (plain class + init module)
+# ---------------------------------------------------------------------------
+
+
+def test_check_enrichment_when_plain_class_detected_returns_finding():
+    source = '''\
+class Foo:
+    """A plain class."""
+    def __init__(self):
+        self.x = 1
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_attrs = [f for f in findings if f.rule == "missing-attributes"]
+    assert len(missing_attrs) == 1
+    assert "Class" in missing_attrs[0].message
+    assert "Foo" in missing_attrs[0].message
+
+
+def test_check_enrichment_when_init_module_detected_returns_finding():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(source, tree, config, "__init__.py")
+
+    missing_attrs = [f for f in findings if f.rule == "missing-attributes"]
+    assert len(missing_attrs) == 1
+    assert "Module" in missing_attrs[0].message
+
+
+def test_check_enrichment_when_complete_module_with_plain_class_returns_empty():
     source = Path("tests/fixtures/complete_module.py").read_text()
     tree = ast.parse(source)
     config = EnrichmentConfig()
