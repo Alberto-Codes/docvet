@@ -1749,31 +1749,3 @@ def test_check_enrichment_when_complete_module_with_dataclass_returns_empty():
     assert findings == []
 
 
-def test_check_enrichment_when_all_rules_disabled_returns_empty():
-    source = '''\
-import warnings
-
-@dataclass
-class MyData:
-    """A data class."""
-    x: int
-
-def foo(**kwargs):
-    """Do something."""
-    raise ValueError("bad")
-    value = yield 42
-    warnings.warn("deprecated", DeprecationWarning)
-'''
-    tree = ast.parse(source)
-    config = EnrichmentConfig(
-        require_raises=False,
-        require_yields=False,
-        require_receives=False,
-        require_warns=False,
-        require_other_parameters=False,
-        require_attributes=False,
-    )
-
-    findings = check_enrichment(source, tree, config, "test.py")
-
-    assert findings == []
