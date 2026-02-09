@@ -1,6 +1,6 @@
 # Story 2.2: Plain Class and `__init__.py` Module Attributes Detection
 
-Status: review
+Status: done
 
 ## Story
 
@@ -383,11 +383,12 @@ Claude Opus 4.6
 ### Change Log
 
 - Story 2.2 implementation complete — added plain class and `__init__.py` module attributes detection (Date: 2026-02-08)
+- Code review fixes — added Windows backslash path support to `_is_init_module`, added 3 edge case tests (nested class in `__init__`, async `__init__`, Windows path), updated docstring (Date: 2026-02-08)
 
 ### File List
 
-- `src/docvet/checks/enrichment.py` — MODIFIED: Added `_has_self_assignments()`, `_is_init_module()`, modified `_check_missing_attributes()` with branches 4-5
-- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 23 new tests for helpers, branches 4-5, and orchestrator integration
+- `src/docvet/checks/enrichment.py` — MODIFIED: Added `_has_self_assignments()`, `_is_init_module()`, modified `_check_missing_attributes()` with branches 4-5; review fix: added Windows backslash path support + docstring update
+- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 26 new tests (336 total) for helpers, branches 4-5, orchestrator integration, and review edge cases
 - `tests/fixtures/complete_module.py` — MODIFIED: Added `Connection` plain class with `Attributes:` section
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED: Story status updated
-- `_bmad-output/implementation-artifacts/2-2-plain-class-and-init-py-module-attributes-detection.md` — MODIFIED: Tasks marked complete, dev agent record updated
+- `_bmad-output/implementation-artifacts/2-2-plain-class-and-init-py-module-attributes-detection.md` — MODIFIED: Tasks marked complete, dev agent record updated, review notes added
