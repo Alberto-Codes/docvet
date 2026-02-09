@@ -1,6 +1,6 @@
 # Story 1.6: Missing Warns and Other Parameters Detection
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -411,8 +411,9 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-08: Implemented missing-warns and missing-other-parameters detection rules with full test coverage (Story 1.6)
+- 2026-02-08: Code review fixes — added 3 tests (bare warn() false positive edge case, nested class scope boundary, async kwargs), added type-narrowing comment to ClassDef guard. Test count: 74 enrichment, 276 overall.
 
 ### File List
 
-- `src/docvet/checks/enrichment.py` (MODIFIED) — Added `_check_missing_warns()`, `_check_missing_other_parameters()`, wired into orchestrator
-- `tests/unit/checks/test_enrichment.py` (MODIFIED) — Added 16 new tests for both rules and orchestrator integration, updated all-rules-disabled test
+- `src/docvet/checks/enrichment.py` (MODIFIED) — Added `_check_missing_warns()`, `_check_missing_other_parameters()`, wired into orchestrator; added type-narrowing comment
+- `tests/unit/checks/test_enrichment.py` (MODIFIED) — Added 19 new tests for both rules and orchestrator integration, updated all-rules-disabled test
