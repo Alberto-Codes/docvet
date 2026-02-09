@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import dataclasses
 from pathlib import Path
 
 from docvet.checks import Finding
@@ -590,13 +591,15 @@ def foo(**kwargs):
     warnings.warn("deprecated", DeprecationWarning)
 '''
     tree = ast.parse(source)
+    # Dynamically disable all boolean toggles so this test doesn't break
+    # when new rules are added to EnrichmentConfig.
     config = EnrichmentConfig(
-        require_raises=False,
-        require_yields=False,
-        require_receives=False,
-        require_warns=False,
-        require_other_parameters=False,
-        require_attributes=False,
+        **{
+            f.name: False
+            for f in dataclasses.fields(EnrichmentConfig)
+            if f.default is True
+        },
+        require_examples=[],
     )
 
     findings = check_enrichment(source, tree, config, "__init__.py")
