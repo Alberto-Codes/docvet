@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from dataclasses import dataclass
 
 
 def process(value: str) -> int:
@@ -26,6 +27,21 @@ def process(value: str) -> int:
     if not value:
         raise ValueError("Value cannot be empty")
     return len(value)
+
+
+@dataclass
+class ValidationResult:
+    """Result of a validation operation.
+
+    Attributes:
+        is_valid: Whether the validation passed.
+        message: Human-readable description of the result.
+        error_count: Number of errors found during validation.
+    """
+
+    is_valid: bool
+    message: str
+    error_count: int = 0
 
 
 def generate_numbers(n: int) -> Generator[int, None, None]:
