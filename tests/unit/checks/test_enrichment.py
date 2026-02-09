@@ -1234,6 +1234,24 @@ def foo(**kwargs):
     assert result is None
 
 
+def test_missing_other_parameters_when_custom_kwarg_name_uses_actual_name():
+    source = '''\
+def foo(**options):
+    """Do something."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert "**options" in result.message
+
+
 def test_missing_other_parameters_when_no_kwargs_returns_none():
     source = '''\
 def foo(x, y):
@@ -1319,6 +1337,40 @@ class Foo:
 # ---------------------------------------------------------------------------
 # check_enrichment orchestrator tests (warns/other-parameters)
 # ---------------------------------------------------------------------------
+
+
+def test_check_enrichment_when_warns_enabled_returns_finding():
+    source = '''\
+import warnings
+
+def foo():
+    """Do something."""
+    warnings.warn("deprecated", DeprecationWarning)
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_warns = [f for f in findings if f.rule == "missing-warns"]
+    assert len(missing_warns) == 1
+    assert missing_warns[0].symbol == "foo"
+
+
+def test_check_enrichment_when_other_parameters_enabled_returns_finding():
+    source = '''\
+def foo(**kwargs):
+    """Do something."""
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_other = [f for f in findings if f.rule == "missing-other-parameters"]
+    assert len(missing_other) == 1
+    assert missing_other[0].symbol == "foo"
 
 
 def test_check_enrichment_when_warns_disabled_returns_no_finding():
