@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import ast
 import enum
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
+from docvet.checks.enrichment import check_enrichment
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode, discover_files
 
@@ -146,13 +148,28 @@ def _discover_and_handle(
 
 
 def _run_enrichment(files: list[Path], config: DocvetConfig) -> None:
-    """Stub for enrichment check.
+    """Run the enrichment check on discovered files.
+
+    Reads each file, parses its AST, and runs all enabled enrichment
+    rules. Findings are printed to stdout in ``file:line: rule message``
+    format. Files that fail to parse are skipped with a warning.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
     """
-    typer.echo("enrichment: not yet implemented")
+    for file_path in files:
+        source = file_path.read_text(encoding="utf-8")
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+            continue
+        findings = check_enrichment(source, tree, config.enrichment, str(file_path))
+        for finding in findings:
+            typer.echo(
+                f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"
+            )
 
 
 def _run_freshness(

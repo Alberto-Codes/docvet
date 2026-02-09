@@ -7,9 +7,10 @@ from pathlib import Path
 from unittest.mock import ANY
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
-from docvet.cli import FreshnessMode, app
+from docvet.cli import FreshnessMode, _run_enrichment, app
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode
 
@@ -33,6 +34,7 @@ def _strip_ansi(text: str) -> str:
 def _mock_config_and_discovery(mocker):
     mocker.patch("docvet.cli.load_config", return_value=DocvetConfig())
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
+    mocker.patch("docvet.cli._run_enrichment")
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +106,11 @@ def test_check_when_invoked_with_no_flags_exits_successfully():
     assert result.exit_code == 0
 
 
-def test_check_when_invoked_runs_all_checks_in_order():
+def test_check_when_invoked_runs_all_checks_in_order(mocker):
+    mocker.patch(
+        "docvet.cli._run_enrichment",
+        side_effect=lambda f, c: typer.echo("enrichment: ok"),
+    )
     result = runner.invoke(app, ["check"])
     output = result.output
     assert output.index("enrichment:") < output.index("freshness:")
@@ -115,7 +121,6 @@ def test_check_when_invoked_runs_all_checks_in_order():
 def test_enrichment_when_invoked_exits_successfully():
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
-    assert "enrichment: not yet implemented" in result.output
 
 
 def test_freshness_when_invoked_exits_successfully():
@@ -465,3 +470,79 @@ def test_check_when_invoked_calls_load_config_once(mocker):
     mock_load = mocker.patch("docvet.cli.load_config", return_value=DocvetConfig())
     runner.invoke(app, ["check"])
     assert mock_load.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# _run_enrichment behavior tests
+# ---------------------------------------------------------------------------
+
+
+def test_run_enrichment_when_file_has_findings_prints_formatted_output(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=10,
+            symbol="do_stuff",
+            rule="missing-raises",
+            message="Missing Raises: ValueError",
+            category="required",
+        ),
+    ]
+    mocker.patch("docvet.cli.check_enrichment", return_value=findings)
+    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("src/app.py")])
+    result = runner.invoke(app, ["enrichment"])
+    assert result.exit_code == 0
+    assert "src/app.py:10: missing-raises Missing Raises: ValueError" in result.output
+
+
+def test_run_enrichment_when_no_findings_produces_no_output(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
+    mocker.patch("docvet.cli.check_enrichment", return_value=[])
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    result = runner.invoke(app, ["enrichment"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_run_enrichment_when_syntax_error_skips_file_with_warning(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
+    mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
+    mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
+    mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
+    result = runner.invoke(app, ["enrichment"])
+    assert result.exit_code == 0
+    # Warning is emitted with err=True; consider both stdout and stderr.
+    output = result.output + getattr(result, "stderr", "")
+    assert "warning:" in output
+    assert "failed to parse, skipping" in output
+    mock_check.assert_not_called()
+
+
+def test_run_enrichment_when_multiple_files_processes_all(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
+    files = [Path("/a.py"), Path("/b.py"), Path("/c.py")]
+    mocker.patch("docvet.cli.discover_files", return_value=files)
+    result = runner.invoke(app, ["enrichment"])
+    assert result.exit_code == 0
+    assert mock_check.call_count == 3
+
+
+def test_run_enrichment_passes_config_enrichment_and_str_file_path(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
+    fake_config = DocvetConfig()
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
+    file_path = Path("/fake/file.py")
+    mocker.patch("docvet.cli.discover_files", return_value=[file_path])
+    result = runner.invoke(app, ["enrichment"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(
+        "x = 1\n", ANY, fake_config.enrichment, str(file_path)
+    )
