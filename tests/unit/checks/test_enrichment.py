@@ -1747,5 +1747,3 @@ def test_check_enrichment_when_complete_module_with_dataclass_returns_empty():
     )
 
     assert findings == []
-
-
