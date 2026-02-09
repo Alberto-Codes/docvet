@@ -1,6 +1,6 @@
 # Story 1.6: Missing Warns and Other Parameters Detection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,55 +30,55 @@ so that my docstrings fully describe warning behavior and extra keyword argument
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement `_check_missing_warns` private function (AC: #1, #2, #7)
-  - [ ] 1.1: Write function with uniform signature `_check_missing_warns(symbol, sections, node_index, config, file_path) -> Finding | None`
-  - [ ] 1.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
-  - [ ] 1.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
-  - [ ] 1.4: Early return `None` if `"Warns" in sections` (section already documented)
-  - [ ] 1.5: Scope-aware walk of node body to find `ast.Call` nodes where the callee is `warnings.warn` (handle both `warnings.warn()` and bare `warn()` after `from warnings import warn`)
-  - [ ] 1.6: If any `warnings.warn()` calls found, construct `Finding` with `rule="missing-warns"`, `category="required"`
-  - [ ] 1.7: Add docstring following project conventions
+- [x] Task 1: Implement `_check_missing_warns` private function (AC: #1, #2, #7)
+  - [x] 1.1: Write function with uniform signature `_check_missing_warns(symbol, sections, node_index, config, file_path) -> Finding | None`
+  - [x] 1.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
+  - [x] 1.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
+  - [x] 1.4: Early return `None` if `"Warns" in sections` (section already documented)
+  - [x] 1.5: Scope-aware walk of node body to find `ast.Call` nodes where the callee is `warnings.warn` (handle both `warnings.warn()` and bare `warn()` after `from warnings import warn`)
+  - [x] 1.6: If any `warnings.warn()` calls found, construct `Finding` with `rule="missing-warns"`, `category="required"`
+  - [x] 1.7: Add docstring following project conventions
 
-- [ ] Task 2: Implement `_check_missing_other_parameters` private function (AC: #4, #5)
-  - [ ] 2.1: Write function with uniform signature `_check_missing_other_parameters(symbol, sections, node_index, config, file_path) -> Finding | None`
-  - [ ] 2.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
-  - [ ] 2.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
-  - [ ] 2.4: Early return `None` if `"Other Parameters" in sections` (section already documented)
-  - [ ] 2.5: Check `node.args.kwarg is not None` — this is the `**kwargs` parameter
-  - [ ] 2.6: If `**kwargs` found, construct `Finding` with `rule="missing-other-parameters"`, `category="recommended"`
-  - [ ] 2.7: Add docstring following project conventions
+- [x] Task 2: Implement `_check_missing_other_parameters` private function (AC: #4, #5)
+  - [x] 2.1: Write function with uniform signature `_check_missing_other_parameters(symbol, sections, node_index, config, file_path) -> Finding | None`
+  - [x] 2.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
+  - [x] 2.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
+  - [x] 2.4: Early return `None` if `"Other Parameters" in sections` (section already documented)
+  - [x] 2.5: Check `node.args.kwarg is not None` — this is the `**kwargs` parameter
+  - [x] 2.6: If `**kwargs` found, construct `Finding` with `rule="missing-other-parameters"`, `category="recommended"`
+  - [x] 2.7: Add docstring following project conventions
 
-- [ ] Task 3: Wire both rules into `check_enrichment` orchestrator (AC: #3, #6, #8)
-  - [ ] 3.1: Add `config.require_warns` gate before `_check_missing_warns` dispatch (taxonomy-table order: after `missing-receives`)
-  - [ ] 3.2: Add `config.require_other_parameters` gate before `_check_missing_other_parameters` dispatch (taxonomy-table order: after `missing-warns`)
-  - [ ] 3.3: Use walrus operator pattern `if f := _check_missing_warns(...)` consistent with existing dispatch
+- [x] Task 3: Wire both rules into `check_enrichment` orchestrator (AC: #3, #6, #8)
+  - [x] 3.1: Add `config.require_warns` gate before `_check_missing_warns` dispatch (taxonomy-table order: after `missing-receives`)
+  - [x] 3.2: Add `config.require_other_parameters` gate before `_check_missing_other_parameters` dispatch (taxonomy-table order: after `missing-warns`)
+  - [x] 3.3: Use walrus operator pattern `if f := _check_missing_warns(...)` consistent with existing dispatch
 
-- [ ] Task 4: Write unit tests (AC: #1-#8)
-  - [ ] 4.1: `test_missing_warns_when_function_calls_warn_without_section_returns_finding` — AC #1
-  - [ ] 4.2: `test_missing_warns_when_warns_section_present_returns_none` — AC #2
-  - [ ] 4.3: `test_missing_warns_when_no_warn_calls_returns_none`
-  - [ ] 4.4: `test_missing_warns_when_qualified_warnings_warn_returns_finding` — AC #7
-  - [ ] 4.5: `test_missing_warns_when_bare_warn_import_returns_finding`
-  - [ ] 4.6: `test_missing_warns_when_node_index_missing_returns_none` (module symbol)
-  - [ ] 4.7: `test_missing_warns_when_class_symbol_returns_none`
-  - [ ] 4.8: `test_missing_warns_when_nested_warn_call_returns_none` (scope boundary)
-  - [ ] 4.9: `test_missing_warns_when_unrelated_function_call_returns_none` (e.g., `logging.warn()` should NOT trigger)
-  - [ ] 4.10: `test_missing_other_parameters_when_kwargs_without_section_returns_finding` — AC #4
-  - [ ] 4.11: `test_missing_other_parameters_when_section_present_returns_none` — AC #5
-  - [ ] 4.12: `test_missing_other_parameters_when_no_kwargs_returns_none`
-  - [ ] 4.13: `test_missing_other_parameters_when_node_index_missing_returns_none`
-  - [ ] 4.14: `test_missing_other_parameters_when_class_symbol_returns_none`
-  - [ ] 4.15: `test_check_enrichment_when_warns_disabled_returns_no_finding` — AC #3
-  - [ ] 4.16: `test_check_enrichment_when_other_parameters_disabled_returns_no_finding` — AC #6
-  - [ ] 4.17: `test_check_enrichment_when_all_rules_disabled_returns_empty` (update existing to disable all 5 rules)
-  - [ ] 4.18: `test_check_enrichment_when_complete_module_still_returns_empty` (regression)
+- [x] Task 4: Write unit tests (AC: #1-#8)
+  - [x] 4.1: `test_missing_warns_when_function_calls_warn_without_section_returns_finding` — AC #1
+  - [x] 4.2: `test_missing_warns_when_warns_section_present_returns_none` — AC #2
+  - [x] 4.3: `test_missing_warns_when_no_warn_calls_returns_none`
+  - [x] 4.4: `test_missing_warns_when_qualified_warnings_warn_returns_finding` — AC #7
+  - [x] 4.5: `test_missing_warns_when_bare_warn_import_returns_finding`
+  - [x] 4.6: `test_missing_warns_when_node_index_missing_returns_none` (module symbol)
+  - [x] 4.7: `test_missing_warns_when_class_symbol_returns_none`
+  - [x] 4.8: `test_missing_warns_when_nested_warn_call_returns_none` (scope boundary)
+  - [x] 4.9: `test_missing_warns_when_unrelated_function_call_returns_none` (e.g., `logging.warn()` should NOT trigger)
+  - [x] 4.10: `test_missing_other_parameters_when_kwargs_without_section_returns_finding` — AC #4
+  - [x] 4.11: `test_missing_other_parameters_when_section_present_returns_none` — AC #5
+  - [x] 4.12: `test_missing_other_parameters_when_no_kwargs_returns_none`
+  - [x] 4.13: `test_missing_other_parameters_when_node_index_missing_returns_none`
+  - [x] 4.14: `test_missing_other_parameters_when_class_symbol_returns_none`
+  - [x] 4.15: `test_check_enrichment_when_warns_disabled_returns_no_finding` — AC #3
+  - [x] 4.16: `test_check_enrichment_when_other_parameters_disabled_returns_no_finding` — AC #6
+  - [x] 4.17: `test_check_enrichment_when_all_rules_disabled_returns_empty` (update existing to disable all 5 rules)
+  - [x] 4.18: `test_check_enrichment_when_complete_module_still_returns_empty` (regression)
 
-- [ ] Task 5: Run quality gates and verify all pass
-  - [ ] 5.1: `uv run ruff check .` — All checks pass
-  - [ ] 5.2: `uv run ruff format --check .` — All files formatted
-  - [ ] 5.3: `uv run ty check` — All type checks pass
-  - [ ] 5.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
-  - [ ] 5.5: `uv run pytest` — Full suite passes, 0 regressions
+- [x] Task 5: Run quality gates and verify all pass
+  - [x] 5.1: `uv run ruff check .` — All checks pass
+  - [x] 5.2: `uv run ruff format --check .` — All files formatted
+  - [x] 5.3: `uv run ty check` — All type checks pass
+  - [x] 5.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
+  - [x] 5.5: `uv run pytest` — Full suite passes, 0 regressions
 
 ## Dev Notes
 
@@ -393,10 +393,26 @@ def check_enrichment(source, tree, config, file_path):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Type checker initially flagged `node.args.kwarg` on `ClassDef` — added `isinstance(node, ast.ClassDef)` guard to narrow the union type and satisfy `ty check`
+
 ### Completion Notes List
 
+- Implemented `_check_missing_warns` with scope-aware walk detecting both `warnings.warn()` (qualified) and bare `warn()` (from import) patterns. Correctly excludes `logging.warn()` and other unrelated `*.warn()` calls
+- Implemented `_check_missing_other_parameters` as the simplest rule yet — signature-only inspection via `node.args.kwarg`, no body walk needed. First `category="recommended"` rule in the codebase
+- Wired both rules into `check_enrichment` orchestrator with config gating in taxonomy-table order (after `missing-receives`)
+- Updated existing "all rules disabled" test to cover all 5 active rules
+- Added 16 new tests (9 for warns, 5 for other-parameters, 2 orchestrator config tests), bringing enrichment test count from 55 to 71 and overall from 257 to 273
+- All quality gates pass: ruff check, ruff format, ty check, full test suite (273/273)
+
+### Change Log
+
+- 2026-02-08: Implemented missing-warns and missing-other-parameters detection rules with full test coverage (Story 1.6)
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` (MODIFIED) — Added `_check_missing_warns()`, `_check_missing_other_parameters()`, wired into orchestrator
+- `tests/unit/checks/test_enrichment.py` (MODIFIED) — Added 16 new tests for both rules and orchestrator integration, updated all-rules-disabled test
