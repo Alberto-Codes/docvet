@@ -44,6 +44,11 @@ _SECTION_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+# Cross-reference detection patterns for See Also: sections (FR12)
+_XREF_BACKTICK = re.compile(r"`[^`]+`")
+_XREF_MD_LINK = re.compile(r"\[[^\]]+\]\[")
+_XREF_SPHINX = re.compile(r":\w+:`[^`]+`")
+
 
 # ---------------------------------------------------------------------------
 # Shared helper functions
@@ -72,6 +77,41 @@ def _parse_sections(docstring: str) -> set[str]:
         when no recognized section headers are found.
     """
     return set(_SECTION_PATTERN.findall(docstring))
+
+
+def _extract_section_content(docstring: str, section_name: str) -> str | None:
+    """Extract the text content of a specific section from a docstring.
+
+    Finds the section header line matching the given name and collects
+    all subsequent lines until the next section header or end of
+    docstring. Returns ``None`` if the section is not found.
+
+    Args:
+        docstring: The raw docstring text to search.
+        section_name: The section header name (e.g. ``"Attributes"``).
+
+    Returns:
+        The text content below the section header, or ``None`` if the
+        section is not found.
+    """
+    lines = docstring.splitlines()
+    header_pattern = re.compile(rf"^\s*{re.escape(section_name)}:\s*$")
+    start_idx = None
+    for i, line in enumerate(lines):
+        if header_pattern.match(line):
+            start_idx = i + 1
+            break
+
+    if start_idx is None:
+        return None
+
+    content_lines: list[str] = []
+    for line in lines[start_idx:]:
+        if _SECTION_PATTERN.match(line):
+            break
+        content_lines.append(line)
+
+    return "\n".join(content_lines)
 
 
 _NodeT = ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
@@ -784,9 +824,93 @@ def _check_missing_attributes(
 
 
 # ---------------------------------------------------------------------------
+# Rule: missing-typed-attributes
+# ---------------------------------------------------------------------------
+
+_TYPED_ATTR_PATTERN = re.compile(r"^\s+\w+\s+\(.*\)\s*:")
+
+
+def _check_missing_typed_attributes(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect an ``Attributes:`` section with untyped entries.
+
+    Checks each entry in the ``Attributes:`` section for the typed
+    format ``name (type): description``. If any entry lacks the
+    parenthesized type annotation, returns a finding.
+
+    Only applies to class symbols — module-level ``Attributes:``
+    sections document exports and typing is not applicable.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-typed-attributes"`` when
+        untyped attribute entries are found, or ``None`` otherwise.
+    """
+    if symbol.kind != "class":
+        return None
+
+    if "Attributes" not in sections:
+        return None
+
+    if not symbol.docstring:
+        return None
+
+    content = _extract_section_content(symbol.docstring, "Attributes")
+    if content is None:
+        return None
+
+    # Determine the base indentation level from the first non-empty line.
+    # Attribute entries start at this level; continuation lines are
+    # indented further and should be skipped.
+    base_indent: int | None = None
+    for line in content.splitlines():
+        if not line.strip():
+            continue
+        base_indent = len(line) - len(line.lstrip())
+        break
+
+    if base_indent is None:
+        return None
+
+    for line in content.splitlines():
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        # Skip continuation lines (deeper indentation than base)
+        if indent > base_indent:
+            continue
+        if not _TYPED_ATTR_PATTERN.match(line):
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="missing-typed-attributes",
+                message=(
+                    f"Attributes: section in class '{symbol.name}' "
+                    f"lacks typed format (name (type): description)"
+                ),
+                category="recommended",
+            )
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Rule: missing-examples
-# NOTE: missing-typed-attributes (Story 3.2) goes between missing-attributes
-# and missing-examples in taxonomy-table order.
+# NOTE: missing-cross-references (Story 3.2) goes between missing-examples
+# and prefer-fenced-code-blocks in taxonomy-table order.
 # ---------------------------------------------------------------------------
 
 
@@ -879,6 +1003,159 @@ def _check_missing_examples(
 
 
 # ---------------------------------------------------------------------------
+# Rule: missing-cross-references
+# ---------------------------------------------------------------------------
+
+_SYMBOL_KIND_DISPLAY = {
+    "function": "function",
+    "method": "method",
+    "class": "class",
+    "module": "module",
+}
+
+
+def _check_missing_cross_references(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect missing or malformed cross-references in ``See Also:`` sections.
+
+    Two detection branches:
+
+    - **Branch A:** ``__init__.py`` module with no ``See Also:`` section
+      at all — the module should cross-reference related submodules.
+    - **Branch B:** Any symbol with a ``See Also:`` section whose content
+      lacks cross-reference syntax (backtick identifiers, Markdown
+      reference links, or Sphinx roles).
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-cross-references"`` when
+        cross-reference issues are found, or ``None`` otherwise.
+    """
+    kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
+
+    # Branch A: __init__.py module missing See Also: entirely
+    if symbol.kind == "module" and _is_init_module(file_path):
+        if "See Also" not in sections:
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="missing-cross-references",
+                message=(
+                    f"Module '{symbol.name}' is an __init__.py "
+                    f"but has no See Also: section"
+                ),
+                category="recommended",
+            )
+
+    # Branch B: See Also: exists but lacks cross-reference syntax
+    if "See Also" not in sections:
+        return None
+
+    if not symbol.docstring:
+        return None
+
+    content = _extract_section_content(symbol.docstring, "See Also")
+    if content is None:
+        return None
+
+    for line in content.splitlines():
+        if not line.strip():
+            continue
+        if (
+            _XREF_BACKTICK.search(line)
+            or _XREF_MD_LINK.search(line)
+            or _XREF_SPHINX.search(line)
+        ):
+            return None
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-cross-references",
+        message=(
+            f"See Also: section in {kind_display} '{symbol.name}' "
+            f"lacks cross-reference syntax"
+        ),
+        category="recommended",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule: prefer-fenced-code-blocks
+# ---------------------------------------------------------------------------
+
+_DOCTEST_PATTERN = re.compile(r"^\s*>>>")
+
+
+def _check_prefer_fenced_code_blocks(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect ``Examples:`` sections using doctest format instead of fenced blocks.
+
+    Checks for ``>>>`` patterns in the ``Examples:`` section content.
+    Only applies when the ``Examples:`` section exists — absence is
+    handled by the ``missing-examples`` rule.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="prefer-fenced-code-blocks"`` when
+        doctest format is found, or ``None`` otherwise.
+    """
+    if "Examples" not in sections:
+        return None
+
+    if not symbol.docstring:
+        return None
+
+    content = _extract_section_content(symbol.docstring, "Examples")
+    if content is None:
+        return None
+
+    kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
+
+    for line in content.splitlines():
+        if _DOCTEST_PATTERN.match(line):
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="prefer-fenced-code-blocks",
+                message=(
+                    f"Examples: section in {kind_display} '{symbol.name}' "
+                    f"uses doctest format (>>>) instead of fenced code blocks"
+                ),
+                category="recommended",
+            )
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Public orchestrator
 # ---------------------------------------------------------------------------
 
@@ -944,11 +1221,23 @@ def check_enrichment(
                 symbol, sections, node_index, config, file_path
             ):
                 findings.append(f)
-        # NOTE: missing-typed-attributes (Story 3.2) goes here in
-        # taxonomy-table order, between missing-attributes and
-        # missing-examples.
+        if config.require_typed_attributes:
+            if f := _check_missing_typed_attributes(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
         if config.require_examples:
             if f := _check_missing_examples(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        if config.require_cross_references:
+            if f := _check_missing_cross_references(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
+        if config.prefer_fenced_code_blocks:
+            if f := _check_prefer_fenced_code_blocks(
                 symbol, sections, node_index, config, file_path
             ):
                 findings.append(f)
