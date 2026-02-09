@@ -442,13 +442,14 @@ def _check_missing_other_parameters(
     if node.args.kwarg is None:
         return None
 
+    kwarg_name = node.args.kwarg.arg
     return Finding(
         file=file_path,
         line=symbol.line,
         symbol=symbol.name,
         rule="missing-other-parameters",
         message=(
-            f"Function '{symbol.name}' accepts **kwargs "
+            f"Function '{symbol.name}' accepts **{kwarg_name} "
             f"but has no Other Parameters: section"
         ),
         category="recommended",
