@@ -1135,6 +1135,57 @@ def foo():
     assert result is None
 
 
+def test_missing_warns_when_bare_warn_is_user_defined_still_returns_finding():
+    # Known tradeoff: bare warn() is assumed to be from warnings import.
+    # A user-defined warn() function will trigger a false positive.
+    # This is accepted per architecture spec — Pattern 2 matches any bare
+    # warn() call because in well-structured code, bare warn() comes from
+    # `from warnings import warn`.
+    source = '''\
+def warn(msg):
+    print(msg)
+
+def foo():
+    """Do something."""
+    warn("oops")
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    foo_symbol = [s for s in symbols if s.name == "foo"][0]
+    assert foo_symbol.docstring is not None
+    sections = _parse_sections(foo_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(foo_symbol, sections, node_index, config, "test.py")
+
+    # Returns a finding (false positive) — documented as accepted behavior.
+    assert result is not None
+    assert result.rule == "missing-warns"
+
+
+def test_missing_warns_when_nested_class_warn_call_returns_none():
+    # Warn calls inside nested classes should NOT be attributed to outer function.
+    source = '''\
+import warnings
+
+def outer():
+    """Outer function."""
+    class Inner:
+        def method(self):
+            warnings.warn("inner", DeprecationWarning)
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
 # ---------------------------------------------------------------------------
 # _check_missing_other_parameters tests
 # ---------------------------------------------------------------------------
@@ -1221,6 +1272,25 @@ FOO = 42
     )
 
     assert result is None
+
+
+def test_missing_other_parameters_when_async_function_with_kwargs_returns_finding():
+    source = '''\
+async def foo(**kwargs):
+    """Do something."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-other-parameters"
+    assert result.symbol == "foo"
 
 
 def test_missing_other_parameters_when_class_symbol_returns_none():
