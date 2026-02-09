@@ -44,6 +44,25 @@ class ValidationResult:
     error_count: int = 0
 
 
+class Connection:
+    """A database connection wrapper.
+
+    Attributes:
+        host: The database host address.
+        port: The port number for the connection.
+    """
+
+    def __init__(self, host: str, port: int = 5432):
+        """Initialize the connection.
+
+        Args:
+            host: The database host address.
+            port: The port number for the connection.
+        """
+        self.host = host
+        self.port = port
+
+
 def generate_numbers(n: int) -> Generator[int, None, None]:
     """Generate numbers from 0 to n-1.
 
