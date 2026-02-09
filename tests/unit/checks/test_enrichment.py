@@ -9,11 +9,15 @@ from docvet.checks import Finding
 from docvet.checks.enrichment import (
     _SECTION_HEADERS,
     _build_node_index,
+    _check_missing_attributes,
     _check_missing_other_parameters,
     _check_missing_raises,
     _check_missing_receives,
     _check_missing_warns,
     _check_missing_yields,
+    _is_dataclass,
+    _is_namedtuple,
+    _is_typeddict,
     _parse_sections,
     check_enrichment,
 )
@@ -567,6 +571,11 @@ def test_check_enrichment_when_active_rules_disabled_returns_empty():
     source = '''\
 import warnings
 
+@dataclass
+class MyData:
+    """A data class."""
+    x: int
+
 def foo(**kwargs):
     """Do something."""
     raise ValueError("bad")
@@ -580,6 +589,7 @@ def foo(**kwargs):
         require_receives=False,
         require_warns=False,
         require_other_parameters=False,
+        require_attributes=False,
     )
 
     findings = check_enrichment(source, tree, config, "test.py")
@@ -1403,3 +1413,367 @@ def foo(**kwargs):
 
     missing_other = [f for f in findings if f.rule == "missing-other-parameters"]
     assert missing_other == []
+
+
+# ---------------------------------------------------------------------------
+# _is_dataclass helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_dataclass_when_simple_decorator_returns_true():
+    node = ast.parse("@dataclass\nclass Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_dataclass(node) is True
+
+
+def test_is_dataclass_when_qualified_decorator_returns_true():
+    node = ast.parse("@dataclasses.dataclass\nclass Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_dataclass(node) is True
+
+
+def test_is_dataclass_when_call_decorator_returns_true():
+    node = ast.parse("@dataclass(frozen=True)\nclass Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_dataclass(node) is True
+
+
+def test_is_dataclass_when_qualified_call_decorator_returns_true():
+    node = ast.parse("@dataclasses.dataclass(frozen=True)\nclass Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_dataclass(node) is True
+
+
+def test_is_dataclass_when_no_decorator_returns_false():
+    node = ast.parse("class Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_dataclass(node) is False
+
+
+def test_is_dataclass_when_other_decorator_returns_false():
+    node = ast.parse("@other_decorator\nclass Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_dataclass(node) is False
+
+
+# ---------------------------------------------------------------------------
+# _is_namedtuple helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_namedtuple_when_simple_base_returns_true():
+    node = ast.parse("class Foo(NamedTuple): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_namedtuple(node) is True
+
+
+def test_is_namedtuple_when_qualified_base_returns_true():
+    node = ast.parse("class Foo(typing.NamedTuple): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_namedtuple(node) is True
+
+
+def test_is_namedtuple_when_no_base_returns_false():
+    node = ast.parse("class Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_namedtuple(node) is False
+
+
+def test_is_namedtuple_when_other_base_returns_false():
+    node = ast.parse("class Foo(SomethingElse): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_namedtuple(node) is False
+
+
+# ---------------------------------------------------------------------------
+# _is_typeddict helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_typeddict_when_simple_base_returns_true():
+    node = ast.parse("class Foo(TypedDict): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_typeddict(node) is True
+
+
+def test_is_typeddict_when_qualified_base_returns_true():
+    node = ast.parse("class Foo(typing.TypedDict): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_typeddict(node) is True
+
+
+def test_is_typeddict_when_no_base_returns_false():
+    node = ast.parse("class Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_typeddict(node) is False
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_attributes tests
+# ---------------------------------------------------------------------------
+
+
+def test_missing_attributes_when_dataclass_without_section_returns_finding():
+    source = '''\
+@dataclass
+class Foo:
+    """A data class."""
+    x: int
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-attributes"
+    assert result.category == "required"
+    assert result.symbol == "Foo"
+    assert "Dataclass" in result.message
+    assert "Foo" in result.message
+
+
+def test_missing_attributes_when_qualified_dataclass_returns_finding():
+    source = '''\
+@dataclasses.dataclass
+class Foo:
+    """A data class."""
+    x: int
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-attributes"
+    assert "Dataclass" in result.message
+
+
+def test_missing_attributes_when_dataclass_call_returns_finding():
+    source = '''\
+@dataclass(frozen=True)
+class Foo:
+    """A frozen data class."""
+    x: int
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-attributes"
+    assert "Dataclass" in result.message
+
+
+def test_missing_attributes_when_namedtuple_without_section_returns_finding():
+    source = '''\
+class Point(NamedTuple):
+    """A point in 2D space."""
+    x: int
+    y: int
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-attributes"
+    assert result.category == "required"
+    assert "NamedTuple" in result.message
+    assert "Point" in result.message
+
+
+def test_missing_attributes_when_qualified_namedtuple_returns_finding():
+    source = '''\
+class Point(typing.NamedTuple):
+    """A point in 2D space."""
+    x: int
+    y: int
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-attributes"
+    assert "NamedTuple" in result.message
+
+
+def test_missing_attributes_when_typeddict_without_section_returns_finding():
+    source = '''\
+class Options(TypedDict):
+    """Configuration options."""
+    verbose: bool
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-attributes"
+    assert result.category == "required"
+    assert "TypedDict" in result.message
+    assert "Options" in result.message
+
+
+def test_missing_attributes_when_attributes_section_present_returns_none():
+    source = '''\
+@dataclass
+class Foo:
+    """A data class.
+
+    Attributes:
+        x: An integer value.
+    """
+    x: int
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_attributes_when_node_index_missing_returns_none():
+    source = '''\
+"""Module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(
+        module_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_attributes_when_function_symbol_returns_none():
+    source = '''\
+def foo():
+    """A function."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_attributes_when_plain_class_returns_none():
+    source = '''\
+class Foo:
+    """A plain class without dataclass/NamedTuple/TypedDict."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_attributes(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# check_enrichment orchestrator tests (attributes)
+# ---------------------------------------------------------------------------
+
+
+def test_check_enrichment_when_attributes_disabled_returns_no_finding():
+    source = '''\
+@dataclass
+class Foo:
+    """A data class."""
+    x: int
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_attributes=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_attrs = [f for f in findings if f.rule == "missing-attributes"]
+    assert missing_attrs == []
+
+
+def test_check_enrichment_when_dataclass_no_docstring_returns_no_finding():
+    source = """\
+@dataclass
+class Foo:
+    x: int
+"""
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_attrs = [f for f in findings if f.rule == "missing-attributes"]
+    assert missing_attrs == []
+
+
+def test_check_enrichment_when_complete_module_with_dataclass_returns_empty():
+    source = Path("tests/fixtures/complete_module.py").read_text()
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(
+        source, tree, config, "tests/fixtures/complete_module.py"
+    )
+
+    assert findings == []
+
+
+def test_check_enrichment_when_all_rules_disabled_returns_empty():
+    source = '''\
+import warnings
+
+@dataclass
+class MyData:
+    """A data class."""
+    x: int
+
+def foo(**kwargs):
+    """Do something."""
+    raise ValueError("bad")
+    value = yield 42
+    warnings.warn("deprecated", DeprecationWarning)
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_receives=False,
+        require_warns=False,
+        require_other_parameters=False,
+        require_attributes=False,
+    )
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    assert findings == []
