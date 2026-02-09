@@ -10,6 +10,8 @@ from docvet.checks.enrichment import (
     _SECTION_HEADERS,
     _build_node_index,
     _check_missing_raises,
+    _check_missing_receives,
+    _check_missing_yields,
     _parse_sections,
     check_enrichment,
 )
@@ -569,5 +571,311 @@ def foo():
     config = EnrichmentConfig(require_raises=False)
 
     findings = check_enrichment(source, tree, config, "test.py")
+
+    assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_yields tests
+# ---------------------------------------------------------------------------
+
+
+def test_missing_yields_when_generator_yields_without_section_returns_finding():
+    source = '''\
+def gen():
+    """Generate values."""
+    yield 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-yields"
+    assert result.category == "required"
+    assert result.symbol == "gen"
+    assert "yields" in result.message.lower()
+
+
+def test_missing_yields_when_yields_section_present_returns_none():
+    source = '''\
+def gen():
+    """Generate values.
+
+    Yields:
+        int: The next value.
+    """
+    yield 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_yields_when_no_yield_statements_returns_none():
+    source = '''\
+def foo():
+    """Do something."""
+    return 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_yields_when_yield_from_without_section_returns_finding():
+    source = '''\
+def gen():
+    """Delegate to sub-generator."""
+    yield from range(10)
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-yields"
+
+
+def test_missing_yields_when_node_index_missing_returns_none():
+    source = '''\
+"""Module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(
+        module_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_yields_when_class_symbol_returns_none():
+    source = '''\
+class Foo:
+    """A class with yield in body."""
+    x = (i for i in range(10))
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    assert class_symbol.docstring is not None
+    sections = _parse_sections(class_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(
+        class_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_yields_when_nested_generator_yields_returns_none():
+    source = '''\
+def outer():
+    """Outer function."""
+    def inner():
+        yield 42
+    return list(inner())
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_yields_when_async_generator_yields_returns_finding():
+    source = '''\
+async def gen():
+    """Async generate values."""
+    yield 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_yields(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-yields"
+    assert result.symbol == "gen"
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_receives tests
+# ---------------------------------------------------------------------------
+
+
+def test_missing_receives_when_send_pattern_without_section_returns_finding():
+    source = '''\
+def gen():
+    """Generate and receive values."""
+    value = yield 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-receives"
+    assert result.category == "required"
+    assert result.symbol == "gen"
+    assert "send pattern" in result.message
+
+
+def test_missing_receives_when_receives_section_present_returns_none():
+    source = '''\
+def gen():
+    """Generate and receive values.
+
+    Receives:
+        int: The sent value.
+    """
+    value = yield 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_receives_when_no_send_pattern_returns_none():
+    source = '''\
+def foo():
+    """Do something."""
+    return 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_receives_when_plain_yield_no_assignment_returns_none():
+    source = '''\
+def gen():
+    """Generate values."""
+    yield 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_receives_when_annotated_assign_yield_returns_finding():
+    source = '''\
+def gen():
+    """Generate and receive values."""
+    value: int = yield 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-receives"
+
+
+# ---------------------------------------------------------------------------
+# check_enrichment orchestrator tests (yields/receives)
+# ---------------------------------------------------------------------------
+
+
+def test_check_enrichment_when_yields_disabled_returns_no_finding():
+    source = '''\
+def gen():
+    """Generate values."""
+    yield 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_yields=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_yields = [f for f in findings if f.rule == "missing-yields"]
+    assert missing_yields == []
+
+
+def test_check_enrichment_when_receives_disabled_returns_no_finding():
+    source = '''\
+def gen():
+    """Generate and receive values."""
+    value = yield 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_receives=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_receives = [f for f in findings if f.rule == "missing-receives"]
+    assert missing_receives == []
+
+
+def test_check_enrichment_when_missing_yields_fixture_returns_finding():
+    source = Path("tests/fixtures/missing_yields.py").read_text()
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(
+        source, tree, config, "tests/fixtures/missing_yields.py"
+    )
+
+    yields_findings = [f for f in findings if f.rule == "missing-yields"]
+    assert len(yields_findings) == 1
+    assert yields_findings[0].symbol == "stream_items"
+
+
+def test_check_enrichment_when_complete_module_still_returns_empty():
+    source = Path("tests/fixtures/complete_module.py").read_text()
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+
+    findings = check_enrichment(
+        source, tree, config, "tests/fixtures/complete_module.py"
+    )
 
     assert findings == []
