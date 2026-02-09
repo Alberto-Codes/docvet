@@ -1,6 +1,6 @@
 # Story 1.7: CLI Wiring for Enrichment Check
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -26,32 +26,32 @@ so that I can integrate enrichment checking into my development workflow and CI 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Replace `_run_enrichment` stub body with real implementation (AC: #1, #2, #3, #4)
-  - [ ] 1.1: Add `import ast` to `cli.py` module imports (stdlib section)
-  - [ ] 1.2: Add `from docvet.checks.enrichment import check_enrichment` to local imports
-  - [ ] 1.3: Replace stub body — iterate files, read source with `file_path.read_text(encoding="utf-8")`, `ast.parse(source)`, call `check_enrichment(source, tree, config.enrichment, str(file_path))`, print each finding
-  - [ ] 1.4: Wrap `ast.parse()` in `try/except SyntaxError` — skip file with `typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)`
-  - [ ] 1.5: Format findings as `f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"` via `typer.echo()`
-  - [ ] 1.6: Update `_run_enrichment` docstring to reflect actual behavior (no longer a stub)
+- [x] Task 1: Replace `_run_enrichment` stub body with real implementation (AC: #1, #2, #3, #4)
+  - [x] 1.1: Add `import ast` to `cli.py` module imports (stdlib section)
+  - [x] 1.2: Add `from docvet.checks.enrichment import check_enrichment` to local imports
+  - [x] 1.3: Replace stub body — iterate files, read source with `file_path.read_text(encoding="utf-8")`, `ast.parse(source)`, call `check_enrichment(source, tree, config.enrichment, str(file_path))`, print each finding
+  - [x] 1.4: Wrap `ast.parse()` in `try/except SyntaxError` — skip file with `typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)`
+  - [x] 1.5: Format findings as `f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"` via `typer.echo()`
+  - [x] 1.6: Update `_run_enrichment` docstring to reflect actual behavior (no longer a stub)
 
-- [ ] Task 2: Update existing CLI tests that reference the stub message (AC: #5)
-  - [ ] 2.1: Update `test_enrichment_when_invoked_exits_successfully` — it currently asserts `"enrichment: not yet implemented"` in output. Change to mock `_run_enrichment` or verify exit code 0 without the stub string
-  - [ ] 2.2: Update `test_check_when_invoked_runs_all_checks_in_order` — currently checks `output.index("enrichment:")`. After wiring, enrichment produces findings or nothing, not a stub message. Mock `_run_enrichment` in this test to preserve dispatch order assertion
-  - [ ] 2.3: Verify all existing CLI tests still pass after changes (no regressions)
+- [x] Task 2: Update existing CLI tests that reference the stub message (AC: #5)
+  - [x] 2.1: Update `test_enrichment_when_invoked_exits_successfully` — it currently asserts `"enrichment: not yet implemented"` in output. Change to mock `_run_enrichment` or verify exit code 0 without the stub string
+  - [x] 2.2: Update `test_check_when_invoked_runs_all_checks_in_order` — currently checks `output.index("enrichment:")`. After wiring, enrichment produces findings or nothing, not a stub message. Mock `_run_enrichment` in this test to preserve dispatch order assertion
+  - [x] 2.3: Verify all existing CLI tests still pass after changes (no regressions)
 
-- [ ] Task 3: Write new unit tests for `_run_enrichment` behavior (AC: #1, #2, #3, #4)
-  - [ ] 3.1: `test_run_enrichment_when_file_has_findings_prints_formatted_output` — mock file read + check_enrichment returning findings, assert stdout contains `file:line: rule message`
-  - [ ] 3.2: `test_run_enrichment_when_no_findings_produces_no_output` — mock check_enrichment returning `[]`, assert no stdout
-  - [ ] 3.3: `test_run_enrichment_when_syntax_error_skips_file_with_warning` — mock file read returning invalid Python, assert stderr warning, assert check_enrichment NOT called for that file
-  - [ ] 3.4: `test_run_enrichment_when_multiple_files_processes_all` — verify all files iterated
-  - [ ] 3.5: `test_run_enrichment_passes_config_enrichment_and_str_file_path` — verify correct args to `check_enrichment`
+- [x] Task 3: Write new unit tests for `_run_enrichment` behavior (AC: #1, #2, #3, #4)
+  - [x] 3.1: `test_run_enrichment_when_file_has_findings_prints_formatted_output` — mock file read + check_enrichment returning findings, assert stdout contains `file:line: rule message`
+  - [x] 3.2: `test_run_enrichment_when_no_findings_produces_no_output` — mock check_enrichment returning `[]`, assert no stdout
+  - [x] 3.3: `test_run_enrichment_when_syntax_error_skips_file_with_warning` — mock file read returning invalid Python, assert stderr warning, assert check_enrichment NOT called for that file
+  - [x] 3.4: `test_run_enrichment_when_multiple_files_processes_all` — verify all files iterated
+  - [x] 3.5: `test_run_enrichment_passes_config_enrichment_and_str_file_path` — verify correct args to `check_enrichment`
 
-- [ ] Task 4: Run quality gates and verify all pass (AC: all)
-  - [ ] 4.1: `uv run ruff check .` — All checks pass
-  - [ ] 4.2: `uv run ruff format --check .` — All files formatted
-  - [ ] 4.3: `uv run ty check` — All type checks pass
-  - [ ] 4.4: `uv run pytest tests/unit/test_cli.py -v` — All CLI tests pass
-  - [ ] 4.5: `uv run pytest` — Full suite passes, 0 regressions
+- [x] Task 4: Run quality gates and verify all pass (AC: all)
+  - [x] 4.1: `uv run ruff check .` — All checks pass
+  - [x] 4.2: `uv run ruff format --check .` — All files formatted
+  - [x] 4.3: `uv run ty check` — All type checks pass
+  - [x] 4.4: `uv run pytest tests/unit/test_cli.py -v` — All CLI tests pass
+  - [x] 4.5: `uv run pytest` — Full suite passes, 0 regressions
 
 ## Dev Notes
 
@@ -254,10 +254,28 @@ Note: `import ast` goes in the stdlib section (after `from __future__`, before `
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+None — clean implementation with no debugging needed.
+
 ### Completion Notes List
 
+- Replaced `_run_enrichment` stub with real implementation matching the exact pattern from Dev Notes
+- Added `import ast` (stdlib) and `from docvet.checks.enrichment import check_enrichment` (local) imports
+- Implementation iterates files, reads source, parses AST (with SyntaxError handling), calls `check_enrichment`, and formats findings as `file:line: rule message`
+- Updated autouse fixture to also mock `check_enrichment` and `Path.read_text` so existing tests work with the new non-stub `_run_enrichment`
+- Updated `test_enrichment_when_invoked_exits_successfully` — now mocks `check_enrichment` returning `[]` and `Path.read_text`, verifies exit code 0
+- Updated `test_check_when_invoked_runs_all_checks_in_order` — now mocks `_run_enrichment` with a side_effect that prints "enrichment: ok" to preserve dispatch order assertion
+- Added 5 new unit tests covering: formatted output, no-output for clean files, SyntaxError skip with warning, multi-file processing, and correct argument passing to `check_enrichment`
+- All quality gates pass: ruff check, ruff format, ty check, 61 CLI tests, 284 total tests (0 regressions)
+
+### Change Log
+
+- 2026-02-08: Wired `_run_enrichment` to real `check_enrichment` implementation; added 5 new tests; updated 2 existing tests; all 284 tests pass
+
 ### File List
+
+- `src/docvet/cli.py` — MODIFIED: replaced `_run_enrichment` stub with real implementation, added `ast` and `check_enrichment` imports
+- `tests/unit/test_cli.py` — MODIFIED: updated autouse fixture, updated 2 stub-dependent tests, added 5 new `_run_enrichment` behavior tests
