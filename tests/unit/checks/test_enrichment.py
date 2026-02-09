@@ -3436,6 +3436,33 @@ class Foo:
     assert result is None
 
 
+def test_cross_refs_when_see_also_empty_content_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+
+    Examples:
+        ```python
+        foo = Foo()
+        ```
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert "lacks cross-reference syntax" in result.message
+
+
 # ---------------------------------------------------------------------------
 # _check_prefer_fenced_code_blocks tests
 # ---------------------------------------------------------------------------
