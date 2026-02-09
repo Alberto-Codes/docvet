@@ -607,8 +607,9 @@ def _has_self_assignments(node: ast.ClassDef) -> bool:
 def _is_init_module(file_path: str) -> bool:
     """Check whether a file path points to an ``__init__.py`` module.
 
-    Uses ``str.endswith()`` which handles both absolute and relative
-    paths cross-platform since ``__init__.py`` is always the filename.
+    Uses equality and ``str.endswith()`` with path separator prefixes
+    for boundary-aware matching. Handles both forward-slash (Unix, git)
+    and backslash (Windows) separators.
 
     Args:
         file_path: The source file path to check.
@@ -616,7 +617,11 @@ def _is_init_module(file_path: str) -> bool:
     Returns:
         ``True`` for ``__init__.py`` paths, ``False`` otherwise.
     """
-    return file_path == "__init__.py" or file_path.endswith("/__init__.py")
+    return (
+        file_path == "__init__.py"
+        or file_path.endswith("/__init__.py")
+        or file_path.endswith("\\__init__.py")
+    )
 
 
 def _check_missing_attributes(
