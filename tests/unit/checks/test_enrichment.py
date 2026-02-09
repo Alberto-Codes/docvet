@@ -1806,6 +1806,29 @@ def test_has_self_assignments_when_init_assigns_cls_attribute_returns_false():
     assert _has_self_assignments(node) is False
 
 
+def test_has_self_assignments_when_nested_class_self_assigns_returns_false():
+    source = """\
+class Foo:
+    def __init__(self):
+        class Inner:
+            self.x = 1
+"""
+    node = ast.parse(source).body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is False
+
+
+def test_has_self_assignments_when_async_init_with_self_assigns_returns_true():
+    source = """\
+class Foo:
+    async def __init__(self):
+        self.x = 1
+"""
+    node = ast.parse(source).body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _has_self_assignments(node) is True
+
+
 # ---------------------------------------------------------------------------
 # _is_init_module helper tests
 # ---------------------------------------------------------------------------
@@ -1825,6 +1848,10 @@ def test_is_init_module_when_regular_py_returns_false():
 
 def test_is_init_module_when_similar_name_returns_false():
     assert _is_init_module("not__init__.py") is False
+
+
+def test_is_init_module_when_windows_backslash_path_returns_true():
+    assert _is_init_module("src\\pkg\\__init__.py") is True
 
 
 # ---------------------------------------------------------------------------
