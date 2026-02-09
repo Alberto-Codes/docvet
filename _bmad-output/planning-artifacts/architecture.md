@@ -362,9 +362,19 @@ No try/except in `_check_*` functions. They are pure logic, trusted through comp
 - Check both sync and async variants: `isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))`
 
 **AST traversal rules:**
-- Use `ast.walk(node)` for **deep subtree traversal** (e.g., finding all `raise` statements in a function body)
+- Use **scope-aware iterative walk** for body-level inspection (e.g., finding `raise` statements, `yield` expressions, `warnings.warn()` calls within a function body). This prevents nested scope false positives where inner function/class statements are incorrectly attributed to the outer function:
+  ```python
+  stack = list(ast.iter_child_nodes(node))
+  while stack:
+      child = stack.pop()
+      if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+          continue  # Don't descend into nested scopes
+      # ... check for target AST node types ...
+      stack.extend(ast.iter_child_nodes(child))
+  ```
+- Use `ast.walk(tree)` **only** for whole-tree collection where scope boundaries don't matter (e.g., `_build_node_index` collecting all `FunctionDef`/`ClassDef` nodes across the entire module)
 - Use direct `.body` iteration for **immediate children** (e.g., finding `__init__` in `ClassDef.body`)
-- **Never write hand-rolled recursive tree walkers** — `ast.walk()` handles all deep traversal needs
+- **Critical:** `ast.walk(node)` traverses into nested scopes — never use it for body-level pattern detection in `_check_*` functions (NFR5 — zero false positives)
 
 **Decorator inspection (for dataclass detection):**
 - Check both `@dataclass` and `@dataclasses.dataclass`
@@ -444,7 +454,7 @@ def check_enrichment(
 - Use the uniform `_check_*` signature — no per-rule signature variations
 - Construct `Finding` objects with literal `rule` and `category` strings
 - Use `isinstance()` for AST node type checking
-- Use `ast.walk()` for deep subtree traversal; direct `.body` iteration for immediate children
+- Use scope-aware iterative walk for body-level inspection; `ast.walk()` only for whole-tree collection; direct `.body` iteration for immediate children
 - Place config gating in the orchestrator, not in `_check_*` functions
 - Name private functions derivable from the rule ID
 
@@ -655,7 +665,7 @@ All 5 decisions interlock without contradiction:
 - `missing-attributes` branch 4 nested walk explicitly called out as highest-complexity area
 - `missing-other-parameters` uses signature-only access (`node.args.kwarg`), distinct from body walk rules
 - Dual testing strategy differentiates simple rules (through orchestrator) from complex rules (direct + helper testing)
-- Body-walk rules (`missing-raises`, `missing-yields`, `missing-receives`, `missing-warns`) retrieve the function node via `node_index.get(symbol.line)` and traverse `node.body` with `ast.walk()`
+- Body-walk rules (`missing-raises`, `missing-yields`, `missing-receives`, `missing-warns`) retrieve the function node via `node_index.get(symbol.line)` and use scope-aware iterative walk (not `ast.walk()`) to avoid nested scope false positives
 
 ### Gap Analysis Results
 
