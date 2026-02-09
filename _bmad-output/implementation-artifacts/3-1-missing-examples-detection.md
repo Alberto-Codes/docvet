@@ -73,7 +73,7 @@ so that key API surfaces include usage examples for consumers.
   - [x] 4.5 Test: `__init__.py` module with Examples section returns no finding
   - [x] 4.6 Test: non-`__init__.py` module returns no finding
   - [x] 4.7 Test: NamedTuple/TypedDict do NOT trigger (not covered by any config value)
-  - [x] 4.8 Test: nested class inside function does not trigger (scope boundary)
+  - [x] 4.8 Test: nested documented class inside function still triggers (inner symbol checked; outer function is not)
   - [x] 4.9 Test: `class Foo(Protocol, ABC):` classifies as protocol (multiple inheritance)
   - [x] 4.10 Test: `class Color(str, Enum):` classifies as enum (mixin bases)
 

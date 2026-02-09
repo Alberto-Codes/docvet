@@ -821,6 +821,9 @@ def _check_missing_examples(
     if "Examples" in sections:
         return None
 
+    if not config.require_examples:
+        return None
+
     # Module branch: __init__.py modules trigger when require_examples
     # is non-empty (any type in the list enables module checking).
     if symbol.kind == "module":

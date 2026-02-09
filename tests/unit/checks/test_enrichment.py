@@ -2472,6 +2472,37 @@ FOO = 42
     assert "Module" in result.message
 
 
+def test_missing_examples_when_empty_list_direct_call_init_module_returns_none():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=[],
+    )
+
+    result = _check_missing_examples(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is None
+
+
 def test_missing_examples_when_non_init_module_returns_none():
     source = '''\
 """Regular module docstring."""
