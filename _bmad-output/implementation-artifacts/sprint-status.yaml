@@ -47,7 +47,7 @@ development_status:
   1-3-section-header-parser-and-node-index: done
   1-4-missing-raises-detection-and-orchestrator: done
   1-5-missing-yields-and-receives-detection: done
-  1-6-missing-warns-and-other-parameters-detection: backlog
+  1-6-missing-warns-and-other-parameters-detection: ready-for-dev
   1-7-cli-wiring-for-enrichment-check: backlog
   epic-1-retrospective: optional
 
