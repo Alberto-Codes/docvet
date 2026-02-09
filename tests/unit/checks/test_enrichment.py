@@ -11,12 +11,16 @@ from docvet.checks.enrichment import (
     _SECTION_HEADERS,
     _build_node_index,
     _check_missing_attributes,
+    _check_missing_cross_references,
     _check_missing_examples,
     _check_missing_other_parameters,
     _check_missing_raises,
     _check_missing_receives,
+    _check_missing_typed_attributes,
     _check_missing_warns,
     _check_missing_yields,
+    _check_prefer_fenced_code_blocks,
+    _extract_section_content,
     _has_self_assignments,
     _is_dataclass,
     _is_enum,
@@ -2220,6 +2224,310 @@ def test_is_enum_when_other_base_returns_false():
 
 
 # ---------------------------------------------------------------------------
+# _extract_section_content tests
+# ---------------------------------------------------------------------------
+
+
+def test_extract_section_content_when_section_exists_returns_content():
+    docstring = """\
+Summary.
+
+Attributes:
+    name (str): The user's name.
+    age (int): The user's age.
+
+Returns:
+    Something.
+"""
+    result = _extract_section_content(docstring, "Attributes")
+    assert result is not None
+    assert "name (str): The user's name." in result
+    assert "age (int): The user's age." in result
+
+
+def test_extract_section_content_when_section_not_found_returns_none():
+    docstring = """\
+Summary.
+
+Args:
+    x: A value.
+"""
+    result = _extract_section_content(docstring, "Attributes")
+    assert result is None
+
+
+def test_extract_section_content_when_section_at_end_of_docstring():
+    docstring = """\
+Summary.
+
+Attributes:
+    name (str): The user's name.
+"""
+    result = _extract_section_content(docstring, "Attributes")
+    assert result is not None
+    assert "name (str): The user's name." in result
+
+
+def test_extract_section_content_when_empty_section_returns_empty():
+    docstring = """\
+Summary.
+
+Attributes:
+Returns:
+    Something.
+"""
+    result = _extract_section_content(docstring, "Attributes")
+    assert result is not None
+    assert result.strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_typed_attributes tests
+# ---------------------------------------------------------------------------
+
+
+def test_typed_attrs_when_untyped_entries_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+        name: The user's name.
+        age: The user's age.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-typed-attributes"
+    assert result.category == "recommended"
+    assert result.symbol == "Foo"
+    assert "lacks typed format" in result.message
+
+
+def test_typed_attrs_when_typed_entries_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+        name (str): The user's name.
+        age (int): The user's age.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_typed_attrs_when_mixed_entries_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+        name (str): The user's name.
+        age: The user's age.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-typed-attributes"
+
+
+def test_typed_attrs_when_no_attributes_section_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_typed_attrs_when_function_symbol_returns_none():
+    source = '''\
+def foo():
+    """Do something.
+
+    Attributes:
+        x: A value.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_typed_attrs_when_module_symbol_returns_none():
+    source = '''\
+"""Module docstring.
+
+Attributes:
+    FOO: A module-level constant.
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is None
+
+
+def test_typed_attrs_when_empty_attributes_section_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_typed_attrs_when_complex_type_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+        items (list[str]): Collection of items.
+        mapping (dict[str, int]): A mapping.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_typed_attrs_when_config_disabled_returns_no_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+        name: The user's name.
+    """
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_typed_attributes=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    typed_attr_findings = [f for f in findings if f.rule == "missing-typed-attributes"]
+    assert typed_attr_findings == []
+
+
+def test_typed_attrs_orchestrator_fires_when_enabled():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+        name: The user's name.
+    """
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_typed_attributes=True)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    typed_attr_findings = [f for f in findings if f.rule == "missing-typed-attributes"]
+    assert len(typed_attr_findings) == 1
+    assert typed_attr_findings[0].symbol == "Foo"
+
+
+def test_typed_attrs_when_multiline_description_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    Attributes:
+        name (str): The user's name which can be
+            quite long and span multiple lines.
+        age (int): The user's age.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_typed_attributes(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
 # _check_missing_examples tests
 # ---------------------------------------------------------------------------
 
@@ -2835,3 +3143,504 @@ class Color(str, Enum):
     assert result is not None
     assert result.rule == "missing-examples"
     assert "Enum" in result.message
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_cross_references tests
+# ---------------------------------------------------------------------------
+
+
+def test_cross_refs_when_init_module_missing_see_also_returns_finding():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-cross-references"
+    assert result.category == "recommended"
+    assert "__init__.py" in result.message
+    assert "See Also" in result.message
+
+
+def test_cross_refs_when_non_init_module_no_see_also_returns_none():
+    source = '''\
+"""Regular module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_see_also_without_xrefs_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+        some_module
+        another_module
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert "lacks cross-reference syntax" in result.message
+
+
+def test_cross_refs_when_see_also_with_backtick_xrefs_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+        `some.module`
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_see_also_with_markdown_link_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+        [module][some.module]
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_see_also_with_sphinx_role_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+        :mod:`some.module`
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_config_disabled_returns_no_finding():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_cross_references=False)
+
+    findings = check_enrichment(source, tree, config, "__init__.py")
+
+    xref_findings = [f for f in findings if f.rule == "missing-cross-references"]
+    assert xref_findings == []
+
+
+def test_cross_refs_orchestrator_fires_when_enabled_init_module():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_cross_references=True)
+
+    findings = check_enrichment(source, tree, config, "__init__.py")
+
+    xref_findings = [f for f in findings if f.rule == "missing-cross-references"]
+    assert len(xref_findings) == 1
+    assert "__init__.py" in xref_findings[0].message
+
+
+def test_cross_refs_when_init_module_has_see_also_with_xrefs_returns_none():
+    source = '''\
+"""Package docstring.
+
+See Also:
+    `some.module`
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_init_module_has_see_also_without_xrefs_returns_finding():
+    source = '''\
+"""Package docstring.
+
+See Also:
+    some_module
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert "lacks cross-reference syntax" in result.message
+
+
+def test_cross_refs_when_function_with_see_also_plain_text_returns_finding():
+    source = '''\
+def foo():
+    """Do something.
+
+    See Also:
+        bar_function
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert "function" in result.message
+
+
+def test_cross_refs_when_function_no_see_also_returns_none():
+    source = '''\
+def foo():
+    """Do something."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_markdown_shorthand_link_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+        [identifier][]
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_see_also_empty_content_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+
+    Examples:
+        ```python
+        foo = Foo()
+        ```
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert "lacks cross-reference syntax" in result.message
+
+
+# ---------------------------------------------------------------------------
+# _check_prefer_fenced_code_blocks tests
+# ---------------------------------------------------------------------------
+
+
+def test_fenced_blocks_when_doctest_format_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        >>> foo = Foo()
+        >>> print(foo)
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "prefer-fenced-code-blocks"
+    assert result.category == "recommended"
+    assert "doctest format" in result.message
+    assert ">>>" in result.message
+
+
+def test_fenced_blocks_when_fenced_code_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        ```python
+        foo = Foo()
+        print(foo)
+        ```
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_fenced_blocks_when_no_examples_section_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_fenced_blocks_when_config_disabled_returns_no_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        >>> foo = Foo()
+    """
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(prefer_fenced_code_blocks=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    fenced_findings = [f for f in findings if f.rule == "prefer-fenced-code-blocks"]
+    assert fenced_findings == []
+
+
+def test_fenced_blocks_orchestrator_fires_when_enabled():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        >>> foo = Foo()
+    """
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(prefer_fenced_code_blocks=True)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    fenced_findings = [f for f in findings if f.rule == "prefer-fenced-code-blocks"]
+    assert len(fenced_findings) == 1
+    assert fenced_findings[0].symbol == "Foo"
+
+
+def test_fenced_blocks_when_mixed_content_with_doctest_returns_finding():
+    source = '''\
+def foo():
+    """Do something.
+
+    Examples:
+        Here's how to use it:
+
+        >>> result = foo()
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "prefer-fenced-code-blocks"
+
+
+def test_fenced_blocks_when_function_with_doctest_includes_kind_in_message():
+    source = '''\
+def foo():
+    """Do something.
+
+    Examples:
+        >>> foo()
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert "function" in result.message
+
+
+def test_fenced_blocks_when_doctest_inside_fenced_block_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        ```python
+        >>> foo = Foo()
+        ```
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    # Per dev notes edge case 13: fire anyway even if >>> is in fenced block
+    assert result is not None
+    assert result.rule == "prefer-fenced-code-blocks"

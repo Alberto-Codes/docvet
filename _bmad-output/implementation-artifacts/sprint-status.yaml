@@ -58,7 +58,7 @@ development_status:
   epic-2-retrospective: done
 
   # Epic 3: Format & Recommended Rules
-  epic-3: in-progress
+  epic-3: done
   3-1-missing-examples-detection: done
-  3-2-format-and-cross-reference-rules: backlog
+  3-2-format-and-cross-reference-rules: done
   epic-3-retrospective: optional
