@@ -52,13 +52,13 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Class & Module Enrichment Detection
-  epic-2: in-progress
+  epic-2: done
   2-1-dataclass-namedtuple-and-typeddict-attributes-detection: done
   2-2-plain-class-and-init-py-module-attributes-detection: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   # Epic 3: Format & Recommended Rules
-  epic-3: backlog
-  3-1-missing-examples-detection: backlog
+  epic-3: in-progress
+  3-1-missing-examples-detection: ready-for-dev
   3-2-format-and-cross-reference-rules: backlog
   epic-3-retrospective: optional
