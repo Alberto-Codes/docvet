@@ -1,6 +1,6 @@
 # Story 3.1: Missing Examples Detection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -46,36 +46,36 @@ so that key API surfaces include usage examples for consumers.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement `_is_protocol` and `_is_enum` helpers (AC: #2, #5)
-  - [ ] 1.1 Create `_is_protocol(node: ast.ClassDef) -> bool` — check bases for `Protocol` or `typing.Protocol`
-  - [ ] 1.2 Create `_is_enum(node: ast.ClassDef) -> bool` — check bases for `Enum`, `IntEnum`, `StrEnum`, `Flag`, `IntFlag` or `enum.*` variants
-  - [ ] 1.3 Add unit tests for both helpers
+- [x] Task 1: Implement `_is_protocol` and `_is_enum` helpers (AC: #2, #5)
+  - [x] 1.1 Create `_is_protocol(node: ast.ClassDef) -> bool` — check bases for `Protocol` or `typing.Protocol`
+  - [x] 1.2 Create `_is_enum(node: ast.ClassDef) -> bool` — check bases for `Enum`, `IntEnum`, `StrEnum`, `Flag`, `IntFlag` or `enum.*` variants
+  - [x] 1.3 Add unit tests for both helpers
 
-- [ ] Task 2: Implement `_check_missing_examples` rule function (AC: #1-8)
-  - [ ] 2.1 Create `_check_missing_examples(symbol, sections, node_index, config, file_path) -> Finding | None`
-  - [ ] 2.2 Guard: if `"Examples"` in sections, return `None` (AC #6)
-  - [ ] 2.3 Module branch: if `symbol.kind == "module"` and `_is_init_module(file_path)`, return Finding (AC #7)
-  - [ ] 2.4 Class branch: classify inline using existing helpers (`_is_dataclass` → `"dataclass"`, `_is_protocol` → `"protocol"`, `_is_enum` → `"enum"`, else → `"class"`), check if type in `config.require_examples` (AC #1-5)
-  - [ ] 2.5 Function/method: return `None` (not supported in config)
-  - [ ] 2.6 Return `Finding` with `rule="missing-examples"`, `category="recommended"`
-  - [ ] 2.7 Add direct `_check_missing_examples` unit tests
+- [x] Task 2: Implement `_check_missing_examples` rule function (AC: #1-8)
+  - [x] 2.1 Create `_check_missing_examples(symbol, sections, node_index, config, file_path) -> Finding | None`
+  - [x] 2.2 Guard: if `"Examples"` in sections, return `None` (AC #6)
+  - [x] 2.3 Module branch: if `symbol.kind == "module"` and `_is_init_module(file_path)`, return Finding (AC #7)
+  - [x] 2.4 Class branch: classify inline using existing helpers (`_is_dataclass` → `"dataclass"`, `_is_protocol` → `"protocol"`, `_is_enum` → `"enum"`, else → `"class"`), check if type in `config.require_examples` (AC #1-5)
+  - [x] 2.5 Function/method: return `None` (not supported in config)
+  - [x] 2.6 Return `Finding` with `rule="missing-examples"`, `category="recommended"`
+  - [x] 2.7 Add direct `_check_missing_examples` unit tests
 
-- [ ] Task 3: Wire into orchestrator (AC: #4, #8)
-  - [ ] 3.1 Add dispatch after `_check_missing_attributes` block: `if config.require_examples:` gate
-  - [ ] 3.2 Add orchestrator integration tests
-  - [ ] 3.3 Update "all rules disabled" test (add source with class+docstring, set `require_examples=[]`)
+- [x] Task 3: Wire into orchestrator (AC: #4, #8)
+  - [x] 3.1 Add dispatch after `_check_missing_attributes` block: `if config.require_examples:` gate
+  - [x] 3.2 Add orchestrator integration tests
+  - [x] 3.3 Update "all rules disabled" test (add source with class+docstring, set `require_examples=[]`)
 
-- [ ] Task 4: Edge case and regression tests (all AC)
-  - [ ] 4.1 Test: class with Examples section returns no finding (AC #6)
-  - [ ] 4.2 Test: undocumented symbol returns no finding (AC #8)
-  - [ ] 4.3 Test: empty `require_examples` list returns no findings (AC #4)
-  - [ ] 4.4 Test: type not in list returns no finding (AC #3)
-  - [ ] 4.5 Test: `__init__.py` module with Examples section returns no finding
-  - [ ] 4.6 Test: non-`__init__.py` module returns no finding
-  - [ ] 4.7 Test: NamedTuple/TypedDict do NOT trigger (not covered by any config value)
-  - [ ] 4.8 Test: nested class inside function does not trigger (scope boundary)
-  - [ ] 4.9 Test: `class Foo(Protocol, ABC):` classifies as protocol (multiple inheritance)
-  - [ ] 4.10 Test: `class Color(str, Enum):` classifies as enum (mixin bases)
+- [x] Task 4: Edge case and regression tests (all AC)
+  - [x] 4.1 Test: class with Examples section returns no finding (AC #6)
+  - [x] 4.2 Test: undocumented symbol returns no finding (AC #8)
+  - [x] 4.3 Test: empty `require_examples` list returns no findings (AC #4)
+  - [x] 4.4 Test: type not in list returns no finding (AC #3)
+  - [x] 4.5 Test: `__init__.py` module with Examples section returns no finding
+  - [x] 4.6 Test: non-`__init__.py` module returns no finding
+  - [x] 4.7 Test: NamedTuple/TypedDict do NOT trigger (not covered by any config value)
+  - [x] 4.8 Test: nested class inside function does not trigger (scope boundary)
+  - [x] 4.9 Test: `class Foo(Protocol, ABC):` classifies as protocol (multiple inheritance)
+  - [x] 4.10 Test: `class Color(str, Enum):` classifies as enum (mixin bases)
 
 ## Dev Notes
 
@@ -203,8 +203,32 @@ Full canonical order: `missing-raises`, `missing-yields`, `missing-receives`, `m
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- NamedTuple/TypedDict exclusion: initial classification fell through to "class" — fixed by adding explicit `_is_namedtuple`/`_is_typeddict` guards that return `None` before the protocol/enum/class checks
+- `complete_module.py` fixture: needed `Examples:` sections added to `ValidationResult` (dataclass) and `Connection` (plain class) to remain zero-findings
 
 ### Completion Notes List
 
+- Implemented `_is_protocol` helper (simple + qualified base inspection, 7 tests)
+- Implemented `_is_enum` helper (Enum, IntEnum, StrEnum, Flag, IntFlag — simple + qualified, 10 tests)
+- Implemented `_check_missing_examples` with list-config gating pattern (first `_check_*` to read config internally)
+- Classification chain: dataclass > namedtuple/typeddict (excluded) > protocol > enum > class
+- Module branch: `__init__.py` triggers when `require_examples` is non-empty (any type)
+- Wired into orchestrator after `_check_missing_attributes` with taxonomy-table gap comment
+- Updated `complete_module.py` fixture with `Examples:` sections
+- All ACs satisfied, 169 enrichment tests, 376 total project tests
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` — added `_is_protocol`, `_ENUM_NAMES`, `_is_enum`, `_check_missing_examples`; wired into orchestrator
+- `tests/unit/checks/test_enrichment.py` — added 39 new tests (helpers, direct rule, orchestrator, edge cases)
+- `tests/fixtures/complete_module.py` — added `Examples:` sections to `ValidationResult` and `Connection`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — status updated
+- `_bmad-output/implementation-artifacts/3-1-missing-examples-detection.md` — story file updated
+
+## Change Log
+
+- 2026-02-08: Implemented missing-examples detection — `_is_protocol`, `_is_enum` helpers; `_check_missing_examples` rule with list-config gating; orchestrator wiring; 39 new tests; fixture update
