@@ -1650,22 +1650,19 @@ class Foo:
 
 def test_missing_attributes_when_node_index_missing_returns_none():
     source = '''\
-"""Module docstring."""
-
-FOO = 42
+@dataclass
+class Foo:
+    """A data class."""
+    x: int
 '''
-    from docvet.ast_utils import get_documented_symbols
-
-    tree = ast.parse(source)
-    symbols = get_documented_symbols(tree)
-    node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
-    assert module_symbol.docstring is not None
-    sections = _parse_sections(module_symbol.docstring)
+    symbol, _, _ = _make_symbol_and_index(source)
+    assert symbol.kind == "class"
+    sections = _parse_sections(symbol.docstring)
     config = EnrichmentConfig()
+    empty_node_index = _build_node_index(ast.parse(""))
 
     result = _check_missing_attributes(
-        module_symbol, sections, node_index, config, "test.py"
+        symbol, sections, empty_node_index, config, "test.py"
     )
 
     assert result is None
