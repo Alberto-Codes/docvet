@@ -54,7 +54,7 @@ development_status:
   # Epic 2: Class & Module Enrichment Detection
   epic-2: in-progress
   2-1-dataclass-namedtuple-and-typeddict-attributes-detection: done
-  2-2-plain-class-and-init-py-module-attributes-detection: backlog
+  2-2-plain-class-and-init-py-module-attributes-detection: done
   epic-2-retrospective: optional
 
   # Epic 3: Format & Recommended Rules
