@@ -2406,6 +2406,39 @@ def foo():
     assert result is None
 
 
+def test_missing_examples_when_method_symbol_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    def bar(self):
+        """Do something."""
+        pass
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    method_symbol = [s for s in symbols if s.kind == "method"][0]
+    assert method_symbol.docstring is not None
+    sections = _parse_sections(method_symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+
+    result = _check_missing_examples(
+        method_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
 def test_missing_examples_when_init_module_without_section_returns_finding():
     source = '''\
 """Package docstring."""
@@ -2695,7 +2728,7 @@ class Options(TypedDict):
     assert missing_examples == []
 
 
-def test_missing_examples_when_nested_class_inside_function_does_not_trigger():
+def test_missing_examples_when_nested_class_inside_function_triggers_on_inner_class():
     source = '''\
 def factory():
     """Create a parser.
