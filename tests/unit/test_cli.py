@@ -10,7 +10,7 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
-from docvet.cli import FreshnessMode, app
+from docvet.cli import FreshnessMode, _run_enrichment, app
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode
 
@@ -34,8 +34,7 @@ def _strip_ansi(text: str) -> str:
 def _mock_config_and_discovery(mocker):
     mocker.patch("docvet.cli.load_config", return_value=DocvetConfig())
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
-    mocker.patch("docvet.cli.check_enrichment", return_value=[])
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch("docvet.cli._run_enrichment")
 
 
 # ---------------------------------------------------------------------------
@@ -119,9 +118,7 @@ def test_check_when_invoked_runs_all_checks_in_order(mocker):
     assert output.index("coverage:") < output.index("griffe:")
 
 
-def test_enrichment_when_invoked_exits_successfully(mocker):
-    mocker.patch("docvet.cli.check_enrichment", return_value=[])
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+def test_enrichment_when_invoked_exits_successfully():
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
 
@@ -481,6 +478,7 @@ def test_check_when_invoked_calls_load_config_once(mocker):
 
 
 def test_run_enrichment_when_file_has_findings_prints_formatted_output(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
     from docvet.checks import Finding
 
     findings = [
@@ -502,6 +500,7 @@ def test_run_enrichment_when_file_has_findings_prints_formatted_output(mocker):
 
 
 def test_run_enrichment_when_no_findings_produces_no_output(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
     mocker.patch("docvet.cli.check_enrichment", return_value=[])
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
     result = runner.invoke(app, ["enrichment"])
@@ -510,17 +509,20 @@ def test_run_enrichment_when_no_findings_produces_no_output(mocker):
 
 
 def test_run_enrichment_when_syntax_error_skips_file_with_warning(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
     mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
     mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
     mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
+    # CliRunner mixes stderr into result.output by default
     assert "warning:" in result.output
     assert "failed to parse, skipping" in result.output
     mock_check.assert_not_called()
 
 
 def test_run_enrichment_when_multiple_files_processes_all(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
     mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
     files = [Path("/a.py"), Path("/b.py"), Path("/c.py")]
@@ -531,6 +533,7 @@ def test_run_enrichment_when_multiple_files_processes_all(mocker):
 
 
 def test_run_enrichment_passes_config_enrichment_and_str_file_path(mocker):
+    mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
     fake_config = DocvetConfig()
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
