@@ -566,9 +566,14 @@ def test_check_enrichment_when_all_rules_disabled_returns_empty():
 def foo():
     """Do something."""
     raise ValueError("bad")
+    value = yield 42
 '''
     tree = ast.parse(source)
-    config = EnrichmentConfig(require_raises=False)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_receives=False,
+    )
 
     findings = check_enrichment(source, tree, config, "test.py")
 
@@ -818,6 +823,69 @@ def gen():
 
     assert result is not None
     assert result.rule == "missing-receives"
+
+
+def test_missing_receives_when_nested_send_pattern_returns_none():
+    source = '''\
+def outer():
+    """Outer function."""
+    def inner():
+        value = yield 42
+    return inner()
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_receives_when_node_index_missing_returns_none():
+    source = '''\
+"""Module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(
+        module_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_receives_when_class_symbol_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    pass
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    assert class_symbol.docstring is not None
+    sections = _parse_sections(class_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_receives(
+        class_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
 
 
 # ---------------------------------------------------------------------------
