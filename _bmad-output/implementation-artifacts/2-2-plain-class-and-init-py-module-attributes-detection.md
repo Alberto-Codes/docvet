@@ -1,6 +1,6 @@
 # Story 2.2: Plain Class and `__init__.py` Module Attributes Detection
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -34,69 +34,69 @@ So that all class fields and module exports are documented for consumers.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement `_has_self_assignments` helper function (AC: #1, #2, #3, #9, #11)
-  - [ ] 1.1: Write `_has_self_assignments(node: ast.ClassDef) -> bool`
-  - [ ] 1.2: Find `__init__` method in `node.body` via direct `.body` iteration (not `ast.walk`)
-  - [ ] 1.3: Walk `__init__` body with scope-aware iterative walk (stop at nested scopes)
-  - [ ] 1.4: Detect `ast.Assign` where target is `ast.Attribute` with `value` being `ast.Name(id="self")`
-  - [ ] 1.5: Detect `ast.AnnAssign` where `target` is `ast.Attribute` with `value` being `ast.Name(id="self")`
-  - [ ] 1.6: Return `True` on first match, `False` if no `__init__` or no self-assignments found
+- [x] Task 1: Implement `_has_self_assignments` helper function (AC: #1, #2, #3, #9, #11)
+  - [x] 1.1: Write `_has_self_assignments(node: ast.ClassDef) -> bool`
+  - [x] 1.2: Find `__init__` method in `node.body` via direct `.body` iteration (not `ast.walk`)
+  - [x] 1.3: Walk `__init__` body with scope-aware iterative walk (stop at nested scopes)
+  - [x] 1.4: Detect `ast.Assign` where target is `ast.Attribute` with `value` being `ast.Name(id="self")`
+  - [x] 1.5: Detect `ast.AnnAssign` where `target` is `ast.Attribute` with `value` being `ast.Name(id="self")`
+  - [x] 1.6: Return `True` on first match, `False` if no `__init__` or no self-assignments found
 
-- [ ] Task 2: Implement `_is_init_module` helper function (AC: #4, #6, #9)
-  - [ ] 2.1: Write `_is_init_module(file_path: str) -> bool`
-  - [ ] 2.2: Check `file_path.endswith("__init__.py")` — OS-agnostic path check
-  - [ ] 2.3: Return `True` for `__init__.py` paths, `False` otherwise
+- [x] Task 2: Implement `_is_init_module` helper function (AC: #4, #6, #9)
+  - [x] 2.1: Write `_is_init_module(file_path: str) -> bool`
+  - [x] 2.2: Check path boundary-aware match (`== "__init__.py"` or `endswith("/__init__.py")`)
+  - [x] 2.3: Return `True` for `__init__.py` paths, `False` otherwise
 
-- [ ] Task 3: Modify `_check_missing_attributes` to add branches 4-5 (AC: #1-#8)
-  - [ ] 3.1: Change the kind guard from `symbol.kind != "class"` to `symbol.kind not in ("class", "module")`
-  - [ ] 3.2: Move the `node_index.get()` / `isinstance(node, ast.ClassDef)` block into a class-only branch
-  - [ ] 3.3: Add Branch 4 after TypedDict: `if _has_self_assignments(node):` return Finding with message "Class '{symbol.name}' has no Attributes: section"
-  - [ ] 3.4: Add Branch 5 for module symbols: `if symbol.kind == "module" and _is_init_module(file_path):` return Finding with message "Module '{symbol.name}' has no Attributes: section"
-  - [ ] 3.5: Update docstring to document all 5 branches
-  - [ ] 3.6: Ensure first-match-wins dispatch order is preserved (dataclass > NamedTuple > TypedDict > plain class > init module)
+- [x] Task 3: Modify `_check_missing_attributes` to add branches 4-5 (AC: #1-#8)
+  - [x] 3.1: Change the kind guard from `symbol.kind != "class"` to `symbol.kind not in ("class", "module")`
+  - [x] 3.2: Move the `node_index.get()` / `isinstance(node, ast.ClassDef)` block into a class-only branch
+  - [x] 3.3: Add Branch 4 after TypedDict: `if _has_self_assignments(node):` return Finding with message "Class '{symbol.name}' has no Attributes: section"
+  - [x] 3.4: Add Branch 5 for module symbols: `if symbol.kind == "module" and _is_init_module(file_path):` return Finding with message "Module '{symbol.name}' has no Attributes: section"
+  - [x] 3.5: Update docstring to document all 5 branches
+  - [x] 3.6: Ensure first-match-wins dispatch order is preserved (dataclass > NamedTuple > TypedDict > plain class > init module)
 
-- [ ] Task 4: Update `complete_module.py` fixture (regression guard)
-  - [ ] 4.1: Verify the existing fixture still produces zero findings (it already has a dataclass with `Attributes:`)
-  - [ ] 4.2: Add a plain class with `__init__` self-assignments and a complete `Attributes:` section
+- [x] Task 4: Update `complete_module.py` fixture (regression guard)
+  - [x] 4.1: Verify the existing fixture still produces zero findings (it already has a dataclass with `Attributes:`)
+  - [x] 4.2: Add a plain class with `__init__` self-assignments and a complete `Attributes:` section
 
-- [ ] Task 5: Write unit tests for `_has_self_assignments` helper (AC: #9, #11)
-  - [ ] 5.1: `test_has_self_assignments_when_init_with_simple_assign_returns_true`
-  - [ ] 5.2: `test_has_self_assignments_when_init_with_annotated_assign_returns_true`
-  - [ ] 5.3: `test_has_self_assignments_when_no_init_returns_false`
-  - [ ] 5.4: `test_has_self_assignments_when_init_without_self_assigns_returns_false`
-  - [ ] 5.5: `test_has_self_assignments_when_nested_function_self_assigns_returns_false` (scope boundary)
-  - [ ] 5.6: `test_has_self_assignments_when_init_assigns_local_var_returns_false` (not self.x)
-  - [ ] 5.7: `test_has_self_assignments_when_init_assigns_cls_attribute_returns_false` (cls.x, not self.x)
+- [x] Task 5: Write unit tests for `_has_self_assignments` helper (AC: #9, #11)
+  - [x] 5.1: `test_has_self_assignments_when_init_with_simple_assign_returns_true`
+  - [x] 5.2: `test_has_self_assignments_when_init_with_annotated_assign_returns_true`
+  - [x] 5.3: `test_has_self_assignments_when_no_init_returns_false`
+  - [x] 5.4: `test_has_self_assignments_when_init_without_self_assigns_returns_false`
+  - [x] 5.5: `test_has_self_assignments_when_nested_function_self_assigns_returns_false` (scope boundary)
+  - [x] 5.6: `test_has_self_assignments_when_init_assigns_local_var_returns_false` (not self.x)
+  - [x] 5.7: `test_has_self_assignments_when_init_assigns_cls_attribute_returns_false` (cls.x, not self.x)
 
-- [ ] Task 6: Write unit tests for `_is_init_module` helper (AC: #9)
-  - [ ] 6.1: `test_is_init_module_when_init_py_returns_true`
-  - [ ] 6.2: `test_is_init_module_when_nested_init_py_returns_true` (e.g., "src/pkg/__init__.py")
-  - [ ] 6.3: `test_is_init_module_when_regular_py_returns_false`
-  - [ ] 6.4: `test_is_init_module_when_similar_name_returns_false` (e.g., "not__init__.py")
+- [x] Task 6: Write unit tests for `_is_init_module` helper (AC: #9)
+  - [x] 6.1: `test_is_init_module_when_init_py_returns_true`
+  - [x] 6.2: `test_is_init_module_when_nested_init_py_returns_true` (e.g., "src/pkg/__init__.py")
+  - [x] 6.3: `test_is_init_module_when_regular_py_returns_false`
+  - [x] 6.4: `test_is_init_module_when_similar_name_returns_false` (e.g., "not__init__.py")
 
-- [ ] Task 7: Write unit tests for `_check_missing_attributes` branches 4-5 (AC: #1-#8)
-  - [ ] 7.1: `test_missing_attributes_when_plain_class_with_self_assigns_returns_finding` — AC #1
-  - [ ] 7.2: `test_missing_attributes_when_plain_class_with_annotated_self_assigns_returns_finding` — AC #2
-  - [ ] 7.3: `test_missing_attributes_when_plain_class_no_self_assigns_returns_none` — AC #3
-  - [ ] 7.4: `test_missing_attributes_when_init_module_without_section_returns_finding` — AC #4
-  - [ ] 7.5: `test_missing_attributes_when_init_module_with_section_returns_none` — AC #5
-  - [ ] 7.6: `test_missing_attributes_when_regular_module_returns_none` — AC #6
-  - [ ] 7.7: `test_missing_attributes_when_dataclass_wins_over_plain_class_returns_dataclass_finding` — AC #7
-  - [ ] 7.8: `test_missing_attributes_when_nested_self_assigns_in_init_returns_none` — AC #11 (scope boundary)
-  - [ ] 7.9: `test_missing_attributes_when_module_symbol_kind_accepted` — verify `kind == "module"` no longer rejected
+- [x] Task 7: Write unit tests for `_check_missing_attributes` branches 4-5 (AC: #1-#8)
+  - [x] 7.1: `test_missing_attributes_when_plain_class_with_self_assigns_returns_finding` — AC #1
+  - [x] 7.2: `test_missing_attributes_when_plain_class_with_annotated_self_assigns_returns_finding` — AC #2
+  - [x] 7.3: `test_missing_attributes_when_plain_class_no_self_assigns_returns_none` — AC #3
+  - [x] 7.4: `test_missing_attributes_when_init_module_without_section_returns_finding` — AC #4
+  - [x] 7.5: `test_missing_attributes_when_init_module_with_section_returns_none` — AC #5
+  - [x] 7.6: `test_missing_attributes_when_regular_module_returns_none` — AC #6
+  - [x] 7.7: `test_missing_attributes_when_dataclass_wins_over_plain_class_returns_dataclass_finding` — AC #7
+  - [x] 7.8: `test_missing_attributes_when_nested_self_assigns_in_init_returns_none` — AC #11 (scope boundary)
+  - [x] 7.9: `test_missing_attributes_when_module_symbol_kind_accepted` — verify `kind == "module"` no longer rejected
 
-- [ ] Task 8: Write orchestrator integration tests (AC: #10)
-  - [ ] 8.1: `test_check_enrichment_when_plain_class_detected_returns_finding`
-  - [ ] 8.2: `test_check_enrichment_when_init_module_detected_returns_finding`
-  - [ ] 8.3: `test_check_enrichment_when_complete_module_with_plain_class_returns_empty` (regression)
-  - [ ] 8.4: Update `test_check_enrichment_when_active_rules_disabled_returns_empty` — add plain class + `__init__.py` source if needed
+- [x] Task 8: Write orchestrator integration tests (AC: #10)
+  - [x] 8.1: `test_check_enrichment_when_plain_class_detected_returns_finding`
+  - [x] 8.2: `test_check_enrichment_when_init_module_detected_returns_finding`
+  - [x] 8.3: `test_check_enrichment_when_complete_module_with_plain_class_returns_empty` (regression)
+  - [x] 8.4: Update `test_check_enrichment_when_active_rules_disabled_returns_empty` — add plain class + `__init__.py` source if needed
 
-- [ ] Task 9: Run quality gates and verify all pass
-  - [ ] 9.1: `uv run ruff check .` — All checks pass
-  - [ ] 9.2: `uv run ruff format --check .` — All files formatted
-  - [ ] 9.3: `uv run ty check` — All type checks pass
-  - [ ] 9.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
-  - [ ] 9.5: `uv run pytest` — Full suite passes (0 regressions)
+- [x] Task 9: Run quality gates and verify all pass
+  - [x] 9.1: `uv run ruff check .` — All checks pass
+  - [x] 9.2: `uv run ruff format --check .` — All files formatted
+  - [x] 9.3: `uv run ty check` — All type checks pass
+  - [x] 9.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
+  - [x] 9.5: `uv run pytest` — Full suite passes (0 regressions)
 
 ## Dev Notes
 
@@ -365,10 +365,29 @@ def _check_missing_attributes(...): ... # MODIFIED — adds branches 4-5
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- `_is_init_module` initially used plain `endswith("__init__.py")` which matched `not__init__.py`. Fixed to boundary-aware check: `== "__init__.py" or endswith("/__init__.py")`.
+
 ### Completion Notes List
 
+- Implemented `_has_self_assignments(node)` helper with scope-aware iterative walk of `__init__` body. Stops at nested `FunctionDef`/`AsyncFunctionDef`/`ClassDef` boundaries. Detects both `ast.Assign` and `ast.AnnAssign` targeting `self.*`.
+- Implemented `_is_init_module(file_path)` helper with boundary-aware string check to avoid false positives on filenames like `not__init__.py`.
+- Modified `_check_missing_attributes` to accept both `"class"` and `"module"` symbol kinds. Class branches (1-4) are gated on `symbol.kind == "class"`, module branch (5) on `symbol.kind == "module"`.
+- Added `Connection` class with complete `Attributes:` section to `complete_module.py` fixture for zero-findings regression.
+- Added 23 new tests (333 total, up from 310): 7 for `_has_self_assignments`, 4 for `_is_init_module`, 9 for `_check_missing_attributes` branches 4-5, 3 orchestrator integration tests. Updated "all rules disabled" test with plain class + `__init__.py` source.
+- All quality gates pass: ruff check, ruff format, ty check, full test suite (333 tests, 0 regressions).
+
+### Change Log
+
+- Story 2.2 implementation complete — added plain class and `__init__.py` module attributes detection (Date: 2026-02-08)
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` — MODIFIED: Added `_has_self_assignments()`, `_is_init_module()`, modified `_check_missing_attributes()` with branches 4-5
+- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 23 new tests for helpers, branches 4-5, and orchestrator integration
+- `tests/fixtures/complete_module.py` — MODIFIED: Added `Connection` plain class with `Attributes:` section
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED: Story status updated
+- `_bmad-output/implementation-artifacts/2-2-plain-class-and-init-py-module-attributes-detection.md` — MODIFIED: Tasks marked complete, dev agent record updated
