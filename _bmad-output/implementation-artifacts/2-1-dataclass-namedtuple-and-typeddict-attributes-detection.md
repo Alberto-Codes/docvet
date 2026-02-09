@@ -1,6 +1,6 @@
 # Story 2.1: Dataclass, NamedTuple, and TypedDict Attributes Detection
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -32,85 +32,85 @@ so that users of my data structures can see all fields documented in one place.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement `_is_dataclass` helper function (AC: #1, #2, #3, #10)
-  - [ ] 1.1: Write `_is_dataclass(node: ast.ClassDef) -> bool`
-  - [ ] 1.2: Check `node.decorator_list` for `ast.Name(id="dataclass")` — simple `@dataclass`
-  - [ ] 1.3: Check for `ast.Attribute(attr="dataclass")` — qualified `@dataclasses.dataclass`
-  - [ ] 1.4: Check for `ast.Call` where `func` matches patterns above — `@dataclass(frozen=True)`
-  - [ ] 1.5: Return `False` for non-matching nodes
+- [x] Task 1: Implement `_is_dataclass` helper function (AC: #1, #2, #3, #10)
+  - [x] 1.1: Write `_is_dataclass(node: ast.ClassDef) -> bool`
+  - [x] 1.2: Check `node.decorator_list` for `ast.Name(id="dataclass")` — simple `@dataclass`
+  - [x] 1.3: Check for `ast.Attribute(attr="dataclass")` — qualified `@dataclasses.dataclass`
+  - [x] 1.4: Check for `ast.Call` where `func` matches patterns above — `@dataclass(frozen=True)`
+  - [x] 1.5: Return `False` for non-matching nodes
 
-- [ ] Task 2: Implement `_is_namedtuple` helper function (AC: #4, #5, #10)
-  - [ ] 2.1: Write `_is_namedtuple(node: ast.ClassDef) -> bool`
-  - [ ] 2.2: Check `node.bases` for `ast.Name(id="NamedTuple")`
-  - [ ] 2.3: Check for `ast.Attribute(attr="NamedTuple")` — `typing.NamedTuple`
-  - [ ] 2.4: Return `False` for non-matching nodes
+- [x] Task 2: Implement `_is_namedtuple` helper function (AC: #4, #5, #10)
+  - [x] 2.1: Write `_is_namedtuple(node: ast.ClassDef) -> bool`
+  - [x] 2.2: Check `node.bases` for `ast.Name(id="NamedTuple")`
+  - [x] 2.3: Check for `ast.Attribute(attr="NamedTuple")` — `typing.NamedTuple`
+  - [x] 2.4: Return `False` for non-matching nodes
 
-- [ ] Task 3: Implement `_is_typeddict` helper function (AC: #6, #10)
-  - [ ] 3.1: Write `_is_typeddict(node: ast.ClassDef) -> bool`
-  - [ ] 3.2: Check `node.bases` for `ast.Name(id="TypedDict")`
-  - [ ] 3.3: Check for `ast.Attribute(attr="TypedDict")` — `typing.TypedDict`
-  - [ ] 3.4: Return `False` for non-matching nodes
+- [x] Task 3: Implement `_is_typeddict` helper function (AC: #6, #10)
+  - [x] 3.1: Write `_is_typeddict(node: ast.ClassDef) -> bool`
+  - [x] 3.2: Check `node.bases` for `ast.Name(id="TypedDict")`
+  - [x] 3.3: Check for `ast.Attribute(attr="TypedDict")` — `typing.TypedDict`
+  - [x] 3.4: Return `False` for non-matching nodes
 
-- [ ] Task 4: Implement `_check_missing_attributes` rule function (AC: #1-#9)
-  - [ ] 4.1: Write function with uniform signature `_check_missing_attributes(symbol, sections, node_index, config, file_path) -> Finding | None`
-  - [ ] 4.2: Guard: return `None` if `symbol.kind != "class"` (only class symbols for this story)
-  - [ ] 4.3: Early return `None` if `"Attributes" in sections`
-  - [ ] 4.4: Retrieve class node via `node_index.get(symbol.line)` — return `None` if missing
-  - [ ] 4.5: Guard: return `None` if not `isinstance(node, ast.ClassDef)` (type narrowing for `ty`)
-  - [ ] 4.6: Branch 1: `if _is_dataclass(node):` return Finding
-  - [ ] 4.7: Branch 2: `if _is_namedtuple(node):` return Finding
-  - [ ] 4.8: Branch 3: `if _is_typeddict(node):` return Finding
-  - [ ] 4.9: Return `None` if no branch matches (plain class and module branches are Story 2.2)
-  - [ ] 4.10: Add docstring documenting all 3 branches and first-match-wins semantics
+- [x] Task 4: Implement `_check_missing_attributes` rule function (AC: #1-#9)
+  - [x] 4.1: Write function with uniform signature `_check_missing_attributes(symbol, sections, node_index, config, file_path) -> Finding | None`
+  - [x] 4.2: Guard: return `None` if `symbol.kind != "class"` (only class symbols for this story)
+  - [x] 4.3: Early return `None` if `"Attributes" in sections`
+  - [x] 4.4: Retrieve class node via `node_index.get(symbol.line)` — return `None` if missing
+  - [x] 4.5: Guard: return `None` if not `isinstance(node, ast.ClassDef)` (type narrowing for `ty`)
+  - [x] 4.6: Branch 1: `if _is_dataclass(node):` return Finding
+  - [x] 4.7: Branch 2: `if _is_namedtuple(node):` return Finding
+  - [x] 4.8: Branch 3: `if _is_typeddict(node):` return Finding
+  - [x] 4.9: Return `None` if no branch matches (plain class and module branches are Story 2.2)
+  - [x] 4.10: Add docstring documenting all 3 branches and first-match-wins semantics
 
-- [ ] Task 5: Wire `_check_missing_attributes` into `check_enrichment` orchestrator (AC: #8)
-  - [ ] 5.1: Add `config.require_attributes` gate before dispatch (taxonomy-table order: after `missing-other-parameters`)
-  - [ ] 5.2: Use walrus operator pattern consistent with existing dispatch
-  - [ ] 5.3: Update the `# Future rules dispatched here` comment to reflect remaining rules
+- [x] Task 5: Wire `_check_missing_attributes` into `check_enrichment` orchestrator (AC: #8)
+  - [x] 5.1: Add `config.require_attributes` gate before dispatch (taxonomy-table order: after `missing-other-parameters`)
+  - [x] 5.2: Use walrus operator pattern consistent with existing dispatch
+  - [x] 5.3: Update the `# Future rules dispatched here` comment to reflect remaining rules
 
-- [ ] Task 6: Update `complete_module.py` fixture with a dataclass that has `Attributes:` section
-  - [ ] 6.1: Add a `@dataclass` class with fields and a complete `Attributes:` section
-  - [ ] 6.2: Verify fixture produces zero findings for `missing-attributes`
+- [x] Task 6: Update `complete_module.py` fixture with a dataclass that has `Attributes:` section
+  - [x] 6.1: Add a `@dataclass` class with fields and a complete `Attributes:` section
+  - [x] 6.2: Verify fixture produces zero findings for `missing-attributes`
 
-- [ ] Task 7: Write unit tests for helper functions (AC: #10)
-  - [ ] 7.1: `test_is_dataclass_when_simple_decorator_returns_true`
-  - [ ] 7.2: `test_is_dataclass_when_qualified_decorator_returns_true`
-  - [ ] 7.3: `test_is_dataclass_when_call_decorator_returns_true` (`@dataclass(frozen=True)`)
-  - [ ] 7.4: `test_is_dataclass_when_qualified_call_decorator_returns_true` (`@dataclasses.dataclass(frozen=True)`)
-  - [ ] 7.5: `test_is_dataclass_when_no_decorator_returns_false`
-  - [ ] 7.6: `test_is_dataclass_when_other_decorator_returns_false`
-  - [ ] 7.7: `test_is_namedtuple_when_simple_base_returns_true`
-  - [ ] 7.8: `test_is_namedtuple_when_qualified_base_returns_true`
-  - [ ] 7.9: `test_is_namedtuple_when_no_base_returns_false`
-  - [ ] 7.10: `test_is_namedtuple_when_other_base_returns_false`
-  - [ ] 7.11: `test_is_typeddict_when_simple_base_returns_true`
-  - [ ] 7.12: `test_is_typeddict_when_qualified_base_returns_true`
-  - [ ] 7.13: `test_is_typeddict_when_no_base_returns_false`
+- [x] Task 7: Write unit tests for helper functions (AC: #10)
+  - [x] 7.1: `test_is_dataclass_when_simple_decorator_returns_true`
+  - [x] 7.2: `test_is_dataclass_when_qualified_decorator_returns_true`
+  - [x] 7.3: `test_is_dataclass_when_call_decorator_returns_true` (`@dataclass(frozen=True)`)
+  - [x] 7.4: `test_is_dataclass_when_qualified_call_decorator_returns_true` (`@dataclasses.dataclass(frozen=True)`)
+  - [x] 7.5: `test_is_dataclass_when_no_decorator_returns_false`
+  - [x] 7.6: `test_is_dataclass_when_other_decorator_returns_false`
+  - [x] 7.7: `test_is_namedtuple_when_simple_base_returns_true`
+  - [x] 7.8: `test_is_namedtuple_when_qualified_base_returns_true`
+  - [x] 7.9: `test_is_namedtuple_when_no_base_returns_false`
+  - [x] 7.10: `test_is_namedtuple_when_other_base_returns_false`
+  - [x] 7.11: `test_is_typeddict_when_simple_base_returns_true`
+  - [x] 7.12: `test_is_typeddict_when_qualified_base_returns_true`
+  - [x] 7.13: `test_is_typeddict_when_no_base_returns_false`
 
-- [ ] Task 8: Write unit tests for `_check_missing_attributes` (AC: #1-#9)
-  - [ ] 8.1: `test_missing_attributes_when_dataclass_without_section_returns_finding` — AC #1
-  - [ ] 8.2: `test_missing_attributes_when_qualified_dataclass_returns_finding` — AC #2
-  - [ ] 8.3: `test_missing_attributes_when_dataclass_call_returns_finding` — AC #3
-  - [ ] 8.4: `test_missing_attributes_when_namedtuple_without_section_returns_finding` — AC #4
-  - [ ] 8.5: `test_missing_attributes_when_qualified_namedtuple_returns_finding` — AC #5
-  - [ ] 8.6: `test_missing_attributes_when_typeddict_without_section_returns_finding` — AC #6
-  - [ ] 8.7: `test_missing_attributes_when_attributes_section_present_returns_none` — AC #7
-  - [ ] 8.8: `test_missing_attributes_when_node_index_missing_returns_none` (module symbol)
-  - [ ] 8.9: `test_missing_attributes_when_function_symbol_returns_none` (kind guard)
-  - [ ] 8.10: `test_missing_attributes_when_plain_class_returns_none` (no branch match — deferred to 2.2)
+- [x] Task 8: Write unit tests for `_check_missing_attributes` (AC: #1-#9)
+  - [x] 8.1: `test_missing_attributes_when_dataclass_without_section_returns_finding` — AC #1
+  - [x] 8.2: `test_missing_attributes_when_qualified_dataclass_returns_finding` — AC #2
+  - [x] 8.3: `test_missing_attributes_when_dataclass_call_returns_finding` — AC #3
+  - [x] 8.4: `test_missing_attributes_when_namedtuple_without_section_returns_finding` — AC #4
+  - [x] 8.5: `test_missing_attributes_when_qualified_namedtuple_returns_finding` — AC #5
+  - [x] 8.6: `test_missing_attributes_when_typeddict_without_section_returns_finding` — AC #6
+  - [x] 8.7: `test_missing_attributes_when_attributes_section_present_returns_none` — AC #7
+  - [x] 8.8: `test_missing_attributes_when_node_index_missing_returns_none` (module symbol)
+  - [x] 8.9: `test_missing_attributes_when_function_symbol_returns_none` (kind guard)
+  - [x] 8.10: `test_missing_attributes_when_plain_class_returns_none` (no branch match — deferred to 2.2)
 
-- [ ] Task 9: Write orchestrator integration tests (AC: #8, #9)
-  - [ ] 9.1: `test_check_enrichment_when_attributes_disabled_returns_no_finding` — AC #8
-  - [ ] 9.2: `test_check_enrichment_when_dataclass_no_docstring_returns_no_finding` — AC #9
-  - [ ] 9.3: `test_check_enrichment_when_complete_module_still_returns_empty` (regression)
-  - [ ] 9.4: Update `test_check_enrichment_when_all_rules_disabled_returns_empty` to disable 6 rules
+- [x] Task 9: Write orchestrator integration tests (AC: #8, #9)
+  - [x] 9.1: `test_check_enrichment_when_attributes_disabled_returns_no_finding` — AC #8
+  - [x] 9.2: `test_check_enrichment_when_dataclass_no_docstring_returns_no_finding` — AC #9
+  - [x] 9.3: `test_check_enrichment_when_complete_module_still_returns_empty` (regression)
+  - [x] 9.4: Update `test_check_enrichment_when_all_rules_disabled_returns_empty` to disable 6 rules
 
-- [ ] Task 10: Run quality gates and verify all pass
-  - [ ] 10.1: `uv run ruff check .` — All checks pass
-  - [ ] 10.2: `uv run ruff format --check .` — All files formatted
-  - [ ] 10.3: `uv run ty check` — All type checks pass
-  - [ ] 10.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
-  - [ ] 10.5: `uv run pytest` — Full suite passes (0 regressions)
+- [x] Task 10: Run quality gates and verify all pass
+  - [x] 10.1: `uv run ruff check .` — All checks pass
+  - [x] 10.2: `uv run ruff format --check .` — All files formatted
+  - [x] 10.3: `uv run ty check` — All type checks pass
+  - [x] 10.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
+  - [x] 10.5: `uv run pytest` — Full suite passes (0 regressions)
 
 ## Dev Notes
 
@@ -485,10 +485,30 @@ for symbol in symbols:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No debugging required — all tests passed on first implementation.
+
 ### Completion Notes List
 
+- Implemented `_is_dataclass()`, `_is_namedtuple()`, `_is_typeddict()` helper functions in enrichment.py
+- Implemented `_check_missing_attributes()` rule function with 3 branches (dataclass, NamedTuple, TypedDict) and first-match-wins semantics
+- Wired `_check_missing_attributes` into `check_enrichment` orchestrator with `config.require_attributes` gate
+- Added `@dataclass` class `ValidationResult` with complete `Attributes:` section to `complete_module.py` fixture
+- Wrote 13 helper function tests (6 dataclass, 4 namedtuple, 3 typeddict)
+- Wrote 10 `_check_missing_attributes` rule tests covering all 3 branches, section-present guard, kind guard, node-index guard, and plain class fallthrough
+- Wrote 4 orchestrator integration tests (config disable, no-docstring skip, complete module regression, all-rules-disabled)
+- Updated existing `test_check_enrichment_when_active_rules_disabled_returns_empty` to disable 6 rules (added `require_attributes=False` + dataclass source)
+- All quality gates pass: ruff check, ruff format, ty check, 311 tests (0 regressions)
+
+### Change Log
+
+- 2026-02-08: Implemented Story 2.1 — dataclass/NamedTuple/TypedDict attributes detection (3 helpers + 1 rule + orchestrator wiring + 20 new tests)
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` — MODIFIED (added `_is_dataclass`, `_is_namedtuple`, `_is_typeddict`, `_check_missing_attributes`, orchestrator dispatch)
+- `tests/unit/checks/test_enrichment.py` — MODIFIED (added 27 new tests: 13 helper, 10 rule, 4 orchestrator)
+- `tests/fixtures/complete_module.py` — MODIFIED (added `ValidationResult` dataclass with `Attributes:` section)
