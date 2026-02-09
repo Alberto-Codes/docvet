@@ -515,9 +515,10 @@ def test_run_enrichment_when_syntax_error_skips_file_with_warning(mocker):
     mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
-    # CliRunner mixes stderr into result.output by default
-    assert "warning:" in result.output
-    assert "failed to parse, skipping" in result.output
+    # Warning is emitted with err=True; consider both stdout and stderr.
+    output = result.output + getattr(result, "stderr", "")
+    assert "warning:" in output
+    assert "failed to parse, skipping" in output
     mock_check.assert_not_called()
 
 
