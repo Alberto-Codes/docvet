@@ -1,6 +1,6 @@
 # Story 2.1: Dataclass, NamedTuple, and TypedDict Attributes Detection
 
-Status: review
+Status: done
 
 ## Story
 
@@ -499,16 +499,16 @@ No debugging required — all tests passed on first implementation.
 - Added `@dataclass` class `ValidationResult` with complete `Attributes:` section to `complete_module.py` fixture
 - Wrote 13 helper function tests (6 dataclass, 4 namedtuple, 3 typeddict)
 - Wrote 10 `_check_missing_attributes` rule tests covering all 3 branches, section-present guard, kind guard, node-index guard, and plain class fallthrough
-- Wrote 4 orchestrator integration tests (config disable, no-docstring skip, complete module regression, all-rules-disabled)
+- Wrote 3 orchestrator integration tests (config disable, no-docstring skip, complete module regression)
 - Updated existing `test_check_enrichment_when_active_rules_disabled_returns_empty` to disable 6 rules (added `require_attributes=False` + dataclass source)
-- All quality gates pass: ruff check, ruff format, ty check, 311 tests (0 regressions)
+- All quality gates pass: ruff check, ruff format, ty check, 310 tests (0 regressions)
 
 ### Change Log
 
-- 2026-02-08: Implemented Story 2.1 — dataclass/NamedTuple/TypedDict attributes detection (3 helpers + 1 rule + orchestrator wiring + 20 new tests)
+- 2026-02-08: Implemented Story 2.1 — dataclass/NamedTuple/TypedDict attributes detection (3 helpers + 1 rule + orchestrator wiring + 26 new tests)
 
 ### File List
 
 - `src/docvet/checks/enrichment.py` — MODIFIED (added `_is_dataclass`, `_is_namedtuple`, `_is_typeddict`, `_check_missing_attributes`, orchestrator dispatch)
-- `tests/unit/checks/test_enrichment.py` — MODIFIED (added 27 new tests: 13 helper, 10 rule, 4 orchestrator)
+- `tests/unit/checks/test_enrichment.py` — MODIFIED (added 26 new tests: 13 helper, 10 rule, 3 orchestrator; updated 1 existing orchestrator test)
 - `tests/fixtures/complete_module.py` — MODIFIED (added `ValidationResult` dataclass with `Attributes:` section)
