@@ -1,6 +1,6 @@
 # Story 1.7: CLI Wiring for Enrichment Check
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -265,8 +265,8 @@ None — clean implementation with no debugging needed.
 - Replaced `_run_enrichment` stub with real implementation matching the exact pattern from Dev Notes
 - Added `import ast` (stdlib) and `from docvet.checks.enrichment import check_enrichment` (local) imports
 - Implementation iterates files, reads source, parses AST (with SyntaxError handling), calls `check_enrichment`, and formats findings as `file:line: rule message`
-- Updated autouse fixture to also mock `check_enrichment` and `Path.read_text` so existing tests work with the new non-stub `_run_enrichment`
-- Updated `test_enrichment_when_invoked_exits_successfully` — now mocks `check_enrichment` returning `[]` and `Path.read_text`, verifies exit code 0
+- Updated autouse fixture to mock `_run_enrichment` as no-op (avoids broad `Path.read_text` class-level patching)
+- Updated `test_enrichment_when_invoked_exits_successfully` — simplified to verify exit code 0 with autouse mocks
 - Updated `test_check_when_invoked_runs_all_checks_in_order` — now mocks `_run_enrichment` with a side_effect that prints "enrichment: ok" to preserve dispatch order assertion
 - Added 5 new unit tests covering: formatted output, no-output for clean files, SyntaxError skip with warning, multi-file processing, and correct argument passing to `check_enrichment`
 - All quality gates pass: ruff check, ruff format, ty check, 61 CLI tests, 284 total tests (0 regressions)
@@ -274,6 +274,7 @@ None — clean implementation with no debugging needed.
 ### Change Log
 
 - 2026-02-08: Wired `_run_enrichment` to real `check_enrichment` implementation; added 5 new tests; updated 2 existing tests; all 284 tests pass
+- 2026-02-08: Code review fixes — replaced broad `Path.read_text` class-level mock in autouse with targeted `_run_enrichment` mock; removed redundant mocks from `test_enrichment_when_invoked_exits_successfully`; added CliRunner stderr comment to SyntaxError test; behavior tests use `side_effect=_run_enrichment` to restore real function; all 284 tests pass
 
 ### File List
 
