@@ -9,8 +9,10 @@ from docvet.checks import Finding
 from docvet.checks.enrichment import (
     _SECTION_HEADERS,
     _build_node_index,
+    _check_missing_other_parameters,
     _check_missing_raises,
     _check_missing_receives,
+    _check_missing_warns,
     _check_missing_yields,
     _parse_sections,
     check_enrichment,
@@ -563,16 +565,21 @@ def bar():
 
 def test_check_enrichment_when_active_rules_disabled_returns_empty():
     source = '''\
-def foo():
+import warnings
+
+def foo(**kwargs):
     """Do something."""
     raise ValueError("bad")
     value = yield 42
+    warnings.warn("deprecated", DeprecationWarning)
 '''
     tree = ast.parse(source)
     config = EnrichmentConfig(
         require_raises=False,
         require_yields=False,
         require_receives=False,
+        require_warns=False,
+        require_other_parameters=False,
     )
 
     findings = check_enrichment(source, tree, config, "test.py")
@@ -947,3 +954,330 @@ def test_check_enrichment_when_complete_module_still_returns_empty():
     )
 
     assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_warns tests
+# ---------------------------------------------------------------------------
+
+
+def test_missing_warns_when_function_calls_warn_without_section_returns_finding():
+    source = '''\
+import warnings
+
+def foo():
+    """Do something."""
+    warnings.warn("deprecated", DeprecationWarning)
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-warns"
+    assert result.category == "required"
+    assert result.symbol == "foo"
+    assert "warnings.warn()" in result.message
+
+
+def test_missing_warns_when_warns_section_present_returns_none():
+    source = '''\
+import warnings
+
+def foo():
+    """Do something.
+
+    Warns:
+        DeprecationWarning: If deprecated.
+    """
+    warnings.warn("deprecated", DeprecationWarning)
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_warns_when_no_warn_calls_returns_none():
+    source = '''\
+def foo():
+    """Do something."""
+    return 42
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_warns_when_qualified_warnings_warn_returns_finding():
+    source = '''\
+import warnings
+
+def foo():
+    """Do something."""
+    warnings.warn("something bad", UserWarning)
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-warns"
+
+
+def test_missing_warns_when_bare_warn_import_returns_finding():
+    source = '''\
+from warnings import warn
+
+def foo():
+    """Do something."""
+    warn("deprecated", DeprecationWarning)
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-warns"
+
+
+def test_missing_warns_when_node_index_missing_returns_none():
+    source = '''\
+"""Module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(
+        module_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_warns_when_class_symbol_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    pass
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    assert class_symbol.docstring is not None
+    sections = _parse_sections(class_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(class_symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_warns_when_nested_warn_call_returns_none():
+    source = '''\
+import warnings
+
+def outer():
+    """Outer function."""
+    def inner():
+        warnings.warn("inner", DeprecationWarning)
+    return inner()
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_warns_when_unrelated_function_call_returns_none():
+    source = '''\
+import logging
+
+def foo():
+    """Do something."""
+    logging.warn("something")
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_warns(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_other_parameters tests
+# ---------------------------------------------------------------------------
+
+
+def test_missing_other_parameters_when_kwargs_without_section_returns_finding():
+    source = '''\
+def foo(**kwargs):
+    """Do something."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-other-parameters"
+    assert result.category == "recommended"
+    assert result.symbol == "foo"
+    assert "**kwargs" in result.message
+
+
+def test_missing_other_parameters_when_section_present_returns_none():
+    source = '''\
+def foo(**kwargs):
+    """Do something.
+
+    Other Parameters:
+        verbose: If True, print debug info.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_other_parameters_when_no_kwargs_returns_none():
+    source = '''\
+def foo(x, y):
+    """Do something."""
+    return x + y
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_other_parameters_when_node_index_missing_returns_none():
+    source = '''\
+"""Module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        module_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_other_parameters_when_class_symbol_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    pass
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    assert class_symbol.docstring is not None
+    sections = _parse_sections(class_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        class_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# check_enrichment orchestrator tests (warns/other-parameters)
+# ---------------------------------------------------------------------------
+
+
+def test_check_enrichment_when_warns_disabled_returns_no_finding():
+    source = '''\
+import warnings
+
+def foo():
+    """Do something."""
+    warnings.warn("deprecated", DeprecationWarning)
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_warns=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_warns = [f for f in findings if f.rule == "missing-warns"]
+    assert missing_warns == []
+
+
+def test_check_enrichment_when_other_parameters_disabled_returns_no_finding():
+    source = '''\
+def foo(**kwargs):
+    """Do something."""
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_other_parameters=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_other = [f for f in findings if f.rule == "missing-other-parameters"]
+    assert missing_other == []
