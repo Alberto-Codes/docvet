@@ -671,9 +671,28 @@ All 5 decisions interlock without contradiction:
 
 **Critical Gaps:** 0 — No missing decisions that block implementation.
 
-**Important Gaps:** 1
+**Important Gaps:** 0
 
-1. **`missing-cross-references` detection criteria undefined.** The architecture maps FR12 to `_check_missing_cross_references` and notes it's docstring-only, but "cross-reference syntax" is never formally defined. The PRD validation report flagged FR12 as the weakest FR (S=3, M=3, A=3, R=3). This is a PRD-level gap inherited by the architecture — the tech spec will need to define what constitutes valid cross-reference syntax (likely `:func:`, `:class:`, `:mod:` role syntax or bare `module.symbol` references).
+1. **`missing-cross-references` detection criteria — RESOLVED.** Previously undefined (flagged as weakest FR, S=3/M=3/A=3/R=3). Now formally specified below.
+
+   **Cross-Reference Syntax Definition (FR12)**
+
+   Targets mkdocs-material + mkdocstrings (autorefs plugin) conventions. A `See Also:` section is considered to contain valid cross-references if **any line** matches at least one of these patterns:
+
+   | Pattern | Example | Convention |
+   |---------|---------|------------|
+   | Backtick-quoted identifier | `` `qualified.name` `` | mkdocstrings autorefs |
+   | Markdown reference link | `[text][identifier]` or `[identifier][]` | Markdown / mkdocs |
+   | Sphinx/intersphinx role | `` :role:`target` `` | Sphinx interop |
+
+   **Detection regex patterns:**
+   ```
+   `[^`]+`              — backtick-quoted identifier
+   \[[^\]]+\]\[         — Markdown reference link opening
+   :\w+:`[^`]+`         — Sphinx/intersphinx role
+   ```
+
+   **Detection logic:** If a `See Also:` section exists and contains **no lines** matching any of the above patterns, fire `missing-cross-references` finding. This is a docstring-only check (no AST body walk needed).
 
 **Scope Boundaries (not gaps):**
 
