@@ -1,6 +1,6 @@
 # Story 1.5: Missing Yields and Receives Detection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,54 +30,54 @@ so that consumers of my generators understand what values are yielded and what c
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement `_check_missing_yields` private function (AC: #1, #2, #8)
-  - [ ] 1.1: Write function with uniform signature `_check_missing_yields(symbol, sections, node_index, config, file_path) -> Finding | None`
-  - [ ] 1.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
-  - [ ] 1.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
-  - [ ] 1.4: Early return `None` if `"Yields" in sections` (section already documented)
-  - [ ] 1.5: Scope-aware walk of node body to find `ast.Yield` or `ast.YieldFrom` nodes (stop at nested `FunctionDef`/`AsyncFunctionDef`/`ClassDef` boundaries)
-  - [ ] 1.6: If any yield nodes found, construct `Finding` with `rule="missing-yields"`, `category="required"`
-  - [ ] 1.7: Add docstring following project conventions
+- [x] Task 1: Implement `_check_missing_yields` private function (AC: #1, #2, #8)
+  - [x] 1.1: Write function with uniform signature `_check_missing_yields(symbol, sections, node_index, config, file_path) -> Finding | None`
+  - [x] 1.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
+  - [x] 1.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
+  - [x] 1.4: Early return `None` if `"Yields" in sections` (section already documented)
+  - [x] 1.5: Scope-aware walk of node body to find `ast.Yield` or `ast.YieldFrom` nodes (stop at nested `FunctionDef`/`AsyncFunctionDef`/`ClassDef` boundaries)
+  - [x] 1.6: If any yield nodes found, construct `Finding` with `rule="missing-yields"`, `category="required"`
+  - [x] 1.7: Add docstring following project conventions
 
-- [ ] Task 2: Implement `_check_missing_receives` private function (AC: #4, #5)
-  - [ ] 2.1: Write function with uniform signature `_check_missing_receives(symbol, sections, node_index, config, file_path) -> Finding | None`
-  - [ ] 2.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
-  - [ ] 2.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
-  - [ ] 2.4: Early return `None` if `"Receives" in sections` (section already documented)
-  - [ ] 2.5: Scope-aware walk of node body to find `ast.Yield` nodes used as assignment targets (`ast.Assign` or `ast.AnnAssign` where `value` is `ast.Yield`)
-  - [ ] 2.6: If any send-pattern yields found, construct `Finding` with `rule="missing-receives"`, `category="required"`
-  - [ ] 2.7: Add docstring following project conventions
+- [x] Task 2: Implement `_check_missing_receives` private function (AC: #4, #5)
+  - [x] 2.1: Write function with uniform signature `_check_missing_receives(symbol, sections, node_index, config, file_path) -> Finding | None`
+  - [x] 2.2: Guard on `symbol.kind in ("function", "method")` — return `None` for class/module symbols
+  - [x] 2.3: Retrieve function node via `node_index.get(symbol.line)` — return `None` if missing
+  - [x] 2.4: Early return `None` if `"Receives" in sections` (section already documented)
+  - [x] 2.5: Scope-aware walk of node body to find `ast.Yield` nodes used as assignment targets (`ast.Assign` or `ast.AnnAssign` where `value` is `ast.Yield`)
+  - [x] 2.6: If any send-pattern yields found, construct `Finding` with `rule="missing-receives"`, `category="required"`
+  - [x] 2.7: Add docstring following project conventions
 
-- [ ] Task 3: Wire both rules into `check_enrichment` orchestrator (AC: #6, #7)
-  - [ ] 3.1: Add `config.require_yields` gate before `_check_missing_yields` dispatch (taxonomy-table order: after `missing-raises`)
-  - [ ] 3.2: Add `config.require_receives` gate before `_check_missing_receives` dispatch (taxonomy-table order: after `missing-yields`)
-  - [ ] 3.3: Use walrus operator pattern `if f := _check_missing_yields(...)` consistent with existing `missing-raises` dispatch
+- [x] Task 3: Wire both rules into `check_enrichment` orchestrator (AC: #6, #7)
+  - [x] 3.1: Add `config.require_yields` gate before `_check_missing_yields` dispatch (taxonomy-table order: after `missing-raises`)
+  - [x] 3.2: Add `config.require_receives` gate before `_check_missing_receives` dispatch (taxonomy-table order: after `missing-yields`)
+  - [x] 3.3: Use walrus operator pattern `if f := _check_missing_yields(...)` consistent with existing `missing-raises` dispatch
 
-- [ ] Task 4: Write unit tests (AC: #1-#8)
-  - [ ] 4.1: `test_missing_yields_when_generator_yields_without_section_returns_finding` — AC #1
-  - [ ] 4.2: `test_missing_yields_when_yields_section_present_returns_none` — AC #2
-  - [ ] 4.3: `test_missing_yields_when_no_yield_statements_returns_none`
-  - [ ] 4.4: `test_missing_yields_when_yield_from_without_section_returns_finding`
-  - [ ] 4.5: `test_missing_yields_when_node_index_missing_returns_none` (module symbol)
-  - [ ] 4.6: `test_missing_yields_when_class_symbol_returns_none`
-  - [ ] 4.7: `test_missing_yields_when_nested_generator_yields_returns_none` (scope boundary)
-  - [ ] 4.8: `test_missing_yields_when_async_generator_yields_returns_finding` — AC #8
-  - [ ] 4.9: `test_missing_receives_when_send_pattern_without_section_returns_finding` — AC #4
-  - [ ] 4.10: `test_missing_receives_when_receives_section_present_returns_none` — AC #5
-  - [ ] 4.11: `test_missing_receives_when_no_send_pattern_returns_none`
-  - [ ] 4.12: `test_missing_receives_when_plain_yield_no_assignment_returns_none`
-  - [ ] 4.13: `test_missing_receives_when_annotated_assign_yield_returns_finding`
-  - [ ] 4.14: `test_check_enrichment_when_yields_disabled_returns_no_finding` — AC #6
-  - [ ] 4.15: `test_check_enrichment_when_receives_disabled_returns_no_finding` — AC #7
-  - [ ] 4.16: `test_check_enrichment_when_missing_yields_fixture_returns_finding` — AC #3
-  - [ ] 4.17: `test_check_enrichment_when_complete_module_still_returns_empty`
+- [x] Task 4: Write unit tests (AC: #1-#8)
+  - [x] 4.1: `test_missing_yields_when_generator_yields_without_section_returns_finding` — AC #1
+  - [x] 4.2: `test_missing_yields_when_yields_section_present_returns_none` — AC #2
+  - [x] 4.3: `test_missing_yields_when_no_yield_statements_returns_none`
+  - [x] 4.4: `test_missing_yields_when_yield_from_without_section_returns_finding`
+  - [x] 4.5: `test_missing_yields_when_node_index_missing_returns_none` (module symbol)
+  - [x] 4.6: `test_missing_yields_when_class_symbol_returns_none`
+  - [x] 4.7: `test_missing_yields_when_nested_generator_yields_returns_none` (scope boundary)
+  - [x] 4.8: `test_missing_yields_when_async_generator_yields_returns_finding` — AC #8
+  - [x] 4.9: `test_missing_receives_when_send_pattern_without_section_returns_finding` — AC #4
+  - [x] 4.10: `test_missing_receives_when_receives_section_present_returns_none` — AC #5
+  - [x] 4.11: `test_missing_receives_when_no_send_pattern_returns_none`
+  - [x] 4.12: `test_missing_receives_when_plain_yield_no_assignment_returns_none`
+  - [x] 4.13: `test_missing_receives_when_annotated_assign_yield_returns_finding`
+  - [x] 4.14: `test_check_enrichment_when_yields_disabled_returns_no_finding` — AC #6
+  - [x] 4.15: `test_check_enrichment_when_receives_disabled_returns_no_finding` — AC #7
+  - [x] 4.16: `test_check_enrichment_when_missing_yields_fixture_returns_finding` — AC #3
+  - [x] 4.17: `test_check_enrichment_when_complete_module_still_returns_empty`
 
-- [ ] Task 5: Run quality gates and verify all pass
-  - [ ] 5.1: `uv run ruff check .` — All checks pass
-  - [ ] 5.2: `uv run ruff format --check .` — All files formatted
-  - [ ] 5.3: `uv run ty check` — All type checks pass
-  - [ ] 5.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass
-  - [ ] 5.5: `uv run pytest` — Full suite passes (0 regressions)
+- [x] Task 5: Run quality gates and verify all pass
+  - [x] 5.1: `uv run ruff check .` — All checks pass
+  - [x] 5.2: `uv run ruff format --check .` — All files formatted
+  - [x] 5.3: `uv run ty check` — All type checks pass
+  - [x] 5.4: `uv run pytest tests/unit/checks/ -v` — All enrichment tests pass (52 tests)
+  - [x] 5.5: `uv run pytest` — Full suite passes (254 tests, 0 regressions)
 
 ## Dev Notes
 
@@ -367,10 +367,31 @@ def check_enrichment(source, tree, config, file_path):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- No debug issues encountered
+
 ### Completion Notes List
 
+- Implemented `_check_missing_yields` with uniform `_check_*` signature per Decision 1
+- Scope-aware iterative walk detects `ast.Yield` and `ast.YieldFrom` nodes, stops at nested scope boundaries
+- Implemented `_check_missing_receives` detecting `ast.Assign` and `ast.AnnAssign` with `ast.Yield` values (send pattern)
+- Bare `yield` (no assignment) correctly excluded from send pattern detection
+- `ast.YieldFrom` correctly excluded from send pattern detection
+- Both sync and async generators handled via shared `node_index` infrastructure
+- Orchestrator wired with config gating in taxonomy-table order: `missing-raises` → `missing-yields` → `missing-receives`
+- Walrus operator pattern consistent with existing `missing-raises` dispatch
+- 17 new tests (8 for `_check_missing_yields`, 5 for `_check_missing_receives`, 4 for orchestrator integration)
+- All 8 acceptance criteria satisfied
+- 254 total tests pass, 0 regressions
+
+### Change Log
+
+- 2026-02-08: Implemented `_check_missing_yields` and `_check_missing_receives` rules with 17 unit tests, wired into orchestrator
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` — MODIFIED: Added `_check_missing_yields()`, `_check_missing_receives()`, wired both into `check_enrichment()` orchestrator with config gating
+- `tests/unit/checks/test_enrichment.py` — MODIFIED: Added 17 tests (8 for `_check_missing_yields`, 5 for `_check_missing_receives`, 4 for orchestrator integration), new imports for `_check_missing_yields` and `_check_missing_receives`
