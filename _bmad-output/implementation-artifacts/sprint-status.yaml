@@ -60,5 +60,5 @@ development_status:
   # Epic 3: Format & Recommended Rules
   epic-3: in-progress
   3-1-missing-examples-detection: done
-  3-2-format-and-cross-reference-rules: ready-for-dev
+  3-2-format-and-cross-reference-rules: review
   epic-3-retrospective: optional
