@@ -48,7 +48,7 @@ development_status:
   1-4-missing-raises-detection-and-orchestrator: done
   1-5-missing-yields-and-receives-detection: done
   1-6-missing-warns-and-other-parameters-detection: done
-  1-7-cli-wiring-for-enrichment-check: backlog
+  1-7-cli-wiring-for-enrichment-check: ready-for-dev
   epic-1-retrospective: optional
 
   # Epic 2: Class & Module Enrichment Detection
