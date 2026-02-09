@@ -37,6 +37,11 @@ class ValidationResult:
         is_valid: Whether the validation passed.
         message: Human-readable description of the result.
         error_count: Number of errors found during validation.
+
+    Examples:
+        ```python
+        result = ValidationResult(is_valid=True, message="OK")
+        ```
     """
 
     is_valid: bool
@@ -50,6 +55,11 @@ class Connection:
     Attributes:
         host: The database host address.
         port: The port number for the connection.
+
+    Examples:
+        ```python
+        conn = Connection("localhost", 5432)
+        ```
     """
 
     def __init__(self, host: str, port: int = 5432):

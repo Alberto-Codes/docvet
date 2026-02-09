@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import dataclasses
 from pathlib import Path
 
 from docvet.checks import Finding
@@ -10,6 +11,7 @@ from docvet.checks.enrichment import (
     _SECTION_HEADERS,
     _build_node_index,
     _check_missing_attributes,
+    _check_missing_examples,
     _check_missing_other_parameters,
     _check_missing_raises,
     _check_missing_receives,
@@ -17,8 +19,10 @@ from docvet.checks.enrichment import (
     _check_missing_yields,
     _has_self_assignments,
     _is_dataclass,
+    _is_enum,
     _is_init_module,
     _is_namedtuple,
+    _is_protocol,
     _is_typeddict,
     _parse_sections,
     check_enrichment,
@@ -590,13 +594,15 @@ def foo(**kwargs):
     warnings.warn("deprecated", DeprecationWarning)
 '''
     tree = ast.parse(source)
+    # Dynamically disable all boolean toggles so this test doesn't break
+    # when new rules are added to EnrichmentConfig.
     config = EnrichmentConfig(
-        require_raises=False,
-        require_yields=False,
-        require_receives=False,
-        require_warns=False,
-        require_other_parameters=False,
-        require_attributes=False,
+        **{
+            f.name: False
+            for f in dataclasses.fields(EnrichmentConfig)
+            if f.default is True
+        },
+        require_examples=[],
     )
 
     findings = check_enrichment(source, tree, config, "__init__.py")
@@ -2104,3 +2110,728 @@ def test_check_enrichment_when_complete_module_with_plain_class_returns_empty():
     )
 
     assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# _is_protocol helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_protocol_when_simple_base_returns_true():
+    node = ast.parse("class Foo(Protocol): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_protocol(node) is True
+
+
+def test_is_protocol_when_qualified_base_returns_true():
+    node = ast.parse("class Foo(typing.Protocol): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_protocol(node) is True
+
+
+def test_is_protocol_when_no_base_returns_false():
+    node = ast.parse("class Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_protocol(node) is False
+
+
+def test_is_protocol_when_other_base_returns_false():
+    node = ast.parse("class Foo(SomethingElse): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_protocol(node) is False
+
+
+def test_is_protocol_when_multiple_bases_with_protocol_returns_true():
+    node = ast.parse("class Foo(Protocol, ABC): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_protocol(node) is True
+
+
+def test_is_protocol_when_runtime_checkable_decorated_returns_true():
+    source = "@runtime_checkable\nclass Foo(Protocol): ..."
+    node = ast.parse(source).body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_protocol(node) is True
+
+
+# ---------------------------------------------------------------------------
+# _is_enum helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_enum_when_simple_enum_base_returns_true():
+    node = ast.parse("class Color(Enum): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_qualified_enum_base_returns_true():
+    node = ast.parse("class Color(enum.Enum): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_int_enum_returns_true():
+    node = ast.parse("class Status(IntEnum): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_str_enum_returns_true():
+    node = ast.parse("class Mode(StrEnum): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_flag_returns_true():
+    node = ast.parse("class Perm(Flag): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_int_flag_returns_true():
+    node = ast.parse("class Perm(IntFlag): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_qualified_str_enum_returns_true():
+    node = ast.parse("class Mode(enum.StrEnum): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_mixin_base_with_enum_returns_true():
+    node = ast.parse("class Color(str, Enum): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is True
+
+
+def test_is_enum_when_no_base_returns_false():
+    node = ast.parse("class Foo: ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is False
+
+
+def test_is_enum_when_other_base_returns_false():
+    node = ast.parse("class Foo(SomethingElse): ...").body[0]
+    assert isinstance(node, ast.ClassDef)
+    assert _is_enum(node) is False
+
+
+# ---------------------------------------------------------------------------
+# _check_missing_examples tests
+# ---------------------------------------------------------------------------
+
+
+def test_missing_examples_when_class_without_section_returns_finding():
+    source = '''\
+class Parser:
+    """Parse input data."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "missing-examples"
+    assert result.category == "recommended"
+    assert result.symbol == "Parser"
+    assert "Class" in result.message
+    assert "Parser" in result.message
+    assert "Examples" in result.message
+
+
+def test_missing_examples_when_protocol_without_section_returns_finding():
+    source = '''\
+class Handler(Protocol):
+    """Handle requests."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["protocol"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-examples"
+    assert "Protocol" in result.message
+    assert "Handler" in result.message
+
+
+def test_missing_examples_when_dataclass_without_section_returns_finding():
+    source = '''\
+@dataclass
+class Config:
+    """Application configuration."""
+    debug: bool
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["dataclass"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-examples"
+    assert "Dataclass" in result.message
+    assert "Config" in result.message
+
+
+def test_missing_examples_when_enum_without_section_returns_finding():
+    source = '''\
+class Color(Enum):
+    """Available colors."""
+    RED = 1
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["enum"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-examples"
+    assert "Enum" in result.message
+    assert "Color" in result.message
+
+
+def test_missing_examples_when_examples_section_present_returns_none():
+    source = '''\
+class Parser:
+    """Parse input data.
+
+    Examples:
+        >>> p = Parser()
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_examples_when_class_not_in_config_list_returns_none():
+    source = '''\
+class Parser:
+    """Parse input data."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["dataclass"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_examples_when_function_symbol_returns_none():
+    source = '''\
+def foo():
+    """Do something."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is None
+
+
+def test_missing_examples_when_method_symbol_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    def bar(self):
+        """Do something."""
+        pass
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    method_symbol = [s for s in symbols if s.kind == "method"][0]
+    assert method_symbol.docstring is not None
+    sections = _parse_sections(method_symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+
+    result = _check_missing_examples(
+        method_symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_examples_when_init_module_without_section_returns_finding():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+
+    result = _check_missing_examples(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-examples"
+    assert "Module" in result.message
+
+
+def test_missing_examples_when_empty_list_direct_call_init_module_returns_none():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=[],
+    )
+
+    result = _check_missing_examples(
+        module_symbol, sections, node_index, config, "__init__.py"
+    )
+
+    assert result is None
+
+
+def test_missing_examples_when_non_init_module_returns_none():
+    source = '''\
+"""Regular module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+
+    result = _check_missing_examples(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
+    assert result is None
+
+
+def test_missing_examples_when_node_index_missing_returns_none():
+    source = '''\
+class Foo:
+    """A class."""
+    pass
+'''
+    symbol, _, _ = _make_symbol_and_index(source)
+    assert symbol.kind == "class"
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["class"],
+    )
+    empty_node_index = _build_node_index(ast.parse(""))
+
+    result = _check_missing_examples(
+        symbol, sections, empty_node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# check_enrichment orchestrator tests (missing-examples)
+# ---------------------------------------------------------------------------
+
+
+def test_check_enrichment_when_examples_enabled_class_returns_finding():
+    source = '''\
+class Parser:
+    """Parse input data."""
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"])
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert len(missing_examples) == 1
+    assert missing_examples[0].symbol == "Parser"
+
+
+def test_check_enrichment_when_examples_empty_list_returns_no_finding():
+    source = '''\
+class Parser:
+    """Parse input data."""
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=[])
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_check_enrichment_when_examples_enabled_init_module_returns_finding():
+    source = '''\
+"""Package docstring."""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"])
+
+    findings = check_enrichment(source, tree, config, "__init__.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert len(missing_examples) == 1
+    assert "Module" in missing_examples[0].message
+
+
+# ---------------------------------------------------------------------------
+# Edge case and regression tests (missing-examples)
+# ---------------------------------------------------------------------------
+
+
+def test_missing_examples_when_class_has_examples_section_returns_none():
+    source = '''\
+class Parser:
+    """Parse input data.
+
+    Examples:
+        >>> p = Parser()
+    """
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"])
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_undocumented_symbol_returns_none():
+    source = """\
+class Parser:
+    pass
+"""
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"])
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_empty_require_list_returns_none():
+    source = '''\
+class Parser:
+    """Parse input data."""
+    pass
+
+@dataclass
+class Config:
+    """Application config."""
+    debug: bool
+
+class Color(Enum):
+    """Colors."""
+    RED = 1
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=[])
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_type_not_in_list_returns_none():
+    source = '''\
+class Parser:
+    """Parse input data."""
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["dataclass"])
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_init_module_has_examples_section_returns_none():
+    source = '''\
+"""Package docstring.
+
+Examples:
+    >>> import pkg
+"""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"])
+
+    findings = check_enrichment(source, tree, config, "__init__.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_non_init_module_no_finding():
+    source = '''\
+"""Regular module docstring."""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"])
+
+    findings = check_enrichment(source, tree, config, "regular.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_namedtuple_does_not_trigger():
+    source = '''\
+class Point(NamedTuple):
+    """A point in 2D space."""
+    x: int
+    y: int
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(
+        require_examples=["class", "protocol", "dataclass", "enum"]
+    )
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_typeddict_does_not_trigger():
+    source = '''\
+class Options(TypedDict):
+    """Configuration options."""
+    verbose: bool
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(
+        require_examples=["class", "protocol", "dataclass", "enum"]
+    )
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    assert missing_examples == []
+
+
+def test_missing_examples_when_nested_class_inside_function_triggers_on_inner_class():
+    source = '''\
+def factory():
+    """Create a parser.
+
+    Returns:
+        A new parser instance.
+    """
+    class Parser:
+        """Inner parser."""
+        pass
+    return Parser()
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"])
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    # The inner class IS documented and IS a class, so it DOES get checked.
+    # However, it's not excluded by the rule — nested classes with docstrings
+    # are valid symbols returned by get_documented_symbols.
+    # The function itself won't trigger because functions aren't in the config.
+    missing_examples = [f for f in findings if f.rule == "missing-examples"]
+    # Parser class has a docstring and kind="class", so it triggers
+    assert len(missing_examples) == 1
+    assert missing_examples[0].symbol == "Parser"
+
+
+def test_missing_examples_when_protocol_with_abc_classifies_as_protocol():
+    source = '''\
+class Handler(Protocol, ABC):
+    """Handle requests."""
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["protocol"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-examples"
+    assert "Protocol" in result.message
+
+
+def test_missing_examples_when_str_enum_mixin_classifies_as_enum():
+    source = '''\
+class Color(str, Enum):
+    """Available colors."""
+    RED = "red"
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_warns=False,
+        require_receives=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_examples=["enum"],
+    )
+
+    result = _check_missing_examples(symbol, sections, node_index, config, "test.py")
+
+    assert result is not None
+    assert result.rule == "missing-examples"
+    assert "Enum" in result.message

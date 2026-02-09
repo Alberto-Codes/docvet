@@ -499,6 +499,62 @@ def _is_dataclass(node: ast.ClassDef) -> bool:
     return False
 
 
+def _is_protocol(node: ast.ClassDef) -> bool:
+    """Check whether a class inherits from ``Protocol``.
+
+    Recognises two base class forms:
+
+    - Simple: ``class Foo(Protocol)``
+    - Qualified: ``class Foo(<module>.Protocol)`` (suffix match —
+      typically ``typing.Protocol``)
+
+    The qualified form uses suffix-based matching (checks ``attr ==
+    "Protocol"`` without verifying the module name).
+
+    Args:
+        node: The ``ClassDef`` AST node to inspect.
+
+    Returns:
+        ``True`` when a Protocol base class is found, ``False`` otherwise.
+    """
+    for base in node.bases:
+        if isinstance(base, ast.Name) and base.id == "Protocol":
+            return True
+        if isinstance(base, ast.Attribute) and base.attr == "Protocol":
+            return True
+    return False
+
+
+_ENUM_NAMES = frozenset({"Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"})
+
+
+def _is_enum(node: ast.ClassDef) -> bool:
+    """Check whether a class inherits from an ``enum`` base class.
+
+    Recognises two base class forms:
+
+    - Simple: ``class Color(Enum)`` (and ``IntEnum``, ``StrEnum``,
+      ``Flag``, ``IntFlag``)
+    - Qualified: ``class Color(<module>.Enum)`` (suffix match —
+      typically ``enum.Enum``)
+
+    The qualified form uses suffix-based matching (checks ``attr`` against
+    the known enum names without verifying the module name).
+
+    Args:
+        node: The ``ClassDef`` AST node to inspect.
+
+    Returns:
+        ``True`` when an enum base class is found, ``False`` otherwise.
+    """
+    for base in node.bases:
+        if isinstance(base, ast.Name) and base.id in _ENUM_NAMES:
+            return True
+        if isinstance(base, ast.Attribute) and base.attr in _ENUM_NAMES:
+            return True
+    return False
+
+
 def _is_namedtuple(node: ast.ClassDef) -> bool:
     """Check whether a class inherits from ``NamedTuple``.
 
@@ -728,6 +784,101 @@ def _check_missing_attributes(
 
 
 # ---------------------------------------------------------------------------
+# Rule: missing-examples
+# NOTE: missing-typed-attributes (Story 3.2) goes between missing-attributes
+# and missing-examples in taxonomy-table order.
+# ---------------------------------------------------------------------------
+
+
+def _check_missing_examples(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a construct missing an ``Examples:`` section.
+
+    This is the only ``_check_*`` function that reads ``config`` internally.
+    The gating is symbol-type-specific (list-based), not a simple boolean
+    toggle: the classified type name must appear in
+    ``config.require_examples`` for a finding to be emitted.
+
+    Modules in ``__init__.py`` files trigger when ``require_examples`` is
+    non-empty (any non-empty list enables module-level checking).
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration containing ``require_examples``.
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-examples"`` when a symbol
+        lacks an ``Examples:`` section, or ``None`` otherwise.
+    """
+    if "Examples" in sections:
+        return None
+
+    if not config.require_examples:
+        return None
+
+    # Module branch: __init__.py modules trigger when require_examples
+    # is non-empty (any type in the list enables module checking).
+    if symbol.kind == "module":
+        if not _is_init_module(file_path):
+            return None
+        return Finding(
+            file=file_path,
+            line=symbol.line,
+            symbol=symbol.name,
+            rule="missing-examples",
+            message=f"Module '{symbol.name}' has no Examples: section",
+            category="recommended",
+        )
+
+    # Only classes are supported for missing-examples.
+    if symbol.kind != "class":
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None or not isinstance(node, ast.ClassDef):
+        return None
+
+    # Classify inline: dataclass > namedtuple/typeddict (excluded) >
+    # protocol > enum > class
+    if _is_dataclass(node):
+        type_name = "dataclass"
+        label = "Dataclass"
+    elif _is_namedtuple(node) or _is_typeddict(node):
+        # NamedTuple and TypedDict do not map to any config type name —
+        # they are excluded from missing-examples detection entirely.
+        return None
+    elif _is_protocol(node):
+        type_name = "protocol"
+        label = "Protocol"
+    elif _is_enum(node):
+        type_name = "enum"
+        label = "Enum"
+    else:
+        type_name = "class"
+        label = "Class"
+
+    if type_name not in config.require_examples:
+        return None
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-examples",
+        message=f"{label} '{symbol.name}' has no Examples: section",
+        category="recommended",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Public orchestrator
 # ---------------------------------------------------------------------------
 
@@ -793,6 +944,13 @@ def check_enrichment(
                 symbol, sections, node_index, config, file_path
             ):
                 findings.append(f)
-        # Future rules dispatched here in taxonomy-table order
+        # NOTE: missing-typed-attributes (Story 3.2) goes here in
+        # taxonomy-table order, between missing-attributes and
+        # missing-examples.
+        if config.require_examples:
+            if f := _check_missing_examples(
+                symbol, sections, node_index, config, file_path
+            ):
+                findings.append(f)
 
     return findings
