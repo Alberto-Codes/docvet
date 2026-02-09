@@ -1,6 +1,6 @@
 # Story 3.2: Format and Cross-Reference Rules
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -26,30 +26,30 @@ so that my docstrings follow best practices for readability and mkdocs rendering
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement `_check_missing_typed_attributes` (AC: 1, 2, 3)
-  - [ ] 1.1: Add `_check_missing_typed_attributes` function after `_check_missing_attributes` in taxonomy order
-  - [ ] 1.2: Parse `Attributes:` section content from docstring — check each entry for `name (type): description` pattern
-  - [ ] 1.3: Return `Finding(rule="missing-typed-attributes", category="recommended")` when untyped entries found
-  - [ ] 1.4: Add config gating in orchestrator (`config.require_typed_attributes`)
-  - [ ] 1.5: Write tests: typed attrs pass, untyped attrs fire, mixed entries fire, config disabled, no Attributes section = no finding, module-level symbols
-- [ ] Task 2: Implement `_check_missing_cross_references` (AC: 4, 5, 6, 7)
-  - [ ] 2.1: Add `_check_missing_cross_references` function after `_check_missing_examples` in taxonomy order
-  - [ ] 2.2: Implement dual detection: (a) `__init__.py` modules missing `See Also:` entirely, (b) any symbol with `See Also:` lacking cross-reference syntax
-  - [ ] 2.3: Define cross-reference detection regex patterns (backtick identifiers, Markdown reference links, Sphinx roles)
-  - [ ] 2.4: Return `Finding(rule="missing-cross-references", category="recommended")`
-  - [ ] 2.5: Add config gating in orchestrator (`config.require_cross_references`)
-  - [ ] 2.6: Write tests: missing See Also on `__init__.py`, See Also without xrefs, See Also with valid xrefs (all 3 patterns), non-`__init__.py` without See Also = no finding, config disabled
-- [ ] Task 3: Implement `_check_prefer_fenced_code_blocks` (AC: 8, 9, 10, 11)
-  - [ ] 3.1: Add `_check_prefer_fenced_code_blocks` function last in taxonomy order
-  - [ ] 3.2: Check for `>>>` pattern in `Examples:` section content
-  - [ ] 3.3: Return `Finding(rule="prefer-fenced-code-blocks", category="recommended")` when doctest format found
-  - [ ] 3.4: Add config gating in orchestrator (`config.prefer_fenced_code_blocks`)
-  - [ ] 3.5: Write tests: doctest format fires, fenced code blocks pass, no Examples section = no finding, mixed Examples content, config disabled
-- [ ] Task 4: Update orchestrator and fixtures (AC: all)
-  - [ ] 4.1: Add dispatch entries for 3 new rules in `check_enrichment` in taxonomy-table order
-  - [ ] 4.2: Update `tests/fixtures/complete_module.py` — add `See Also:` sections with valid cross-references, ensure `Attributes:` use typed format, ensure `Examples:` use fenced code blocks
-  - [ ] 4.3: Update "all rules disabled" test to include the 3 new config toggles
-  - [ ] 4.4: Run full test suite and confirm zero regressions
+- [x] Task 1: Implement `_check_missing_typed_attributes` (AC: 1, 2, 3)
+  - [x] 1.1: Add `_check_missing_typed_attributes` function after `_check_missing_attributes` in taxonomy order
+  - [x] 1.2: Parse `Attributes:` section content from docstring — check each entry for `name (type): description` pattern
+  - [x] 1.3: Return `Finding(rule="missing-typed-attributes", category="recommended")` when untyped entries found
+  - [x] 1.4: Add config gating in orchestrator (`config.require_typed_attributes`)
+  - [x] 1.5: Write tests: typed attrs pass, untyped attrs fire, mixed entries fire, config disabled, no Attributes section = no finding, module-level symbols
+- [x] Task 2: Implement `_check_missing_cross_references` (AC: 4, 5, 6, 7)
+  - [x] 2.1: Add `_check_missing_cross_references` function after `_check_missing_examples` in taxonomy order
+  - [x] 2.2: Implement dual detection: (a) `__init__.py` modules missing `See Also:` entirely, (b) any symbol with `See Also:` lacking cross-reference syntax
+  - [x] 2.3: Define cross-reference detection regex patterns (backtick identifiers, Markdown reference links, Sphinx roles)
+  - [x] 2.4: Return `Finding(rule="missing-cross-references", category="recommended")`
+  - [x] 2.5: Add config gating in orchestrator (`config.require_cross_references`)
+  - [x] 2.6: Write tests: missing See Also on `__init__.py`, See Also without xrefs, See Also with valid xrefs (all 3 patterns), non-`__init__.py` without See Also = no finding, config disabled
+- [x] Task 3: Implement `_check_prefer_fenced_code_blocks` (AC: 8, 9, 10, 11)
+  - [x] 3.1: Add `_check_prefer_fenced_code_blocks` function last in taxonomy order
+  - [x] 3.2: Check for `>>>` pattern in `Examples:` section content
+  - [x] 3.3: Return `Finding(rule="prefer-fenced-code-blocks", category="recommended")` when doctest format found
+  - [x] 3.4: Add config gating in orchestrator (`config.prefer_fenced_code_blocks`)
+  - [x] 3.5: Write tests: doctest format fires, fenced code blocks pass, no Examples section = no finding, mixed Examples content, config disabled
+- [x] Task 4: Update orchestrator and fixtures (AC: all)
+  - [x] 4.1: Add dispatch entries for 3 new rules in `check_enrichment` in taxonomy-table order
+  - [x] 4.2: Update `tests/fixtures/complete_module.py` — add `See Also:` sections with valid cross-references, ensure `Attributes:` use typed format, ensure `Examples:` use fenced code blocks
+  - [x] 4.3: Update "all rules disabled" test to include the 3 new config toggles
+  - [x] 4.4: Run full test suite and confirm zero regressions
 
 ## Dev Notes
 
@@ -268,8 +268,32 @@ The test at the bottom of `test_enrichment.py` dynamically discovers config togg
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- ty type-narrowing: added `if not symbol.docstring` guards in 3 new `_check_*` functions to satisfy `ty` even though orchestrator already guards
+- Multiline attribute description continuation lines: initial implementation matched continuation lines as entries; fixed by detecting base indentation level
 
 ### Completion Notes List
 
+- Implemented `_extract_section_content` shared helper for extracting section text from docstrings
+- Implemented `_check_missing_typed_attributes` (FR11): detects untyped `name: description` entries in `Attributes:` sections, guards on class-only symbols, handles multiline descriptions via base indentation detection
+- Implemented `_check_missing_cross_references` (FR12/FR13): dual-branch detection — Branch A fires on `__init__.py` modules missing `See Also:` entirely, Branch B fires on any symbol with `See Also:` lacking cross-reference syntax (backtick, Markdown link, or Sphinx role patterns)
+- Implemented `_check_prefer_fenced_code_blocks` (FR14): detects `>>>` doctest format in `Examples:` sections
+- Added 3 cross-reference regex constants (`_XREF_BACKTICK`, `_XREF_MD_LINK`, `_XREF_SPHINX`) and `_DOCTEST_PATTERN`, `_TYPED_ATTR_PATTERN`
+- Added `_SYMBOL_KIND_DISPLAY` mapping for format-rule messages
+- Added 3 new dispatch entries in `check_enrichment` orchestrator in taxonomy-table order
+- Updated `tests/fixtures/complete_module.py`: typed Attributes format, See Also sections with backtick xrefs, fenced code blocks in Examples
+- "All rules disabled" test verified — dynamic approach from Story 3.1 works with 3 new boolean toggles (no manual update needed)
+- 36 new tests added (4 `_extract_section_content` + 11 `_check_missing_typed_attributes` + 13 `_check_missing_cross_references` + 8 `_check_prefer_fenced_code_blocks`), total 414 tests all passing
+
 ### File List
+
+- `src/docvet/checks/enrichment.py` — Added `_extract_section_content` helper, 3 `_check_*` functions, 5 regex constants, `_SYMBOL_KIND_DISPLAY` dict, 3 orchestrator dispatch entries
+- `tests/unit/checks/test_enrichment.py` — Added 36 new tests for all 3 rules + section content extraction helper
+- `tests/fixtures/complete_module.py` — Updated Attributes to typed format, added See Also sections with xrefs
+
+### Change Log
+
+- 2026-02-09: Implemented Story 3.2 — Format and Cross-Reference Rules (missing-typed-attributes, missing-cross-references, prefer-fenced-code-blocks)
