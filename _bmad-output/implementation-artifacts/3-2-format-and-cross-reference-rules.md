@@ -1,6 +1,6 @@
 # Story 3.2: Format and Cross-Reference Rules
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -286,14 +286,15 @@ Claude Opus 4.6
 - Added 3 new dispatch entries in `check_enrichment` orchestrator in taxonomy-table order
 - Updated `tests/fixtures/complete_module.py`: typed Attributes format, See Also sections with backtick xrefs, fenced code blocks in Examples
 - "All rules disabled" test verified — dynamic approach from Story 3.1 works with 3 new boolean toggles (no manual update needed)
-- 36 new tests added (4 `_extract_section_content` + 11 `_check_missing_typed_attributes` + 13 `_check_missing_cross_references` + 8 `_check_prefer_fenced_code_blocks`), total 414 tests all passing
+- 37 new tests added (4 `_extract_section_content` + 11 `_check_missing_typed_attributes` + 14 `_check_missing_cross_references` + 8 `_check_prefer_fenced_code_blocks`), total 415 tests all passing
 
 ### File List
 
 - `src/docvet/checks/enrichment.py` — Added `_extract_section_content` helper, 3 `_check_*` functions, 5 regex constants, `_SYMBOL_KIND_DISPLAY` dict, 3 orchestrator dispatch entries
-- `tests/unit/checks/test_enrichment.py` — Added 36 new tests for all 3 rules + section content extraction helper
+- `tests/unit/checks/test_enrichment.py` — Added 37 new tests for all 3 rules + section content extraction helper
 - `tests/fixtures/complete_module.py` — Updated Attributes to typed format, added See Also sections with xrefs
 
 ### Change Log
 
 - 2026-02-09: Implemented Story 3.2 — Format and Cross-Reference Rules (missing-typed-attributes, missing-cross-references, prefer-fenced-code-blocks)
+- 2026-02-09: Code review — removed stale Story 3.1 placeholder comment from enrichment.py, added missing test for empty See Also section content (415 tests)
