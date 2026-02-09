@@ -23,6 +23,9 @@ def process(value: str) -> int:
         result = process("hello")
         assert result == 5
         ```
+
+    See Also:
+        `generate_numbers`
     """
     if not value:
         raise ValueError("Value cannot be empty")
@@ -34,14 +37,17 @@ class ValidationResult:
     """Result of a validation operation.
 
     Attributes:
-        is_valid: Whether the validation passed.
-        message: Human-readable description of the result.
-        error_count: Number of errors found during validation.
+        is_valid (bool): Whether the validation passed.
+        message (str): Human-readable description of the result.
+        error_count (int): Number of errors found during validation.
 
     Examples:
         ```python
         result = ValidationResult(is_valid=True, message="OK")
         ```
+
+    See Also:
+        `Connection`
     """
 
     is_valid: bool
@@ -53,13 +59,16 @@ class Connection:
     """A database connection wrapper.
 
     Attributes:
-        host: The database host address.
-        port: The port number for the connection.
+        host (str): The database host address.
+        port (int): The port number for the connection.
 
     Examples:
         ```python
         conn = Connection("localhost", 5432)
         ```
+
+    See Also:
+        `ValidationResult`
     """
 
     def __init__(self, host: str, port: int = 5432):
@@ -86,6 +95,9 @@ def generate_numbers(n: int) -> Generator[int, None, None]:
         ```python
         list(generate_numbers(3))  # [0, 1, 2]
         ```
+
+    See Also:
+        `process`
     """
     for i in range(n):
         yield i
