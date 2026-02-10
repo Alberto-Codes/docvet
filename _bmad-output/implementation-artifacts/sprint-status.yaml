@@ -1,4 +1,4 @@
-# generated: 2026-02-08
+# generated: 2026-02-09
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-08
+generated: 2026-02-09
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -61,4 +61,18 @@ development_status:
   epic-3: done
   3-1-missing-examples-detection: done
   3-2-format-and-cross-reference-rules: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
+
+  # Epic 4: Freshness Diff Mode Detection
+  epic-4: in-progress
+  4-1-diff-hunk-parser-and-shared-infrastructure: done
+  4-2-line-classification-and-diff-mode-orchestrator: backlog
+  4-3-cli-wiring-for-freshness-diff-mode: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: Freshness Drift Mode & CLI Integration
+  epic-5: backlog
+  5-1-blame-timestamp-parser: backlog
+  5-2-drift-and-age-detection-orchestrator: backlog
+  5-3-cli-wiring-for-drift-mode: backlog
+  epic-5-retrospective: optional

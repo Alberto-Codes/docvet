@@ -8,9 +8,16 @@ stepsCompleted:
   - 6
   - 7
   - 8
-lastStep: 8
+  - 'freshness-2'
+  - 'freshness-4'
+  - 'freshness-5'
+  - 'freshness-6'
+  - 'freshness-7'
+  - 'freshness-8'
+lastStep: 'freshness-8'
 status: 'complete'
-completedAt: '2026-02-08'
+completedAt: '2026-02-09'
+freshnessStartedAt: '2026-02-09'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/prd-validation-report.md'
@@ -21,10 +28,13 @@ inputDocuments:
   - 'docs/project-overview.md'
   - 'docs/development-guide.md'
   - 'docs/source-tree-analysis.md'
+  - 'src/docvet/ast_utils.py'
+  - 'src/docvet/config.py'
+  - 'src/docvet/checks/__init__.py'
 workflowType: 'architecture'
 project_name: 'docvet'
 user_name: 'Alberto-Codes'
-date: '2026-02-08'
+date: '2026-02-09'
 ---
 
 # Architecture Decision Document
@@ -760,3 +770,522 @@ All 5 decisions interlock without contradiction:
 1. Prerequisite PR 1: `require_attributes` config toggle
 2. Prerequisite PR 2: `checks/__init__.py` with `Finding` dataclass
 3. Main enrichment PR: `check_enrichment` + 10 `_check_*` functions + tests
+
+---
+
+## Freshness Module — Project Context Analysis
+
+_This section extends the architecture document to cover the freshness check (Layer 4: accuracy). All enrichment content above is preserved and unchanged._
+
+### Freshness Requirements Overview
+
+**Functional Requirements:**
+26 FRs (FR43-FR68) across 6 categories. The freshness module is a pair of pure functions that detect stale docstrings by combining git output parsing with AST line-to-symbol mapping. Key architectural groupings:
+
+- **Diff Mode Detection (FR43-FR49):** 7 FRs defining the hunk-to-symbol pipeline — parse git diff, map changed lines to symbols, classify by range (signature/body/import), assign severity
+- **Drift Mode Detection (FR50-FR54):** 5 FRs defining the blame-to-symbol pipeline — parse git blame line-porcelain, group timestamps by symbol, compare code vs docstring ages. Drift-specific edge cases (uncommitted files, symbols with only a docstring, boundary timestamps) are documented at the Technical Guidance level in the PRD, not elevated to FRs — this is a scope boundary, not a gap
+- **Edge Cases (FR55-FR58):** 4 FRs defining diff mode boundary behavior — new files, deleted symbols, within-file moves, non-Python files
+- **Finding Production (FR59-FR62):** 4 FRs defining output shape — reuses existing `Finding` dataclass (which self-validates via `__post_init__`), deduplication (highest severity per symbol), zero-finding guarantees
+- **Configuration (FR63-FR65):** 3 FRs defining drift thresholds — `drift-threshold` (days), `age-threshold` (days), defaults
+- **Integration (FR66-FR68):** 3 FRs defining the public API contract — pure functions, CLI wiring, mode selection
+
+**Non-Functional Requirements:**
+13 NFRs (NFR20-NFR32) across 5 categories that directly shape freshness architecture:
+
+- **Performance (NFR20-22):** Sub-100ms per file for diff mode, no overhead beyond timestamp parsing for drift, linear memory — enforces stateless per-file processing (same invariant as enrichment). Note: existing `map_lines_to_symbols` uses O(n*m) approach (lines × symbols) — adequate for NFR20 on typical files but flagged as post-MVP optimization candidate for large files
+- **Correctness (NFR23-26):** Non-signature changes never produce HIGH severity, deterministic output, crash-proof on malformed git output, actionable messages — enforces defensive parsing with fail-safe empty returns
+- **Maintainability (NFR27-28):** Diff and drift independently testable with mocked strings, 3-file change ceiling for new rules — enforces modular structure parallel to enrichment
+- **Compatibility (NFR29-30):** Git 2.x output format, `git diff` and `git diff --cached` handled identically — eliminates version-specific code paths
+- **Integration (NFR31-32):** Frozen `Finding` shape reused without modification, no cross-check imports — constrains API surface identically to enrichment
+
+**Scale & Complexity:**
+
+- Primary domain: CLI developer tool (single-process, file-at-a-time) — same as enrichment
+- Complexity level: Medium (lower than enrichment — 2 functions vs 10 rules, but git output parsing introduces a new domain with its own edge cases)
+- Estimated architectural components: ~4 internal components (diff parser, blame parser, line classifier, finding builder)
+
+### Freshness Technical Constraints & Dependencies
+
+- **All shared infrastructure already implemented** (no prerequisite PRs needed — the PRD's prerequisite list is stale):
+  - `Symbol` dataclass with `signature_range`, `body_range`, `docstring_range` fields (`ast_utils.py:16-47`)
+  - `map_lines_to_symbols(tree)` (`ast_utils.py:264-292`)
+  - `Finding` frozen dataclass with `__post_init__` self-validation (`checks/__init__.py:19-65`)
+  - `FreshnessConfig` with `drift_threshold` and `age_threshold` (`config.py:16-20`)
+  - `_run_freshness` CLI stub in `cli.py`
+- **Caller provides git output as strings** — `check_freshness_diff` and `check_freshness_drift` do not call git subprocesses; the CLI handles all I/O
+- **Two public functions, not one** — diff and drift have fundamentally different inputs, outputs, and usage patterns. This has a testing implication: integration tests need two structurally different git repo fixture setups (staged/unstaged changes for diff, committed history with blame data for drift)
+- **No new runtime dependencies** — stdlib `ast`, `re`, `time` + existing `ast_utils`
+- **No cross-check imports** — freshness depends only on `checks.Finding` and `ast_utils`
+- **`Finding` self-validates** — `__post_init__` enforces non-empty strings, positive line numbers, and valid category values. Freshness finding construction does not need redundant validation
+
+### Freshness Cross-Cutting Concerns
+
+- **Git output parsing resilience (highest-risk area):** Both functions must handle specific git output edge cases without crashing — empty list return on unparseable input (mirrors enrichment's `_parse_sections` empty-set pattern). Known edge cases to handle:
+  - **Diff mode:** binary file markers (`Binary files ... differ`), rename headers (`rename from`/`rename to`), combined diffs from merge commits, `--- /dev/null` for new files, diff output with no hunks
+  - **Drift mode:** boundary commits (initial commit markers), uncommitted changes (zero SHA), empty blame output for new/untracked files, non-UTF-8 content lines
+- **No-docstring skip:** Both modes skip symbols with `docstring_range is None` — undocumented symbols cannot have stale docstrings (presence checking is interrogate's domain)
+- **One-finding-per-symbol deduplication:** Diff mode: highest severity wins per symbol (signature > body > import). Drift mode: up to two findings per symbol (`stale-drift` and `stale-age` are independent checks)
+- **Severity-to-category mapping:** Baked into rule definitions, not dynamic. `stale-signature` → `"required"`, all others → `"recommended"`
+
+## Freshness Core Architectural Decisions
+
+### Freshness Decision Priority Analysis
+
+**Critical Decisions (Block Implementation):**
+1. Internal module organization (mode-oriented single file)
+2. Git diff hunk parsing strategy (line-by-line iteration)
+3. Git blame timestamp parsing strategy (line-by-line state machine)
+4. Line classification & severity assignment (partition-then-decide)
+
+**Important Decisions (Shape Architecture):**
+5. Finding message format (two patterns — diff and drift)
+6. Error handling strategy (defensive by design, no try/except)
+
+**Deferred Decisions (Post-MVP):**
+- Per-rule disable toggles for diff mode (e.g., `ignore-stale-import = true`)
+- Hunk-level precision in finding messages (show exactly which lines changed)
+- Auto-fix suggestions for stale `Args:` sections
+- Graduate `freshness.py` to sub-package when >2000 lines or when growth features introduce a third public entry point
+
+### Freshness Decision 1: Internal Module Organization
+
+**Decision:** Mode-oriented sections within a single `freshness.py` file
+
+Industry research (ruff, mypy, pylint, flake8, pyright) confirms the consensus: **start flat, split when there's a concrete reason.** Flake8's pycodestyle has two modes (`logical` and `physical`) as two functions in the same file — directly parallel to freshness. Pylint's split trigger is "multiple checker classes," not file size. Enrichment is ~1,243 lines in one file. Freshness is estimated at ~560 lines — well within single-file comfort.
+
+**File organization within `freshness.py`:**
+1. Module docstring
+2. `from __future__ import annotations`
+3. Stdlib imports (`ast`, `re`, `time`)
+4. Local imports (`from docvet.ast_utils import ...`, `from docvet.checks import Finding`, `from docvet.config import FreshnessConfig`)
+5. Module-level constants (severity/category mappings, regex patterns)
+6. Shared helper functions (`_build_finding`)
+7. Diff mode helpers (`_parse_diff_hunks`, `_classify_changed_lines`)
+8. `check_freshness_diff` public function
+9. Drift mode helpers (`_parse_blame_timestamps`, `_compute_drift`, `_compute_age`)
+10. `check_freshness_drift` public function
+
+**Rationale:** One file per check module, consistent with enrichment. Mode-oriented grouping supports top-to-bottom readability — a reviewer can read all diff logic or all drift logic without jumping. Two public functions at the mode boundaries make the API surface immediately visible.
+
+**Anti-patterns:**
+- `checks/freshness/__init__.py` + `diff.py` + `drift.py` — premature sub-packaging, breaks one-file-per-check pattern
+- Interleaving diff and drift helpers — makes mode boundaries unclear
+- A single `check_freshness(mode=...)` dispatcher function — obscures the fundamentally different inputs and signatures
+
+### Freshness Decision 2: Git Diff Hunk Parsing Strategy
+
+**Decision:** Line-by-line iteration returning `set[int]`
+
+```python
+def _parse_diff_hunks(diff_output: str) -> set[int]:
+```
+
+Iterates lines of the raw diff output in a single pass:
+- Detects `--- /dev/null` → sets `is_new_file` flag, returns empty set (FR55)
+- Detects `Binary files` → returns empty set (FR58)
+- Detects `@@ ... +(\d+)(?:,(\d+))? @@` hunk headers → extracts `(start, count)` ranges
+- Expands ranges to individual line numbers: `range(start, start + count)`
+- Skips rename headers, mode change lines, and other non-hunk content silently
+- Returns `set[int]` of all changed line numbers in the current file version
+
+**Rationale:** Single pass handles all edge cases naturally — new file detection, binary file skipping, and hunk extraction happen in the same iteration without requiring separate pre-filtering. Returns `set[int]` for O(1) membership testing in downstream `_classify_changed_lines`. Mirrors enrichment's approach where `_parse_sections` does one pass over docstring text.
+
+**Why not `re.findall` on the whole string:** Would capture hunk headers but miss `--- /dev/null` and `Binary files` markers, requiring a second pass for edge case detection.
+
+### Freshness Decision 3: Git Blame Timestamp Parsing Strategy
+
+**Decision:** Line-by-line state machine returning `dict[int, int]`
+
+```python
+def _parse_blame_timestamps(blame_output: str) -> dict[int, int]:
+```
+
+Parses `git blame --line-porcelain` format using a simple state machine:
+- SHA line: `line.split()` → extract `final_line` (3rd field) as current line number
+- `author-time` line: `startswith("author-time")` → extract Unix timestamp
+- Tab-prefixed content line: marks end of block, emit `{line_number: timestamp}` mapping
+- Silently skip all other header fields (`author`, `author-mail`, `committer`, etc.)
+
+Returns `dict[int, int]` mapping 1-based line numbers to Unix timestamps.
+
+**Edge case handling:**
+- Empty input → return empty dict immediately
+- Boundary commits (initial commit) → parsed normally, `author-time` is still present
+- Uncommitted changes (zero SHA `0000000...`) → parsed normally, `author-time` reflects working copy time
+- Lines that don't match expected format → silently skipped
+
+**Rationale:** Blame porcelain format is structured and sequential — a state machine is the natural fit. No regex needed for the SHA line (positional split). Minimal regex for `author-time` extraction. Single pass, O(n) with line count.
+
+### Freshness Decision 4: Line Classification & Severity Assignment
+
+**Decision:** Partition-then-decide with priority-ordered early returns
+
+```python
+def _classify_changed_lines(
+    changed_lines: set[int],
+    symbol: Symbol,
+) -> str | None:
+```
+
+For a given symbol, classifies its changed lines and returns a severity string:
+
+1. Compute intersection of `changed_lines` with each symbol range
+2. If any changed line in `symbol.docstring_range` → return `None` (docstring updated, suppress finding)
+3. If any changed line in `symbol.signature_range` → return `"signature"` (HIGH → `"required"`)
+4. If any changed line in `symbol.body_range` → return `"body"` (MEDIUM → `"recommended"`)
+5. Otherwise → return `"import"` (LOW → `"recommended"`)
+
+**Rationale:** Priority order matches the PRD's "highest severity wins" rule. The docstring-change check as the first gate is the most important behavior — it suppresses the entire finding when the developer updated the docstring alongside the code. Single function, no intermediate data structures, deterministic output. The `str | None` return type mirrors enrichment's `Finding | None` pattern — `None` means "no finding."
+
+**Note:** `symbol.signature_range` is `None` for classes and modules (they have no `def` line). When `None`, step 3 is skipped — class body changes produce `"body"` (MEDIUM), not `"signature"` (HIGH). This correctly reflects that a class has no signature to become stale.
+
+### Freshness Decision 5: Finding Message Format
+
+**Decision:** Two patterns — diff mode and drift mode — with per-function message ownership
+
+**Diff mode messages:**
+`{SymbolKind} '{name}' {change_type} changed but docstring not updated`
+
+Examples:
+- `Function 'send_request' signature changed but docstring not updated`
+- `Method 'process' body changed but docstring not updated`
+- `Function 'parse' imports/formatting changed but docstring not updated`
+
+**Drift mode messages — `stale-drift`:**
+`{SymbolKind} '{name}' code modified {code_date}, docstring last modified {doc_date} ({N} days drift)`
+
+Example:
+- `Function 'process_batch' code modified 2025-12-14, docstring last modified 2025-10-02 (73 days drift)`
+
+**Drift mode messages — `stale-age`:**
+`{SymbolKind} '{name}' docstring untouched since {doc_date} ({N} days)`
+
+Example:
+- `Function 'validate_schema' docstring untouched since 2025-09-15 (147 days)`
+
+**Rationale:** Messages name the symbol, the issue, and evidence (change type for diff, dates/days for drift). Actionable without additional context (NFR26). Drift messages include both dates and day counts — dates for human context, day counts for threshold comparison. Per-function message ownership, same as enrichment's Decision 4.
+
+### Freshness Decision 6: Error Handling Strategy
+
+**Decision:** Defensive by design, no try/except — identical pattern to enrichment's Decision 5
+
+Three defensive gates eliminate crash paths without exception handling:
+
+1. **`_parse_diff_hunks()`** — line iteration with format checks, returns empty `set[int]` on empty/unparseable input (never raises)
+2. **`_parse_blame_timestamps()`** — state machine with format checks, returns empty `dict[int, int]` on empty/unparseable input (never raises)
+3. **Both public functions** — return `[]` immediately on empty git output string, before calling any parser
+
+Additional gate: during line iteration, lines that don't match expected format are silently skipped (binary markers, rename headers, corrupted lines). This produces false negatives (missed findings) rather than crashes — safe direction, consistent with enrichment's NFR5 → freshness's NFR25.
+
+No try/except in any function. Malformed git output produces zero findings, not crashes. Production hardening (orchestrator-level catch-all) deferred to post-MVP, same as enrichment.
+
+**Rationale:** Correctness through design, not exception catching. If a parser has a logic error, it should crash in tests so it gets fixed. The three defensive gates cover all known edge cases identified in the cross-cutting concerns analysis.
+
+### Freshness Decision Impact Analysis
+
+**Implementation Sequence:**
+1. Module-level constants and `_build_finding` shared helper (Decisions 1, 5)
+2. `_parse_diff_hunks` function (Decision 2, 6)
+3. `_classify_changed_lines` function (Decision 4)
+4. `check_freshness_diff` public orchestrator (Decisions 1, 4, 5)
+5. `_parse_blame_timestamps` function (Decision 3, 6)
+6. `_compute_drift` and `_compute_age` helpers (Decision 4)
+7. `check_freshness_drift` public orchestrator (Decisions 1, 5)
+
+**Cross-Decision Dependencies:**
+- Decision 1 (module org) defines the file layout that all other decisions fill in
+- Decision 2 (diff parsing) produces the `set[int]` consumed by Decision 4 (classification)
+- Decision 3 (blame parsing) produces the `dict[int, int]` consumed by drift helpers
+- Decision 4 (classification) produces the severity string consumed by Decision 5 (message format)
+- Decision 6 (error handling) shapes how Decisions 2 and 3 handle edge cases
+- All decisions depend on existing `Symbol` range fields from `ast_utils.py` — no prerequisite work needed
+
+## Freshness Implementation Patterns & Consistency Rules
+
+### Freshness Naming Patterns
+
+**Private function naming:**
+- Diff mode: `_parse_diff_hunks`, `_classify_changed_lines`
+- Drift mode: `_parse_blame_timestamps`, `_compute_drift`, `_compute_age`
+- Shared: `_build_finding`
+- Pattern: `_parse_*` for text parsing, `_classify_*` for categorization, `_compute_*` for calculations, `_build_*` for construction
+- **Anti-pattern:** `_process_diff`, `_handle_blame`, `_get_severity` — generic verbs that don't describe the operation
+
+**Constants:**
+- Rule identifiers as string literals: `"stale-signature"`, `"stale-body"`, `"stale-import"`, `"stale-drift"`, `"stale-age"`
+- Hunk header regex: `_HUNK_PATTERN = re.compile(r"^@@ .+\+(\d+)(?:,(\d+))? @@")`
+- Private constants prefixed with `_` (not exported), `ALL_CAPS_WITH_UNDER` at module level
+- **Anti-pattern:** Enum classes for severity or rule IDs — overkill for 5 string literals, inconsistent with enrichment
+
+**Symbol kind display names:**
+- Use `symbol.kind.capitalize()` for messages: `"Function"`, `"Class"`, `"Method"`, `"Module"`
+- Same pattern as enrichment's finding messages
+
+### Freshness Structure Patterns
+
+**Source ordering (defined in Decision 1), with additional constraints:**
+
+- `check_freshness_diff` appears before `check_freshness_drift` — diff mode is the primary workflow
+- Each public function's helpers appear directly above it — no forward references to helpers defined later in the file
+- Constants at top, shared helpers next, then diff block, then drift block
+
+**Test organization:**
+- `tests/unit/checks/test_freshness.py` — single test file, matching source structure
+- Test naming: `test_{rule_id}_when_{condition}_returns_{expected}` (same as enrichment)
+- Test grouping by mode: diff mode tests first, drift mode tests second
+- Mocked git output as multiline strings in test functions, not external fixture files — keeps tests self-contained and readable
+- Integration tests in `tests/integration/test_freshness_diff.py` and `tests/integration/test_freshness_drift.py` — separate files because they need different git repo fixtures
+
+### Freshness Git Output Parsing Patterns
+
+**Line iteration idiom:**
+```python
+for line in diff_output.splitlines():
+    if line.startswith("Binary files"):
+        return set()
+    # ... etc
+```
+- Always use `.splitlines()`, not `.split("\n")` — handles `\r\n` on Windows
+- Early returns for whole-file skip conditions (binary, new file)
+- Silent skip for unrecognized lines — no warnings, no exceptions
+
+**Range expansion idiom:**
+```python
+match = _HUNK_PATTERN.match(line)
+if match:
+    start = int(match.group(1))
+    count = int(match.group(2) or "1")  # missing count means 1 line
+    changed.update(range(start, start + count))
+```
+
+**Set intersection for range checks:**
+```python
+changed_in_sig = changed_lines & set(range(sig_start, sig_end + 1))
+```
+- Use `&` (set intersection) for readability over iteration
+- Ranges are inclusive on both ends (matching `Symbol` range convention)
+
+### Freshness Finding Construction Pattern
+
+**All finding construction uses `_build_finding` shared helper:**
+
+```python
+def _build_finding(
+    file_path: str,
+    symbol: Symbol,
+    rule: str,
+    message: str,
+    category: Literal["required", "recommended"],
+) -> Finding:
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule=rule,
+        message=message,
+        category=category,
+    )
+```
+
+- `file` is always `file_path` (passed through, not computed)
+- `line` is always `symbol.line` (not a changed line number)
+- `symbol` is always `symbol.name`
+- `rule` is always a string literal from the 5-rule taxonomy
+- `category` is always a string literal — `"required"` for `stale-signature`, `"recommended"` for all others
+- **Anti-pattern:** Constructing `Finding` directly in each function, computing line from diff hunks
+
+**Why a shared helper (different from enrichment):** Enrichment's 10 `_check_*` functions each construct findings inline because message format varies per rule. Freshness has only 5 rules with less message variation, and the `file_path → file`, `symbol.line → line`, `symbol.name → symbol` mapping is mechanical. A shared helper eliminates duplication and ensures consistency.
+
+### Freshness Enforcement Guidelines
+
+**All AI agents implementing freshness MUST:**
+- Follow the file organization order (constants → shared → diff block → drift block)
+- Use `.splitlines()` for git output parsing, never `.split("\n")`
+- Use set operations for range intersection checks
+- Construct findings via `_build_finding`, not inline `Finding()`
+- Use string literals for rule identifiers and categories — no enums, no variables
+- Return empty list/set/dict on empty input — never `None`
+- Silently skip unrecognized git output lines — no warnings, no exceptions
+- Use `symbol.kind.capitalize()` in finding messages
+
+**Pattern verification:** ruff + ty enforce naming, import order, and type consistency. Test coverage (>=90% on `freshness.py`) enforces behavioral correctness.
+
+## Freshness Project Structure & Boundaries
+
+### Updated Project Directory Structure
+
+Existing files shown as-is. **New files for freshness** marked with `← NEW`.
+
+```
+src/docvet/
+├── __init__.py
+├── cli.py                    # _run_freshness stub (wired in separate CLI story)
+├── config.py                 # FreshnessConfig (existing, no changes needed)
+├── discovery.py
+├── ast_utils.py              # Symbol, map_lines_to_symbols (existing, no changes needed)
+├── reporting.py
+└── checks/
+    ├── __init__.py            # Finding dataclass (shared, no changes needed)
+    ├── enrichment.py          # check_enrichment (existing, no changes needed)
+    └── freshness.py           ← NEW (check_freshness_diff + check_freshness_drift)
+
+tests/
+├── conftest.py               # parse_source factory (existing)
+├── unit/
+│   ├── test_config.py
+│   ├── test_ast_utils.py
+│   └── checks/
+│       ├── __init__.py
+│       ├── test_enrichment.py
+│       └── test_freshness.py  ← NEW (all freshness rule tests, mocked git output)
+├── integration/
+│   ├── conftest.py            # Git repo fixtures (existing + new freshness helpers)
+│   ├── test_freshness_diff.py  ← NEW (real git repos, staged/unstaged changes)
+│   └── test_freshness_drift.py ← NEW (real git repos, committed history + blame)
+└── fixtures/
+    ├── complete_module.py
+    ├── missing_raises.py
+    └── missing_yields.py
+```
+
+**Scope clarification:** The main freshness PR adds 1 source file (`checks/freshness.py`) and 3 test files. No modifications to existing source files. CLI wiring (`_run_freshness` stub replacement, `git diff`/`git blame` subprocess calls) is a **separate integration story** — same pattern as enrichment, where `_run_enrichment` was wired after the main enrichment PR.
+
+### Freshness Architectural Boundaries
+
+**Public API boundary:**
+- `check_freshness_diff(file_path, diff_output, tree) -> list[Finding]` — public function #1
+- `check_freshness_drift(file_path, blame_output, tree, config, *, now=None) -> list[Finding]` — public function #2
+- Everything else in `freshness.py` is private (`_` prefixed)
+
+**Config asymmetry (design invariant, not accident):**
+- `check_freshness_diff` has **zero config dependency** — severity logic is fully determined by the inputs (what changed). No thresholds, no toggles. This is intentional: diff mode behavior should be deterministic and non-configurable.
+- `check_freshness_drift` takes `FreshnessConfig` — drift detection requires `drift_threshold` and `age_threshold`. The function also accepts an optional `now` parameter (Unix timestamp) for test determinism, defaulting to `time.time()`.
+
+**Module dependency boundary:**
+```
+cli.py (separate wiring story)
+  → imports check_freshness_diff, check_freshness_drift from docvet.checks.freshness
+  → imports Finding from docvet.checks
+  → imports FreshnessConfig from docvet.config
+  → runs git diff / git blame via subprocess, passes output strings to freshness
+
+checks/freshness.py (main freshness PR)
+  → imports Finding from docvet.checks
+  → imports Symbol, map_lines_to_symbols from docvet.ast_utils
+  → imports FreshnessConfig from docvet.config (drift mode only)
+  → NEVER imports from docvet.cli, docvet.discovery, or checks.enrichment
+```
+
+**Data boundary:**
+- No I/O inside freshness — pure functions, no file reads, no subprocess calls
+- `diff_output` and `blame_output` are strings provided by the CLI
+- `tree` provided by caller (CLI reads file and calls `ast.parse`)
+- `file_path` is a string for `Finding.file` construction — freshness never opens it
+
+### Freshness Requirements to Structure Mapping
+
+**FR Category → File Mapping:**
+
+| FR Category | Primary File | Supporting Files |
+|------------|-------------|-----------------|
+| Diff Mode Detection (FR43-FR49) | `checks/freshness.py` (`_parse_diff_hunks`, `_classify_changed_lines`, `check_freshness_diff`) | `ast_utils.py` (`map_lines_to_symbols`, `Symbol`) |
+| Drift Mode Detection (FR50-FR54) | `checks/freshness.py` (`_parse_blame_timestamps`, `_compute_drift`, `_compute_age`, `check_freshness_drift`) | `ast_utils.py` (`map_lines_to_symbols`, `Symbol`) |
+| Edge Cases (FR55-FR58) | `checks/freshness.py` (handled within `_parse_diff_hunks` and `check_freshness_diff`) | — |
+| Finding Production (FR59-FR62) | `checks/__init__.py` (`Finding` dataclass, existing) | `checks/freshness.py` (`_build_finding`) |
+| Configuration (FR63-FR65) | `config.py` (`FreshnessConfig`, existing) | `checks/freshness.py` (`check_freshness_drift` consumes config) |
+| Integration (FR66-FR68) | `cli.py` (`_run_freshness` stub, separate story) | `checks/freshness.py` (`check_freshness_diff`, `check_freshness_drift`) |
+
+**Rule → Internal Function Mapping:**
+
+| Rule | Public Function | Key Helpers | Severity | Category |
+|------|----------------|-------------|----------|----------|
+| `stale-signature` | `check_freshness_diff` | `_parse_diff_hunks`, `_classify_changed_lines` | HIGH | `"required"` |
+| `stale-body` | `check_freshness_diff` | `_parse_diff_hunks`, `_classify_changed_lines` | MEDIUM | `"recommended"` |
+| `stale-import` | `check_freshness_diff` | `_parse_diff_hunks`, `_classify_changed_lines` | LOW | `"recommended"` |
+| `stale-drift` | `check_freshness_drift` | `_parse_blame_timestamps`, `_compute_drift` | — | `"recommended"` |
+| `stale-age` | `check_freshness_drift` | `_parse_blame_timestamps`, `_compute_age` | — | `"recommended"` |
+
+### Freshness Data Flow
+
+```
+CLI (_run_freshness) — separate wiring story
+  │
+  │  For diff mode:
+  │    runs git diff (or git diff --cached) → diff_output: str
+  │    reads file → source: str
+  │    ast.parse(source) → tree: ast.Module
+  │
+  │  For drift mode:
+  │    runs git blame --line-porcelain → blame_output: str
+  │    reads file → source: str
+  │    ast.parse(source) → tree: ast.Module
+  │    loads config → config.freshness: FreshnessConfig
+  │
+  ▼
+check_freshness_diff(file_path, diff_output, tree)
+  │
+  │  _parse_diff_hunks(diff_output) → changed_lines: set[int]
+  │  if not changed_lines: return []
+  │  map_lines_to_symbols(tree) → line_map: dict[int, Symbol]
+  │
+  │  Invert line_map: for each line in changed_lines,
+  │    look up line_map.get(line), accumulate into
+  │    symbol_changes: dict[Symbol, set[int]]
+  │
+  ▼
+  for each (symbol, its_changed_lines) in symbol_changes:
+  │  skip if symbol.docstring_range is None
+  │  _classify_changed_lines(its_changed_lines, symbol) → severity: str | None
+  │  if severity is not None:
+  │    _build_finding(file_path, symbol, rule, message, category)
+  │
+  ▼
+list[Finding] returned to CLI
+
+check_freshness_drift(file_path, blame_output, tree, config, *, now=None)
+  │
+  │  _parse_blame_timestamps(blame_output) → timestamps: dict[int, int]
+  │  if not timestamps: return []
+  │  map_lines_to_symbols(tree) → line_map: dict[int, Symbol]
+  │
+  │  Group timestamps by symbol: for each (line, ts),
+  │    look up line_map.get(line), partition into
+  │    code_timestamps vs docstring_timestamps per symbol
+  │
+  ▼
+  for each symbol with timestamps:
+  │  skip if symbol.docstring_range is None
+  │  _compute_drift(code_ts, doc_ts, config.drift_threshold) → bool
+  │  _compute_age(doc_ts, now or time.time(), config.age_threshold) → bool
+  │  emit 0-2 findings per symbol (stale-drift, stale-age independent)
+  │
+  ▼
+list[Finding] returned to CLI
+```
+
+### Freshness Integration Points
+
+**Freshness ↔ CLI integration (separate wiring story):**
+- CLI calls `check_freshness_diff` once per file in diff mode (file-at-a-time processing)
+- CLI calls `check_freshness_drift` once per file in drift mode
+- **CLI must run git subprocess calls** and pass raw output strings — freshness performs no I/O
+- **CLI must wrap `ast.parse()` in try/except SyntaxError** — files that fail to parse are skipped
+- CLI aggregates `list[Finding]` across files
+- CLI applies `fail-on` / `warn-on` logic to determine exit code
+
+**Freshness ↔ Config integration:**
+- `FreshnessConfig` loaded once by CLI, passed to every `check_freshness_drift` call
+- `check_freshness_diff` has no config dependency — zero config awareness by design
+- Missing `[tool.docvet.freshness]` section → defaults (30 days drift, 90 days age)
+
+**Freshness ↔ AST Utils integration:**
+- `map_lines_to_symbols` is the primary `ast_utils` function called
+- `Symbol` dataclass consumed for line ranges and metadata
+- No freshness-specific changes to `ast_utils.py`
+
+**Testing integration:**
+- **Unit tests:** Mocked git output as multiline strings in test functions (self-contained, no external fixture files)
+- **Integration tests:** Real git repos via `tmp_path` + shared fixture helpers in `tests/integration/conftest.py`
+  - Diff mode fixtures: `make_commit_with_diff(tmp_path, original_content, modified_content)` — creates a repo with one file, commits original, modifies, returns diff output
+  - Drift mode fixtures: `make_repo_with_blame_history(tmp_path, commits)` — creates a repo with sequential commits at controlled timestamps, returns blame output
+- **Primary integration testing approach:** Capture real git output, pass to freshness functions directly (function-level, not CLI runner). CLI end-to-end tests are a separate concern.

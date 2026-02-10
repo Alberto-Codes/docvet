@@ -4,7 +4,12 @@ stepsCompleted:
   - 'step-02-design-epics'
   - 'step-03-create-stories'
   - 'step-04-final-validation'
+  - 'freshness-step-01'
+  - 'freshness-step-02'
+  - 'freshness-step-03'
+  - 'freshness-step-04'
 status: 'complete'
+freshnessStartedAt: '2026-02-09'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -190,6 +195,32 @@ This document provides the complete epic and story breakdown for docvet, decompo
 | FR40 | Epic 1 | No I/O, no side effects, deterministic |
 | FR41 | Epic 1 | Finding as shared type for all check modules |
 | FR42 | Epic 1 | CLI wiring: `docvet enrichment` and `docvet check` |
+| FR43 | Epic 4 | Parse git diff output for changed hunk line ranges |
+| FR44 | Epic 4 | Map changed lines to AST symbols |
+| FR45 | Epic 4 | Classify changed lines as signature/docstring/body |
+| FR46 | Epic 4 | Detect code change without docstring update |
+| FR47 | Epic 4 | HIGH severity for signature changes |
+| FR48 | Epic 4 | MEDIUM severity for body-only changes |
+| FR49 | Epic 4 | LOW severity for import/formatting-only changes |
+| FR50 | Epic 5 | Parse git blame --line-porcelain for timestamps |
+| FR51 | Epic 5 | Group timestamps by symbol |
+| FR52 | Epic 5 | Detect drift exceeding threshold |
+| FR53 | Epic 5 | Detect docstring age exceeding threshold |
+| FR54 | Epic 4+5 | Skip no-docstring symbols (both modes) |
+| FR55 | Epic 4 | Zero findings for new files |
+| FR56 | Epic 4 | Handle deleted functions gracefully |
+| FR57 | Epic 4 | Treat relocation as delete-plus-add |
+| FR58 | Epic 4 | Skip binary/non-Python files |
+| FR59 | Epic 4 | Structured finding production |
+| FR60 | Epic 4 | Reuse shared Finding dataclass |
+| FR61 | Epic 4+5 | One finding per symbol per rule, highest severity wins |
+| FR62 | Epic 4+5 | Zero findings when docstrings are up-to-date |
+| FR63 | Epic 5 | Configurable drift threshold |
+| FR64 | Epic 5 | Configurable age threshold |
+| FR65 | Epic 5 | Default thresholds |
+| FR66 | Epic 4+5 | Pure function API (file_path, git output, AST → findings) |
+| FR67 | Epic 4+5 | CLI: `docvet freshness` (Epic 4 diff, Epic 5 drift) |
+| FR68 | Epic 4+5 | CLI: diff default (Epic 4), `--mode drift` (Epic 5) |
 
 ## Epic List
 
@@ -680,3 +711,448 @@ So that my docstrings follow best practices for readability and mkdocs rendering
 ---
 
 **Epic 3 Summary:** 2 stories, covering all 7 FRs assigned to this epic. Story 3.1 handles the list-config `missing-examples` rule. Story 3.2 covers the remaining docstring-only format and cross-reference rules.
+
+### Epic 4: Freshness Diff Mode Detection
+
+A developer can run `docvet freshness` and get findings for symbols where code changed but docstrings were not updated — HIGH severity for signature changes (`stale-signature`), MEDIUM for body changes (`stale-body`), LOW for import/formatting changes (`stale-import`). Includes shared infrastructure (`_build_finding`, module constants), all diff-specific edge case handling, unit + integration tests, and CLI wiring for diff mode as the default.
+
+**FRs covered:** FR43, FR44, FR45, FR46, FR47, FR48, FR49, FR54, FR55, FR56, FR57, FR58, FR59, FR60, FR61 (diff), FR62 (diff), FR66 (diff), FR67 (diff wiring), FR68 (diff as default)
+
+### Epic 5: Freshness Drift Mode & CLI Integration
+
+A developer can run `docvet freshness --mode drift` and get findings for docstrings that have drifted from their code (`stale-drift`) or aged past a configurable threshold (`stale-age`). Adds blame parsing, threshold computation, drift configuration consumption, and the `--mode drift` CLI flag.
+
+**FRs covered:** FR50, FR51, FR52, FR53, FR54 (verified), FR61 (drift), FR62 (drift), FR63, FR64, FR65, FR66 (drift), FR67 (drift wiring), FR68 (`--mode drift` flag)
+
+## Epic 4: Freshness Diff Mode Detection
+
+A developer can run `docvet freshness` and get findings for symbols where code changed but docstrings were not updated — HIGH severity for signature changes (`stale-signature`), MEDIUM for body changes (`stale-body`), LOW for import/formatting changes (`stale-import`). Includes shared infrastructure (`_build_finding`, module constants), all diff-specific edge case handling, unit + integration tests, and CLI wiring for diff mode as the default.
+
+### Story 4.1: Diff Hunk Parser and Shared Infrastructure
+
+As a developer,
+I want a parser that extracts changed line numbers from git diff output and a shared finding builder,
+So that diff mode has reliable input processing and freshness findings are constructed consistently.
+
+**Acceptance Criteria:**
+
+**Given** a git diff output string containing `@@ -10,5 +12,8 @@` hunk headers
+**When** `_parse_diff_hunks(diff_output)` is called
+**Then** it returns a `set[int]` containing the expanded line numbers from the `+start,count` ranges (e.g., `{12, 13, 14, 15, 16, 17, 18, 19}`)
+
+**Given** a git diff output with `--- /dev/null` (new file)
+**When** `_parse_diff_hunks(diff_output)` is called
+**Then** it returns an empty set (FR55 — no prior docstring to become stale)
+
+**Given** a git diff output containing `Binary files ... differ`
+**When** `_parse_diff_hunks(diff_output)` is called
+**Then** it returns an empty set (FR58 — skip binary files)
+
+**Given** a hunk header with no count (`@@ -1 +1 @@`, missing `,count`)
+**When** `_parse_diff_hunks(diff_output)` is called
+**Then** it treats the missing count as 1 and includes that single line number
+
+**Given** an empty string as `diff_output`
+**When** `_parse_diff_hunks(diff_output)` is called
+**Then** it returns an empty set (no crash, no exception)
+
+**Given** a git diff output with rename headers (`rename from ...` / `rename to ...`) or mode change lines
+**When** `_parse_diff_hunks(diff_output)` is called
+**Then** those lines are silently skipped and only hunk headers are processed
+
+**Given** the `_build_finding` shared helper
+**When** called with `file_path`, `symbol`, `rule`, `message`, `category`
+**Then** it returns a `Finding` with `file=file_path`, `line=symbol.line`, `symbol=symbol.name`, and the provided `rule`, `message`, `category`
+
+**Given** the `_HUNK_PATTERN` module-level constant
+**When** inspected
+**Then** it is a compiled regex matching `^@@ .+\+(\d+)(?:,(\d+))? @@`
+
+**FRs:** FR43, FR55, FR58, FR59 (partial), FR60 (partial), NFR25, NFR29
+
+### Story 4.2: Line Classification and Diff Mode Orchestrator
+
+As a developer,
+I want to classify changed lines per symbol by range (signature, body, docstring) and produce findings at the appropriate severity level,
+So that stale docstrings are detected with correct severity and docstring updates suppress findings.
+
+**Acceptance Criteria:**
+
+**Given** a symbol with changed lines in its `signature_range` and no changed lines in its `docstring_range`
+**When** `_classify_changed_lines(changed_lines, symbol)` is called
+**Then** it returns `"signature"` (FR47 — HIGH severity)
+
+**Given** a symbol with changed lines in its `body_range` but not in `signature_range`, and no changed lines in its `docstring_range`
+**When** `_classify_changed_lines(changed_lines, symbol)` is called
+**Then** it returns `"body"` (FR48 — MEDIUM severity)
+
+**Given** a symbol with changed lines only outside its `signature_range`, `docstring_range`, and `body_range`
+**When** `_classify_changed_lines(changed_lines, symbol)` is called
+**Then** it returns `"import"` (FR49 — LOW severity)
+
+**Given** a symbol with changed lines in both `signature_range` and `docstring_range`
+**When** `_classify_changed_lines(changed_lines, symbol)` is called
+**Then** it returns `None` (docstring updated, finding suppressed — FR46, FR62)
+
+**Given** a symbol with changed lines in both `body_range` and `docstring_range`
+**When** `_classify_changed_lines(changed_lines, symbol)` is called
+**Then** it returns `None` (docstring updated alongside body change)
+
+**Given** a class or module symbol with `signature_range is None`
+**When** `_classify_changed_lines(changed_lines, symbol)` is called with body changes
+**Then** it returns `"body"` (MEDIUM), never `"signature"` (signature check skipped for classes/modules — NFR23)
+
+**Given** a file with a function whose signature changed and docstring was not updated
+**When** `check_freshness_diff(file_path, diff_output, tree)` is called
+**Then** it returns a `Finding` with `rule="stale-signature"`, `category="required"`, and a message like `Function 'name' signature changed but docstring not updated`
+
+**Given** a file with a method whose body changed and docstring was not updated
+**When** `check_freshness_diff(file_path, diff_output, tree)` is called
+**Then** it returns a `Finding` with `rule="stale-body"`, `category="recommended"`
+
+**Given** a file where only import lines near a symbol changed
+**When** `check_freshness_diff(file_path, diff_output, tree)` is called
+**Then** it returns a `Finding` with `rule="stale-import"`, `category="recommended"`
+
+**Given** a file where a symbol has both signature and body changes (no docstring change)
+**When** `check_freshness_diff` is called
+**Then** it produces exactly one finding at the highest severity (`stale-signature`, not both — FR61)
+
+**Given** a symbol with no docstring (`docstring_range is None`)
+**When** `check_freshness_diff` is called
+**Then** it returns zero findings for that symbol (FR54 — undocumented symbols skipped)
+
+**Given** a function that was deleted (lines appear in diff's `-` side but not in current AST)
+**When** `check_freshness_diff` is called
+**Then** it produces zero findings for that deleted function (FR56 — not in `map_lines_to_symbols`)
+
+**Given** a function relocated within a file (delete at old location, add at new location)
+**When** `check_freshness_diff` is called
+**Then** it treats the new location as a body change if the docstring wasn't updated (FR57)
+
+**Given** a file where all changed symbols have correspondingly updated docstrings
+**When** `check_freshness_diff` is called
+**Then** it returns an empty list (FR62)
+
+**Given** an empty `diff_output` string
+**When** `check_freshness_diff` is called
+**Then** it returns an empty list immediately (FR66, NFR25)
+
+**Given** identical `diff_output` and identical `tree`
+**When** `check_freshness_diff` is called multiple times
+**Then** it produces identical output every time (NFR24 — deterministic)
+
+**FRs:** FR44, FR45, FR46, FR47, FR48, FR49, FR54, FR56, FR57, FR59, FR60, FR61 (diff), FR62 (diff), FR66 (diff), NFR23, NFR24, NFR25, NFR26, NFR27
+
+### Story 4.3: CLI Wiring for Freshness Diff Mode
+
+As a developer,
+I want to run `docvet freshness` from the command line and see stale docstring findings in the standard output format,
+So that I can integrate freshness checking into my development workflow and CI pipelines.
+
+**Acceptance Criteria:**
+
+**Given** a codebase with files containing symbols with stale docstrings
+**When** `docvet freshness` is run
+**Then** findings are printed to terminal in `file:line: rule message` format (one per line)
+
+**Given** a codebase with no stale docstrings
+**When** `docvet freshness` is run
+**Then** it produces no output and exits with code 0
+
+**Given** the existing `_run_freshness` stub in `cli.py`
+**When** the freshness check is wired for diff mode
+**Then** it reads each discovered file, runs `git diff` (or `git diff --cached` for `--staged`), calls `ast.parse()`, and passes `file_path`, `diff_output`, and `tree` to `check_freshness_diff`
+
+**Given** a file that fails `ast.parse()` with `SyntaxError`
+**When** `docvet freshness` processes it
+**Then** the file is skipped with a warning (not passed to `check_freshness_diff`)
+
+**Given** `docvet check` is run (all checks)
+**When** freshness is in the enabled checks
+**Then** freshness diff findings are included alongside findings from other checks
+
+**Given** `docvet freshness` is run with no `--mode` flag
+**When** the command executes
+**Then** it defaults to diff mode (FR68)
+
+**Given** `docvet freshness --all` is run
+**When** the run completes
+**Then** all Python files in the project are analyzed using `git diff HEAD` (not just staged/unstaged)
+
+**FRs:** FR67 (diff wiring), FR68 (diff as default), NFR20, NFR30
+
+---
+
+**Epic 4 Summary:** 3 stories, covering all 19 FRs assigned to this epic. Story 4.1 handles git diff parsing and shared infrastructure. Story 4.2 implements the core classification-to-finding pipeline. Story 4.3 wires diff mode into the CLI.
+
+## Epic 5: Freshness Drift Mode & CLI Integration
+
+A developer can run `docvet freshness --mode drift` and get findings for docstrings that have drifted from their code (`stale-drift`) or aged past a configurable threshold (`stale-age`). Adds blame parsing, threshold computation, drift configuration consumption, and the `--mode drift` CLI flag.
+
+### Story 5.1: Blame Timestamp Parser
+
+As a developer,
+I want a parser that extracts per-line modification timestamps from `git blame --line-porcelain` output,
+So that drift mode can determine when each line of code was last modified.
+
+**Acceptance Criteria:**
+
+**Given** a `git blame --line-porcelain` output string with multiple blame entries
+**When** `_parse_blame_timestamps(blame_output)` is called
+**Then** it returns a `dict[int, int]` mapping 1-based line numbers to Unix timestamps extracted from `author-time` fields
+
+**Given** a blame entry with a 40-character SHA line containing the final line number as the 3rd field
+**When** `_parse_blame_timestamps` parses it
+**Then** it extracts the line number via `line.split()` (positional, no regex)
+
+**Given** a blame entry with an `author-time 1707500000` header line
+**When** `_parse_blame_timestamps` parses it
+**Then** it extracts `1707500000` as the Unix timestamp for the current blame block
+
+**Given** a blame entry with header fields like `author`, `author-mail`, `committer`, `summary`, etc.
+**When** `_parse_blame_timestamps` parses it
+**Then** those lines are silently skipped (only SHA and `author-time` are consumed)
+
+**Given** an empty string as `blame_output`
+**When** `_parse_blame_timestamps(blame_output)` is called
+**Then** it returns an empty dict (no crash, no exception — NFR25)
+
+**Given** a blame output from an initial commit (boundary commit)
+**When** `_parse_blame_timestamps` parses it
+**Then** it parses normally — `author-time` is still present on boundary commits
+
+**Given** a blame output with uncommitted changes (zero SHA `0000000...`)
+**When** `_parse_blame_timestamps` parses it
+**Then** it parses normally — `author-time` reflects working copy time
+
+**Given** lines that don't match any expected format (corrupted or truncated blame data)
+**When** `_parse_blame_timestamps` encounters them
+**Then** they are silently skipped (NFR25 — never raises exceptions)
+
+**FRs:** FR50, NFR25, NFR29
+
+### Story 5.2: Drift and Age Detection Orchestrator
+
+As a developer,
+I want to detect symbols where code has drifted ahead of its docstring by a configurable threshold or where the docstring has aged past a configurable limit,
+So that periodic audits surface docstrings that may need review.
+
+**Acceptance Criteria:**
+
+**Given** a symbol where `max(code_timestamps) - max(docstring_timestamps) > drift_threshold * 86400`
+**When** `check_freshness_drift` is called
+**Then** it returns a `Finding` with `rule="stale-drift"`, `category="recommended"`, and a message including both dates and the day count (e.g., `Function 'process_batch' code modified 2025-12-14, docstring last modified 2025-10-02 (73 days drift)`)
+
+**Given** a symbol where `now - max(docstring_timestamps) > age_threshold * 86400`
+**When** `check_freshness_drift` is called
+**Then** it returns a `Finding` with `rule="stale-age"`, `category="recommended"`, and a message including the docstring date and day count (e.g., `Function 'validate_schema' docstring untouched since 2025-09-15 (147 days)`)
+
+**Given** a symbol that triggers both `stale-drift` and `stale-age`
+**When** `check_freshness_drift` is called
+**Then** it returns two findings for that symbol — the rules are independent (FR61 drift — per rule, not per mode)
+
+**Given** a symbol where the drift is exactly at the threshold boundary (`code_max - doc_max == threshold * 86400`)
+**When** `check_freshness_drift` is called
+**Then** it does not emit a `stale-drift` finding (strict greater-than comparison `>`, not `>=`)
+
+**Given** a symbol where the docstring age is exactly at the threshold boundary
+**When** `check_freshness_drift` is called
+**Then** it does not emit a `stale-age` finding (strict greater-than `>`)
+
+**Given** a symbol with no docstring (`docstring_range is None`)
+**When** `check_freshness_drift` is called
+**Then** it produces zero findings for that symbol (FR54 — no docstring timestamps to evaluate)
+
+**Given** a symbol with only a docstring (no code body, e.g., a stub)
+**When** `check_freshness_drift` is called
+**Then** `stale-drift` cannot trigger (no code timestamps) but `stale-age` can still trigger based on docstring age alone
+
+**Given** a symbol where code timestamps and docstring timestamps are within the drift threshold
+**When** `check_freshness_drift` is called
+**Then** it produces zero `stale-drift` findings for that symbol (FR62)
+
+**Given** `config.drift_threshold = 30` and `config.age_threshold = 90` (defaults)
+**When** `check_freshness_drift` is called with no explicit config overrides
+**Then** it applies the default thresholds (FR65)
+
+**Given** `config.drift_threshold = 7` (custom override)
+**When** `check_freshness_drift` is called on a symbol where code is 10 days newer than docstring
+**Then** it emits a `stale-drift` finding (FR63 — configurable threshold)
+
+**Given** `config.age_threshold = 180` (custom override)
+**When** `check_freshness_drift` is called on a symbol whose docstring is 100 days old
+**Then** it does not emit a `stale-age` finding (under the custom threshold — FR64)
+
+**Given** a `now` parameter passed explicitly (Unix timestamp)
+**When** `check_freshness_drift` is called
+**Then** it uses the provided `now` instead of `time.time()` (test determinism)
+
+**Given** no `now` parameter
+**When** `check_freshness_drift` is called
+**Then** it defaults to `time.time()` for the current UTC timestamp
+
+**Given** an empty `blame_output` string
+**When** `check_freshness_drift` is called
+**Then** it returns an empty list immediately (NFR25)
+
+**Given** identical `blame_output`, identical `tree`, and identical `now` timestamp
+**When** `check_freshness_drift` is called multiple times
+**Then** it produces identical output every time (deterministic)
+
+**Given** the `_compute_drift` helper
+**When** called with code timestamps, docstring timestamps, and threshold
+**Then** it returns `True` if drift exceeds threshold, `False` otherwise
+
+**Given** the `_compute_age` helper
+**When** called with docstring timestamps, `now`, and threshold
+**Then** it returns `True` if age exceeds threshold, `False` otherwise
+
+**FRs:** FR51, FR52, FR53, FR54 (verified), FR61 (drift), FR62 (drift), FR63, FR64, FR65, FR66 (drift), NFR21, NFR22, NFR25, NFR26, NFR27, NFR28
+
+### Story 5.3: CLI Wiring for Drift Mode
+
+As a developer,
+I want to run `docvet freshness --mode drift` from the command line and see drift/age findings,
+So that I can perform periodic docstring health audits on my codebase.
+
+**Acceptance Criteria:**
+
+**Given** `docvet freshness --mode drift` is run on a codebase with committed history
+**When** the command executes
+**Then** it runs `git blame --line-porcelain` for each discovered file and passes the output to `check_freshness_drift`
+
+**Given** a codebase with symbols whose docstrings have drifted beyond the default threshold
+**When** `docvet freshness --mode drift` is run
+**Then** findings are printed in `file:line: rule message` format (one per line)
+
+**Given** a codebase with no drift or age threshold violations
+**When** `docvet freshness --mode drift` is run
+**Then** it produces no output and exits with code 0
+
+**Given** `docvet freshness --mode drift` is run
+**When** the command loads config
+**Then** it reads `drift-threshold` and `age-threshold` from `[tool.docvet.freshness]` in `pyproject.toml` and passes `FreshnessConfig` to `check_freshness_drift`
+
+**Given** no `[tool.docvet.freshness]` section in `pyproject.toml`
+**When** `docvet freshness --mode drift` is run
+**Then** it uses default thresholds (drift: 30 days, age: 90 days — FR65)
+
+**Given** a file with no git history (untracked, no blame data)
+**When** `docvet freshness --mode drift` processes it
+**Then** the file is skipped (empty blame output produces empty list)
+
+**Given** `docvet freshness` is run with no `--mode` flag
+**When** the command executes
+**Then** it still defaults to diff mode (FR68 — unchanged from Epic 4)
+
+**Given** `docvet check` is run (all checks)
+**When** freshness drift mode is not explicitly selected
+**Then** freshness runs in diff mode by default alongside other checks
+
+**FRs:** FR67 (drift wiring), FR68 (`--mode drift`), NFR21, NFR29
+
+---
+
+**Epic 5 Summary:** 3 stories, covering all 13 FRs assigned to this epic. Story 5.1 handles git blame parsing. Story 5.2 implements drift/age threshold logic and the orchestrator. Story 5.3 wires drift mode into the CLI with the `--mode` flag.
+
+---
+
+## Freshness Requirements Inventory
+
+### Freshness Functional Requirements
+
+**Diff Mode Detection (FR43-FR49):**
+
+- FR43: The system can parse git diff output to extract changed hunk line ranges for a given file
+- FR44: The system can map changed line ranges to AST symbols using the existing line-to-symbol mapping from `ast_utils`
+- FR45: The system can classify each changed line within a symbol as belonging to the signature range, docstring range, or body range
+- FR46: The system can detect symbols where code lines (signature or body) changed but docstring lines did not change
+- FR47: The system can assign HIGH severity (category `required`) when a symbol's signature range contains changed lines
+- FR48: The system can assign MEDIUM severity (category `recommended`) when a symbol's body range contains changed lines but its signature range does not
+- FR49: The system can assign LOW severity (category `recommended`) when only lines within a symbol's enclosing line range but outside its signature, docstring, and body ranges changed, and no signature or body lines changed
+
+**Drift Mode Detection (FR50-FR54):**
+
+- FR50: The system can parse `git blame --line-porcelain` output to extract per-line modification timestamps for a given file
+- FR51: The system can group per-line timestamps by symbol using the existing line-to-symbol mapping from `ast_utils`
+- FR52: The system can detect symbols where the most recent code modification exceeds the most recent docstring modification by more than a configurable drift threshold (default: 30 days)
+- FR53: The system can detect symbols where the docstring has not been modified within a configurable age threshold (default: 90 days)
+- FR54: The system can skip symbols with no docstring in both diff and drift modes, producing zero findings for undocumented symbols
+
+**Freshness Edge Cases (FR55-FR58):**
+
+- FR55: The system can produce zero freshness findings for newly created files where all lines appear as additions in the git diff
+- FR56: The system can handle functions that appear in a git diff's deleted lines but no longer exist in the current AST, producing zero findings for those symbols
+- FR57: The system can treat code relocated within a file as a delete-plus-add (body change at the new location, no finding at the old location), without requiring `git diff --find-renames`
+- FR58: The system can skip binary files and non-Python files present in git diff output without producing findings or raising exceptions
+
+**Freshness Finding Production (FR59-FR62):**
+
+- FR59: The system can produce a structured finding for each stale docstring, carrying file path, line number, symbol name, rule identifier, human-readable message, and category
+- FR60: The system can produce freshness findings using the shared `Finding` dataclass without modification to the dataclass fields or behavior
+- FR61: The system can produce at most one finding per symbol per rule, selecting the highest applicable severity when multiple change types affect the same symbol in diff mode
+- FR62: The system can produce zero findings when analyzing code where all changed symbols have correspondingly updated docstrings
+
+**Freshness Configuration (FR63-FR65):**
+
+- FR63: A developer can configure the drift threshold (in days) via `drift-threshold` in `[tool.docvet.freshness]`
+- FR64: A developer can configure the age threshold (in days) via `age-threshold` in `[tool.docvet.freshness]`
+- FR65: The system can apply default thresholds (drift: 30 days, age: 90 days) when no `[tool.docvet.freshness]` section is provided in `pyproject.toml`
+
+**Freshness Integration (FR66-FR68):**
+
+- FR66: The system can accept file path, git output string (diff or blame), and parsed AST as inputs and return a list of findings as output
+- FR67: A developer can run the freshness check standalone via `docvet freshness` or as part of all checks via `docvet check`
+- FR68: A developer can select diff or drift mode via `--mode` CLI option, with diff as the default
+
+### Freshness Non-Functional Requirements
+
+**Freshness Performance (NFR20-NFR22):**
+
+- NFR20: Diff mode can process a single file's git diff and produce findings in under 100ms
+- NFR21: Drift mode performance is dominated by git blame I/O; the freshness pure function itself adds no measurable overhead beyond timestamp parsing and symbol comparison
+- NFR22: Memory usage for freshness scales linearly with file count — each file is processed independently with no cross-file state
+
+**Freshness Correctness (NFR23-NFR26):**
+
+- NFR23: Non-signature code changes never produce HIGH severity findings — body-only changes produce at most MEDIUM severity (category `recommended`)
+- NFR24: Identical git diff input and identical AST produce identical severity assignment for the same symbol, regardless of execution environment or ordering
+- NFR25: Malformed git output (truncated diffs, corrupted blame data, empty strings) results in zero findings for affected files, never exceptions or tracebacks
+- NFR26: Finding messages name the specific symbol, the severity level, and the type of change detected (signature, body, or drift), enabling the developer to locate and fix the stale docstring without additional context
+
+**Freshness Maintainability (NFR27-NFR28):**
+
+- NFR27: Diff mode and drift mode can be tested independently using mocked git output strings with no filesystem or git subprocess calls
+- NFR28: Adding a new severity level or drift rule requires changes to at most 3 files: the freshness module (`freshness.py`), config (`config.py`), and tests (`test_freshness.py`)
+
+**Freshness Compatibility (NFR29-NFR30):**
+
+- NFR29: Freshness functions handle git diff and git blame output from git 2.x without version-specific code paths
+- NFR30: Freshness functions handle both `git diff` (unstaged) and `git diff --cached` (staged) output identically, as both use the same unified diff hunk format
+
+**Freshness Integration (NFR31-NFR32):**
+
+- NFR31: Freshness reuses the shared `Finding` dataclass without modification — no new fields, no subclassing, no changes to the frozen 6-field shape
+- NFR32: Freshness has no cross-imports with enrichment or any other check module — it depends only on `checks.Finding` and `ast_utils`
+
+### Freshness Additional Requirements
+
+**From Architecture (6 decisions, validated):**
+
+- No prerequisite PRs needed — all shared infrastructure already implemented (`Symbol` range fields, `map_lines_to_symbols`, `Finding`, `FreshnessConfig`)
+- Mode-oriented single `freshness.py` file: constants → shared helpers → diff block → `check_freshness_diff` → drift block → `check_freshness_drift`
+- `_parse_diff_hunks(diff_output) -> set[int]` — line-by-line iteration, single pass, handles new files/binary files/rename headers
+- `_parse_blame_timestamps(blame_output) -> dict[int, int]` — state machine, SHA line via split, author-time via startswith
+- `_classify_changed_lines(changed_lines, symbol) -> str | None` — priority-ordered early returns: docstring→None, signature→HIGH, body→MEDIUM, else→LOW
+- `_build_finding` shared helper for all finding construction (unlike enrichment's inline construction)
+- Config asymmetry is intentional design invariant: `check_freshness_diff` has zero config dependency; only `check_freshness_drift` takes `FreshnessConfig`
+- `check_freshness_drift` accepts optional `*, now=None` parameter for test determinism
+- Defensive by design, no try/except — parsers return empty on bad input, public functions return `[]` on empty input
+- CLI wiring (`_run_freshness` stub replacement) is a **separate integration story** — main freshness PR adds only `checks/freshness.py` and tests
+- Integration test fixtures shared in `tests/integration/conftest.py` — diff needs staged/unstaged repo fixtures, drift needs committed history with blame
+- Use `.splitlines()` not `.split("\n")`, set operations for range intersections, string literals for rule IDs
+
+**From Validation Report:**
+
+- FR61 says "per mode" but architecture correctly implements "per rule" — drift can emit 2 findings per symbol (`stale-drift` + `stale-age`). Treat as "per rule" during implementation
