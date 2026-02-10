@@ -13,6 +13,10 @@ stepsCompleted:
   - 'step-11-polish'
   - 'step-12-complete'
 status: 'complete'
+lastEdited: '2026-02-09'
+editHistory:
+  - date: '2026-02-09'
+    changes: 'Added freshness check (Layer 4) as next epic; added 3 journeys, freshness module spec, 26 FRs, 13 NFRs; fixed enrichment traceability gap with edge-case journey'
 classification:
   projectType: 'cli_tool'
   domain: 'developer_tooling'
@@ -33,14 +37,15 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-7-ast-helpers.md'
   - '_bmad-output/implementation-artifacts/tech-spec-wire-discovery-cli.md'
   - 'gh-issue-8'
+  - 'gh-issue-9'
 documentCounts:
   briefs: 0
   research: 0
   brainstorming: 0
-  projectDocs: 14
+  projectDocs: 16
 workflowType: 'prd'
 projectName: 'docvet'
-featureScope: 'enrichment-check'
+featureScope: 'enrichment-and-freshness-checks'
 ---
 
 # Product Requirements Document - docvet
@@ -50,20 +55,23 @@ featureScope: 'enrichment-check'
 
 ## Executive Summary
 
-docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for the **enrichment check module** (Layer 3: completeness) — the first real check module in docvet's six-layer quality model.
+docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for two check modules: the **enrichment check** (Layer 3: completeness) and the **freshness check** (Layer 4: accuracy). Together they cover the two AST-based layers of docvet's six-layer quality model.
 
-The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. It complements ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022; ruff stops at D417 (param completeness).
+The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. The freshness check detects stale docstrings — code that changed without a corresponding docstring update — by mapping git diff hunks and git blame timestamps to AST symbols. Both complement ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022 and never addressed staleness detection; ruff stops at D417 (param completeness).
 
 **Target users:** Python developers writing Google-style docstrings, teams using mkdocs-material + mkdocstrings.
 
-**Scope:** 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config customization via `[tool.docvet.enrichment]` in pyproject.toml.
+**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`.
 
 ### Key Terms
 
-- **Detection scenario**: A specific code pattern that triggers a check (e.g., "function with `raise` but no `Raises:` section"). 14 total.
-- **Rule identifier**: A stable kebab-case name emitted in findings (e.g., `missing-raises`). 10 total — multiple scenarios can share one rule ID.
-- **Required vs recommended**: Category baked into each rule definition. Required = misleading omission; recommended = improvement opportunity.
-- **Missing vs incomplete**: MVP detects *missing* sections only (no `Raises:` section at all). *Incomplete* sections (has `Raises:` but doesn't list all exceptions) are a Growth feature.
+- **Detection scenario**: A specific code pattern that triggers a check (e.g., "function with `raise` but no `Raises:` section"). 14 total for enrichment.
+- **Rule identifier**: A stable kebab-case name emitted in findings (e.g., `missing-raises`, `stale-signature`). 10 enrichment + 5 freshness = 15 total. Multiple scenarios can share one rule ID.
+- **Required vs recommended**: Category baked into each rule definition. Required = misleading omission; recommended = improvement opportunity. Freshness maps severity to category: HIGH→required, MEDIUM/LOW→recommended.
+- **Missing vs incomplete**: Enrichment MVP detects *missing* sections only (no `Raises:` section at all). *Incomplete* sections (has `Raises:` but doesn't list all exceptions) are a Growth feature.
+- **Diff mode**: Freshness check mode that analyzes `git diff` output to detect symbols where code changed but docstring did not. Primary workflow — fast, runs per-commit.
+- **Drift mode**: Freshness check mode that analyzes `git blame` timestamps to detect docstrings that fell behind their code by configurable time thresholds. Periodic sweep — slower, runs quarterly.
+- **Staleness severity**: Diff mode classifies findings as HIGH (signature changed), MEDIUM (body changed), or LOW (imports/formatting changed). Higher severity = greater likelihood the docstring actively misleads.
 
 ## Success Criteria
 
@@ -74,6 +82,8 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - Findings are categorized as `required` (misleading omission) or `recommended` (improvement opportunity), so developers can triage effectively
 - Well-documented code produces zero findings -- no false positives on complete docstrings
 - The check respects existing `EnrichmentConfig` toggles, so teams customize which rules run without noise
+- A developer runs `docvet freshness` and sees which docstrings are stale after code changes, with severity-tiered findings (HIGH for signature changes, MEDIUM for body changes, LOW for imports/formatting)
+- A tech lead runs `docvet freshness --mode drift --all` and discovers docstrings that drifted out of sync over time — long-untouched docstrings on recently-modified code
 
 ### Business Success
 
@@ -81,12 +91,17 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - Positions docvet as a credible addition to the Python quality toolchain alongside ruff, ty, and interrogate
 - Rule identifiers follow industry convention (ty-style kebab-case), making docvet feel native to modern Python workflows
 - All 14 detection scenarios (10 rule identifiers) ship together, delivering complete Layer 3 coverage in a single release
+- No existing tool maps git diffs to AST symbols for stale docstring detection -- freshness check is a novel capability in the Python ecosystem
+- Diff mode integrates into pre-commit workflows; drift mode enables periodic audits -- two time horizons, one tool
 
 ### Technical Success
 
 - `check_enrichment(source, tree, config, file_path)` returns `list[Finding]` with zero side effects -- pure function, deterministic output
+- `check_freshness_diff(file_path, diff_output, tree)` returns `list[Finding]` with deterministic severity assignment based on what changed
+- `check_freshness_drift(file_path, blame_output, tree, config)` returns `list[Finding]` with configurable drift and age thresholds
 - Each `Finding` carries: `file`, `line`, `symbol`, `rule` (kebab-case stable identifier), `message`, `category` (`required` | `recommended`)
-- All 14 detection scenarios (mapping to 10 distinct rule identifiers) implemented and individually toggleable via `EnrichmentConfig`
+- All 14 enrichment detection scenarios (10 rule identifiers) implemented and individually toggleable via `EnrichmentConfig`
+- All 5 freshness rule identifiers (3 diff + 2 drift) implemented with severity-to-category mapping
 - No new runtime dependencies -- stdlib `ast` + existing `ast_utils.Symbol` infrastructure
 - Checks are isolated -- no imports from other check modules, no shared mutable state
 - Quality gates pass: ruff, ty, pytest with >=85% coverage, interrogate
@@ -96,22 +111,30 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - `tests/fixtures/missing_raises.py` produces exactly the expected `missing-raises` finding
 - `tests/fixtures/missing_yields.py` produces exactly the expected `missing-yields` finding
 - `tests/fixtures/complete_module.py` produces zero findings
-- Each of the 10 rule identifiers has at least one dedicated unit test with a source string fixture
+- Each of the 10 enrichment rule identifiers has at least one dedicated unit test with a source string fixture
 - `EnrichmentConfig` toggles (`require-raises = false`, etc.) suppress the corresponding rule's findings
+- Unit tests with mocked git diff output produce expected severity findings for each diff mode rule (`stale-signature`, `stale-body`, `stale-import`)
+- Unit tests with mocked git blame output produce expected drift findings (`stale-drift`, `stale-age`) at configurable thresholds
+- Integration tests with real git repos (temp dirs with known commits) verify end-to-end diff and drift detection
+- Edge case tests: new files produce zero findings, deleted functions produce zero findings
 
 ## Product Scope
 
 ### Competitive Context
 
-darglint -- the only tool that partially addressed Args/Returns/Raises alignment -- has been unmaintained since 2022. Ruff's D rules stop at D417 (param completeness) and explicitly chose not to go deeper into section completeness. This leaves a 4-year vacuum in the ecosystem for docstring completeness checking. docvet fills this gap by complementing ruff (style) and interrogate (presence) rather than competing with them -- the six-layer quality model makes the composability explicit: layers 1-2 are delegated to existing tools, layers 3-6 are docvet's territory.
+darglint -- the only tool that partially addressed Args/Returns/Raises alignment -- has been unmaintained since 2022. Ruff's D rules stop at D417 (param completeness) and explicitly chose not to go deeper into section completeness. No existing tool maps git diffs to AST symbols for stale docstring detection -- the closest prior art is manual `git blame` inspection. This leaves a 4-year vacuum in the ecosystem for both docstring completeness checking (Layer 3) and docstring accuracy/staleness detection (Layer 4). docvet fills both gaps by complementing ruff (style) and interrogate (presence) rather than competing with them -- the six-layer quality model makes the composability explicit: layers 1-2 are delegated to existing tools, layers 3-6 are docvet's territory.
 
-### MVP - Minimum Viable Product
+### MVP - Enrichment Check (Layer 3)
 
-The MVP delivers all 10 rule identifiers (14 detection scenarios), the shared `Finding` type, full `EnrichmentConfig` integration, and comprehensive unit tests. See "Project Scoping & Phased Development > MVP Feature Set" for the authoritative implementation checklist.
+The enrichment MVP delivers all 10 rule identifiers (14 detection scenarios), the shared `Finding` type, full `EnrichmentConfig` integration, and comprehensive unit tests. This is fully implemented (3 epics, 11 stories, 415 tests). See "Project Scoping & Phased Development > Enrichment MVP Feature Set" for the authoritative implementation checklist.
+
+### Next Epic - Freshness Check (Layer 4)
+
+The freshness epic delivers 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), reuses the shared `Finding` type, integrates with existing `FreshnessConfig`, and includes unit tests with mocked git output plus integration tests with real git repos. See "Project Scoping & Phased Development > Freshness Feature Set" for the authoritative implementation checklist.
 
 ### Growth & Vision
 
-Growth features include inline suppression, JSON output, and incomplete section detection. Vision includes editor/LSP integration and additional docstring style support. See "Project Scoping & Phased Development > Post-MVP Features" for the full Phase 2 and Phase 3 roadmap.
+Growth features include inline suppression, JSON output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), and cross-check intelligence (enrichment + freshness combined findings). Vision includes editor/LSP integration and additional docstring style support. See "Project Scoping & Phased Development > Post-MVP Features" for the full Phase 2 and Phase 3 roadmap.
 
 ## User Journeys
 
@@ -229,9 +252,99 @@ She re-runs: 34 findings. All `required` -- missing `Raises:`, `Yields:`, and `A
 
 **Resolution:** Priya fixes the 8 most critical findings in her core modules, commits, and sets up docvet in CI with `enrichment` in `warn-on`. She'll tighten the config as the team catches up. The tool met her where she was instead of demanding perfection on day one.
 
+### Journey 6: The Stale Signature Catch (Diff Mode)
+
+**Persona:** Nadia, a backend developer maintaining an HTTP client library. She writes Google-style docstrings and runs `docvet check --staged` as part of her pre-commit workflow.
+
+**Opening Scene:** Nadia is refactoring `send_request()` in her HTTP client module. The function previously accepted a `timeout` parameter (seconds as float), but the team decided to rename it to `max_wait_seconds` for clarity and change its type from `float` to `int`. She updates the function signature, adjusts the body logic, and stages the changes. The docstring still reads `timeout (float): Number of seconds before the request times out.` in its `Args:` section -- she was focused on the behavioral change and forgot to update the documentation.
+
+**Rising Action:** She runs `docvet check --staged`. The freshness check maps the staged diff hunks to AST symbols and detects that `send_request`'s signature lines are in the diff but its docstring lines are not. Because the signature changed (parameter renamed), this is a HIGH severity finding -- the docstring actively misleads callers about the parameter name. The terminal shows:
+
+```
+src/client/http.py:42: stale-signature Function 'send_request' signature changed but docstring not updated
+```
+
+One finding, category `required`. The enrichment and coverage checks pass clean. The `stale-signature` rule fires specifically because diff hunks overlap with the function's `def` line and parameter list -- the strongest signal that the docstring is stale.
+
+**Climax:** Nadia opens `http.py`, sees the `Args:` section still referencing `timeout (float)`, and updates it to `max_wait_seconds (int): Maximum seconds to wait before the request times out.` She re-stages and runs `docvet check --staged` again -- zero findings. The docstring now matches the code.
+
+**Resolution:** A teammate calls `send_request()` the next day, reads the docstring in their IDE, and passes `max_wait_seconds=30` on the first try. Without the freshness catch, they would have written `timeout=30`, hit a `TypeError`, and spent time debugging a documentation lie.
+
+**Edge Case -- Body Change vs. Signature Change:** In the same PR, Nadia also modifies the retry logic inside `send_request()` without touching the signature. This produces a separate MEDIUM severity finding (`stale-body`) with category `recommended` -- the body changed but the docstring may or may not need updating. She reviews it, decides the docstring's description still accurately describes the retry behavior, and moves on. MEDIUM findings are advisory; HIGH findings demand action.
+
+**Edge Case -- Import-Only Change:** Later that day, Nadia reorganizes the imports at the top of `http.py` -- reordering and grouping them per `isort` conventions. The diff touches lines within `send_request`'s enclosing range (between its decorator and the next function) but outside its signature, docstring, and body. The freshness check emits a LOW severity finding (`stale-import`) with category `recommended`. Nadia glances at it, confirms the docstring is unaffected by import reordering, and moves on. LOW findings are noise-reduction candidates -- teams that find them unhelpful can move freshness to `warn-on`.
+
+### Journey 7: The Quarterly Documentation Audit (Drift Mode)
+
+**Persona:** Marcus, a tech lead responsible for documentation quality across a 400-file Python monorepo. His team uses mkdocs-material for API docs and runs `docvet enrichment` in CI. He wants a periodic sweep to catch docstrings that drifted out of sync over time -- changes too old for diff mode to catch.
+
+**Opening Scene:** Marcus configures drift thresholds in `pyproject.toml` based on his team's sprint cadence:
+
+```toml
+[tool.docvet.freshness]
+drift-threshold = 30
+age-threshold = 90
+```
+
+`drift-threshold = 30` means: flag any symbol where the code was modified 30+ days more recently than the docstring. `age-threshold = 90` means: flag any docstring untouched for 90+ days regardless of code changes -- ancient docs that need review.
+
+**Rising Action:** He runs `docvet freshness --mode drift --all`. The drift check uses `git blame --line-porcelain` to compare per-line timestamps for each symbol's code vs. docstring. The terminal shows 23 findings:
+
+```
+src/core/engine.py:45: stale-drift Function 'process_batch' code modified 2025-12-14, docstring last modified 2025-10-02 (73 days drift)
+src/core/engine.py:112: stale-drift Class 'BatchProcessor' code modified 2026-01-18, docstring last modified 2025-11-30 (49 days drift)
+src/models/schema.py:23: stale-age Function 'validate_schema' docstring untouched since 2025-09-15 (147 days)
+src/models/schema.py:67: stale-age Class 'SchemaRegistry' docstring untouched since 2025-10-01 (131 days)
+...
+```
+
+15 `stale-drift` findings (category `recommended` -- code drifted from docs) and 8 `stale-age` findings (category `recommended` -- docstrings old enough to warrant review). All freshness drift/age findings are `recommended` because time-based heuristics indicate *potential* staleness, not confirmed misleading content.
+
+**Climax:** Marcus triages by rule. He exports the findings, groups by module owner, and creates two team issues: one for the 15 `stale-drift` findings (prioritized by drift days -- the 73-day-old `process_batch` docstring goes first) and one for the 8 `stale-age` findings (lower priority -- these need review, not necessarily changes). The kebab-case rule identifiers make grep and filtering trivial: `docvet freshness --mode drift --all | grep stale-drift` isolates the active-drift subset.
+
+**Resolution:** Over two sprints, the team works through both lists. Each developer runs `docvet freshness --mode drift` on their assigned files, updates docstrings, and verifies zero findings before marking the issue closed. Marcus re-runs the full sweep at the end of sprint 2: 3 findings remain (new drift from recent changes). He schedules the sweep as a quarterly recurring task. The combination of diff mode in CI (catching immediate staleness) and drift mode quarterly (catching accumulated drift) gives the team complete freshness coverage across time horizons.
+
+### Journey 8: Enrichment Edge Case Variants
+
+**Persona:** Wei, a developer running `docvet enrichment --all` during a refactoring sprint on a data processing library. She has fixed the `missing-raises`, `missing-yields`, `missing-attributes`, `missing-warns`, `missing-typed-attributes`, and `missing-examples` findings from earlier sprints. Four rules remain that she hasn't encountered before.
+
+**Rising Action -- `missing-receives`:** Wei's library includes a coroutine-style generator that uses `value = yield` to receive values from callers via `.send()`. The function has a `Yields:` section but no `Receives:` section documenting what types callers should send:
+
+```
+src/pipeline/coroutines.py:34: missing-receives Generator 'accumulator' uses send pattern but has no Receives: section
+```
+
+Category `required`. The `value = yield` assignment is the trigger -- plain `yield` without assignment does not fire this rule. She adds `Receives:` documenting the expected input type.
+
+**Rising Action -- `missing-other-parameters`:** A utility function accepts `**kwargs` and forwards them to an underlying API client. The docstring has `Args:` for the explicit parameters but nothing for the keyword arguments:
+
+```
+src/utils/api.py:78: missing-other-parameters Function 'call_endpoint' has **kwargs but has no Other Parameters: section
+```
+
+Category `recommended`. She adds `Other Parameters:` listing the common keyword arguments callers actually pass.
+
+**Rising Action -- `missing-cross-references`:** An `__init__.py` module docstring has a `See Also:` section, but it lists related modules as plain text (`config`, `schema`) instead of using cross-reference syntax:
+
+```
+src/pipeline/__init__.py:1: missing-cross-references Module 'pipeline' See Also section lacks cross-reference syntax
+```
+
+Category `recommended`. Wei updates the entries to use mkdocs cross-reference format so they render as clickable links in the documentation site.
+
+**Rising Action -- `prefer-fenced-code-blocks`:** A class docstring's `Examples:` section uses `>>>` doctest format instead of fenced code blocks:
+
+```
+src/models/registry.py:15: prefer-fenced-code-blocks Class 'Registry' Examples section uses >>> format instead of fenced code blocks
+```
+
+Category `recommended`. The `>>>` format works but renders poorly in mkdocs-material. Wei converts it to a triple-backtick fenced block with `python` syntax highlighting.
+
+**Resolution:** Wei clears all four finding types in a single commit. These rules are lower-frequency than `missing-raises` or `missing-attributes` -- most codebases encounter them in a handful of files rather than dozens. But they close the completeness gap: every enrichment rule now has a demonstrated correction path, and Wei's library produces zero enrichment findings across all 10 rules.
+
 ### Journey Requirements Traceability
 
-All journey-revealed capabilities are formally captured in the Functional Requirements section below. CLI/reporting layer dependencies (output formatting, summary line, exit codes, discovery modes) are out of enrichment module scope but required for full journey completion in the same release.
+All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` and `missing-typed-attributes` (Journey 2), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). CLI/reporting layer dependencies (output formatting, summary line, exit codes, discovery modes) are out of enrichment and freshness module scope but required for full journey completion in the same release.
 
 ## Enrichment Module Specification
 
@@ -344,17 +457,164 @@ Every rule now has a corresponding toggle. No always-on rules -- every team can 
 - **Deduplication**: `missing-attributes` detection branches (plain class, dataclass, NamedTuple, TypedDict, module) are checked in priority order. First match emits the finding; subsequent branches for the same symbol are skipped.
 - **No new runtime dependencies**: stdlib `ast` + existing `ast_utils` + `re` for section header matching.
 
+## Freshness Module Specification
+
+### Project-Type Overview
+
+The freshness check detects stale docstrings -- code that changed without a corresponding docstring update. It operates as a pair of pure functions (`check_freshness_diff` and `check_freshness_drift`) that take pre-parsed git output as strings, not raw git access. Both return `list[Finding]` using the same shared type as enrichment. The CLI layer handles all git subprocess calls and passes the output strings to the check functions -- the freshness module performs no I/O.
+
+Diff mode is the primary workflow. It runs during pre-commit and CI, analyzing `git diff` output to flag symbols where code lines changed but docstring lines did not. Drift mode is for periodic audits. It analyzes `git blame --line-porcelain` output to flag docstrings that have fallen behind their code by configurable time thresholds. Teams use diff mode daily and drift mode quarterly.
+
+### Integration Contract
+
+**Public API:**
+
+```python
+def check_freshness_diff(
+    file_path: str,
+    diff_output: str,
+    tree: ast.Module,
+) -> list[Finding]:
+    """Check for stale docstrings using git diff output."""
+
+def check_freshness_drift(
+    file_path: str,
+    blame_output: str,
+    tree: ast.Module,
+    config: FreshnessConfig,
+) -> list[Finding]:
+    """Check for stale docstrings using git blame timestamps."""
+```
+
+**Key contract details:**
+
+- **Two public functions, not one**: diff and drift have fundamentally different inputs (hunk ranges vs per-line timestamps), outputs (deterministic severity vs threshold-based), and usage patterns (every commit vs periodic sweep). A single function with a mode flag would obscure these differences.
+- **No `source` parameter**: freshness does not parse docstring sections -- it only needs line-to-symbol mapping from the AST, not docstring text analysis.
+- **Caller provides git output as strings**: `diff_output` is the raw output of `git diff` (or `git diff --cached`); `blame_output` is the raw output of `git blame --line-porcelain`. The functions parse these strings internally.
+- **`check_freshness_diff` has no config parameter**: severity logic is deterministic based on what changed (signature vs body vs imports). No thresholds, no toggles.
+- **`check_freshness_drift` takes `FreshnessConfig`**: drift detection requires `drift_threshold` (days between code and docstring edits) and `age_threshold` (days since docstring was last touched). The function should accept an optional `now` parameter (Unix timestamp) for testability — defaulting to `time.time()` when not provided. This makes drift mode deterministic in tests while remaining convenient in production.
+- **`tree` provides symbol extraction**: both functions call `map_lines_to_symbols(tree)` from `ast_utils` to resolve changed lines to their enclosing symbols. The `Symbol.docstring_range`, `Symbol.signature_range`, and `Symbol.body_range` fields classify which part of a symbol was touched.
+- **`file_path` is a string for `Finding.file` construction**: consistent with enrichment's contract.
+- **Severity maps to `Finding.category`**: HIGH -> `"required"`, MEDIUM/LOW -> `"recommended"`. Diff mode severity is baked into the rule identifier (`stale-signature` is always required, `stale-body` and `stale-import` are always recommended). Drift mode findings are always `"recommended"`.
+- **One finding per symbol per mode**: diff mode emits at most one finding per symbol, at the highest severity detected (signature change trumps body change trumps import change). Drift mode emits at most two findings per symbol (`stale-drift` and `stale-age` are independent checks).
+- **Pure functions**: no I/O, no side effects, deterministic output. Empty `diff_output` or `blame_output` produces an empty list.
+- **Returns empty list on clean code**: not `None`, not a sentinel.
+
+**Import contract:**
+
+- `checks.freshness` exports `check_freshness_diff` and `check_freshness_drift`
+- Both functions import `Finding` from `docvet.checks` and `map_lines_to_symbols` from `docvet.ast_utils`
+- No cross-imports between freshness and enrichment -- each depends only on `checks.Finding` and `ast_utils`
+
+### Rule Taxonomy
+
+5 rule identifiers: 3 for diff mode, 2 for drift mode. Each diff rule corresponds to a severity level. Drift rules are threshold-based and independent of each other.
+
+| Rule Identifier | Category | Severity | Mode | Description |
+|----------------|----------|----------|------|-------------|
+| `stale-signature` | required | HIGH | diff | Function/method signature changed (parameters added, removed, renamed, retyped, or reordered), docstring not updated |
+| `stale-body` | recommended | MEDIUM | diff | Function/method/class body changed (logic, control flow, return statements), docstring not updated |
+| `stale-import` | recommended | LOW | diff | Only imports, formatting, or whitespace changed near symbol -- docstring likely still accurate |
+| `stale-drift` | recommended | -- | drift | Code lines newer than docstring lines by more than `drift-threshold` days |
+| `stale-age` | recommended | -- | drift | Docstring untouched for more than `age-threshold` days, regardless of code age |
+
+**Key notes:**
+
+- **Diff mode severity is deterministic and mutually exclusive per symbol**: the function classifies each changed line as signature, docstring, or body. If any signature line changed and no docstring line changed -> `stale-signature` (HIGH). Else if any body line changed and no docstring line changed -> `stale-body` (MEDIUM). Else if only import/formatting lines changed -> `stale-import` (LOW). Highest severity wins; one finding per symbol.
+- **Docstring changes suppress findings**: if both code lines and docstring lines changed for a symbol, no finding is emitted -- the developer updated the docstring alongside the code.
+- **Drift mode has no severity levels**: both drift rules are always `"recommended"`. Drift indicates potential staleness (time-based heuristic), not confirmed misleading content. A docstring untouched for 90 days may still be perfectly accurate.
+- **`stale-drift` and `stale-age` are independent**: a single symbol can trigger both (code recently changed but docstring was already old) or either one alone.
+- **`stale-age` is intentionally noisy on stable codebases**: a function written 91 days ago with a perfect, never-needs-updating docstring will still fire `stale-age`. This is a known trade-off — the rule flags docstrings that *may* need review, not docstrings that are *confirmed* stale. Teams on stable codebases should set a higher `age-threshold` or move freshness to `warn-on` to manage noise.
+- **Category is baked into the rule definition**: `stale-signature` is always `"required"` because a signature change almost certainly invalidates the `Args:` documentation. The other four rules are always `"recommended"` because body/import/time-based changes may or may not affect docstring accuracy.
+
+### Config Schema
+
+`FreshnessConfig` exists in `config.py` with two fields. Both control drift mode only -- diff mode has no configurable thresholds.
+
+```toml
+[tool.docvet.freshness]
+drift-threshold = 30   # days — code newer than docstring by this triggers stale-drift
+age-threshold = 90     # days — docstring untouched for this long triggers stale-age
+```
+
+**What each threshold means:**
+
+- **`drift-threshold`**: For each symbol, compare `max(code_line_timestamps)` vs `max(docstring_line_timestamps)`. If the code timestamp exceeds the docstring timestamp by more than `drift-threshold` days, emit `stale-drift`. Default 30 days balances signal (catch genuinely neglected docstrings) vs noise (ignore recent changes the developer hasn't gotten to yet).
+- **`age-threshold`**: For each symbol, if `now - max(docstring_line_timestamps)` exceeds `age-threshold` days, emit `stale-age` regardless of code age. Default 90 days flags docstrings that haven't been reviewed in a quarter -- even if the code hasn't changed, the surrounding ecosystem may have shifted. Known trade-off: perfectly accurate docstrings on stable code will fire after the threshold. Teams on stable codebases may want `age-threshold = 180` or higher.
+
+**Config design decisions:**
+
+- Diff mode has no config toggles. Severity logic is deterministic: what changed dictates the rule and category. Adding per-rule disable toggles (e.g., `ignore-stale-import = true`) is a post-MVP candidate -- teams that find `stale-import` too noisy can move freshness to `warn-on` for now.
+- Setting `drift-threshold = 0` or `age-threshold = 0` effectively makes that drift rule fire on every symbol with blame data -- not recommended but not prevented.
+- Both thresholds are integers (days). Sub-day precision is unnecessary for periodic audit use cases.
+
+### Scripting & CI Support
+
+- **Output format**: `file:line: rule message` -- identical to enrichment. Example: `src/core/engine.py:42: stale-signature Function 'parse_config' signature changed but docstring not updated`
+- **`docvet freshness`**: runs diff mode by default (matches the pre-commit workflow expectation).
+- **`docvet freshness --mode drift`**: runs drift mode. Requires the working directory to be a git repository with committed history (blame needs commits).
+- **`docvet check`**: runs freshness (diff mode) alongside enrichment and other enabled checks.
+- **Exit codes**: governed by top-level `fail-on` / `warn-on` lists, not by individual freshness rules. Default config places freshness in `warn-on` (exit 0, advisory). Moving to `fail-on` makes `stale-signature` findings (category `"required"`) cause non-zero exit.
+- **Severity in output**: conveyed via the rule identifier and category field in `Finding`, not via a separate severity column. `stale-signature` implies HIGH; `stale-body` implies MEDIUM; `stale-import` implies LOW. The output format does not expose severity directly -- the rule name is sufficient for filtering and triage.
+- **Composability**: `docvet freshness` produces `list[Finding]` independently. `docvet check` aggregates findings from all checks. No shared mutable state between checks.
+
+### Technical Guidance for Implementation
+
+**Diff mode implementation:**
+
+1. **Parse `git diff` output**: split on `@@ -a,b +c,d @@` hunk headers using regex. Extract the `+c,d` ranges -- these are the changed line numbers in the current file version. Ignore removed-only hunks (lines that existed in the old version but not the new).
+2. **Map changed lines to symbols**: call `map_lines_to_symbols(tree)` to get a `dict[int, Symbol]`. For each changed line number, look up the containing symbol.
+3. **Classify changed lines per symbol**: for each symbol that has changed lines, partition them using `Symbol.signature_range`, `Symbol.docstring_range`, and `Symbol.body_range`. Lines outside all three ranges (e.g., decorator lines, inter-symbol whitespace) are classified as formatting/import changes.
+4. **Apply severity logic**: if docstring lines changed for a symbol -> skip (docstring was updated). Otherwise: signature lines changed -> `stale-signature` (HIGH/required). Body lines changed -> `stale-body` (MEDIUM/recommended). Only formatting/import lines -> `stale-import` (LOW/recommended). Highest severity wins per symbol.
+5. **Emit findings**: one `Finding` per affected symbol, using `Symbol.line` for `Finding.line` and `Symbol.name` for `Finding.symbol`.
+
+**Edge cases (diff mode):**
+
+- **New files** (entire file is added): all lines are "changed" but no prior docstring existed to become stale. Skip -- no findings. Detection: diff output shows `--- /dev/null`.
+- **Deleted symbols** (function removed): not in the AST -> `map_lines_to_symbols` won't map those lines. Naturally skipped.
+- **Moved/renamed symbols (within file)**: treated as delete-plus-add. The old location is a deletion (skipped). The new location may produce a `stale-body` finding if the docstring wasn't updated. Cross-file moves are out of scope — freshness operates per-file on the diff for each file independently, without `--find-renames`.
+- **Symbols with no docstring**: `Symbol.docstring_range` is `None`. No docstring to be stale -> skip. Presence checking is interrogate's job.
+- **Multi-line signature changes**: a signature spanning lines 10-15 where only line 12 changed still counts as a signature change -> `stale-signature`.
+- **Empty diff output**: return empty list immediately.
+
+**Drift mode implementation:**
+
+1. **Parse `git blame --line-porcelain` output**: extract per-line `author-time` (Unix timestamp) values. Each blame entry starts with a 40-char SHA line, followed by header fields including `author-time`, and ends with a tab-prefixed content line. Build a `dict[int, int]` mapping line number to timestamp.
+2. **Group timestamps by symbol**: using `map_lines_to_symbols(tree)`, partition the line-to-timestamp mapping into per-symbol groups. For each symbol, separate timestamps into code timestamps and docstring timestamps using `Symbol.docstring_range`.
+3. **Compute `stale-drift`**: `code_max = max(code_timestamps)`, `docstring_max = max(docstring_timestamps)`. If `code_max - docstring_max > drift_threshold * 86400` (seconds): emit `stale-drift`. Skip symbols where either group is empty.
+4. **Compute `stale-age`**: `now = current UTC timestamp`. If `now - docstring_max > age_threshold * 86400`: emit `stale-age`. Skip symbols with no docstring timestamps.
+5. **Emit findings**: up to two findings per symbol (one for each drift rule that triggers). Both use category `"recommended"`.
+
+**Edge cases (drift mode):**
+
+- **Uncommitted files** (no blame data): empty `blame_output` -> return empty list.
+- **Symbols with no docstring**: no docstring timestamps -> skip both drift rules.
+- **Symbols with only a docstring** (no code body, e.g., a stub): no code timestamps -> `stale-drift` cannot trigger (no code to be newer). `stale-age` can still trigger based on docstring age alone.
+- **Boundary timestamps**: use strict greater-than comparison (`>`, not `>=`) for threshold checks to avoid false positives at exactly the threshold boundary.
+
+**Dependencies:**
+
+- No new runtime dependencies: stdlib `ast`, `re`, `time` (for drift mode `time.time()`), existing `ast_utils`
+- Reuses `Finding` from `checks/__init__.py`
+- Reuses `map_lines_to_symbols` and `Symbol` from `ast_utils` -- `Symbol.signature_range`, `Symbol.docstring_range`, `Symbol.body_range` provide the line classification infrastructure
+- No cross-imports between freshness and enrichment modules
+- `FreshnessConfig` imported from `docvet.config` (already exists with `drift_threshold` and `age_threshold` fields)
+
 ## Project Scoping & Phased Development
 
-### MVP Strategy & Philosophy
+### Strategy & Philosophy
 
-**MVP Approach:** Problem-solving MVP -- deliver the specific capability that fills the 4-year ecosystem gap in docstring section completeness checking. The scaffolding (CLI, config, discovery, AST helpers) is already implemented; this MVP adds the first real check module.
+**Approach:** Problem-solving MVP per layer -- deliver each specific capability that fills an ecosystem gap. The scaffolding (CLI, config, discovery, AST helpers) is already implemented; each epic adds a real check module.
 
-**Scope boundary — missing vs incomplete:** MVP rules detect **missing sections only**. A function that raises `ValueError` and `TypeError` but has no `Raises:` section at all triggers `missing-raises`. A function that has a `Raises:` section documenting `ValueError` but not `TypeError` does **not** trigger a finding -- that's an *incomplete* section, which is a Growth feature (analogous to how ruff D417 checks param completeness but docvet Layer 3 checks section presence). This boundary keeps detection logic simple and false-positive risk low.
+**Enrichment scope boundary — missing vs incomplete:** Enrichment rules detect **missing sections only**. A function that raises `ValueError` and `TypeError` but has no `Raises:` section at all triggers `missing-raises`. A function that has a `Raises:` section documenting `ValueError` but not `TypeError` does **not** trigger a finding -- that's an *incomplete* section, which is a Growth feature (analogous to how ruff D417 checks param completeness but docvet Layer 3 checks section presence). This boundary keeps detection logic simple and false-positive risk low.
 
-### MVP Feature Set (Phase 1)
+**Freshness scope boundary — diff vs blame:** Diff mode detects **immediate staleness** from the current commit/staged changes. Drift mode detects **accumulated staleness** over time via git blame timestamps. Diff mode is fast and deterministic; drift mode is slower and threshold-based. Both are pure functions — the CLI handles all git subprocess calls.
 
-**Core User Journeys Enabled:** All five journeys. The enrichment module is the single deliverable that enables all journeys. Note: Journey 3 (CI exit codes) and Journey 5 (summary line) also depend on CLI/reporting layer behavior that exists as stubs -- full journey completion requires wiring those stubs, which is out of enrichment module scope but in the same release scope.
+### Enrichment MVP Feature Set (Phase 1 — Complete)
+
+**Status:** Fully implemented (3 epics, 11 stories, 415 tests).
+
+**Core User Journeys Enabled:** Journeys 1-5 and 8. The enrichment module enables all enrichment journeys. Journey 3 (CI exit codes) and Journey 5 (summary line) also depend on CLI/reporting layer behavior that exists as stubs -- full journey completion requires wiring those stubs, which is out of enrichment module scope but in the same release scope.
 
 **Prerequisite Deliverables (ship before main enrichment PR):**
 
@@ -373,38 +633,84 @@ Every rule now has a corresponding toggle. No always-on rules -- every team can 
 - Tests against existing fixture files (`missing_raises.py`, `missing_yields.py`, `complete_module.py`)
 - CLI wiring via existing `_run_enrichment` stub in `cli.py`
 
-### Post-MVP Features
+### Freshness Feature Set (Next Epic)
 
-**Phase 2 (Growth):**
+**Status:** Not started. All prerequisites exist: `Finding` dataclass, `FreshnessConfig`, `map_lines_to_symbols`, `_run_freshness` CLI stub.
 
-Sequencing TBD based on early adopter feedback. Candidates:
+**Core User Journeys Enabled:** Journeys 6-7. Journey 6 demonstrates diff mode (stale-signature, stale-body). Journey 7 demonstrates drift mode (stale-drift, stale-age).
 
+**Existing infrastructure (already implemented):**
+
+- `Finding` dataclass in `checks/__init__.py` (shared with enrichment)
+- `FreshnessConfig` in `config.py` with `drift_threshold` and `age_threshold` fields
+- `_run_freshness` CLI stub in `cli.py`
+- `Symbol` dataclass in `ast_utils.py` with `line`, `end_line`, `docstring`, `name`, `kind` fields
+- `get_documented_symbols(tree)` in `ast_utils.py` for symbol extraction
+
+**Prerequisite deliverables (ship before main freshness PR):**
+
+1. **`Symbol` dataclass extension PR:** Add `signature_range`, `body_range`, and `docstring_range` fields to the `Symbol` dataclass in `ast_utils.py`. These line-range tuples enable freshness line classification — partitioning changed lines into signature, docstring, and body regions per symbol. Update `get_documented_symbols()` to populate the new fields during AST traversal. Update affected unit tests. Small, isolated change.
+2. **`map_lines_to_symbols` PR:** Add `map_lines_to_symbols(tree) -> dict[int, Symbol]` to `ast_utils.py`. Maps every source line number to its enclosing `Symbol` (or `None` for inter-symbol gaps). Required by both diff mode (hunk-to-symbol mapping) and drift mode (blame-line-to-symbol grouping). Unit tests with known source strings. Small, isolated change.
+
+**Main Deliverables:**
+
+- `check_freshness_diff(file_path, diff_output, tree) -> list[Finding]` pure function in `checks/freshness.py`
+- `check_freshness_drift(file_path, blame_output, tree, config) -> list[Finding]` pure function in `checks/freshness.py`
+- All 5 rule identifiers: `stale-signature` (HIGH/required), `stale-body` (MEDIUM/recommended), `stale-import` (LOW/recommended), `stale-drift` (recommended), `stale-age` (recommended)
+- Deterministic severity-to-category mapping for diff mode
+- Configurable thresholds for drift mode (default: 30 days drift, 90 days age)
+- One finding per symbol per mode (deduplication -- highest severity wins for diff mode)
+- Zero findings on code where all changed symbols have updated docstrings
+- Unit tests with mocked git diff and blame output strings (≥85% project-wide coverage; aim for ≥90% on `checks/freshness.py`)
+- Integration tests with real git repos (temp dirs with known commits) for end-to-end diff and drift detection
+- Edge case tests: new files, deleted functions, moved code, empty diff/blame output
+- CLI wiring via existing `_run_freshness` stub in `cli.py`
+
+### Post-Epic Features
+
+**Growth (sequencing TBD based on early adopter feedback):**
+
+Enrichment growth:
 - Inline suppression: `# docvet: ignore[missing-raises]`
-- JSON output format for CI integration pipelines
 - Incomplete section detection (e.g., `Raises:` section exists but doesn't cover all raised exceptions)
 - `--fix` suggestions (auto-insert empty section skeletons)
+
+Freshness growth:
+- Hunk-level precision (show exactly which hunk changed, not just the symbol)
+- Auto-fix suggestions for stale `Args:` sections after signature changes
+- Per-rule disable toggles (e.g., `ignore-stale-import = true`)
+
+Shared growth:
+- JSON output format for CI integration pipelines
 - Rule documentation URLs in findings (ruff pattern)
 - Per-rule severity override in config
 - SARIF output format
+- Cross-check intelligence (enrichment + freshness combined findings)
 
-**Phase 3 (Vision):**
+**Vision:**
 
 - Editor/LSP integration for real-time feedback
 - GitHub Actions annotation format for PR inline comments
-- Cross-check intelligence (enrichment + freshness combined findings)
 - Numpy/Sphinx docstring style support
 
 ### Risk Mitigation Strategy
 
-**Technical Risks:**
+**Enrichment Technical Risks (mitigated -- implementation complete):**
 
 - `missing-attributes` has 5 detection branches with deduplication -- mitigated by implementing and testing each branch independently before composition
 - Section header regex accuracy -- mitigated by starting with strict matching (exact names, correct indentation) and relaxing based on user feedback
 - `Finding` is a frozen API consumed by all future checks -- mitigated by shipping it as a prerequisite PR with deliberate review before enrichment logic builds on it
 
-**Market Risks:** Minimal -- verified ecosystem gap (darglint unmaintained since 2022, ruff stops at D417). No competing tool covers this space.
+**Freshness Technical Risks:**
 
-**Resource Risks:** Solo developer, but module is self-contained with no external dependencies. Scaffolding already built. Three-PR sequencing (config → Finding → enrichment) keeps each PR reviewable and CI-friendly. Risk is timeline, not feasibility.
+- Git diff parsing edge cases (binary files, renames, merge commits) -- mitigated by testing with real git repos and diverse diff outputs; skip non-Python content early
+- Git blame performance on large repos -- mitigated by drift mode being explicitly positioned as periodic (not per-commit); the pure function is fast, git blame I/O is the bottleneck
+- Platform-specific git output variations -- mitigated by targeting git 2.x unified diff format, which is stable across platforms
+- `Symbol.signature_range` / `Symbol.body_range` accuracy for line classification -- mitigated by reusing battle-tested `ast_utils` infrastructure from enrichment
+
+**Market Risks:** Minimal -- no existing tool maps git diffs to AST symbols for stale docstring detection. Novel capability in the Python ecosystem.
+
+**Resource Risks:** Solo developer, but freshness is simpler than enrichment (2 functions vs 10 rules). All scaffolding and shared infrastructure already exist. Risk is timeline, not feasibility.
 
 ## Functional Requirements
 
@@ -421,7 +727,7 @@ Sequencing TBD based on early adopter feedback. Candidates:
 - **FR9:** The system can detect public symbols (configurable by type) that lack an `Examples:` section in their docstring
 - **FR10:** The system can detect `__init__.py` modules that lack an `Examples:` section in their docstring
 - **FR11:** The system can detect `Attributes:` sections that lack typed format (`name (type): description`)
-- **FR12:** The system can detect `See Also:` sections that lack cross-reference syntax
+- **FR12:** The system can detect `See Also:` sections where entries lack cross-reference syntax (backtick-wrapped module paths, Sphinx role syntax such as `:func:` or `:class:`, or markdown cross-reference link format `[text][ref]`)
 - **FR13:** The system can detect `__init__.py` modules that lack a `See Also:` section in their docstring
 - **FR14:** The system can detect `Examples:` sections that use `>>>` doctest format instead of fenced code blocks
 - **FR15:** The system can recognize `Args:` and `Returns:` section headers for docstring parsing context without checking for their absence
@@ -468,6 +774,50 @@ Sequencing TBD based on early adopter feedback. Candidates:
 - **FR41:** The system can provide `Finding` as a shared type importable by all check modules without cross-check dependencies
 - **FR42:** A developer can run the enrichment check standalone via `docvet enrichment` or as part of all checks via `docvet check`
 
+### Diff Mode Detection
+
+- **FR43:** The system can parse git diff output to extract changed hunk line ranges for a given file
+- **FR44:** The system can map changed line ranges to AST symbols using the existing line-to-symbol mapping from `ast_utils`
+- **FR45:** The system can classify each changed line within a symbol as belonging to the signature range, docstring range, or body range
+- **FR46:** The system can detect symbols where code lines (signature or body) changed but docstring lines did not change
+- **FR47:** The system can assign HIGH severity (category `required`) when a symbol's signature range contains changed lines
+- **FR48:** The system can assign MEDIUM severity (category `recommended`) when a symbol's body range contains changed lines but its signature range does not
+- **FR49:** The system can assign LOW severity (category `recommended`) when only lines within a symbol's enclosing line range but outside its signature, docstring, and body ranges changed, and no signature or body lines changed
+
+### Drift Mode Detection
+
+- **FR50:** The system can parse `git blame --line-porcelain` output to extract per-line modification timestamps for a given file
+- **FR51:** The system can group per-line timestamps by symbol using the existing line-to-symbol mapping from `ast_utils`
+- **FR52:** The system can detect symbols where the most recent code modification exceeds the most recent docstring modification by more than a configurable drift threshold (default: 30 days)
+- **FR53:** The system can detect symbols where the docstring has not been modified within a configurable age threshold (default: 90 days)
+- **FR54:** The system can skip symbols with no docstring in both diff and drift modes, producing zero findings for undocumented symbols
+
+### Freshness Edge Cases
+
+- **FR55:** The system can produce zero freshness findings for newly created files where all lines appear as additions in the git diff
+- **FR56:** The system can handle functions that appear in a git diff's deleted lines but no longer exist in the current AST, producing zero findings for those symbols
+- **FR57:** The system can treat code relocated within a file as a delete-plus-add (body change at the new location, no finding at the old location), without requiring `git diff --find-renames`. Cross-file move detection is out of scope — freshness operates per-file on the diff output for each file independently
+- **FR58:** The system can skip binary files and non-Python files present in git diff output without producing findings or raising exceptions
+
+### Freshness Finding Production
+
+- **FR59:** The system can produce a structured finding for each stale docstring, carrying file path, line number, symbol name, rule identifier, human-readable message, and category
+- **FR60:** The system can produce freshness findings using the shared `Finding` dataclass without modification to the dataclass fields or behavior
+- **FR61:** The system can produce at most one finding per symbol per mode, selecting the highest applicable severity when multiple change types affect the same symbol in diff mode
+- **FR62:** The system can produce zero findings when analyzing code where all changed symbols have correspondingly updated docstrings
+
+### Freshness Configuration
+
+- **FR63:** A developer can configure the drift threshold (in days) via `drift-threshold` in `[tool.docvet.freshness]`
+- **FR64:** A developer can configure the age threshold (in days) via `age-threshold` in `[tool.docvet.freshness]`
+- **FR65:** The system can apply default thresholds (drift: 30 days, age: 90 days) when no `[tool.docvet.freshness]` section is provided in `pyproject.toml`
+
+### Freshness Integration
+
+- **FR66:** The system can accept file path, git output string (diff or blame), and parsed AST as inputs and return a list of findings as output
+- **FR67:** A developer can run the freshness check standalone via `docvet freshness` or as part of all checks via `docvet check`
+- **FR68:** A developer can select diff or drift mode via `--mode` CLI option, with diff as the default
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -503,3 +853,31 @@ Sequencing TBD based on early adopter feedback. Candidates:
 - **NFR17:** `Finding`'s 6-field shape (`file`, `line`, `symbol`, `rule`, `message`, `category`) is stable for v1 -- no fields are added, removed, or renamed within the v1 lifecycle
 - **NFR18:** The enrichment check integrates with the existing CLI dispatch pattern (`_run_enrichment` stub) without requiring changes to CLI argument parsing or global option handling
 - **NFR19:** Config additions (`require-attributes` toggle) are backward-compatible -- existing `pyproject.toml` files without this key continue to work with the default value
+
+### Freshness Performance
+
+- **NFR20:** Diff mode can process a single file's git diff and produce findings in under 100ms -- aspirational benchmark validated during implementation, not a CI-enforced gate
+- **NFR21:** Drift mode performance is dominated by git blame I/O; the freshness pure function itself adds no measurable overhead beyond timestamp parsing and symbol comparison
+- **NFR22:** Memory usage for freshness scales linearly with file count -- each file is processed independently with no cross-file state
+
+### Freshness Correctness
+
+- **NFR23:** Non-signature code changes never produce HIGH severity findings -- body-only changes produce at most MEDIUM severity (category `recommended`)
+- **NFR24:** Identical git diff input and identical AST produce identical severity assignment for the same symbol, regardless of execution environment or ordering
+- **NFR25:** Malformed git output (truncated diffs, corrupted blame data, empty strings) results in zero findings for affected files, never exceptions or tracebacks
+- **NFR26:** Finding messages name the specific symbol, the severity level, and the type of change detected (signature, body, or drift), enabling the developer to locate and fix the stale docstring without additional context
+
+### Freshness Maintainability
+
+- **NFR27:** Diff mode and drift mode can be tested independently using mocked git output strings with no filesystem or git subprocess calls
+- **NFR28:** Adding a new severity level or drift rule requires changes to at most 3 files: the freshness module (`freshness.py`), config (`config.py`), and tests (`test_freshness.py`)
+
+### Freshness Compatibility
+
+- **NFR29:** Freshness functions handle git diff and git blame output from git 2.x without version-specific code paths
+- **NFR30:** Freshness functions handle both `git diff` (unstaged) and `git diff --cached` (staged) output identically, as both use the same unified diff hunk format
+
+### Freshness Integration
+
+- **NFR31:** Freshness reuses the shared `Finding` dataclass without modification -- no new fields, no subclassing, no changes to the frozen 6-field shape
+- **NFR32:** Freshness has no cross-imports with enrichment or any other check module -- it depends only on `checks.Finding` and `ast_utils`
