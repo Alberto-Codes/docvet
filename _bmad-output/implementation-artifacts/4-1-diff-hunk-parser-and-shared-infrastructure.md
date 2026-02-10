@@ -1,6 +1,6 @@
 # Story 4.1: Diff Hunk Parser and Shared Infrastructure
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -286,8 +286,29 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-09: Created freshness module skeleton with diff hunk parser and shared finding builder (Story 4.1)
+- 2026-02-09: Code review fixes — removed unused TYPE_CHECKING block, typed _make_symbol kind parameter, added whitespace-only input test
 
 ### File List
 
 - `src/docvet/checks/freshness.py` (CREATE) — freshness check module with `_HUNK_PATTERN`, `_build_finding`, `_parse_diff_hunks`
-- `tests/unit/checks/test_freshness.py` (CREATE) — 19 unit tests for freshness module
+- `tests/unit/checks/test_freshness.py` (CREATE) — 20 unit tests for freshness module
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Alberto-Codes on 2026-02-09
+**Outcome:** Approved with fixes applied
+
+**AC Validation:** 8/8 implemented and verified
+**Task Audit:** All [x] tasks confirmed as genuinely complete
+**Regression Check:** 435 tests pass (20 freshness + 415 existing), lint clean, type check clean
+
+**Issues Found:** 0 High, 3 Medium, 2 Low
+
+**MEDIUM — Fixed:**
+- M1: `_make_symbol` test helper `kind` parameter typed as `str` instead of `Literal` — fixed to use `Literal["function", "class", "method", "module"]` for type safety
+- M2: No test for whitespace-only input — added `test_whitespace_only_returns_empty_set`
+- M3: Empty `TYPE_CHECKING` block with `pass` was speculative dead code — removed along with unused `TYPE_CHECKING` import
+
+**LOW — Noted:**
+- L1: `_build_finding` tests don't verify Finding immutability (tested in `checks/__init__` tests, low risk)
+- L2: Story subtask list enumerates 11 items but 20 tests exist — minor doc mismatch, all tests are valid
