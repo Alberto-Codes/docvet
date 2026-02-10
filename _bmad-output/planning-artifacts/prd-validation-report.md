@@ -33,7 +33,7 @@ validationStepsCompleted:
   - 'step-v-13-report-complete'
 validationStatus: COMPLETE
 holisticQualityRating: '4.5/5'
-overallStatus: PASS_WITH_WARNINGS
+overallStatus: PASS
 ---
 
 # PRD Validation Report
@@ -166,10 +166,9 @@ All technology references are capability-relevant.
 - Journeys 1-5 cover: `missing-raises`, `missing-yields`, `missing-attributes`, `missing-typed-attributes`, `missing-warns`, `missing-examples`
 - Journey 8 covers: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, `prefer-fenced-code-blocks`
 
-**Freshness rules (4/5 demonstrated):**
-- Journey 6 covers: `stale-signature` (HIGH), `stale-body` (MEDIUM)
+**Freshness rules (5/5 demonstrated):**
+- Journey 6 covers: `stale-signature` (HIGH), `stale-body` (MEDIUM), `stale-import` (LOW)
 - Journey 7 covers: `stale-drift`, `stale-age`
-- **Missing: `stale-import` (LOW)** — not demonstrated in any journey
 
 ### Traceability Summary
 
@@ -180,11 +179,11 @@ All technology references are capability-relevant.
 | User Journeys → FRs | Intact |
 | MVP Scope → FRs | Intact |
 
-**Total Traceability Issues:** 1 warning (`stale-import` rule undemonstrated in journeys)
+**Total Traceability Issues:** 0
 
-**Severity:** Warning
+**Severity:** Pass
 
-**Recommendation:** Add a brief `stale-import` edge-case paragraph to Journey 6 showing a developer who changes only import ordering near a function, receives an advisory LOW finding, and dismisses it. Update the Journey Requirements Traceability paragraph to list all 5 freshness rules.
+**Recommendation:** None — all 15 rules (10 enrichment + 5 freshness) are demonstrated in user journeys.
 
 ## Implementation Leakage Validation
 
