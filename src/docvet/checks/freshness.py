@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from docvet.ast_utils import Symbol, map_lines_to_symbols  # noqa: F401
 from docvet.checks import Finding
 from docvet.config import FreshnessConfig  # noqa: F401
-
-if TYPE_CHECKING:
-    pass  # Reserve for future type-only imports
 
 # ---------------------------------------------------------------------------
 # Module-level constants
