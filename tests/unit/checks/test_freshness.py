@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from docvet.ast_utils import Symbol
 from docvet.checks import Finding
@@ -15,7 +16,7 @@ from docvet.checks.freshness import _HUNK_PATTERN, _build_finding, _parse_diff_h
 
 def _make_symbol(
     name: str = "foo",
-    kind: str = "function",
+    kind: Literal["function", "class", "method", "module"] = "function",
     line: int = 1,
 ) -> Symbol:
     """Create a minimal Symbol for testing _build_finding."""
@@ -147,6 +148,10 @@ class TestParseDiffHunks:
     def test_empty_string_returns_empty_set(self) -> None:
         """AC 5: Empty string returns empty set."""
         assert _parse_diff_hunks("") == set()
+
+    def test_whitespace_only_returns_empty_set(self) -> None:
+        """Whitespace-only input returns empty set (no hunk headers to match)."""
+        assert _parse_diff_hunks("  \n\n  ") == set()
 
     def test_rename_and_mode_change_lines_skipped(self) -> None:
         """AC 6: Rename and mode change lines are silently skipped."""
