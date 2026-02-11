@@ -638,11 +638,109 @@ def test_run_freshness_passes_file_path_diff_output_and_tree(mocker):
     )
 
 
-def test_run_freshness_with_drift_mode_prints_not_implemented(mocker):
+# ---------------------------------------------------------------------------
+# _run_freshness drift mode behavior tests
+# ---------------------------------------------------------------------------
+
+
+def test_run_freshness_drift_calls_check_freshness_drift_per_file(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mock_blame = mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
+    mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
+    mock_diff_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
+    file_path = Path("/fake/file.py")
+    mocker.patch("docvet.cli.discover_files", return_value=[file_path])
     result = runner.invoke(app, ["freshness", "--mode", "drift"])
     assert result.exit_code == 0
-    assert "freshness drift: not yet implemented" in result.output
+    mock_blame.assert_called_once_with(file_path, ANY)
+    mock_check.assert_called_once_with(str(file_path), "blame data", ANY, ANY)
+    mock_diff_check.assert_not_called()
+
+
+def test_run_freshness_drift_prints_findings_in_correct_format(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=10,
+            symbol="do_stuff",
+            rule="stale-drift",
+            message="Function 'do_stuff' code modified 2025-12-14, "
+            "docstring last modified 2025-10-02 (73 days drift)",
+            category="recommended",
+        ),
+    ]
+    mocker.patch("docvet.cli.check_freshness_drift", return_value=findings)
+    mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
+    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("src/app.py")])
+    result = runner.invoke(app, ["freshness", "--mode", "drift"])
+    assert result.exit_code == 0
+    assert "src/app.py:10: stale-drift" in result.output
+    assert "73 days drift" in result.output
+
+
+def test_run_freshness_drift_no_findings_produces_no_output(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
+    mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    result = runner.invoke(app, ["freshness", "--mode", "drift"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_run_freshness_drift_passes_config_freshness_to_check(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    from docvet.config import FreshnessConfig
+
+    fake_config = DocvetConfig(
+        freshness=FreshnessConfig(drift_threshold=15, age_threshold=45)
+    )
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
+    mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
+    file_path = Path("/fake/file.py")
+    mocker.patch("docvet.cli.discover_files", return_value=[file_path])
+    result = runner.invoke(app, ["freshness", "--mode", "drift"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(
+        str(file_path), "blame data", ANY, fake_config.freshness
+    )
+
+
+def test_run_freshness_drift_handles_syntax_error_with_warning(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
+    mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
+    mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
+    result = runner.invoke(app, ["freshness", "--mode", "drift"])
+    assert result.exit_code == 0
+    output = result.output + getattr(result, "stderr", "")
+    assert "warning:" in output
+    assert "failed to parse, skipping" in output
+    mock_check.assert_not_called()
+
+
+def test_run_freshness_drift_processes_multiple_files(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch(
+        "docvet.cli._get_git_blame",
+        side_effect=lambda fp, _root: f"blame-{fp.stem}",
+    )
+    mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
+    files = [Path("/a.py"), Path("/b.py"), Path("/c.py")]
+    mocker.patch("docvet.cli.discover_files", return_value=files)
+    result = runner.invoke(app, ["freshness", "--mode", "drift"])
+    assert result.exit_code == 0
+    assert mock_check.call_count == 3
+    for file_path in files:
+        mock_check.assert_any_call(str(file_path), f"blame-{file_path.stem}", ANY, ANY)
 
 
 # ---------------------------------------------------------------------------
@@ -725,6 +823,48 @@ def test_get_git_diff_when_git_fails_returns_empty_string(mocker):
     mock_subprocess.return_value.returncode = 128
     mock_subprocess.return_value.stdout = ""
     result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.DIFF)
+    assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# _get_git_blame tests
+# ---------------------------------------------------------------------------
+
+
+def test_get_git_blame_runs_correct_command(mocker):
+    from docvet.cli import _get_git_blame
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "blame output"
+    result = _get_git_blame(Path("/f.py"), Path("/project"))
+    assert result == "blame output"
+    mock_subprocess.assert_called_once_with(
+        ["git", "blame", "--line-porcelain", "--", "/f.py"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path("/project"),
+    )
+
+
+def test_get_git_blame_returns_stdout_on_success(mocker):
+    from docvet.cli import _get_git_blame
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "porcelain blame data\n"
+    result = _get_git_blame(Path("/f.py"), Path("/project"))
+    assert result == "porcelain blame data\n"
+
+
+def test_get_git_blame_returns_empty_on_failure(mocker):
+    from docvet.cli import _get_git_blame
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 128
+    mock_subprocess.return_value.stdout = ""
+    result = _get_git_blame(Path("/f.py"), Path("/project"))
     assert result == ""
 
 
