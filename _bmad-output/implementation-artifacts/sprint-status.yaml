@@ -67,7 +67,7 @@ development_status:
   epic-4: in-progress
   4-1-diff-hunk-parser-and-shared-infrastructure: done
   4-2-line-classification-and-diff-mode-orchestrator: done
-  4-3-cli-wiring-for-freshness-diff-mode: review
+  4-3-cli-wiring-for-freshness-diff-mode: done
   epic-4-retrospective: optional
 
   # Epic 5: Freshness Drift Mode & CLI Integration
