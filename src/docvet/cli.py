@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import ast
 import enum
+import subprocess
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from docvet.checks.enrichment import check_enrichment
+from docvet.checks.freshness import check_freshness_diff
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode, discover_files
 
@@ -142,6 +144,44 @@ def _discover_and_handle(
     return discovered
 
 
+def _get_git_diff(
+    file_path: Path,
+    project_root: Path,
+    discovery_mode: DiscoveryMode,
+) -> str:
+    """Get git diff output for a single file.
+
+    Runs the appropriate ``git diff`` variant based on the discovery
+    mode and returns the raw unified diff output.
+
+    Args:
+        file_path: Absolute path to the file.
+        project_root: Project root for git working directory.
+        discovery_mode: Controls which git diff variant to run.
+
+    Returns:
+        Raw unified diff output string. Returns an empty string if
+        git is unavailable or the command fails.
+    """
+    if discovery_mode is DiscoveryMode.STAGED:
+        args = ["git", "diff", "--cached", "--", str(file_path)]
+    elif discovery_mode is DiscoveryMode.ALL:
+        args = ["git", "diff", "HEAD", "--", str(file_path)]
+    else:
+        args = ["git", "diff", "--", str(file_path)]
+
+    result = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=project_root,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout
+
+
 # ---------------------------------------------------------------------------
 # Private stub runners
 # ---------------------------------------------------------------------------
@@ -176,15 +216,38 @@ def _run_freshness(
     files: list[Path],
     config: DocvetConfig,
     freshness_mode: FreshnessMode = FreshnessMode.DIFF,
+    discovery_mode: DiscoveryMode = DiscoveryMode.DIFF,
 ) -> None:
-    """Stub for freshness check.
+    """Run the freshness check on discovered files.
+
+    For diff mode, reads each file, obtains its git diff, parses the
+    AST, and calls ``check_freshness_diff``. Findings are printed to
+    stdout in ``file:line: rule message`` format. Drift mode is not
+    yet implemented.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         freshness_mode: The freshness check strategy (diff or drift).
+        discovery_mode: Controls which git diff variant to run.
     """
-    typer.echo("freshness: not yet implemented")
+    if freshness_mode is not FreshnessMode.DIFF:
+        typer.echo("freshness drift: not yet implemented")
+        return
+
+    for file_path in files:
+        source = file_path.read_text(encoding="utf-8")
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+            continue
+        diff_output = _get_git_diff(file_path, config.project_root, discovery_mode)
+        findings = check_freshness_diff(str(file_path), diff_output, tree)
+        for finding in findings:
+            typer.echo(
+                f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"
+            )
 
 
 def _run_coverage(files: list[Path], config: DocvetConfig) -> None:
@@ -279,7 +342,7 @@ def check(
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
     _run_enrichment(discovered, config)
-    _run_freshness(discovered, config)
+    _run_freshness(discovered, config, discovery_mode=discovery_mode)
     _run_coverage(discovered, config)
     _run_griffe(discovered, config)
 
@@ -329,7 +392,9 @@ def freshness(
     _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    _run_freshness(discovered, config, freshness_mode=mode)
+    _run_freshness(
+        discovered, config, freshness_mode=mode, discovery_mode=discovery_mode
+    )
 
 
 @app.command()
