@@ -197,3 +197,65 @@ def check_freshness_diff(
 
     findings.sort(key=lambda f: f.line)
     return findings
+
+
+# ---------------------------------------------------------------------------
+# Drift mode helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_blame_timestamps(blame_output: str) -> dict[int, int]:
+    """Extract per-line modification timestamps from git blame porcelain output.
+
+    Parses ``git blame --line-porcelain`` output and builds a mapping from
+    1-based line numbers to Unix timestamps extracted from ``author-time``
+    fields.  Uses a simple state machine: each blame block starts with a
+    SHA line (setting the current line number), accumulates an
+    ``author-time`` value, and emits the mapping entry when a tab-prefixed
+    content line is encountered.
+
+    Args:
+        blame_output: Raw output from ``git blame --line-porcelain``.
+
+    Returns:
+        A dict mapping 1-based line numbers to Unix timestamps.  Returns
+        an empty dict for empty or whitespace-only input, and silently
+        skips malformed or truncated blame blocks.
+    """
+    if not blame_output:
+        return {}
+
+    timestamps: dict[int, int] = {}
+    current_line: int | None = None
+    current_timestamp: int | None = None
+
+    for line in blame_output.splitlines():
+        # SHA line: 40-hex-chars orig_line final_line [count]
+        parts = line.split()
+        if len(parts) >= 3 and len(parts[0]) == 40:
+            try:
+                current_line = int(parts[2])
+            except ValueError:
+                current_line = None
+            current_timestamp = None
+            continue
+
+        # author-time line
+        if line.startswith("author-time "):
+            try:
+                current_timestamp = int(line.split()[1])
+            except (ValueError, IndexError):
+                pass
+            continue
+
+        # Tab-prefixed content line — end of blame block
+        if line.startswith("\t"):
+            if current_line is not None and current_timestamp is not None:
+                timestamps[current_line] = current_timestamp
+            current_line = None
+            current_timestamp = None
+            continue
+
+        # All other lines (author, committer, summary, filename, etc.) — skip
+
+    return timestamps

@@ -12,6 +12,7 @@ from docvet.checks.freshness import (
     _HUNK_PATTERN,
     _build_finding,
     _classify_changed_lines,
+    _parse_blame_timestamps,
     _parse_diff_hunks,
     check_freshness_diff,
 )
@@ -630,3 +631,295 @@ class TestCheckFreshnessDiff:
         rules = {f.rule for f in findings}
         assert "stale-signature" in rules
         assert "stale-body" in rules
+
+
+# ---------------------------------------------------------------------------
+# Blame output test constants
+# ---------------------------------------------------------------------------
+
+_BLAME_SINGLE_ENTRY = """\
+1234567890123456789012345678901234567890 1 1 1
+author Test Author
+author-mail <test@example.com>
+author-time 1707500000
+author-tz +0000
+committer Test Author
+committer-mail <test@example.com>
+committer-time 1707500000
+committer-tz +0000
+summary Initial commit
+filename test.py
+\tdef greet(name):
+"""
+
+_BLAME_MULTI_ENTRY = """\
+1234567890123456789012345678901234567890 1 1 1
+author Test Author
+author-mail <test@example.com>
+author-time 1707500000
+author-tz +0000
+committer Test Author
+committer-mail <test@example.com>
+committer-time 1707500000
+committer-tz +0000
+summary Initial commit
+filename test.py
+\tdef greet(name):
+abcdef7890123456789012345678901234567890 2 2 1
+author Another Author
+author-mail <another@example.com>
+author-time 1707600000
+author-tz +0000
+committer Another Author
+committer-mail <another@example.com>
+committer-time 1707600000
+committer-tz +0000
+summary Add docstring
+filename test.py
+\t    \"\"\"Say hello.\"\"\"
+fedcba9876543210fedcba9876543210fedcba98 3 3 1
+author Test Author
+author-mail <test@example.com>
+author-time 1707700000
+author-tz +0000
+committer Test Author
+committer-mail <test@example.com>
+committer-time 1707700000
+committer-tz +0000
+summary Add return
+filename test.py
+\t    return f"Hello, {name}"
+"""
+
+
+# ---------------------------------------------------------------------------
+# _parse_blame_timestamps tests (AC 1-8)
+# ---------------------------------------------------------------------------
+
+
+class TestParseBlameTimestamps:
+    """Tests for _parse_blame_timestamps."""
+
+    def test_single_entry_returns_line_timestamp_mapping(self) -> None:
+        """AC 1, 2, 3: Single blame entry returns {line_num: timestamp}."""
+        result = _parse_blame_timestamps(_BLAME_SINGLE_ENTRY)
+        assert result == {1: 1707500000}
+
+    def test_multiple_entries_returns_complete_mapping(self) -> None:
+        """AC 1: Multiple entries produce complete dict[int, int] mapping."""
+        result = _parse_blame_timestamps(_BLAME_MULTI_ENTRY)
+        assert result == {1: 1707500000, 2: 1707600000, 3: 1707700000}
+
+    def test_empty_string_returns_empty_dict(self) -> None:
+        """AC 5: Empty string returns empty dict."""
+        assert _parse_blame_timestamps("") == {}
+
+    def test_whitespace_only_returns_empty_dict(self) -> None:
+        """Whitespace-only input returns empty dict."""
+        assert _parse_blame_timestamps("   \n\n   ") == {}
+
+    def test_header_fields_silently_skipped(self) -> None:
+        """AC 4: Only line numbers and timestamps extracted, not author names etc."""
+        result = _parse_blame_timestamps(_BLAME_SINGLE_ENTRY)
+        # Should only have line 1 with its timestamp — no extra keys
+        assert len(result) == 1
+        assert 1 in result
+        # Timestamp should be the author-time value, not any other numeric field
+        assert result[1] == 1707500000
+
+    def test_boundary_commit_parses_normally(self) -> None:
+        """AC 6: Boundary commit (normal 40-char SHA) parses — author-time still present."""
+        # In --line-porcelain, boundary commits still have 40-char SHA and author-time
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author Boundary Author
+author-mail <boundary@example.com>
+author-time 1600000000
+author-tz +0000
+committer Boundary Author
+committer-mail <boundary@example.com>
+committer-time 1600000000
+committer-tz +0000
+summary boundary commit
+boundary
+filename module.py
+\timport os
+"""
+        result = _parse_blame_timestamps(blame)
+        assert result == {1: 1600000000}
+
+    def test_uncommitted_changes_zero_sha_parses_normally(self) -> None:
+        """AC 7: Zero SHA (uncommitted changes) parses normally."""
+        blame = """\
+0000000000000000000000000000000000000000 1 1 1
+author Not Committed Yet
+author-mail <not.committed.yet>
+author-time 1710000000
+author-tz +0000
+committer Not Committed Yet
+committer-mail <not.committed.yet>
+committer-time 1710000000
+committer-tz +0000
+summary Not Yet Committed
+filename working.py
+\tprint("hello")
+"""
+        result = _parse_blame_timestamps(blame)
+        assert result == {1: 1710000000}
+
+    def test_corrupted_data_silently_skipped(self) -> None:
+        """AC 8: Non-blame lines interspersed with valid blocks are skipped."""
+        blame = """\
+THIS IS CORRUPTED DATA
+some random line
+1234567890123456789012345678901234567890 1 5 1
+author Test Author
+author-mail <test@example.com>
+author-time 1707500000
+author-tz +0000
+committer Test Author
+committer-mail <test@example.com>
+committer-time 1707500000
+committer-tz +0000
+summary Commit
+filename test.py
+\tvalid line
+MORE CORRUPTED DATA
+"""
+        result = _parse_blame_timestamps(blame)
+        assert result == {5: 1707500000}
+
+    def test_block_missing_author_time_skipped(self) -> None:
+        """Blame block without author-time produces no entry."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author Test Author
+author-mail <test@example.com>
+committer Test Author
+committer-mail <test@example.com>
+committer-time 1707500000
+committer-tz +0000
+summary Commit
+filename test.py
+\tdef greet(name):
+"""
+        result = _parse_blame_timestamps(blame)
+        # No author-time → current_timestamp remains None → no entry emitted
+        assert result == {}
+
+    def test_block_missing_content_line_skipped(self) -> None:
+        """Truncated block (no tab-prefixed content line) produces no entry."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author Test Author
+author-mail <test@example.com>
+author-time 1707500000
+author-tz +0000
+committer Test Author
+committer-mail <test@example.com>
+committer-time 1707500000
+committer-tz +0000
+summary Commit
+filename test.py"""
+        result = _parse_blame_timestamps(blame)
+        # No tab-prefixed content line → entry never emitted
+        assert result == {}
+
+    def test_sha_line_with_only_two_fields_skipped(self) -> None:
+        """Malformed SHA line with only 2 fields is silently skipped."""
+        blame = """\
+1234567890123456789012345678901234567890 1
+author-time 1707500000
+\tsome content
+"""
+        result = _parse_blame_timestamps(blame)
+        # SHA line rejected (< 3 parts) → current_line never set → no entry
+        assert result == {}
+
+    def test_sha_line_with_non_numeric_third_field_skipped(self) -> None:
+        """SHA-like line with non-numeric third field is silently handled."""
+        blame = """\
+1234567890123456789012345678901234567890 1 notanumber 1
+author-time 1707500000
+\tsome content
+"""
+        result = _parse_blame_timestamps(blame)
+        # int("notanumber") raises ValueError → current_line set to None → no entry
+        assert result == {}
+
+    def test_valid_blocks_among_corrupted_data(self) -> None:
+        """Valid blocks are parsed even when surrounded by corrupted data."""
+        blame = """\
+GARBAGE LINE
+1234567890123456789012345678901234567890 1 3 1
+author Test
+author-mail <t@e.com>
+author-time 1700000000
+author-tz +0000
+committer Test
+committer-mail <t@e.com>
+committer-time 1700000000
+committer-tz +0000
+summary First
+filename test.py
+\tline three
+ANOTHER GARBAGE LINE
+abcdef7890123456789012345678901234567890 2 7 1
+author Test
+author-mail <t@e.com>
+author-time 1800000000
+author-tz +0000
+committer Test
+committer-mail <t@e.com>
+committer-time 1800000000
+committer-tz +0000
+summary Second
+filename test.py
+\tline seven
+"""
+        result = _parse_blame_timestamps(blame)
+        assert result == {3: 1700000000, 7: 1800000000}
+
+    def test_truncated_block_followed_by_valid_block(self) -> None:
+        """Truncated first block (no content line) is discarded when next SHA appears."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author-time 1000000000
+abcdef7890123456789012345678901234567890 1 2 1
+author Test Author
+author-mail <test@example.com>
+author-time 2000000000
+author-tz +0000
+committer Test Author
+committer-mail <test@example.com>
+committer-time 2000000000
+committer-tz +0000
+summary Second commit
+filename test.py
+\tcontent line
+"""
+        result = _parse_blame_timestamps(blame)
+        # First block has no tab-prefixed content line before second SHA → discarded
+        assert result == {2: 2000000000}
+
+    def test_author_time_non_numeric_value_skipped(self) -> None:
+        """author-time with non-numeric value triggers ValueError and is skipped."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author-time notanumber
+\tcontent line
+"""
+        result = _parse_blame_timestamps(blame)
+        # int("notanumber") raises ValueError → timestamp stays None → no entry
+        assert result == {}
+
+    def test_author_time_missing_value_skipped(self) -> None:
+        """author-time with trailing space but no value triggers IndexError and is skipped."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author-time\x20
+\tcontent line
+"""
+        result = _parse_blame_timestamps(blame)
+        # "author-time ".split() → ["author-time"], [1] raises IndexError → skipped
+        assert result == {}
