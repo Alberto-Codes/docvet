@@ -10,7 +10,7 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
-from docvet.cli import FreshnessMode, _run_enrichment, app
+from docvet.cli import FreshnessMode, _run_enrichment, _run_freshness, app
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode
 
@@ -35,6 +35,7 @@ def _mock_config_and_discovery(mocker):
     mocker.patch("docvet.cli.load_config", return_value=DocvetConfig())
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
     mocker.patch("docvet.cli._run_enrichment")
+    mocker.patch("docvet.cli._run_freshness")
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +112,10 @@ def test_check_when_invoked_runs_all_checks_in_order(mocker):
         "docvet.cli._run_enrichment",
         side_effect=lambda f, c: typer.echo("enrichment: ok"),
     )
+    mocker.patch(
+        "docvet.cli._run_freshness",
+        side_effect=lambda f, c, **kw: typer.echo("freshness: ok"),
+    )
     result = runner.invoke(app, ["check"])
     output = result.output
     assert output.index("enrichment:") < output.index("freshness:")
@@ -126,7 +131,6 @@ def test_enrichment_when_invoked_exits_successfully():
 def test_freshness_when_invoked_exits_successfully():
     result = runner.invoke(app, ["freshness"])
     assert result.exit_code == 0
-    assert "freshness: not yet implemented" in result.output
 
 
 def test_freshness_when_invoked_with_mode_drift_exits_successfully():
@@ -393,7 +397,9 @@ def test_check_when_invoked_passes_config_to_run_stubs(mocker):
     mock_griffe = mocker.patch("docvet.cli._run_griffe")
     runner.invoke(app, ["check"])
     mock_enrichment.assert_called_once_with(fake_files, fake_config)
-    mock_freshness.assert_called_once_with(fake_files, fake_config)
+    mock_freshness.assert_called_once_with(
+        fake_files, fake_config, discovery_mode=DiscoveryMode.DIFF
+    )
     mock_coverage.assert_called_once_with(fake_files, fake_config)
     mock_griffe.assert_called_once_with(fake_files, fake_config)
 
@@ -425,7 +431,9 @@ def test_freshness_when_invoked_with_drift_passes_freshness_mode(mocker):
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
     mock_freshness = mocker.patch("docvet.cli._run_freshness")
     runner.invoke(app, ["freshness", "--mode", "drift"])
-    mock_freshness.assert_called_once_with(ANY, ANY, freshness_mode=FreshnessMode.DRIFT)
+    mock_freshness.assert_called_once_with(
+        ANY, ANY, freshness_mode=FreshnessMode.DRIFT, discovery_mode=DiscoveryMode.DIFF
+    )
 
 
 def test_coverage_when_invoked_calls_discover_and_run_stub(mocker):
@@ -546,3 +554,189 @@ def test_run_enrichment_passes_config_enrichment_and_str_file_path(mocker):
     mock_check.assert_called_once_with(
         "x = 1\n", ANY, fake_config.enrichment, str(file_path)
     )
+
+
+# ---------------------------------------------------------------------------
+# _run_freshness behavior tests
+# ---------------------------------------------------------------------------
+
+
+def test_run_freshness_when_file_has_findings_prints_formatted_output(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=10,
+            symbol="do_stuff",
+            rule="stale-docstring",
+            message="Docstring may be stale: body changed",
+            category="recommended",
+        ),
+    ]
+    mocker.patch("docvet.cli.check_freshness_diff", return_value=findings)
+    mocker.patch("docvet.cli.subprocess.run")
+    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("src/app.py")])
+    result = runner.invoke(app, ["freshness"])
+    assert result.exit_code == 0
+    assert (
+        "src/app.py:10: stale-docstring Docstring may be stale: body changed"
+        in result.output
+    )
+
+
+def test_run_freshness_when_no_findings_produces_no_output(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
+    mocker.patch("docvet.cli.subprocess.run")
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    result = runner.invoke(app, ["freshness"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_run_freshness_when_syntax_error_skips_file_with_warning(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
+    mock_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
+    mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
+    result = runner.invoke(app, ["freshness"])
+    assert result.exit_code == 0
+    output = result.output + getattr(result, "stderr", "")
+    assert "warning:" in output
+    assert "failed to parse, skipping" in output
+    mock_check.assert_not_called()
+
+
+def test_run_freshness_when_multiple_files_processes_all(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch("docvet.cli.subprocess.run")
+    mock_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
+    files = [Path("/a.py"), Path("/b.py"), Path("/c.py")]
+    mocker.patch("docvet.cli.discover_files", return_value=files)
+    result = runner.invoke(app, ["freshness"])
+    assert result.exit_code == 0
+    assert mock_check.call_count == 3
+
+
+def test_run_freshness_passes_file_path_diff_output_and_tree(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "diff --git a/f.py b/f.py\n"
+    mock_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
+    file_path = Path("/fake/file.py")
+    mocker.patch("docvet.cli.discover_files", return_value=[file_path])
+    result = runner.invoke(app, ["freshness"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(
+        str(file_path), "diff --git a/f.py b/f.py\n", ANY
+    )
+
+
+def test_run_freshness_with_drift_mode_prints_not_implemented(mocker):
+    mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
+    result = runner.invoke(app, ["freshness", "--mode", "drift"])
+    assert result.exit_code == 0
+    assert "freshness drift: not yet implemented" in result.output
+
+
+# ---------------------------------------------------------------------------
+# _get_git_diff tests
+# ---------------------------------------------------------------------------
+
+
+def test_get_git_diff_when_diff_mode_runs_git_diff(mocker):
+    from docvet.cli import _get_git_diff
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "diff output"
+    result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.DIFF)
+    assert result == "diff output"
+    mock_subprocess.assert_called_once_with(
+        ["git", "diff", "--", "/f.py"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path("/project"),
+    )
+
+
+def test_get_git_diff_when_files_mode_runs_git_diff(mocker):
+    from docvet.cli import _get_git_diff
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "diff output"
+    result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.FILES)
+    assert result == "diff output"
+    mock_subprocess.assert_called_once_with(
+        ["git", "diff", "--", "/f.py"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path("/project"),
+    )
+
+
+def test_get_git_diff_when_staged_mode_runs_git_diff_cached(mocker):
+    from docvet.cli import _get_git_diff
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "cached diff"
+    result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.STAGED)
+    assert result == "cached diff"
+    mock_subprocess.assert_called_once_with(
+        ["git", "diff", "--cached", "--", "/f.py"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path("/project"),
+    )
+
+
+def test_get_git_diff_when_all_mode_runs_git_diff_head(mocker):
+    from docvet.cli import _get_git_diff
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "head diff"
+    result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.ALL)
+    assert result == "head diff"
+    mock_subprocess.assert_called_once_with(
+        ["git", "diff", "HEAD", "--", "/f.py"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path("/project"),
+    )
+
+
+def test_get_git_diff_when_git_fails_returns_empty_string(mocker):
+    from docvet.cli import _get_git_diff
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 128
+    mock_subprocess.return_value.stdout = ""
+    result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.DIFF)
+    assert result == ""
+
+
+def test_freshness_subcommand_passes_discovery_mode_to_run_freshness(mocker):
+    mock_freshness = mocker.patch("docvet.cli._run_freshness")
+    runner.invoke(app, ["freshness", "--staged"])
+    mock_freshness.assert_called_once_with(
+        ANY, ANY, freshness_mode=FreshnessMode.DIFF, discovery_mode=DiscoveryMode.STAGED
+    )
+
+
+def test_check_subcommand_passes_discovery_mode_to_run_freshness(mocker):
+    mock_freshness = mocker.patch("docvet.cli._run_freshness")
+    runner.invoke(app, ["check", "--all"])
+    mock_freshness.assert_called_once_with(ANY, ANY, discovery_mode=DiscoveryMode.ALL)
