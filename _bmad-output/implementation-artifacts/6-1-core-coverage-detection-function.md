@@ -1,6 +1,6 @@
 # Story 6.1: Core Coverage Detection Function
 
-Status: review
+Status: done
 
 ## Story
 
@@ -261,6 +261,7 @@ d215bef feat(freshness): wire freshness diff mode into CLI (#38)
 ## Change Log
 
 - 2026-02-11: Implemented `check_coverage` function and 21 unit tests covering all 10 ACs — zero-debug implementation
+- 2026-02-11: Code review — 2 MEDIUM, 3 LOW issues found; 2 MEDIUM fixed (assertion strength, init cache)
 
 ## Dev Agent Record
 
@@ -287,3 +288,25 @@ No debug issues encountered. Zero-debug implementation — all 21 tests passed o
 
 - `src/docvet/checks/coverage.py` — NEW: `check_coverage` function
 - `tests/unit/checks/test_coverage.py` — NEW: 21 unit tests for coverage check
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Alberto-Codes on 2026-02-11
+**Outcome:** Approved with fixes applied
+
+### Review Summary
+
+All 10 ACs verified as implemented. All tasks marked [x] confirmed as done. Quality gates green (21 tests, ruff, ty, 549 full suite). Zero git-vs-story discrepancies.
+
+**Issues Found:** 0 High, 2 Medium, 3 Low
+
+### Fixed (2 MEDIUM)
+
+- **M1. Assertion weakness in plural/singular tests** (`test_coverage.py:117,132`): Added `assert len(findings) == 1` to `test_missing_init_when_two_files_same_dir_uses_plural` and `test_missing_init_when_one_file_uses_singular`. Without this, deduplication breakage would go undetected. (Epic 5 retro: assertion strength)
+- **M2. Redundant filesystem calls** (`coverage.py:46-49`): Added `init_cache: dict[Path, bool]` to avoid repeated `Path.exists()` calls for the same directory across multiple files. Reduces syscalls from O(files x depth) to O(unique_dirs x depth).
+
+### Not Fixed (3 LOW — documented for awareness)
+
+- **L1. Cross-platform path separator in messages**: `str(dir_rel)` uses OS-native separator. On Windows, messages would use backslashes. Not a practical issue for this Linux-targeting CLI tool.
+- **L2. Symlink edge case test missing**: Story's Dev Notes suggest testing symlinked `__init__.py` but no test was created. `Path.exists()` follows symlinks correctly — behavior is correct, just untested.
+- **L3. No test for duplicate file entries**: Duplicate paths in input would inflate affected count. Discovery pipeline doesn't produce duplicates — documented assumption.
