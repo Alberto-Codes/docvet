@@ -32,6 +32,7 @@ def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
     """
     # Map: missing_dir -> list of affected files
     missing_dirs: dict[Path, list[Path]] = {}
+    init_cache: dict[Path, bool] = {}
 
     for file in files:
         if not file.is_relative_to(src_root):
@@ -44,7 +45,9 @@ def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
         # Walk parent dirs up to (but not including) src_root
         current = parent
         while current != src_root:
-            if not (current / "__init__.py").exists():
+            if current not in init_cache:
+                init_cache[current] = (current / "__init__.py").exists()
+            if not init_cache[current]:
                 missing_dirs.setdefault(current, []).append(file)
             current = current.parent
 
