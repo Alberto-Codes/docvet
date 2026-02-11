@@ -80,5 +80,5 @@ development_status:
   # Epic 6: Coverage Check (Missing __init__.py Detection)
   epic-6: in-progress
   6-1-core-coverage-detection-function: done
-  6-2-cli-wiring-for-coverage-check: backlog
+  6-2-cli-wiring-for-coverage-check: done
   epic-6-retrospective: optional
