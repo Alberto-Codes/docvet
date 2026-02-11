@@ -1,4 +1,4 @@
-# generated: 2026-02-09
+# generated: 2026-02-11
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-09
+generated: 2026-02-11
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -71,8 +71,14 @@ development_status:
   epic-4-retrospective: done
 
   # Epic 5: Freshness Drift Mode & CLI Integration
-  epic-5: in-progress
+  epic-5: done
   5-1-blame-timestamp-parser: done
   5-2-drift-and-age-detection-orchestrator: done
   5-3-cli-wiring-for-drift-mode: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
+
+  # Epic 6: Coverage Check (Missing __init__.py Detection)
+  epic-6: in-progress
+  6-1-core-coverage-detection-function: ready-for-dev
+  6-2-cli-wiring-for-coverage-check: backlog
+  epic-6-retrospective: optional
