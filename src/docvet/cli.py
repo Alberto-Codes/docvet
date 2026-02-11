@@ -246,11 +246,11 @@ def _run_freshness(
 ) -> None:
     """Run the freshness check on discovered files.
 
-    For diff mode, reads each file, obtains its git diff, parses the
-    AST, and calls ``check_freshness_diff``. For drift mode, runs
-    ``git blame --line-porcelain`` per file and calls
-    ``check_freshness_drift``. Findings are printed to stdout in
-    ``file:line: rule message`` format.
+    For diff mode, reads each file, parses the AST, obtains its git
+    diff, and calls ``check_freshness_diff``. For drift mode, reads
+    each file, parses the AST, runs ``git blame --line-porcelain``,
+    and calls ``check_freshness_drift``. Findings are printed to
+    stdout in ``file:line: rule message`` format.
 
     Args:
         files: Discovered Python file paths.
