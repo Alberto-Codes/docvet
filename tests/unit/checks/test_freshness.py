@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import re
 from typing import Literal
+from unittest.mock import patch
 
 from docvet.ast_utils import Symbol
 from docvet.checks import Finding
@@ -12,10 +13,14 @@ from docvet.checks.freshness import (
     _HUNK_PATTERN,
     _build_finding,
     _classify_changed_lines,
+    _compute_age,
+    _compute_drift,
     _parse_blame_timestamps,
     _parse_diff_hunks,
     check_freshness_diff,
+    check_freshness_drift,
 )
+from docvet.config import FreshnessConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -923,3 +928,464 @@ author-time\x20
         result = _parse_blame_timestamps(blame)
         # "author-time ".split() → ["author-time"], [1] raises IndexError → skipped
         assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# Drift mode test constants
+# ---------------------------------------------------------------------------
+
+# Source with documented func (lines 4-6), undocumented func (9-10), stub (13-14)
+_DRIFT_SOURCE = """\
+\"\"\"Module docstring.\"\"\"
+
+
+def documented_func(x):
+    \"\"\"Func docstring.\"\"\"
+    return x + 1
+
+
+def undocumented_func(x):
+    return x + 1
+
+
+def stub_func():
+    \"\"\"Only a docstring, no real body.\"\"\"
+"""
+
+_DAY = 86400
+_BASE_TS = 1696118400  # 2023-10-01 00:00:00 UTC
+
+
+def _build_blame(*entries: tuple[int, int]) -> str:
+    sha = "a" * 40
+    blocks: list[str] = []
+    for line_num, ts in entries:
+        blocks.append(
+            f"{sha} 1 {line_num} 1\n"
+            f"author Test\n"
+            f"author-mail <t@e.com>\n"
+            f"author-time {ts}\n"
+            f"author-tz +0000\n"
+            f"committer Test\n"
+            f"committer-mail <t@e.com>\n"
+            f"committer-time {ts}\n"
+            f"committer-tz +0000\n"
+            f"summary Commit\n"
+            f"filename test.py\n"
+            f"\tline content\n"
+        )
+    return "".join(blocks)
+
+
+# ---------------------------------------------------------------------------
+# _compute_drift tests (AC 1, 4, 8)
+# ---------------------------------------------------------------------------
+
+
+class TestComputeDrift:
+    def test_drift_exceeds_threshold(self) -> None:
+        assert _compute_drift([_BASE_TS + 73 * _DAY], [_BASE_TS], threshold=30) is True
+
+    def test_drift_within_threshold(self) -> None:
+        assert _compute_drift([_BASE_TS + 10 * _DAY], [_BASE_TS], threshold=30) is False
+
+    def test_exact_boundary_returns_false(self) -> None:
+        # AC 4: strict > comparison — exact boundary does NOT trigger
+        assert _compute_drift([_BASE_TS + 30 * _DAY], [_BASE_TS], threshold=30) is False
+
+    def test_empty_code_timestamps_returns_false(self) -> None:
+        assert _compute_drift([], [_BASE_TS], threshold=30) is False
+
+    def test_empty_doc_timestamps_returns_false(self) -> None:
+        assert _compute_drift([_BASE_TS], [], threshold=30) is False
+
+
+# ---------------------------------------------------------------------------
+# _compute_age tests (AC 2, 5, 7)
+# ---------------------------------------------------------------------------
+
+
+class TestComputeAge:
+    def test_age_exceeds_threshold(self) -> None:
+        assert _compute_age([_BASE_TS], now=_BASE_TS + 147 * _DAY, threshold=90) is True
+
+    def test_age_within_threshold(self) -> None:
+        assert _compute_age([_BASE_TS], now=_BASE_TS + 60 * _DAY, threshold=90) is False
+
+    def test_exact_boundary_returns_false(self) -> None:
+        # AC 5: strict > comparison — exact boundary does NOT trigger
+        assert _compute_age([_BASE_TS], now=_BASE_TS + 90 * _DAY, threshold=90) is False
+
+    def test_empty_doc_timestamps_returns_false(self) -> None:
+        assert _compute_age([], now=_BASE_TS + 200 * _DAY, threshold=90) is False
+
+
+# ---------------------------------------------------------------------------
+# check_freshness_drift tests (AC 1-15)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckFreshnessDrift:
+    def test_stale_drift_finding_produced(self) -> None:
+        # AC 1: code 73 days newer than docstring → stale-drift
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 73 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 73 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 73 * _DAY
+        )
+        drift_findings = [f for f in findings if f.rule == "stale-drift"]
+        assert len(drift_findings) == 1
+        assert drift_findings[0].symbol == "documented_func"
+        # Verify no stale-age (73 days < 90-day default threshold)
+        age_findings = [f for f in findings if f.rule == "stale-age"]
+        assert len(age_findings) == 0
+
+    def test_stale_age_finding_produced(self) -> None:
+        # AC 2: docstring 147 days old → stale-age
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        age_findings = [f for f in findings if f.rule == "stale-age"]
+        func_age = [f for f in age_findings if f.symbol == "documented_func"]
+        assert len(func_age) == 1
+
+    def test_both_drift_and_age_on_same_symbol(self) -> None:
+        # AC 3: same symbol triggers both stale-drift and stale-age
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 73 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 73 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        func_findings = [f for f in findings if f.symbol == "documented_func"]
+        rules = {f.rule for f in func_findings}
+        assert "stale-drift" in rules
+        assert "stale-age" in rules
+        assert len(func_findings) == 2
+
+    def test_exact_drift_boundary_produces_no_finding(self) -> None:
+        # AC 4: code_max - doc_max == threshold * 86400 → no stale-drift
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 30 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 30 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 30 * _DAY
+        )
+        drift_findings = [f for f in findings if f.rule == "stale-drift"]
+        assert len(drift_findings) == 0
+
+    def test_exact_age_boundary_produces_no_finding(self) -> None:
+        # AC 5: now - doc_max == threshold * 86400 → no stale-age
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 90 * _DAY
+        )
+        age_findings = [f for f in findings if f.rule == "stale-age"]
+        assert len(age_findings) == 0
+
+    def test_no_docstring_symbol_skipped(self) -> None:
+        # AC 6: symbol with docstring_range=None → zero findings
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (9, _BASE_TS),
+            (10, _BASE_TS + 73 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        undoc = [f for f in findings if f.symbol == "undocumented_func"]
+        assert len(undoc) == 0
+
+    def test_stub_symbol_age_can_fire_drift_cannot(self) -> None:
+        # AC 7: stub with only docstring line → stale-age can fire, stale-drift cannot
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame((14, _BASE_TS))
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        stub_findings = [f for f in findings if f.symbol == "stub_func"]
+        rules = {f.rule for f in stub_findings}
+        assert "stale-drift" not in rules
+        assert "stale-age" in rules
+
+    def test_stub_with_def_and_docstring_blame_same_timestamp(self) -> None:
+        # Realistic scenario: git blame returns timestamps for both def line and
+        # docstring line. When timestamps are identical, drift is 0 → no stale-drift.
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        # Line 13 = def stub_func():, line 14 = docstring — both same timestamp
+        blame = _build_blame((13, _BASE_TS), (14, _BASE_TS))
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        stub_findings = [f for f in findings if f.symbol == "stub_func"]
+        rules = {f.rule for f in stub_findings}
+        assert "stale-drift" not in rules
+        assert "stale-age" in rules
+
+    def test_within_threshold_produces_zero_findings(self) -> None:
+        # AC 8: within both thresholds → zero findings
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 5 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 5 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 10 * _DAY
+        )
+        func_findings = [f for f in findings if f.symbol == "documented_func"]
+        assert len(func_findings) == 0
+
+    def test_default_thresholds_applied(self) -> None:
+        # AC 9: default drift_threshold=30, age_threshold=90
+        config = FreshnessConfig()
+        assert config.drift_threshold == 30
+        assert config.age_threshold == 90
+        tree = ast.parse(_DRIFT_SOURCE)
+        blame = _build_blame(
+            (4, _BASE_TS + 31 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 31 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 31 * _DAY
+        )
+        drift_findings = [f for f in findings if f.rule == "stale-drift"]
+        assert len(drift_findings) >= 1
+
+    def test_custom_drift_threshold(self) -> None:
+        # AC 10: drift_threshold=7, code 10 days newer → stale-drift
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig(drift_threshold=7)
+        blame = _build_blame(
+            (4, _BASE_TS + 10 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 10 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 10 * _DAY
+        )
+        drift_findings = [f for f in findings if f.rule == "stale-drift"]
+        assert len(drift_findings) >= 1
+
+    def test_custom_age_threshold(self) -> None:
+        # AC 11: age_threshold=180, docstring 100 days old → no stale-age
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig(age_threshold=180)
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 100 * _DAY
+        )
+        age_findings = [f for f in findings if f.rule == "stale-age"]
+        assert len(age_findings) == 0
+
+    def test_explicit_now_parameter_used(self) -> None:
+        # AC 12: explicit now is used for age calculation
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 91 * _DAY
+        )
+        age_findings = [f for f in findings if f.rule == "stale-age"]
+        assert len(age_findings) >= 1
+        assert "(91 days)" in age_findings[0].message
+
+    def test_default_now_uses_time_time(self) -> None:
+        # AC 13: no now parameter → defaults to time.time()
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        fake_now = _BASE_TS + 200 * _DAY
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        with patch("docvet.checks.freshness.time") as mock_time:
+            mock_time.time.return_value = float(fake_now)
+            findings = check_freshness_drift("test.py", blame, tree, config)
+        age_findings = [f for f in findings if f.rule == "stale-age"]
+        assert len(age_findings) >= 1
+        assert "(200 days)" in age_findings[0].message
+
+    def test_empty_blame_output_returns_empty_list(self) -> None:
+        # AC 14: empty blame_output → []
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        assert check_freshness_drift("test.py", "", tree, config, now=_BASE_TS) == []
+
+    def test_whitespace_only_blame_output_returns_empty_list(self) -> None:
+        # Whitespace-only blame_output passes 'if not' gate but parses to empty dict
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        assert (
+            check_freshness_drift("test.py", "  \n\n  ", tree, config, now=_BASE_TS)
+            == []
+        )
+
+    def test_deterministic_output(self) -> None:
+        # AC 15: identical inputs → identical output
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 73 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 73 * _DAY),
+        )
+        results = [
+            check_freshness_drift(
+                "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+            )
+            for _ in range(5)
+        ]
+        for r in results[1:]:
+            assert len(r) == len(results[0])
+            for f1, f2 in zip(r, results[0]):
+                assert f1.rule == f2.rule
+                assert f1.line == f2.line
+                assert f1.symbol == f2.symbol
+                assert f1.message == f2.message
+
+    def test_finding_message_format_drift(self) -> None:
+        # Message contains expected dates and day count
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 73 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 73 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 73 * _DAY
+        )
+        drift_findings = [f for f in findings if f.rule == "stale-drift"]
+        assert len(drift_findings) == 1
+        msg = drift_findings[0].message
+        assert "Function 'documented_func'" in msg
+        assert "code modified 2023-12-13" in msg
+        assert "docstring last modified 2023-10-01" in msg
+        assert "(73 days drift)" in msg
+
+    def test_finding_message_format_age(self) -> None:
+        # Message contains expected date and day count for stale-age
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        age_findings = [
+            f
+            for f in findings
+            if f.rule == "stale-age" and f.symbol == "documented_func"
+        ]
+        assert len(age_findings) == 1
+        msg = age_findings[0].message
+        assert "Function 'documented_func'" in msg
+        assert "docstring untouched since 2023-10-01" in msg
+        assert "(147 days)" in msg
+
+    def test_finding_fields_correct(self) -> None:
+        # Verify rule, category, file, line, symbol
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 73 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 73 * _DAY),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 73 * _DAY
+        )
+        drift_findings = [f for f in findings if f.rule == "stale-drift"]
+        assert len(drift_findings) == 1
+        f = drift_findings[0]
+        assert f.rule == "stale-drift"
+        assert f.category == "recommended"
+        assert f.file == "test.py"
+        assert f.line == 4
+        assert f.symbol == "documented_func"
+
+    def test_lines_not_mapping_to_symbol_skipped(self) -> None:
+        # Line outside any symbol range → silently skipped
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame((100, _BASE_TS))
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        assert len(findings) == 0
+
+    def test_identical_timestamps_no_drift(self) -> None:
+        # All timestamps identical → code == docstring → no stale-drift
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 10 * _DAY
+        )
+        drift_findings = [f for f in findings if f.rule == "stale-drift"]
+        assert len(drift_findings) == 0
+
+    def test_findings_sorted_by_line_number(self) -> None:
+        # Multiple symbols → findings sorted by line
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS + 73 * _DAY),
+            (5, _BASE_TS),
+            (6, _BASE_TS + 73 * _DAY),
+            (14, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        assert len(findings) >= 2
+        lines = [f.line for f in findings]
+        assert lines == sorted(lines)
