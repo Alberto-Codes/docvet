@@ -161,7 +161,7 @@ def _get_git_diff(
 
     Returns:
         Raw unified diff output string. Returns an empty string if
-        git is unavailable or the command fails.
+        the git command exits with a non-zero status.
     """
     if discovery_mode is DiscoveryMode.STAGED:
         args = ["git", "diff", "--cached", "--", str(file_path)]
@@ -183,7 +183,7 @@ def _get_git_diff(
 
 
 # ---------------------------------------------------------------------------
-# Private stub runners
+# Private check runners
 # ---------------------------------------------------------------------------
 
 
@@ -201,7 +201,7 @@ def _run_enrichment(files: list[Path], config: DocvetConfig) -> None:
     for file_path in files:
         source = file_path.read_text(encoding="utf-8")
         try:
-            tree = ast.parse(source)
+            tree = ast.parse(source, filename=str(file_path))
         except SyntaxError:
             typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
             continue
@@ -238,7 +238,7 @@ def _run_freshness(
     for file_path in files:
         source = file_path.read_text(encoding="utf-8")
         try:
-            tree = ast.parse(source)
+            tree = ast.parse(source, filename=str(file_path))
         except SyntaxError:
             typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
             continue
