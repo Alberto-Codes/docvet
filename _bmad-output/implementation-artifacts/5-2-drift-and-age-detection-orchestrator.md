@@ -1,6 +1,6 @@
 # Story 5.2: Drift and Age Detection Orchestrator
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -339,18 +339,19 @@ No debugging required — implementation followed architecture spec exactly.
 - Implemented `check_freshness_drift` orchestrator: blame parsing → line-to-symbol mapping → timestamp grouping (code vs docstring buckets) → independent drift/age checks → sorted findings
 - Added `import time` and `from datetime import datetime, timezone` to stdlib imports
 - Removed `# noqa: F401` from `FreshnessConfig` import (now consumed by `check_freshness_drift`)
-- 29 new tests added: 5 (`TestComputeDrift`) + 4 (`TestComputeAge`) + 20 (`TestCheckFreshnessDrift`)
+- 31 new tests added: 5 (`TestComputeDrift`) + 4 (`TestComputeAge`) + 22 (`TestCheckFreshnessDrift`)
 - All 15 acceptance criteria covered by tests with deterministic timestamps
 - `_build_blame` test helper generates porcelain blame output from `(line_num, timestamp)` pairs
 - `_DRIFT_SOURCE` test constant provides documented, undocumented, and stub functions at known line ranges
-- Total test suite: 517 tests passing (89 freshness, 428 other), 0 regressions
+- Total test suite: 519 tests passing (91 freshness, 428 other), 0 regressions
 - All quality gates pass: ruff check, ruff format, ty check
 
 ### Change Log
 
-- 2026-02-11: Implemented drift and age detection orchestrator (Story 5.2) — `_compute_drift`, `_compute_age`, `check_freshness_drift` + 29 unit tests
+- 2026-02-11: Implemented drift and age detection orchestrator (Story 5.2) — `_compute_drift`, `_compute_age`, `check_freshness_drift` + 31 unit tests
+- 2026-02-11: Code review fixes — added `test_finding_message_format_age`, `test_whitespace_only_blame_output_returns_empty_list`, strengthened `test_stale_drift_finding_produced` with stale-age absence assertion
 
 ### File List
 
-- `src/docvet/checks/freshness.py` — MODIFIED (262 → 418 lines): added imports, `_compute_drift`, `_compute_age`, `check_freshness_drift`
-- `tests/unit/checks/test_freshness.py` — MODIFIED (930 → ~1190 lines): added imports, drift test constants, `_build_blame` helper, `TestComputeDrift`, `TestComputeAge`, `TestCheckFreshnessDrift`
+- `src/docvet/checks/freshness.py` — MODIFIED (262 → 411 lines): added imports, `_compute_drift`, `_compute_age`, `check_freshness_drift`
+- `tests/unit/checks/test_freshness.py` — MODIFIED (930 → 1376 lines): added imports, drift test constants, `_build_blame` helper, `TestComputeDrift`, `TestComputeAge`, `TestCheckFreshnessDrift`
