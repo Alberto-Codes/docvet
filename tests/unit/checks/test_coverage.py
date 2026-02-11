@@ -127,6 +127,7 @@ class TestCheckCoverageDeduplication:
 
         findings = check_coverage(src, [b, a])
 
+        assert len(findings) == 1
         assert "2 files affected" in findings[0].message
 
     def test_missing_init_when_one_file_uses_singular(self, tmp_path: Path) -> None:
@@ -138,6 +139,7 @@ class TestCheckCoverageDeduplication:
 
         findings = check_coverage(src, [module])
 
+        assert len(findings) == 1
         assert "1 file affected" in findings[0].message
 
 
