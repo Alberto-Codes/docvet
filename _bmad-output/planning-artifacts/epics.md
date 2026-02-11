@@ -8,8 +8,13 @@ stepsCompleted:
   - 'freshness-step-02'
   - 'freshness-step-03'
   - 'freshness-step-04'
+  - 'coverage-step-01'
+  - 'coverage-step-02'
+  - 'coverage-step-03'
+  - 'coverage-step-04'
 status: 'complete'
 freshnessStartedAt: '2026-02-09'
+coverageStartedAt: '2026-02-11'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -221,6 +226,18 @@ This document provides the complete epic and story breakdown for docvet, decompo
 | FR66 | Epic 4+5 | Pure function API (file_path, git output, AST → findings) |
 | FR67 | Epic 4+5 | CLI: `docvet freshness` (Epic 4 diff, Epic 5 drift) |
 | FR68 | Epic 4+5 | CLI: diff default (Epic 4), `--mode drift` (Epic 5) |
+| FR69 | Epic 6 | Core missing `__init__.py` detection |
+| FR70 | Epic 6 | Directory hierarchy walking to `src-root` |
+| FR71 | Epic 6 | `src-root` boundary stopping |
+| FR72 | Epic 6 | Top-level module skipping |
+| FR73 | Epic 6 | Empty `__init__.py` acceptance |
+| FR74 | Epic 6 | Deduplication (one finding per directory) |
+| FR75 | Epic 6 | Finding structure (representative file, count) |
+| FR76 | Epic 6 | Zero findings on well-packaged code |
+| FR77 | Epic 6 | Input contract (`src_root`, `files`) |
+| FR78 | Epic 6 | CLI standalone and combined modes |
+| FR79 | Epic 6 | Pure function guarantee |
+| FR80 | Epic 6 | Skip files outside `src_root` |
 
 ## Epic List
 
@@ -724,6 +741,12 @@ A developer can run `docvet freshness --mode drift` and get findings for docstri
 
 **FRs covered:** FR50, FR51, FR52, FR53, FR54 (verified), FR61 (drift), FR62 (drift), FR63, FR64, FR65, FR66 (drift), FR67 (drift wiring), FR68 (`--mode drift` flag)
 
+### Epic 6: Coverage Check (Missing `__init__.py` Detection)
+
+A developer can run `docvet coverage` and discover Python files invisible to mkdocstrings because parent directories lack `__init__.py`. The check walks from each file's parent directory up to `src-root`, flags gaps in the package hierarchy with one deduplicated finding per missing directory, and integrates with the existing CLI (`docvet coverage` standalone or `docvet check` combined). Category is always `required` — a missing `__init__.py` is a definitive visibility gap.
+
+**FRs covered:** FR69, FR70, FR71, FR72, FR73, FR74, FR75, FR76, FR77, FR78, FR79, FR80
+
 ## Epic 4: Freshness Diff Mode Detection
 
 A developer can run `docvet freshness` and get findings for symbols where code changed but docstrings were not updated — HIGH severity for signature changes (`stale-signature`), MEDIUM for body changes (`stale-body`), LOW for import/formatting changes (`stale-import`). Includes shared infrastructure (`_build_finding`, module constants), all diff-specific edge case handling, unit + integration tests, and CLI wiring for diff mode as the default.
@@ -1058,6 +1081,96 @@ So that I can perform periodic docstring health audits on my codebase.
 
 ---
 
+## Epic 6: Coverage Check (Missing `__init__.py` Detection)
+
+A developer can run `docvet coverage` and discover Python files invisible to mkdocstrings because parent directories lack `__init__.py`. The check walks from each file's parent directory up to `src-root`, flags gaps in the package hierarchy with one deduplicated finding per missing directory, and integrates with the existing CLI (`docvet coverage` standalone or `docvet check` combined). Category is always `required` — a missing `__init__.py` is a definitive visibility gap.
+
+### Story 6.1: Core Coverage Detection Function
+
+As a developer,
+I want a `check_coverage` function that detects missing `__init__.py` in parent directories,
+So that I can identify Python files invisible to mkdocstrings before deploying documentation.
+
+**Acceptance Criteria:**
+
+**Given** a Python file at `src/pkg/sub/module.py` where `src/pkg/sub/` lacks `__init__.py`
+**When** `check_coverage(src_root, files)` is called
+**Then** it returns a `Finding` with `rule="missing-init"`, `category="required"`, `symbol="<module>"`, `line=1`, and a message naming the directory `sub` and the affected file count
+
+**Given** a Python file at `src/pkg/sub/module.py` where all directories have `__init__.py`
+**When** `check_coverage(src_root, files)` is called
+**Then** it returns an empty list (zero findings)
+
+**Given** a Python file directly under `src_root` (e.g., `src/utils.py`)
+**When** `check_coverage(src_root, files)` is called
+**Then** it returns zero findings for that file (top-level modules are not in a package)
+
+**Given** multiple Python files affected by the same missing `__init__.py` directory
+**When** `check_coverage(src_root, files)` is called
+**Then** it returns exactly one finding for that directory, using the lexicographically first affected file as representative
+
+**Given** a directory hierarchy where an intermediate directory (e.g., `src/pkg/deep/nested/`) lacks `__init__.py`
+**When** `check_coverage(src_root, files)` is called
+**Then** it detects the gap by walking from the file's parent up to `src_root`
+
+**Given** a directory with an empty `__init__.py` (zero bytes)
+**When** `check_coverage(src_root, files)` is called
+**Then** it treats the directory as properly packaged (existence check only, not content)
+
+**Given** a file path not under `src_root` (e.g., `tests/test_foo.py` when `src_root` is `src/`)
+**When** `check_coverage(src_root, files)` is called
+**Then** it skips that file and produces zero findings for it
+
+**Given** an empty `files` list
+**When** `check_coverage(src_root, files)` is called
+**Then** it returns an empty list
+
+**Given** multiple missing directories across different package hierarchies
+**When** `check_coverage(src_root, files)` is called
+**Then** findings are sorted by directory path for deterministic output
+
+**FRs:** FR69, FR70, FR71, FR72, FR73, FR74, FR75, FR76, FR77, FR79, FR80, NFR33, NFR34, NFR35, NFR36, NFR37, NFR38
+
+### Story 6.2: CLI Wiring for Coverage Check
+
+As a developer,
+I want to run `docvet coverage` from the command line and see findings for missing `__init__.py` files,
+So that I can integrate coverage checking into my development workflow and CI pipelines.
+
+**Acceptance Criteria:**
+
+**Given** a project with directories missing `__init__.py`
+**When** `docvet coverage` is run
+**Then** findings are printed to terminal in `file:line: rule message` format (one per line)
+
+**Given** a properly packaged project (all `__init__.py` present)
+**When** `docvet coverage` is run
+**Then** it produces no output and exits with code 0
+
+**Given** the existing `_run_coverage` stub in `cli.py`
+**When** the coverage check is wired
+**Then** it resolves `src_root` from `DocvetConfig` (defaulting to project root), passes `src_root` and discovered files to `check_coverage`, and returns findings
+
+**Given** `docvet check` is run (all checks)
+**When** coverage is in the enabled checks
+**Then** coverage findings are included alongside findings from other checks
+
+**Given** `docvet coverage --all` is run
+**When** the run completes
+**Then** all Python files in the project are analyzed (not just git diff files)
+
+**Given** no `src-root` key in `[tool.docvet]` configuration
+**When** `docvet coverage` is run
+**Then** `src_root` defaults to the project root (git root or CWD)
+
+**FRs:** FR78, NFR33
+
+---
+
+**Epic 6 Summary:** 2 stories covering all 12 FRs. Story 6.1 delivers the pure detection function with comprehensive `tmp_path` tests and edge case coverage. Story 6.2 wires it into the CLI with `src_root` resolution.
+
+---
+
 ## Freshness Requirements Inventory
 
 ### Freshness Functional Requirements
@@ -1156,3 +1269,66 @@ So that I can perform periodic docstring health audits on my codebase.
 **From Validation Report:**
 
 - FR61 says "per mode" but architecture correctly implements "per rule" — drift can emit 2 findings per symbol (`stale-drift` + `stale-age`). Treat as "per rule" during implementation
+
+---
+
+## Coverage Requirements Inventory
+
+### Coverage Functional Requirements
+
+**Coverage Detection (FR69-FR74):**
+
+- FR69: The system can detect Python files whose parent directories lack `__init__.py`, making them invisible to mkdocstrings for API documentation generation
+- FR70: The system can walk the directory hierarchy from each Python file's parent upward to the configured `src-root`, checking each intermediate directory for `__init__.py` existence
+- FR71: The system can stop the upward directory walk at `src-root` — directories at or above `src-root` are not required to have `__init__.py`
+- FR72: The system can skip top-level modules (Python files directly under `src-root`) since they are not in a package and do not require `__init__.py`
+- FR73: The system can treat an empty `__init__.py` file as satisfying the requirement — only existence is checked, not content
+- FR74: The system can produce at most one finding per missing `__init__.py` directory, even when multiple Python files are affected by the same gap
+
+**Coverage Finding Production (FR75-FR76):**
+
+- FR75: The system can produce a structured coverage finding carrying the path of a representative affected file (lexicographically first by path), line 1, `"<module>"` as symbol, `missing-init` as rule identifier, a message naming the directory missing `__init__.py` and the count of affected files, and category `required`
+- FR76: The system can produce zero findings when all parent directories between discovered files and `src-root` contain `__init__.py`
+
+**Coverage Integration (FR77-FR80):**
+
+- FR77: The system can accept a `src-root` path and a list of discovered Python file paths as inputs and return a list of findings as output
+- FR78: A developer can run the coverage check standalone via `docvet coverage` or as part of all checks via `docvet check`
+- FR79: The system can operate as a pure function with no side effects beyond filesystem existence checks, producing deterministic output for a given filesystem state
+- FR80: The system can skip files that are not under `src_root` (e.g., test files outside the source tree), producing zero findings for those files without raising exceptions
+
+### Coverage Non-Functional Requirements
+
+**Coverage Performance (NFR33):**
+
+- NFR33: The coverage check can process a 200-file codebase via `docvet coverage --all` in under 1 second — pure filesystem stat calls with no AST parsing, no git commands, and no subprocess overhead
+
+**Coverage Correctness (NFR34-NFR35):**
+
+- NFR34: The coverage check produces zero findings on a properly packaged project where all parent directories between Python files and `src-root` contain `__init__.py` (deterministic, reproducible)
+- NFR35: The coverage check produces identical output for identical filesystem state regardless of execution environment, time, or file processing order — findings are sorted by directory path, and representative files are selected as the lexicographically first affected file
+
+**Coverage Maintainability (NFR36):**
+
+- NFR36: The coverage check can be tested using `tmp_path` filesystem fixtures with no git repository, no AST parsing, and no external dependencies
+
+**Coverage Compatibility (NFR37):**
+
+- NFR37: The coverage check works on Linux, macOS, and Windows using `pathlib.Path` for all path operations — no platform-specific code paths
+
+**Coverage Integration (NFR38):**
+
+- NFR38: Coverage has no cross-imports with enrichment, freshness, or any other check module — it depends only on `checks.Finding` and `pathlib`
+
+### Coverage Additional Requirements
+
+**From PRD Technical Guidance:**
+
+- Pure filesystem check: `pathlib.Path` only, no AST, no git, no new runtime dependencies
+- All shared infrastructure already exists: `Finding` dataclass, `_run_coverage` CLI stub, discovery pipeline, `coverage` in `_VALID_CHECK_NAMES` and default `warn_on`
+- `src_root` resolution from existing `DocvetConfig` — default is project root (git root or CWD) when `src-root` is not configured
+- Deduplication: one finding per missing directory using lexicographically first affected file for deterministic output
+- Namespace package false positives are a known limitation — workaround is `exclude` patterns in `[tool.docvet]` which the discovery pipeline applies before files reach `check_coverage`
+- Symbol name convention: `"<module>"` for consistency with enrichment and freshness module-level symbol naming
+- No architecture document for coverage — PRD technical guidance is the implementation specification
+- Simplest of the four checks: estimated ~50-100 lines of implementation
