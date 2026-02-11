@@ -375,16 +375,18 @@ def check_freshness_drift(
     for sym in all_symbols:
         code_ts = symbol_code_ts.get(sym, [])
         doc_ts = symbol_doc_ts.get(sym, [])
+        kind = sym.kind.capitalize()
+        doc_max = max(doc_ts) if doc_ts else 0
 
         if _compute_drift(code_ts, doc_ts, config.drift_threshold):
+            code_max = max(code_ts)
             code_date = (
-                datetime.fromtimestamp(max(code_ts), tz=timezone.utc).date().isoformat()
+                datetime.fromtimestamp(code_max, tz=timezone.utc).date().isoformat()
             )
             doc_date = (
-                datetime.fromtimestamp(max(doc_ts), tz=timezone.utc).date().isoformat()
+                datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
             )
-            days = (max(code_ts) - max(doc_ts)) // 86400
-            kind = sym.kind.capitalize()
+            days = (code_max - doc_max) // 86400
             message = (
                 f"{kind} '{sym.name}' code modified {code_date}, "
                 f"docstring last modified {doc_date} ({days} days drift)"
@@ -395,10 +397,9 @@ def check_freshness_drift(
 
         if _compute_age(doc_ts, effective_now, config.age_threshold):
             doc_date = (
-                datetime.fromtimestamp(max(doc_ts), tz=timezone.utc).date().isoformat()
+                datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
             )
-            days = (effective_now - max(doc_ts)) // 86400
-            kind = sym.kind.capitalize()
+            days = (effective_now - doc_max) // 86400
             message = (
                 f"{kind} '{sym.name}' docstring untouched "
                 f"since {doc_date} ({days} days)"

@@ -1136,6 +1136,21 @@ class TestCheckFreshnessDrift:
         assert "stale-drift" not in rules
         assert "stale-age" in rules
 
+    def test_stub_with_def_and_docstring_blame_same_timestamp(self) -> None:
+        # Realistic scenario: git blame returns timestamps for both def line and
+        # docstring line. When timestamps are identical, drift is 0 → no stale-drift.
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        # Line 13 = def stub_func():, line 14 = docstring — both same timestamp
+        blame = _build_blame((13, _BASE_TS), (14, _BASE_TS))
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        stub_findings = [f for f in findings if f.symbol == "stub_func"]
+        rules = {f.rule for f in stub_findings}
+        assert "stale-drift" not in rules
+        assert "stale-age" in rules
+
     def test_within_threshold_produces_zero_findings(self) -> None:
         # AC 8: within both thresholds → zero findings
         tree = ast.parse(_DRIFT_SOURCE)
