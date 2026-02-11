@@ -1,6 +1,6 @@
 # Story 4.3: CLI Wiring for Freshness Diff Mode
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,47 +22,47 @@ so that I can integrate freshness checking into my development workflow and CI p
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add imports and `_get_git_diff` helper to `cli.py` (AC: 3, 7)
-  - [ ] 1.1: Add `import subprocess` to stdlib imports section
-  - [ ] 1.2: Add `from docvet.checks.freshness import check_freshness_diff` to local imports
-  - [ ] 1.3: Implement `_get_git_diff(file_path, project_root, discovery_mode)` helper that returns raw diff output string
-  - [ ] 1.4: Map discovery mode to git diff args: DIFF/FILES → `git diff -- <file>`, STAGED → `git diff --cached -- <file>`, ALL → `git diff HEAD -- <file>`
-  - [ ] 1.5: Return empty string on git failure (returncode != 0) — consistent with freshness defensive design
-- [ ] Task 2: Replace `_run_freshness` stub body (AC: 1, 2, 3, 4, 6)
-  - [ ] 2.1: Add `discovery_mode: DiscoveryMode = DiscoveryMode.DIFF` parameter to `_run_freshness`
-  - [ ] 2.2: If `freshness_mode is not FreshnessMode.DIFF`, print "freshness drift: not yet implemented" and return (drift stays stubbed until Epic 5)
-  - [ ] 2.3: Iterate files, read source with `file_path.read_text(encoding="utf-8")`
-  - [ ] 2.4: Wrap `ast.parse()` in `try/except SyntaxError` — skip file with `typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)`
-  - [ ] 2.5: Call `_get_git_diff(file_path, config.project_root, discovery_mode)` to get per-file diff output
-  - [ ] 2.6: Call `check_freshness_diff(str(file_path), diff_output, tree)` and print each finding as `f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"`
-  - [ ] 2.7: Update `_run_freshness` docstring to reflect actual behavior
-- [ ] Task 3: Update subcommand callers to pass `discovery_mode` (AC: 3, 5, 7)
-  - [ ] 3.1: Update `check` subcommand: `_run_freshness(discovered, config, discovery_mode=discovery_mode)`
-  - [ ] 3.2: Update `freshness` subcommand: `_run_freshness(discovered, config, freshness_mode=mode, discovery_mode=discovery_mode)`
-- [ ] Task 4: Update existing CLI tests that reference the stub (AC: 2, 5, 6)
-  - [ ] 4.1: Update `test_freshness_when_invoked_exits_successfully` — remove assertion for "freshness: not yet implemented", verify exit code 0 with mocks
-  - [ ] 4.2: Update `test_check_when_invoked_runs_all_checks_in_order` — mock `_run_freshness` with side_effect printing "freshness: ok" (same pattern as enrichment)
-  - [ ] 4.3: Update `test_check_when_invoked_passes_config_to_run_stubs` — update assertion to include `discovery_mode` kwarg
-  - [ ] 4.4: Verify all existing CLI tests still pass after changes
-- [ ] Task 5: Write new unit tests for `_run_freshness` behavior (AC: 1, 2, 3, 4, 7)
-  - [ ] 5.1: `test_run_freshness_when_file_has_findings_prints_formatted_output` — mock subprocess + check_freshness_diff returning findings, assert stdout contains `file:line: rule message`
-  - [ ] 5.2: `test_run_freshness_when_no_findings_produces_no_output` — mock check_freshness_diff returning `[]`, assert no stdout
-  - [ ] 5.3: `test_run_freshness_when_syntax_error_skips_file_with_warning` — mock ast.parse raising SyntaxError, assert stderr warning, assert check_freshness_diff NOT called
-  - [ ] 5.4: `test_run_freshness_when_multiple_files_processes_all` — verify check_freshness_diff called once per file
-  - [ ] 5.5: `test_run_freshness_passes_file_path_diff_output_and_tree` — verify correct args to check_freshness_diff
-  - [ ] 5.6: `test_run_freshness_with_drift_mode_prints_not_implemented` — verify drift mode still stubbed
-  - [ ] 5.7: `test_get_git_diff_when_diff_mode_runs_git_diff` — verify correct git args for DIFF mode
-  - [ ] 5.8: `test_get_git_diff_when_staged_mode_runs_git_diff_cached` — verify `--cached` flag for STAGED
-  - [ ] 5.9: `test_get_git_diff_when_all_mode_runs_git_diff_head` — verify `HEAD` arg for ALL mode
-  - [ ] 5.10: `test_get_git_diff_when_git_fails_returns_empty_string` — verify empty string on nonzero returncode
-  - [ ] 5.11: `test_freshness_subcommand_passes_discovery_mode_to_run_freshness` — verify discovery_mode kwarg
-  - [ ] 5.12: `test_check_subcommand_passes_discovery_mode_to_run_freshness` — verify discovery_mode kwarg
-- [ ] Task 6: Run quality gates (AC: all)
-  - [ ] 6.1: `uv run ruff check .` — All checks pass
-  - [ ] 6.2: `uv run ruff format --check .` — All files formatted
-  - [ ] 6.3: `uv run ty check` — All type checks pass
-  - [ ] 6.4: `uv run pytest tests/unit/test_cli.py -v` — All CLI tests pass
-  - [ ] 6.5: `uv run pytest` — Full suite passes, 0 regressions
+- [x] Task 1: Add imports and `_get_git_diff` helper to `cli.py` (AC: 3, 7)
+  - [x] 1.1: Add `import subprocess` to stdlib imports section
+  - [x] 1.2: Add `from docvet.checks.freshness import check_freshness_diff` to local imports
+  - [x] 1.3: Implement `_get_git_diff(file_path, project_root, discovery_mode)` helper that returns raw diff output string
+  - [x] 1.4: Map discovery mode to git diff args: DIFF/FILES → `git diff -- <file>`, STAGED → `git diff --cached -- <file>`, ALL → `git diff HEAD -- <file>`
+  - [x] 1.5: Return empty string on git failure (returncode != 0) — consistent with freshness defensive design
+- [x] Task 2: Replace `_run_freshness` stub body (AC: 1, 2, 3, 4, 6)
+  - [x] 2.1: Add `discovery_mode: DiscoveryMode = DiscoveryMode.DIFF` parameter to `_run_freshness`
+  - [x] 2.2: If `freshness_mode is not FreshnessMode.DIFF`, print "freshness drift: not yet implemented" and return (drift stays stubbed until Epic 5)
+  - [x] 2.3: Iterate files, read source with `file_path.read_text(encoding="utf-8")`
+  - [x] 2.4: Wrap `ast.parse()` in `try/except SyntaxError` — skip file with `typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)`
+  - [x] 2.5: Call `_get_git_diff(file_path, config.project_root, discovery_mode)` to get per-file diff output
+  - [x] 2.6: Call `check_freshness_diff(str(file_path), diff_output, tree)` and print each finding as `f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"`
+  - [x] 2.7: Update `_run_freshness` docstring to reflect actual behavior
+- [x] Task 3: Update subcommand callers to pass `discovery_mode` (AC: 3, 5, 7)
+  - [x] 3.1: Update `check` subcommand: `_run_freshness(discovered, config, discovery_mode=discovery_mode)`
+  - [x] 3.2: Update `freshness` subcommand: `_run_freshness(discovered, config, freshness_mode=mode, discovery_mode=discovery_mode)`
+- [x] Task 4: Update existing CLI tests that reference the stub (AC: 2, 5, 6)
+  - [x] 4.1: Update `test_freshness_when_invoked_exits_successfully` — remove assertion for "freshness: not yet implemented", verify exit code 0 with mocks
+  - [x] 4.2: Update `test_check_when_invoked_runs_all_checks_in_order` — mock `_run_freshness` with side_effect printing "freshness: ok" (same pattern as enrichment)
+  - [x] 4.3: Update `test_check_when_invoked_passes_config_to_run_stubs` — update assertion to include `discovery_mode` kwarg
+  - [x] 4.4: Verify all existing CLI tests still pass after changes
+- [x] Task 5: Write new unit tests for `_run_freshness` behavior (AC: 1, 2, 3, 4, 7)
+  - [x] 5.1: `test_run_freshness_when_file_has_findings_prints_formatted_output` — mock subprocess + check_freshness_diff returning findings, assert stdout contains `file:line: rule message`
+  - [x] 5.2: `test_run_freshness_when_no_findings_produces_no_output` — mock check_freshness_diff returning `[]`, assert no stdout
+  - [x] 5.3: `test_run_freshness_when_syntax_error_skips_file_with_warning` — mock ast.parse raising SyntaxError, assert stderr warning, assert check_freshness_diff NOT called
+  - [x] 5.4: `test_run_freshness_when_multiple_files_processes_all` — verify check_freshness_diff called once per file
+  - [x] 5.5: `test_run_freshness_passes_file_path_diff_output_and_tree` — verify correct args to check_freshness_diff
+  - [x] 5.6: `test_run_freshness_with_drift_mode_prints_not_implemented` — verify drift mode still stubbed
+  - [x] 5.7: `test_get_git_diff_when_diff_mode_runs_git_diff` — verify correct git args for DIFF mode
+  - [x] 5.8: `test_get_git_diff_when_staged_mode_runs_git_diff_cached` — verify `--cached` flag for STAGED
+  - [x] 5.9: `test_get_git_diff_when_all_mode_runs_git_diff_head` — verify `HEAD` arg for ALL mode
+  - [x] 5.10: `test_get_git_diff_when_git_fails_returns_empty_string` — verify empty string on nonzero returncode
+  - [x] 5.11: `test_freshness_subcommand_passes_discovery_mode_to_run_freshness` — verify discovery_mode kwarg
+  - [x] 5.12: `test_check_subcommand_passes_discovery_mode_to_run_freshness` — verify discovery_mode kwarg
+- [x] Task 6: Run quality gates (AC: all)
+  - [x] 6.1: `uv run ruff check .` — All checks pass
+  - [x] 6.2: `uv run ruff format --check .` — All files formatted
+  - [x] 6.3: `uv run ty check` — All type checks pass
+  - [x] 6.4: `uv run pytest tests/unit/test_cli.py -v` — All CLI tests pass
+  - [x] 6.5: `uv run pytest` — Full suite passes, 0 regressions
 
 ## Dev Notes
 
@@ -297,10 +297,30 @@ Do NOT import or reuse `_run_git` from `discovery.py` — it returns `list[str]`
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Fixed `Finding` category in test: must be "required" or "recommended", not arbitrary string
+
 ### Completion Notes List
 
+- Replaced `_run_freshness` stub with full diff-mode implementation following same pattern as `_run_enrichment`
+- Added `_get_git_diff` helper with mode-to-git-args mapping (DIFF/FILES → `git diff`, STAGED → `git diff --cached`, ALL → `git diff HEAD`)
+- Added `import subprocess` and `from docvet.checks.freshness import check_freshness_diff` imports
+- Updated `check` and `freshness` subcommands to pass `discovery_mode` kwarg
+- Updated autouse fixture to mock `_run_freshness` (prevents real subprocess calls in tests)
+- Updated 4 existing tests for new signature and behavior
+- Added 12 new tests: 6 for `_run_freshness` behavior, 4 for `_get_git_diff` mode variants, 2 for subcommand discovery_mode passing
+- All 471 tests pass (73 CLI tests), all quality gates green
+
 ### File List
+
+| File | Action |
+|------|--------|
+| `src/docvet/cli.py` | Modified |
+| `tests/unit/test_cli.py` | Modified |
+
+### Change Log
+
+- 2026-02-10: Implemented CLI wiring for freshness diff mode — replaced stub with real implementation, added `_get_git_diff` helper, updated subcommand callers, updated 4 existing tests, added 12 new tests. All 471 tests pass.
