@@ -15,7 +15,7 @@ class TestGriffeCompatSmoke:
     """Smoke tests using real griffe loading against fixture package."""
 
     def test_full_pipeline_produces_expected_findings(self) -> None:
-        """Fixture package produces findings for all rule types (AC #21)."""
+        """Fixture package produces findings for all 3 rule types (AC #21)."""
         src_root = FIXTURES_DIR
         bad_file = FIXTURES_DIR / "griffe_pkg" / "bad_docstrings.py"
 
@@ -23,12 +23,14 @@ class TestGriffeCompatSmoke:
 
         # untyped_params: 3 griffe-missing-type (x, y, z)
         # phantom_param: 1 griffe-missing-type + 1 griffe-unknown-param
+        # bad_format: 2 griffe-format-warning (dash instead of colon)
         # well_documented: 0 findings
-        assert len(findings) == 5
+        assert len(findings) == 7
 
         rules = [f.rule for f in findings]
         assert rules.count("griffe-missing-type") == 4
         assert rules.count("griffe-unknown-param") == 1
+        assert rules.count("griffe-format-warning") == 2
 
         # Verify all findings reference the correct file
         for finding in findings:
@@ -67,6 +69,21 @@ class TestGriffeCompatSmoke:
         assert unknown_findings[0].symbol == "phantom_param"
         assert unknown_findings[0].category == "required"
         assert "Function" in unknown_findings[0].message
+
+    def test_format_warning_findings_for_bad_format(self) -> None:
+        """bad_format produces griffe-format-warning findings (AC #3, #21)."""
+        src_root = FIXTURES_DIR
+        bad_file = FIXTURES_DIR / "griffe_pkg" / "bad_docstrings.py"
+
+        findings = check_griffe_compat(src_root, [bad_file])
+
+        format_findings = [f for f in findings if f.rule == "griffe-format-warning"]
+        assert len(format_findings) == 2
+        for f in format_findings:
+            assert f.symbol == "bad_format"
+            assert f.category == "recommended"
+            assert "Function" in f.message
+            assert "'bad_format'" in f.message
 
     def test_well_documented_function_produces_no_findings(self) -> None:
         """well_documented function produces zero findings (AC #5)."""
