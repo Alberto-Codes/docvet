@@ -1,6 +1,6 @@
 # Story 5.2: Drift and Age Detection Orchestrator
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,73 +30,73 @@ so that periodic audits surface docstrings that may need review.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add imports and drift constants to `src/docvet/checks/freshness.py` (AC: all)
-  - [ ] 1.1: Add `import time` to stdlib imports section (line 6 area)
-  - [ ] 1.2: Add `from datetime import datetime, timezone` to stdlib imports
-  - [ ] 1.3: Remove `# noqa: F401` from the `FreshnessConfig` import (it's now consumed by `check_freshness_drift`)
-- [ ] Task 2: Add `_compute_drift` helper to freshness.py after `_parse_blame_timestamps` (AC: 1, 4, 8)
-  - [ ] 2.1: Implement `_compute_drift(code_timestamps: list[int], doc_timestamps: list[int], threshold: int) -> bool` with Google-style docstring
-  - [ ] 2.2: Return `False` if either list is empty (guard for stub symbols or no-code symbols)
-  - [ ] 2.3: Compute `max(code_timestamps) - max(doc_timestamps) > threshold * 86400` with strict `>` comparison
-- [ ] Task 3: Add `_compute_age` helper after `_compute_drift` (AC: 2, 5, 7)
-  - [ ] 3.1: Implement `_compute_age(doc_timestamps: list[int], now: int, threshold: int) -> bool` with Google-style docstring
-  - [ ] 3.2: Return `False` if `doc_timestamps` is empty
-  - [ ] 3.3: Compute `now - max(doc_timestamps) > threshold * 86400` with strict `>` comparison
-- [ ] Task 4: Add `check_freshness_drift` public function after helpers (AC: 1-15)
-  - [ ] 4.1: Implement signature: `check_freshness_drift(file_path: str, blame_output: str, tree: ast.Module, config: FreshnessConfig, *, now: int | None = None) -> list[Finding]:`
-  - [ ] 4.2: Early return `[]` on empty `blame_output`
-  - [ ] 4.3: Parse blame timestamps via `_parse_blame_timestamps(blame_output)`; early return `[]` if empty
-  - [ ] 4.4: Build line map via `map_lines_to_symbols(tree)`
-  - [ ] 4.5: Group timestamps by symbol — for each `(line_num, ts)`, look up `line_map.get(line_num)`, partition into `code_timestamps` vs `docstring_timestamps` using `symbol.docstring_range`
-  - [ ] 4.6: Skip symbols with `docstring_range is None` (FR54)
-  - [ ] 4.7: Resolve `now` — use provided value or `int(time.time())`
-  - [ ] 4.8: For each symbol: run `_compute_drift` → emit `stale-drift` finding if True; run `_compute_age` → emit `stale-age` finding if True (independent checks, up to 2 findings per symbol)
-  - [ ] 4.9: Format `stale-drift` message: `{Kind} '{name}' code modified {code_date}, docstring last modified {doc_date} ({N} days drift)` using `datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()` for dates, `(code_max - doc_max) // 86400` for day count
-  - [ ] 4.10: Format `stale-age` message: `{Kind} '{name}' docstring untouched since {doc_date} ({N} days)` using `(effective_now - doc_max) // 86400` for day count
-  - [ ] 4.11: Use `_build_finding` for all finding construction
-  - [ ] 4.12: Sort findings by line number before returning
-- [ ] Task 5: Create unit tests in `tests/unit/checks/test_freshness.py` (AC: 1-15)
-  - [ ] 5.1: Add imports: `check_freshness_drift`, `_compute_drift`, `_compute_age` from `docvet.checks.freshness`; `FreshnessConfig` from `docvet.config`
-  - [ ] 5.2: Add `_DRIFT_SOURCE` test constant — Python source with 2+ functions at known line ranges (function with docstring, function without docstring, stub function with only docstring)
-  - [ ] 5.3: Add blame output builder helper or constants that produce `dict[int, int]` for controlled timestamp scenarios
-  - [ ] 5.4: `TestComputeDrift` class:
-    - [ ] 5.4a: Test drift exceeds threshold → `True`
-    - [ ] 5.4b: Test drift within threshold → `False`
-    - [ ] 5.4c: Test exact boundary → `False` (strict `>`)
-    - [ ] 5.4d: Test empty code timestamps → `False`
-    - [ ] 5.4e: Test empty doc timestamps → `False`
-  - [ ] 5.5: `TestComputeAge` class:
-    - [ ] 5.5a: Test age exceeds threshold → `True`
-    - [ ] 5.5b: Test age within threshold → `False`
-    - [ ] 5.5c: Test exact boundary → `False` (strict `>`)
-    - [ ] 5.5d: Test empty doc timestamps → `False`
-  - [ ] 5.6: `TestCheckFreshnessDrift` class:
-    - [ ] 5.6a: Test stale-drift finding produced (AC 1)
-    - [ ] 5.6b: Test stale-age finding produced (AC 2)
-    - [ ] 5.6c: Test both stale-drift and stale-age on same symbol (AC 3)
-    - [ ] 5.6d: Test exact drift boundary produces no finding (AC 4)
-    - [ ] 5.6e: Test exact age boundary produces no finding (AC 5)
-    - [ ] 5.6f: Test no-docstring symbol skipped (AC 6)
-    - [ ] 5.6g: Test stub-only symbol: stale-age can fire, stale-drift cannot (AC 7)
-    - [ ] 5.6h: Test within-threshold produces zero findings (AC 8)
-    - [ ] 5.6i: Test default thresholds applied (AC 9)
-    - [ ] 5.6j: Test custom drift threshold (AC 10)
-    - [ ] 5.6k: Test custom age threshold (AC 11)
-    - [ ] 5.6l: Test explicit `now` parameter used (AC 12)
-    - [ ] 5.6m: Test default `now` (AC 13) — mock `time.time`
-    - [ ] 5.6n: Test empty blame output returns `[]` (AC 14)
-    - [ ] 5.6o: Test deterministic output (AC 15)
-    - [ ] 5.6p: Test finding message format contains expected strings (dates, day count)
-    - [ ] 5.6q: Test finding fields: `rule`, `category`, `file`, `line`, `symbol` are correct
-    - [ ] 5.6r: Test lines not mapping to any symbol are silently skipped
-    - [ ] 5.6s: Test symbol where all timestamps identical (code == docstring) → no stale-drift
-    - [ ] 5.6t: Test findings sorted by line number
-- [ ] Task 6: Run quality gates (AC: all)
-  - [ ] 6.1: `uv run ruff check .` — all checks pass
-  - [ ] 6.2: `uv run ruff format --check .` — all files formatted
-  - [ ] 6.3: `uv run ty check` — all type checks pass
-  - [ ] 6.4: `uv run pytest tests/unit/checks/test_freshness.py -v` — all freshness tests pass
-  - [ ] 6.5: `uv run pytest` — full suite passes, 0 regressions
+- [x] Task 1: Add imports and drift constants to `src/docvet/checks/freshness.py` (AC: all)
+  - [x] 1.1: Add `import time` to stdlib imports section (line 6 area)
+  - [x] 1.2: Add `from datetime import datetime, timezone` to stdlib imports
+  - [x] 1.3: Remove `# noqa: F401` from the `FreshnessConfig` import (it's now consumed by `check_freshness_drift`)
+- [x] Task 2: Add `_compute_drift` helper to freshness.py after `_parse_blame_timestamps` (AC: 1, 4, 8)
+  - [x] 2.1: Implement `_compute_drift(code_timestamps: list[int], doc_timestamps: list[int], threshold: int) -> bool` with Google-style docstring
+  - [x] 2.2: Return `False` if either list is empty (guard for stub symbols or no-code symbols)
+  - [x] 2.3: Compute `max(code_timestamps) - max(doc_timestamps) > threshold * 86400` with strict `>` comparison
+- [x] Task 3: Add `_compute_age` helper after `_compute_drift` (AC: 2, 5, 7)
+  - [x] 3.1: Implement `_compute_age(doc_timestamps: list[int], now: int, threshold: int) -> bool` with Google-style docstring
+  - [x] 3.2: Return `False` if `doc_timestamps` is empty
+  - [x] 3.3: Compute `now - max(doc_timestamps) > threshold * 86400` with strict `>` comparison
+- [x] Task 4: Add `check_freshness_drift` public function after helpers (AC: 1-15)
+  - [x] 4.1: Implement signature: `check_freshness_drift(file_path: str, blame_output: str, tree: ast.Module, config: FreshnessConfig, *, now: int | None = None) -> list[Finding]:`
+  - [x] 4.2: Early return `[]` on empty `blame_output`
+  - [x] 4.3: Parse blame timestamps via `_parse_blame_timestamps(blame_output)`; early return `[]` if empty
+  - [x] 4.4: Build line map via `map_lines_to_symbols(tree)`
+  - [x] 4.5: Group timestamps by symbol — for each `(line_num, ts)`, look up `line_map.get(line_num)`, partition into `code_timestamps` vs `docstring_timestamps` using `symbol.docstring_range`
+  - [x] 4.6: Skip symbols with `docstring_range is None` (FR54)
+  - [x] 4.7: Resolve `now` — use provided value or `int(time.time())`
+  - [x] 4.8: For each symbol: run `_compute_drift` → emit `stale-drift` finding if True; run `_compute_age` → emit `stale-age` finding if True (independent checks, up to 2 findings per symbol)
+  - [x] 4.9: Format `stale-drift` message: `{Kind} '{name}' code modified {code_date}, docstring last modified {doc_date} ({N} days drift)` using `datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()` for dates, `(code_max - doc_max) // 86400` for day count
+  - [x] 4.10: Format `stale-age` message: `{Kind} '{name}' docstring untouched since {doc_date} ({N} days)` using `(effective_now - doc_max) // 86400` for day count
+  - [x] 4.11: Use `_build_finding` for all finding construction
+  - [x] 4.12: Sort findings by line number before returning
+- [x] Task 5: Create unit tests in `tests/unit/checks/test_freshness.py` (AC: 1-15)
+  - [x] 5.1: Add imports: `check_freshness_drift`, `_compute_drift`, `_compute_age` from `docvet.checks.freshness`; `FreshnessConfig` from `docvet.config`
+  - [x] 5.2: Add `_DRIFT_SOURCE` test constant — Python source with 2+ functions at known line ranges (function with docstring, function without docstring, stub function with only docstring)
+  - [x] 5.3: Add blame output builder helper or constants that produce `dict[int, int]` for controlled timestamp scenarios
+  - [x] 5.4: `TestComputeDrift` class:
+    - [x] 5.4a: Test drift exceeds threshold → `True`
+    - [x] 5.4b: Test drift within threshold → `False`
+    - [x] 5.4c: Test exact boundary → `False` (strict `>`)
+    - [x] 5.4d: Test empty code timestamps → `False`
+    - [x] 5.4e: Test empty doc timestamps → `False`
+  - [x] 5.5: `TestComputeAge` class:
+    - [x] 5.5a: Test age exceeds threshold → `True`
+    - [x] 5.5b: Test age within threshold → `False`
+    - [x] 5.5c: Test exact boundary → `False` (strict `>`)
+    - [x] 5.5d: Test empty doc timestamps → `False`
+  - [x] 5.6: `TestCheckFreshnessDrift` class:
+    - [x] 5.6a: Test stale-drift finding produced (AC 1)
+    - [x] 5.6b: Test stale-age finding produced (AC 2)
+    - [x] 5.6c: Test both stale-drift and stale-age on same symbol (AC 3)
+    - [x] 5.6d: Test exact drift boundary produces no finding (AC 4)
+    - [x] 5.6e: Test exact age boundary produces no finding (AC 5)
+    - [x] 5.6f: Test no-docstring symbol skipped (AC 6)
+    - [x] 5.6g: Test stub-only symbol: stale-age can fire, stale-drift cannot (AC 7)
+    - [x] 5.6h: Test within-threshold produces zero findings (AC 8)
+    - [x] 5.6i: Test default thresholds applied (AC 9)
+    - [x] 5.6j: Test custom drift threshold (AC 10)
+    - [x] 5.6k: Test custom age threshold (AC 11)
+    - [x] 5.6l: Test explicit `now` parameter used (AC 12)
+    - [x] 5.6m: Test default `now` (AC 13) — mock `time.time`
+    - [x] 5.6n: Test empty blame output returns `[]` (AC 14)
+    - [x] 5.6o: Test deterministic output (AC 15)
+    - [x] 5.6p: Test finding message format contains expected strings (dates, day count)
+    - [x] 5.6q: Test finding fields: `rule`, `category`, `file`, `line`, `symbol` are correct
+    - [x] 5.6r: Test lines not mapping to any symbol are silently skipped
+    - [x] 5.6s: Test symbol where all timestamps identical (code == docstring) → no stale-drift
+    - [x] 5.6t: Test findings sorted by line number
+- [x] Task 6: Run quality gates (AC: all)
+  - [x] 6.1: `uv run ruff check .` — all checks pass
+  - [x] 6.2: `uv run ruff format --check .` — all files formatted
+  - [x] 6.3: `uv run ty check` — all type checks pass
+  - [x] 6.4: `uv run pytest tests/unit/checks/test_freshness.py -v` — all freshness tests pass
+  - [x] 6.5: `uv run pytest` — full suite passes, 0 regressions
 
 ## Dev Notes
 
@@ -326,12 +326,31 @@ No new files. No changes to any other source files.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No debugging required — implementation followed architecture spec exactly.
+
 ### Completion Notes List
+
+- Implemented `_compute_drift` helper (strict `>` comparison, empty-list guards)
+- Implemented `_compute_age` helper (strict `>` comparison, empty-list guard)
+- Implemented `check_freshness_drift` orchestrator: blame parsing → line-to-symbol mapping → timestamp grouping (code vs docstring buckets) → independent drift/age checks → sorted findings
+- Added `import time` and `from datetime import datetime, timezone` to stdlib imports
+- Removed `# noqa: F401` from `FreshnessConfig` import (now consumed by `check_freshness_drift`)
+- 29 new tests added: 5 (`TestComputeDrift`) + 4 (`TestComputeAge`) + 20 (`TestCheckFreshnessDrift`)
+- All 15 acceptance criteria covered by tests with deterministic timestamps
+- `_build_blame` test helper generates porcelain blame output from `(line_num, timestamp)` pairs
+- `_DRIFT_SOURCE` test constant provides documented, undocumented, and stub functions at known line ranges
+- Total test suite: 517 tests passing (89 freshness, 428 other), 0 regressions
+- All quality gates pass: ruff check, ruff format, ty check
 
 ### Change Log
 
+- 2026-02-11: Implemented drift and age detection orchestrator (Story 5.2) — `_compute_drift`, `_compute_age`, `check_freshness_drift` + 29 unit tests
+
 ### File List
+
+- `src/docvet/checks/freshness.py` — MODIFIED (262 → 418 lines): added imports, `_compute_drift`, `_compute_age`, `check_freshness_drift`
+- `tests/unit/checks/test_freshness.py` — MODIFIED (930 → ~1190 lines): added imports, drift test constants, `_build_blame` helper, `TestComputeDrift`, `TestComputeAge`, `TestCheckFreshnessDrift`
