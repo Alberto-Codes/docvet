@@ -879,3 +879,47 @@ filename test.py
 """
         result = _parse_blame_timestamps(blame)
         assert result == {3: 1700000000, 7: 1800000000}
+
+    def test_truncated_block_followed_by_valid_block(self) -> None:
+        """Truncated first block (no content line) is discarded when next SHA appears."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author-time 1000000000
+abcdef7890123456789012345678901234567890 1 2 1
+author Test Author
+author-mail <test@example.com>
+author-time 2000000000
+author-tz +0000
+committer Test Author
+committer-mail <test@example.com>
+committer-time 2000000000
+committer-tz +0000
+summary Second commit
+filename test.py
+\tcontent line
+"""
+        result = _parse_blame_timestamps(blame)
+        # First block has no tab-prefixed content line before second SHA → discarded
+        assert result == {2: 2000000000}
+
+    def test_author_time_non_numeric_value_skipped(self) -> None:
+        """author-time with non-numeric value triggers ValueError and is skipped."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author-time notanumber
+\tcontent line
+"""
+        result = _parse_blame_timestamps(blame)
+        # int("notanumber") raises ValueError → timestamp stays None → no entry
+        assert result == {}
+
+    def test_author_time_missing_value_skipped(self) -> None:
+        """author-time with trailing space but no value triggers IndexError and is skipped."""
+        blame = """\
+1234567890123456789012345678901234567890 1 1 1
+author-time\x20
+\tcontent line
+"""
+        result = _parse_blame_timestamps(blame)
+        # "author-time ".split() → ["author-time"], [1] raises IndexError → skipped
+        assert result == {}
