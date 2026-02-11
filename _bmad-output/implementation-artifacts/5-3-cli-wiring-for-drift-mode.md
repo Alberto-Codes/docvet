@@ -1,6 +1,6 @@
 # Story 5.3: CLI Wiring for Drift Mode
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -23,32 +23,32 @@ so that I can perform periodic docstring health audits on my codebase.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `_get_git_blame` helper to `cli.py` (AC: 1)
-  - [ ] 1.1 Add private function `_get_git_blame(file_path: Path, project_root: Path) -> str`
-  - [ ] 1.2 Runs `git blame --line-porcelain -- <file_path>` with `cwd=project_root`
-  - [ ] 1.3 Returns empty string on non-zero exit (same pattern as `_get_git_diff`)
-- [ ] Task 2: Wire drift mode in `_run_freshness` (AC: 1, 2, 3, 4, 6)
-  - [ ] 2.1 Import `check_freshness_drift` from `docvet.checks.freshness`
-  - [ ] 2.2 Replace `"freshness drift: not yet implemented"` stub with actual logic
-  - [ ] 2.3 For each file: read source, parse AST, get blame, call `check_freshness_drift(str(file_path), blame_output, tree, config.freshness)`
-  - [ ] 2.4 Print each finding in `file:line: rule message` format
-  - [ ] 2.5 Handle `SyntaxError` with warning and skip (existing pattern)
-- [ ] Task 3: Add unit tests for `_get_git_blame` (AC: 1, 6)
-  - [ ] 3.1 Test blame runs `git blame --line-porcelain -- <path>` with correct cwd
-  - [ ] 3.2 Test blame returns stdout on success
-  - [ ] 3.3 Test blame returns empty string on non-zero exit
-- [ ] Task 4: Add unit tests for drift mode wiring (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] 4.1 Test drift mode calls `check_freshness_drift` per file with blame output
-  - [ ] 4.2 Test drift mode prints findings in correct format
-  - [ ] 4.3 Test drift mode with no findings produces no output
-  - [ ] 4.4 Test drift mode passes `config.freshness` to `check_freshness_drift`
-  - [ ] 4.5 Test drift mode handles syntax errors with warning
-  - [ ] 4.6 Test drift mode processes multiple files
-- [ ] Task 5: Verify existing behavior preserved (AC: 7, 8)
-  - [ ] 5.1 Verify `freshness` with no `--mode` still defaults to diff
-  - [ ] 5.2 Verify `check` command still runs freshness in diff mode
-  - [ ] 5.3 Remove/update the "not yet implemented" test
-- [ ] Task 6: Run full test suite and quality gates
+- [x] Task 1: Add `_get_git_blame` helper to `cli.py` (AC: 1)
+  - [x] 1.1 Add private function `_get_git_blame(file_path: Path, project_root: Path) -> str`
+  - [x] 1.2 Runs `git blame --line-porcelain -- <file_path>` with `cwd=project_root`
+  - [x] 1.3 Returns empty string on non-zero exit (same pattern as `_get_git_diff`)
+- [x] Task 2: Wire drift mode in `_run_freshness` (AC: 1, 2, 3, 4, 6)
+  - [x] 2.1 Import `check_freshness_drift` from `docvet.checks.freshness`
+  - [x] 2.2 Replace `"freshness drift: not yet implemented"` stub with actual logic
+  - [x] 2.3 For each file: read source, parse AST, get blame, call `check_freshness_drift(str(file_path), blame_output, tree, config.freshness)`
+  - [x] 2.4 Print each finding in `file:line: rule message` format
+  - [x] 2.5 Handle `SyntaxError` with warning and skip (existing pattern)
+- [x] Task 3: Add unit tests for `_get_git_blame` (AC: 1, 6)
+  - [x] 3.1 Test blame runs `git blame --line-porcelain -- <path>` with correct cwd
+  - [x] 3.2 Test blame returns stdout on success
+  - [x] 3.3 Test blame returns empty string on non-zero exit
+- [x] Task 4: Add unit tests for drift mode wiring (AC: 1, 2, 3, 4, 5, 6)
+  - [x] 4.1 Test drift mode calls `check_freshness_drift` per file with blame output
+  - [x] 4.2 Test drift mode prints findings in correct format
+  - [x] 4.3 Test drift mode with no findings produces no output
+  - [x] 4.4 Test drift mode passes `config.freshness` to `check_freshness_drift`
+  - [x] 4.5 Test drift mode handles syntax errors with warning
+  - [x] 4.6 Test drift mode processes multiple files
+- [x] Task 5: Verify existing behavior preserved (AC: 7, 8)
+  - [x] 5.1 Verify `freshness` with no `--mode` still defaults to diff
+  - [x] 5.2 Verify `check` command still runs freshness in diff mode
+  - [x] 5.3 Remove/update the "not yet implemented" test
+- [x] Task 6: Run full test suite and quality gates
 
 ## Dev Notes
 
@@ -161,8 +161,23 @@ Test file: `tests/unit/test_cli.py`
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- Added `_get_git_blame` helper mirroring `_get_git_diff` pattern (no `discovery_mode` — blame always reads full history)
+- Replaced "not yet implemented" stub in `_run_freshness` with full drift-mode branch: read → parse → blame → check → print
+- Added import of `check_freshness_drift` alongside existing `check_freshness_diff`
+- Updated `_run_freshness` docstring to reflect drift mode is implemented
+- Added 3 unit tests for `_get_git_blame` (command args, stdout return, failure return)
+- Added 6 unit tests for drift mode wiring (per-file call, output format, no-output, config passthrough, syntax error, multi-file)
+- Deleted `test_run_freshness_with_drift_mode_prints_not_implemented` (replaced by actual behavior tests)
+- All 8 existing drift-related tests continue to pass unchanged
+- 528 total tests pass, 0 failures, ruff lint + format clean
+
 ### File List
+
+- `src/docvet/cli.py` — added `_get_git_blame` helper, `check_freshness_drift` import, drift branch in `_run_freshness`
+- `tests/unit/test_cli.py` — added 9 tests (`_get_git_blame` + drift wiring), deleted 1 "not implemented" test
