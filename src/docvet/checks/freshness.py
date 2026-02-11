@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import ast
 import re
+import time
+from datetime import datetime, timezone
 from typing import Literal
 
 from docvet.ast_utils import Symbol, map_lines_to_symbols
 from docvet.checks import Finding
-from docvet.config import FreshnessConfig  # noqa: F401
+from docvet.config import FreshnessConfig
 
 # ---------------------------------------------------------------------------
 # Module-level constants
@@ -259,3 +261,151 @@ def _parse_blame_timestamps(blame_output: str) -> dict[int, int]:
         # All other lines (author, committer, summary, filename, etc.) — skip
 
     return timestamps
+
+
+def _compute_drift(
+    code_timestamps: list[int],
+    doc_timestamps: list[int],
+    threshold: int,
+) -> bool:
+    """Determine whether code has drifted ahead of its docstring.
+
+    Compares the most recent code modification timestamp against the most
+    recent docstring modification timestamp.  Drift exceeds the threshold
+    when the difference is strictly greater than ``threshold * 86400``
+    seconds.
+
+    Args:
+        code_timestamps: Unix timestamps for code lines of a symbol.
+        doc_timestamps: Unix timestamps for docstring lines of a symbol.
+        threshold: Maximum allowed drift in days.
+
+    Returns:
+        ``True`` if code is more than *threshold* days newer than the
+        docstring, ``False`` otherwise or when either list is empty.
+    """
+    if not code_timestamps or not doc_timestamps:
+        return False
+    return max(code_timestamps) - max(doc_timestamps) > threshold * 86400
+
+
+def _compute_age(
+    doc_timestamps: list[int],
+    now: int,
+    threshold: int,
+) -> bool:
+    """Determine whether a docstring has aged past a threshold.
+
+    Compares the current time against the most recent docstring
+    modification timestamp.  Age exceeds the threshold when the
+    difference is strictly greater than ``threshold * 86400`` seconds.
+
+    Args:
+        doc_timestamps: Unix timestamps for docstring lines of a symbol.
+        now: Current time as a Unix timestamp.
+        threshold: Maximum allowed age in days.
+
+    Returns:
+        ``True`` if the docstring is more than *threshold* days old,
+        ``False`` otherwise or when the list is empty.
+    """
+    if not doc_timestamps:
+        return False
+    return now - max(doc_timestamps) > threshold * 86400
+
+
+def check_freshness_drift(
+    file_path: str,
+    blame_output: str,
+    tree: ast.Module,
+    config: FreshnessConfig,
+    *,
+    now: int | None = None,
+) -> list[Finding]:
+    """Check a file for stale docstrings using git blame timestamps.
+
+    Parses blame output to extract per-line timestamps, groups them by
+    AST symbol, and checks each symbol for drift (code newer than
+    docstring) and age (docstring untouched too long).
+
+    Args:
+        file_path: Source file path for finding attribution.
+        blame_output: Raw output from ``git blame --line-porcelain``.
+        tree: Parsed AST module from ``ast.parse()``.
+        config: Freshness configuration with threshold values.
+        now: Current time as a Unix timestamp.  Defaults to
+            ``int(time.time())`` when not provided.
+
+    Returns:
+        A list of findings for symbols with stale docstrings, sorted
+        by line number.  Returns an empty list when blame output is
+        empty or no symbols exceed thresholds.
+    """
+    if not blame_output:
+        return []
+
+    timestamps = _parse_blame_timestamps(blame_output)
+    if not timestamps:
+        return []
+
+    line_map = map_lines_to_symbols(tree)
+
+    # Group timestamps by symbol into code vs docstring buckets.
+    symbol_code_ts: dict[Symbol, list[int]] = {}
+    symbol_doc_ts: dict[Symbol, list[int]] = {}
+
+    for line_num, ts in timestamps.items():
+        sym = line_map.get(line_num)
+        if sym is None:
+            continue
+        if sym.docstring_range is None:
+            continue
+
+        ds, de = sym.docstring_range
+        if ds <= line_num <= de:
+            symbol_doc_ts.setdefault(sym, []).append(ts)
+        else:
+            symbol_code_ts.setdefault(sym, []).append(ts)
+
+    effective_now = now if now is not None else int(time.time())
+
+    findings: list[Finding] = []
+    all_symbols = set(symbol_code_ts) | set(symbol_doc_ts)
+
+    for sym in all_symbols:
+        code_ts = symbol_code_ts.get(sym, [])
+        doc_ts = symbol_doc_ts.get(sym, [])
+
+        if _compute_drift(code_ts, doc_ts, config.drift_threshold):
+            code_date = (
+                datetime.fromtimestamp(max(code_ts), tz=timezone.utc).date().isoformat()
+            )
+            doc_date = (
+                datetime.fromtimestamp(max(doc_ts), tz=timezone.utc).date().isoformat()
+            )
+            days = (max(code_ts) - max(doc_ts)) // 86400
+            kind = sym.kind.capitalize()
+            message = (
+                f"{kind} '{sym.name}' code modified {code_date}, "
+                f"docstring last modified {doc_date} ({days} days drift)"
+            )
+            findings.append(
+                _build_finding(file_path, sym, "stale-drift", message, "recommended")
+            )
+
+        if _compute_age(doc_ts, effective_now, config.age_threshold):
+            doc_date = (
+                datetime.fromtimestamp(max(doc_ts), tz=timezone.utc).date().isoformat()
+            )
+            days = (effective_now - max(doc_ts)) // 86400
+            kind = sym.kind.capitalize()
+            message = (
+                f"{kind} '{sym.name}' docstring untouched "
+                f"since {doc_date} ({days} days)"
+            )
+            findings.append(
+                _build_finding(file_path, sym, "stale-age", message, "recommended")
+            )
+
+    findings.sort(key=lambda f: f.line)
+    return findings
