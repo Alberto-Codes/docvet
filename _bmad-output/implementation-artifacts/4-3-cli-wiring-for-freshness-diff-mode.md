@@ -1,6 +1,6 @@
 # Story 4.3: CLI Wiring for Freshness Diff Mode
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -324,3 +324,4 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-10: Implemented CLI wiring for freshness diff mode — replaced stub with real implementation, added `_get_git_diff` helper, updated subcommand callers, updated 4 existing tests, added 12 new tests. All 471 tests pass.
+- 2026-02-10: Code review (adversarial) — fixed 5 issues: (1) MEDIUM: corrected misleading `_get_git_diff` docstring re git unavailability, (2) LOW: renamed stale "Private stub runners" section header to "Private check runners", (3) LOW: added missing `DiscoveryMode.FILES` test for `_get_git_diff`, (4) LOW: added `filename` parameter to `ast.parse()` in both `_run_enrichment` and `_run_freshness`, (5) LOW: broad `Path.read_text` mocking noted as pre-existing pattern — not changed. All 472 tests pass.
