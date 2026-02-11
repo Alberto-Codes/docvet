@@ -667,6 +667,23 @@ def test_get_git_diff_when_diff_mode_runs_git_diff(mocker):
     )
 
 
+def test_get_git_diff_when_files_mode_runs_git_diff(mocker):
+    from docvet.cli import _get_git_diff
+
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = "diff output"
+    result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.FILES)
+    assert result == "diff output"
+    mock_subprocess.assert_called_once_with(
+        ["git", "diff", "--", "/f.py"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path("/project"),
+    )
+
+
 def test_get_git_diff_when_staged_mode_runs_git_diff_cached(mocker):
     from docvet.cli import _get_git_diff
 
