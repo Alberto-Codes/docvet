@@ -10,6 +10,7 @@ from typing import Annotated
 
 import typer
 
+from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
 from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
 from docvet.config import DocvetConfig, load_config
@@ -292,13 +293,20 @@ def _run_freshness(
 
 
 def _run_coverage(files: list[Path], config: DocvetConfig) -> None:
-    """Stub for coverage check.
+    """Run the coverage check on discovered files.
+
+    Resolves the source root from configuration and checks all discovered
+    files for missing ``__init__.py`` in parent directories.  Findings are
+    printed to stdout in ``file:line: rule message`` format.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
     """
-    typer.echo("coverage: not yet implemented")
+    src_root = config.project_root / config.src_root
+    findings = check_coverage(src_root, files)
+    for finding in findings:
+        typer.echo(f"{finding.file}:{finding.line}: {finding.rule} {finding.message}")
 
 
 def _run_griffe(files: list[Path], config: DocvetConfig) -> None:
