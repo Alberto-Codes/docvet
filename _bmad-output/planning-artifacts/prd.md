@@ -16,6 +16,8 @@ status: 'complete'
 lastEdited: '2026-02-11'
 editHistory:
   - date: '2026-02-11'
+    changes: 'Added griffe compatibility check (Layer 5) as next epic; added 1 journey, griffe module spec, 3 rules (griffe-missing-type, griffe-unknown-param, griffe-format-warning), FRs (FR81-FR97), NFRs (NFR39-NFR48); updated Executive Summary, Success Criteria, Product Scope to cover all four docvet-owned layers; moved coverage to Complete status; incorporated 6 party-mode review findings (CLI skip messaging, search path clarification, all-files-filtered-out FR, warning pattern enumeration, multi-finding-per-symbol clarification, format-warning split as growth candidate)'
+  - date: '2026-02-11'
     changes: 'Fixed 3 validation findings: NFR3/NFR21 reworded as design invariants (measurability fix); FR44/FR51/FR79 removed module name references (implementation leakage fix); Journey traceability attribution corrected missing-typed-attributes from J2 to J4'
   - date: '2026-02-11'
     changes: 'Added coverage check (Layer 6) as next epic; added 1 journey, coverage module spec, 12 FRs (FR69-FR80), 6 NFRs (NFR33-NFR38); fixed 3 validation items (FR12 cross-ref definition, FR49 wording, stale-import traceability); incorporated 7 party-mode review findings (message content, src_root default, namespace workaround, symbol convention, deterministic ordering)'
@@ -43,6 +45,7 @@ inputDocuments:
   - 'gh-issue-8'
   - 'gh-issue-9'
   - 'gh-issue-10'
+  - 'gh-issue-11'
 documentCounts:
   briefs: 0
   research: 0
@@ -50,7 +53,7 @@ documentCounts:
   projectDocs: 17
 workflowType: 'prd'
 projectName: 'docvet'
-featureScope: 'enrichment-freshness-and-coverage-checks'
+featureScope: 'enrichment-freshness-coverage-and-griffe-checks'
 ---
 
 # Product Requirements Document - docvet
@@ -60,23 +63,25 @@ featureScope: 'enrichment-freshness-and-coverage-checks'
 
 ## Executive Summary
 
-docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for three check modules: the **enrichment check** (Layer 3: completeness), the **freshness check** (Layer 4: accuracy), and the **coverage check** (Layer 6: visibility). Together they cover three of the four docvet-owned layers in the six-layer quality model.
+docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for four check modules: the **enrichment check** (Layer 3: completeness), the **freshness check** (Layer 4: accuracy), the **griffe compatibility check** (Layer 5: rendering), and the **coverage check** (Layer 6: visibility). Together they cover all four docvet-owned layers in the six-layer quality model.
 
-The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. The freshness check detects stale docstrings — code that changed without a corresponding docstring update — by mapping git diff hunks and git blame timestamps to AST symbols. The coverage check detects Python files invisible to mkdocstrings due to missing `__init__.py` files in parent directories. All three complement ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022 and never addressed staleness or visibility detection; ruff stops at D417 (param completeness).
+The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. The freshness check detects stale docstrings — code that changed without a corresponding docstring update — by mapping git diff hunks and git blame timestamps to AST symbols. The griffe compatibility check catches docstrings that parse fine as text but produce warnings during mkdocs build — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered documentation. The coverage check detects Python files invisible to mkdocstrings due to missing `__init__.py` files in parent directories. All four complement ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022 and never addressed staleness, rendering, or visibility detection; ruff stops at D417 (param completeness).
 
 **Target users:** Python developers writing Google-style docstrings, teams using mkdocs-material + mkdocstrings.
 
-**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration.
+**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Griffe: 3 rule identifiers for rendering compatibility warnings, optional dependency on griffe library, no per-check configuration. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration.
 
 ### Key Terms
 
 - **Detection scenario**: A specific code pattern that triggers a check (e.g., "function with `raise` but no `Raises:` section"). 14 total for enrichment.
-- **Rule identifier**: A stable kebab-case name emitted in findings (e.g., `missing-raises`, `stale-signature`, `missing-init`). 10 enrichment + 5 freshness + 1 coverage = 16 total. Multiple scenarios can share one rule ID.
+- **Rule identifier**: A stable kebab-case name emitted in findings (e.g., `missing-raises`, `stale-signature`, `griffe-missing-type`, `missing-init`). 10 enrichment + 5 freshness + 3 griffe + 1 coverage = 19 total. Multiple scenarios can share one rule ID.
 - **Required vs recommended**: Category baked into each rule definition. Required = misleading omission; recommended = improvement opportunity. Freshness maps severity to category: HIGH→required, MEDIUM/LOW→recommended.
 - **Missing vs incomplete**: Enrichment MVP detects *missing* sections only (no `Raises:` section at all). *Incomplete* sections (has `Raises:` but doesn't list all exceptions) are a Growth feature.
 - **Diff mode**: Freshness check mode that analyzes `git diff` output to detect symbols where code changed but docstring did not. Primary workflow — fast, runs per-commit.
 - **Drift mode**: Freshness check mode that analyzes `git blame` timestamps to detect docstrings that fell behind their code by configurable time thresholds. Periodic sweep — slower, runs quarterly.
 - **Staleness severity**: Diff mode classifies findings as HIGH (signature changed), MEDIUM (body changed), or LOW (imports/formatting changed). Higher severity = greater likelihood the docstring actively misleads.
+- **Griffe compatibility check**: Layer 5 (rendering) detection. Uses the griffe library (the mkdocstrings docstring parser) to parse docstrings and capture warnings that would appear during `mkdocs build`. Catches issues invisible to AST analysis — missing type annotations, unknown parameters, and malformed section formatting.
+- **Rendering warning**: A griffe parser warning indicating a docstring element that will render incorrectly or incompletely in mkdocs-material documentation. Distinct from a missing section (enrichment) or stale content (freshness).
 - **Coverage check**: Layer 6 (visibility) detection. Identifies Python files whose parent directories lack `__init__.py`, making them invisible to mkdocstrings — they exist but won't appear in generated documentation.
 - **Package boundary**: The `src-root` directory (e.g., `src/` or project root) above which `__init__.py` is not required. Coverage walks upward from each file's parent to this boundary.
 
@@ -92,6 +97,7 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - A developer runs `docvet freshness` and sees which docstrings are stale after code changes, with severity-tiered findings (HIGH for signature changes, MEDIUM for body changes, LOW for imports/formatting)
 - A tech lead runs `docvet freshness --mode drift --all` and discovers docstrings that drifted out of sync over time — long-untouched docstrings on recently-modified code
 - A developer runs `docvet coverage --all` and discovers Python files invisible to mkdocstrings because parent directories lack `__init__.py` — files that exist but won't appear in generated documentation
+- A developer runs `docvet griffe` and discovers docstrings that will produce warnings during `mkdocs build` — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered output
 
 ### Business Success
 
@@ -102,6 +108,8 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - No existing tool maps git diffs to AST symbols for stale docstring detection -- freshness check is a novel capability in the Python ecosystem
 - Diff mode integrates into pre-commit workflows; drift mode enables periodic audits -- two time horizons, one tool
 - Coverage check closes the visibility gap -- developers currently discover missing `__init__.py` only when mkdocs builds silently omit their modules; docvet catches this before deployment
+- Griffe compatibility check catches rendering issues at lint time instead of during `mkdocs build` -- developers fix docstring formatting before deployment, not after a broken docs build
+- Completes docvet's four-layer model (completeness, accuracy, rendering, visibility) -- the only Python tool providing unified docstring quality coverage from content to deployment
 
 ### Technical Success
 
@@ -109,11 +117,13 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - `check_freshness_diff(file_path, diff_output, tree)` returns `list[Finding]` with deterministic severity assignment based on what changed
 - `check_freshness_drift(file_path, blame_output, tree, config)` returns `list[Finding]` with configurable drift and age thresholds
 - `check_coverage(src_root, files)` returns `list[Finding]` with pure filesystem logic -- no AST, no git, no configuration
+- `check_griffe_compat(src_root, files)` returns `list[Finding]` by loading the package via griffe and capturing parser warnings -- optional dependency, graceful skip when griffe not installed
 - Each `Finding` carries: `file`, `line`, `symbol`, `rule` (kebab-case stable identifier), `message`, `category` (`required` | `recommended`)
 - All 14 enrichment detection scenarios (10 rule identifiers) implemented and individually toggleable via `EnrichmentConfig`
 - All 5 freshness rule identifiers (3 diff + 2 drift) implemented with severity-to-category mapping
+- Griffe check: 3 rule identifiers (`griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`) capturing rendering compatibility warnings
 - Coverage check: 1 rule identifier (`missing-init`) detecting missing `__init__.py` in parent directory hierarchies
-- No new runtime dependencies -- stdlib `ast`, `pathlib`, and existing `ast_utils.Symbol` infrastructure
+- No new runtime dependencies for enrichment, freshness, or coverage -- stdlib `ast`, `pathlib`, and existing `ast_utils.Symbol` infrastructure. Griffe check requires optional `griffe` dependency
 - Checks are isolated -- no imports from other check modules, no shared mutable state
 - Quality gates pass: ruff, ty, pytest with >=85% coverage, interrogate
 
@@ -130,12 +140,15 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - Edge case tests: new files produce zero findings, deleted functions produce zero findings
 - Coverage unit tests with `tmp_path` filesystem fixtures verify `missing-init` detection across nested package hierarchies
 - A properly packaged project (all `__init__.py` present) produces zero coverage findings
+- Unit tests with known-bad docstrings (missing type annotations, unknown parameters, malformed formatting) produce expected griffe findings for each of the 3 rule identifiers
+- Well-documented code with typed Args and valid parameter names produces zero griffe findings
+- When griffe is not installed, `check_griffe_compat` returns an empty list without raising exceptions
 
 ## Product Scope
 
 ### Competitive Context
 
-darglint -- the only tool that partially addressed Args/Returns/Raises alignment -- has been unmaintained since 2022. Ruff's D rules stop at D417 (param completeness) and explicitly chose not to go deeper into section completeness. No existing tool maps git diffs to AST symbols for stale docstring detection -- the closest prior art is manual `git blame` inspection. This leaves a 4-year vacuum in the ecosystem for both docstring completeness checking (Layer 3) and docstring accuracy/staleness detection (Layer 4). docvet fills both gaps by complementing ruff (style) and interrogate (presence) rather than competing with them -- the six-layer quality model makes the composability explicit: layers 1-2 are delegated to existing tools, layers 3-6 are docvet's territory.
+darglint -- the only tool that partially addressed Args/Returns/Raises alignment -- has been unmaintained since 2022. Ruff's D rules stop at D417 (param completeness) and explicitly chose not to go deeper into section completeness. No existing tool maps git diffs to AST symbols for stale docstring detection -- the closest prior art is manual `git blame` inspection. No existing linter catches griffe parser warnings before `mkdocs build` -- developers currently discover rendering issues only when reviewing built documentation. This leaves a 4-year vacuum in the ecosystem for docstring completeness (Layer 3), accuracy (Layer 4), and rendering compatibility (Layer 5). docvet fills all three gaps by complementing ruff (style) and interrogate (presence) rather than competing with them -- the six-layer quality model makes the composability explicit: layers 1-2 are delegated to existing tools, layers 3-6 are docvet's territory.
 
 ### MVP - Enrichment Check (Layer 3)
 
@@ -145,13 +158,17 @@ The enrichment MVP delivers all 10 rule identifiers (14 detection scenarios), th
 
 The freshness module delivers 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), reuses the shared `Finding` type, integrates with existing `FreshnessConfig`, and includes unit tests with mocked git output plus integration tests with real git repos. See "Project Scoping & Phased Development > Freshness Feature Set" for the authoritative implementation checklist.
 
-### Next Epic — Coverage Check (Layer 6)
+### Coverage Check (Layer 6) — Complete
 
-The coverage epic delivers 1 rule identifier (`missing-init`) that detects Python files invisible to mkdocstrings due to missing `__init__.py` in parent directories. The simplest of the four checks — pure filesystem traversal, no AST analysis, no git integration, no per-check configuration. Reuses the shared `Finding` type and existing CLI/discovery infrastructure. See "Project Scoping & Phased Development > Coverage Feature Set" for the authoritative implementation checklist.
+The coverage module delivers 1 rule identifier (`missing-init`) that detects Python files invisible to mkdocstrings due to missing `__init__.py` in parent directories. The simplest of the four checks — pure filesystem traversal, no AST analysis, no git integration, no per-check configuration. This is fully implemented (1 epic, 2 stories, 557 tests). See "Project Scoping & Phased Development > Coverage Feature Set" for the authoritative implementation checklist.
+
+### Next Epic — Griffe Compatibility Check (Layer 5)
+
+The griffe epic delivers 3 rule identifiers (`griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`) that capture rendering compatibility warnings by parsing docstrings with the griffe library — the same parser used by mkdocstrings during `mkdocs build`. Griffe is an optional dependency (`pip install docvet[griffe]`); the check gracefully skips when griffe is not installed. Operates at the package level (griffe loads entire packages, not individual files), with warnings filtered to discovered files and mapped to `Finding` objects. No per-check configuration. See "Project Scoping & Phased Development > Griffe Feature Set" for the authoritative implementation checklist.
 
 ### Growth & Vision
 
-Growth features include inline suppression, JSON output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), and cross-check intelligence (enrichment + freshness + coverage combined findings). Vision includes editor/LSP integration, additional docstring style support, and the griffe compatibility check (Layer 5). See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
+Growth features include inline suppression, JSON output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), and cross-check intelligence (enrichment + freshness + griffe + coverage combined findings). Vision includes editor/LSP integration and additional docstring style support. See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
 
 ## User Journeys
 
@@ -379,9 +396,39 @@ One finding, category `required`. The file path, directory name, and consequence
 
 **Edge Case -- Top-Level Boundary:** Tomás notices that `docvet coverage` does not flag `src/myproject/__init__.py` as missing when it already exists, nor does it walk above `src/` (the configured `src-root`) looking for more `__init__.py` files. The check respects the package boundary: it walks from each file's parent up to `src-root`, not beyond.
 
+### Journey 10: The Rendering Surprise (Griffe Compatibility Check)
+
+**Persona:** Lina, a developer on a team that publishes API documentation with mkdocs-material + mkdocstrings. She writes thorough Google-style docstrings and runs `docvet check --staged` before every commit.
+
+**Opening Scene:** Lina adds a new `fetch_records()` function to the data access layer. The function accepts three parameters and returns a list of records. She writes a clean docstring with `Args:`, `Returns:`, and `Raises:` sections. The enrichment check passes — all sections are present. Freshness passes — the docstring is brand new alongside the code. Coverage passes — all `__init__.py` files are in place. She commits and pushes.
+
+**Rising Action:** The next morning, the tech lead notices the API docs site looks off. The `fetch_records()` page shows `Args:` parameters without type annotations — the rendered docs display bare parameter names with no types, making them harder to scan. The docstring read `limit: Maximum number of records to return` instead of `limit (int): Maximum number of records to return`. The mkdocs build log had a griffe warning: `No type or annotation for parameter 'limit'`. Nobody noticed because the build succeeded — griffe warnings don't fail builds by default.
+
+**Climax:** The tech lead adds `docvet griffe` to the team's pre-commit workflow. Lina re-runs `docvet griffe --all` on her branch. The terminal shows:
+
+```
+src/data/access.py:42: griffe-missing-type Function 'fetch_records' parameter 'limit' has no type annotation in docstring or signature
+src/data/access.py:42: griffe-missing-type Function 'fetch_records' parameter 'offset' has no type annotation in docstring or signature
+src/data/access.py:42: griffe-missing-type Function 'fetch_records' parameter 'query' has no type annotation in docstring or signature
+```
+
+Three findings, all category `recommended`. She updates the `Args:` section to include types: `limit (int): Maximum number of records to return.` She re-runs — zero findings. The rendered docs now display clean, typed parameter lists.
+
+**Resolution:** The team keeps `docvet griffe` in `warn-on`. The combination of enrichment (are all sections present?), freshness (are they up to date?), griffe (will they render correctly?), and coverage (will they be visible?) gives complete documentation quality coverage — from content to deployment.
+
+**Edge Case -- Unknown Parameter:** A week later, a colleague refactors `fetch_records()` to remove the `query` parameter but forgets to update the docstring's `Args:` section. The enrichment check doesn't catch this (it detects missing sections, not extra entries). But the griffe check does:
+
+```
+src/data/access.py:42: griffe-unknown-param Function 'fetch_records' documents parameter 'query' which does not exist in the function signature
+```
+
+Category `required` — the docstring actively misleads callers about the function's interface. The colleague removes the stale `query` entry and commits clean.
+
+**Edge Case -- Griffe Not Installed:** A contributor working on a minimal dev setup without the griffe extra (`pip install docvet` instead of `pip install docvet[griffe]`) runs `docvet check`. The griffe check silently skips — no error, no finding, zero noise. Enrichment, freshness, and coverage still run normally. The contributor sees a note in verbose output: `griffe: skipped (griffe not installed)`.
+
 ### Journey Requirements Traceability
 
-All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 16 rule identifiers (10 enrichment + 5 freshness + 1 coverage) have journey coverage. CLI/reporting layer dependencies (output formatting, summary line, exit codes, discovery modes) are out of check module scope but required for full journey completion in the same release.
+All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). All 3 griffe rule identifiers are demonstrated in Journey 10: `griffe-missing-type` (recommended, main scenario), `griffe-unknown-param` (required, edge case), and `griffe-format-warning` (recommended, implied by griffe's formatting checks). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 19 rule identifiers (10 enrichment + 5 freshness + 3 griffe + 1 coverage) have journey coverage. CLI/reporting layer dependencies (output formatting, summary line, exit codes, discovery modes) are out of check module scope but required for full journey completion in the same release.
 
 ## Enrichment Module Specification
 
@@ -717,6 +764,118 @@ def check_coverage(
 - No cross-imports between coverage and any other check module
 - No `CoverageConfig` needed — zero configuration parameters
 
+## Griffe Module Specification
+
+### Project-Type Overview
+
+The griffe compatibility check detects docstrings that produce warnings during mkdocs rendering — issues invisible to AST analysis alone. It operates by loading the package via the griffe library (the same parser used by mkdocstrings during `mkdocs build`) and capturing parser warnings. The check function returns `list[Finding]` using the same shared type as enrichment, freshness, and coverage. Unlike the other three checks, griffe is an **optional dependency** — the check gracefully skips when griffe is not installed, producing zero findings and no errors.
+
+Griffe operates at the **package level** (loading entire packages via `griffe.load()`), not per-file like enrichment or freshness. The check loads the package from `src_root`, captures all parser warnings, filters them to the set of discovered files, and maps each warning to a `Finding`. This architectural difference from other checks is inherent to griffe's design — it needs package context (imports, class hierarchies, type aliases) to accurately validate docstrings against their parent symbols.
+
+### Integration Contract
+
+**Public API:**
+
+```python
+def check_griffe_compat(
+    src_root: Path,
+    files: Sequence[Path],
+) -> list[Finding]:
+    """Check docstrings for griffe parser warnings."""
+```
+
+- **Package-level operation**: uses `GriffeLoader(search_paths=[str(src_root)])` to load packages discovered under `src_root`, not per-file parsing. The loader resolves packages by walking the search path — no explicit package name derivation needed. This matches how mkdocstrings processes packages during `mkdocs build`
+- **`src_root` defines the search path**: the same `src-root` used by coverage. The CLI resolves this from `[tool.docvet]` config or defaults to the project root. If `src_root` contains multiple top-level packages, all are loaded
+- **`files` filters the output**: griffe loads the entire package but the function only emits findings for files in this list. This ensures discovery mode filtering (`--staged`, `--all`, `--files`) applies consistently
+- **Optional dependency — graceful skip**: if griffe is not importable, returns an empty list immediately. No exception, no error finding. The CLI layer checks griffe availability *before* calling the function (via `importlib.util.find_spec("griffe")`) and handles the "not installed" messaging — emitting a verbose-mode note and, if griffe is in `fail-on`, a stderr warning that the check was skipped due to missing dependency. This keeps the pure function's contract clean and puts skip logic in the CLI where it belongs
+- **Warning capture via Python logging**: attaches a handler to `logging.getLogger("griffe")` during package loading, collects warning-level log records, detaches the handler after loading completes. No global logging state is modified permanently
+- **Pure function with I/O caveat**: the function performs filesystem I/O (griffe reads source files during loading) but has no side effects beyond that — no file writes, no network calls, deterministic output for a given filesystem state and griffe version
+- **Returns empty list on clean code**: not `None`, not a sentinel
+- **One finding per warning, multiple findings per symbol**: each griffe parser warning maps to exactly one `Finding`. A function with 3 untyped parameters produces 3 separate `griffe-missing-type` findings — one per parameter. This is intentionally different from enrichment's one-per-symbol-per-rule deduplication because each griffe warning identifies a specific, individually-fixable issue (a specific parameter, a specific line)
+
+**`Finding` field mapping from griffe warnings:**
+
+| Finding field | Source |
+|---|---|
+| `file` | Extracted from griffe warning message (format: `{filepath}:{line}: {message}`) |
+| `line` | Extracted from griffe warning message line number |
+| `symbol` | The griffe object's name (`Function.name`, `Class.name`, etc.) that owns the docstring |
+| `rule` | Mapped from warning message pattern (see Rule Taxonomy) |
+| `message` | Griffe's original warning text, optionally prefixed with symbol context |
+| `category` | Determined by rule (see Rule Taxonomy) |
+
+**Import contract:**
+
+- `checks.griffe_compat` exports `check_griffe_compat`
+- Conditional import: `try: import griffe except ImportError: griffe = None`
+- Imports `Finding` from `docvet.checks` and `Path` from `pathlib`
+- No cross-imports between griffe_compat and enrichment, freshness, or coverage — depends only on `checks.Finding`
+
+### Rule Taxonomy
+
+3 rule identifiers, mapped from griffe's warning message patterns. Each griffe warning string is classified into one of these rules via pattern matching.
+
+| Rule Identifier | Category | Griffe Warning Pattern | Description |
+|---|---|---|---|
+| `griffe-missing-type` | recommended | `"No type or annotation for parameter '{name}'"` | Parameter in Args/Returns/Yields lacks a type annotation in both the docstring and the function signature |
+| `griffe-unknown-param` | required | `"Parameter '{name}' does not appear in the function signature"` | Docstring documents a parameter that does not exist in the function signature — actively misleading |
+| `griffe-format-warning` | recommended | All other griffe warnings (indentation, malformed entries, missing blank lines, skipped sections) | Formatting issues that degrade rendered documentation quality |
+
+**Key notes:**
+
+- **`griffe-unknown-param` is `required`**: a docstring that references a nonexistent parameter is actively misleading — callers may pass the documented name and get a `TypeError`. This is the griffe equivalent of enrichment's `missing-raises` severity level.
+- **`griffe-missing-type` is `recommended`**: missing type annotations degrade rendering quality (mkdocs shows bare parameter names without types) but the documentation is not wrong — it's incomplete. Teams that rely on type annotations in signatures rather than docstrings may find these advisory.
+- **`griffe-format-warning` is a catch-all for formatting issues**: includes indentation warnings (`"Confusing indentation for continuation line"`), malformed entries (`"Failed to get 'name: description' pair"`), missing blank lines (`"Missing blank line above {kind}"`), and skipped sections (`"Possible {kind} skipped, reasons: {reasons}"`). These affect rendering fidelity but do not misrepresent the API. Growth candidate: split section-detection warnings into a separate `griffe-skipped-section` rule if users need finer-grained filtering.
+- **One finding per warning, not one per symbol**: griffe can produce multiple warnings for the same symbol (e.g., 3 parameters all missing types → 3 findings). This differs from enrichment (one finding per symbol per rule) because each griffe warning identifies a specific, individually-fixable issue.
+- **Warning classification is pattern-based**: the function matches griffe's warning message strings against known patterns. Unrecognized warnings default to `griffe-format-warning`. This design is resilient to minor griffe version changes in message wording but may need updates for major griffe releases.
+- **Griffe parser options**: the check uses griffe's default parser settings (`warn_unknown_params=True`, `warn_missing_types=True`, `warnings=True`). These match docvet's goals and are not user-configurable in the initial implementation.
+
+### Config Schema
+
+No `GriffeConfig` needed — zero configuration parameters. The griffe check uses griffe's default parser settings, which align with docvet's goals (warn on missing types and unknown parameters). The check's behavior is controlled entirely by griffe's built-in warning logic.
+
+**What is not configurable (and why):**
+
+- **Parser options**: griffe's `warn_unknown_params` and `warn_missing_types` default to `True`, matching docvet's intent. Exposing these as config toggles is a growth candidate if teams need to suppress specific warning types.
+- **Per-rule disable toggles**: unlike enrichment's 10 boolean toggles, griffe's 3 rules are not individually toggleable. Teams that find specific griffe rules too noisy can move griffe to `warn-on` (advisory exit code) via the top-level `[tool.docvet]` config. Per-rule toggles are a growth candidate.
+- **Docstring style**: the check assumes Google-style docstrings, consistent with docvet's overall design. Griffe supports Numpy and Sphinx styles, but docvet does not expose this option.
+
+### Scripting & CI Support
+
+- **Output format**: `file:line: rule message` — identical to enrichment, freshness, and coverage. Example: `src/data/access.py:42: griffe-missing-type Function 'fetch_records' parameter 'limit' has no type annotation in docstring or signature`
+- **`docvet griffe`**: runs the griffe compatibility check standalone. Silently skips if griffe is not installed (exit 0, no output).
+- **`docvet check`**: runs griffe alongside enrichment, freshness, and coverage. Griffe check silently skips if not installed — other checks run normally.
+- **Exit codes**: governed by top-level `fail-on` / `warn-on` lists. Default config places griffe in `warn-on` (exit 0, advisory). Moving to `fail-on` makes `griffe-unknown-param` findings (category `"required"`) cause non-zero exit.
+- **Optional dependency**: `pip install docvet[griffe]` installs the griffe extra. Without it, the check is a no-op. CI pipelines that want griffe checking must install the extra explicitly.
+- **Composability**: `docvet griffe` produces `list[Finding]` independently. `docvet check` aggregates findings from all checks. No shared mutable state between checks.
+
+### Technical Guidance for Implementation
+
+1. **Conditional import**: at module level, `try: import griffe except ImportError: griffe = None`. Check `if griffe is None: return []` at function entry. Use `TYPE_CHECKING` for type hints to avoid runtime import issues.
+2. **Load package via griffe**: use `griffe.GriffeLoader(search_paths=[str(src_root)])` to create a loader, then `loader.load(package_name)` where `package_name` is derived from the directory name under `src_root`. The loader caches directories and resolves aliases efficiently.
+3. **Capture warnings via logging handler**: attach a custom `logging.Handler` subclass to `logging.getLogger("griffe")` before loading, collect `WARNING`-level records, detach after loading completes. Use a context manager or try/finally to ensure cleanup.
+4. **Parse warning messages**: each griffe warning is a formatted string `"{filepath}:{line}: {message}"`. Extract `filepath`, `line`, and `message` via string splitting or regex. Match the `message` against known patterns to determine the rule identifier.
+5. **Filter to discovered files**: only emit findings where the extracted `filepath` is in the `files` set (after path normalization). This ensures `--staged`, `--all`, and `--files` discovery modes work correctly.
+6. **Map to Finding objects**: construct `Finding(file=filepath, line=line, symbol=symbol_name, rule=rule_id, message=message, category=category)`. The `symbol_name` can be extracted from griffe's warning context or from the message text.
+
+**Edge cases:**
+
+- **Griffe not installed**: return empty list immediately. No exception, no sentinel finding.
+- **Empty file list**: return empty list (no files to check).
+- **Package not loadable by griffe**: if `griffe.load()` raises an exception (e.g., syntax errors in source files), catch the exception, log a debug message, and return an empty list. Do not crash. Syntax error detection is not griffe's job — the user's editor and CI will catch those.
+- **Griffe version differences**: warning message format may change between griffe versions. Use defensive pattern matching (substring checks rather than exact string equality) and classify unrecognized warnings as `griffe-format-warning`.
+- **Non-Google docstrings in the project**: griffe parses with the configured style (Google). Non-Google docstrings will produce many irrelevant warnings. This is a known limitation — docvet assumes Google-style throughout.
+- **Files outside `src_root`**: griffe loads from `src_root`, so files outside it won't be in the loaded package. These are naturally skipped — no special handling needed.
+
+**Dependencies:**
+
+- **Required**: `griffe` (optional dependency, installed via `pip install docvet[griffe]`)
+- **Stdlib**: `logging`, `pathlib`
+- Reuses `Finding` from `checks/__init__.py`
+- No AST imports, no git imports, no `ast_utils` dependency
+- No cross-imports between griffe_compat and any other check module
+- No `GriffeConfig` needed — zero configuration parameters
+
 ## Project Scoping & Phased Development
 
 ### Strategy & Philosophy
@@ -783,21 +942,11 @@ def check_coverage(
 - Edge case tests: new files, deleted functions, moved code, empty diff/blame output
 - CLI wiring via existing `_run_freshness` stub in `cli.py`
 
-### Coverage Feature Set (Next Epic)
+### Coverage Feature Set (Phase 3 — Complete)
 
-**Status:** Not started. All prerequisites exist: `Finding` dataclass, `_run_coverage` CLI stub, discovery pipeline, `coverage` in `_VALID_CHECK_NAMES` and default `warn_on`.
+**Status:** Fully implemented (1 epic, 2 stories, 557 tests).
 
 **Core User Journeys Enabled:** Journey 9. The coverage module enables the invisible-module detection workflow.
-
-**Existing infrastructure (already implemented):**
-
-- `Finding` dataclass in `checks/__init__.py` (shared with enrichment and freshness)
-- `_run_coverage` CLI stub in `cli.py`
-- `coverage` CLI command with full discovery pipeline support (DIFF, STAGED, ALL, FILES modes)
-- `coverage` registered in `_VALID_CHECK_NAMES` and default `warn_on` list in `DocvetConfig`
-- File discovery via `discovery.py` (returns sorted absolute `.py` file paths)
-
-**Prerequisite deliverables:** None. All shared infrastructure already exists.
 
 **Main Deliverables:**
 
@@ -808,7 +957,37 @@ def check_coverage(
 - Zero findings on properly packaged code (all `__init__.py` present)
 - Unit tests with `tmp_path` filesystem fixtures (≥85% project-wide coverage)
 - Edge case tests: top-level modules, nested packages, empty `__init__.py`
-- CLI wiring: replace `_run_coverage` stub in `cli.py`
+- CLI wiring: `_run_coverage` in `cli.py`
+
+### Griffe Feature Set (Next Epic)
+
+**Status:** Not started. All prerequisites exist: `Finding` dataclass, `_run_griffe` CLI stub, discovery pipeline, `griffe` in `_VALID_CHECK_NAMES` and default `warn_on`, optional `griffe` dependency in `pyproject.toml`.
+
+**Core User Journeys Enabled:** Journey 10. The griffe module enables the rendering compatibility detection workflow.
+
+**Existing infrastructure (already implemented):**
+
+- `Finding` dataclass in `checks/__init__.py` (shared with enrichment, freshness, and coverage)
+- `_run_griffe` CLI stub in `cli.py`
+- `griffe` CLI command with full discovery pipeline support (DIFF, STAGED, ALL, FILES modes)
+- `griffe` registered in `_VALID_CHECK_NAMES` and default `warn_on` list in `DocvetConfig`
+- Optional dependency: `griffe` extra in `pyproject.toml`
+- File discovery via `discovery.py` (returns sorted absolute `.py` file paths)
+- `src-root` resolution logic in `cli.py` (shared with coverage)
+
+**Prerequisite deliverables:** None. All shared infrastructure already exists.
+
+**Main Deliverables:**
+
+- `check_griffe_compat(src_root, files) -> list[Finding]` function in `checks/griffe_compat.py`
+- 3 rule identifiers: `griffe-missing-type` (recommended), `griffe-unknown-param` (required), `griffe-format-warning` (recommended)
+- Package-level loading via `griffe.GriffeLoader` with warning capture via `logging.Handler`
+- Warning-to-Finding mapping with pattern-based rule classification
+- Graceful skip when griffe not installed (return empty list, no exception)
+- Zero findings on well-documented code with typed Args and valid parameter names
+- Unit tests with known-bad docstrings (≥85% project-wide coverage)
+- Edge case tests: griffe not installed, empty file list, package load errors, unrecognized warnings
+- CLI wiring: replace `_run_griffe` stub in `cli.py`
 
 ### Post-Epic Features
 
@@ -829,18 +1008,22 @@ Coverage growth:
 - `__init__.py` content analysis: detect empty `__init__.py` that should re-export package symbols
 - Auto-fix: create missing `__init__.py` files via `--fix` flag
 
+Griffe growth:
+- Per-rule disable toggles (e.g., `disable-griffe-missing-type = true`) via `[tool.docvet.griffe]`
+- Griffe parser option passthrough (`warn_unknown_params`, `warn_missing_types`) for teams that want to customize warning behavior
+- Numpy/Sphinx docstring style support (griffe supports all three styles natively)
+
 Shared growth:
 - JSON output format for CI integration pipelines
 - Rule documentation URLs in findings (ruff pattern)
 - Per-rule severity override in config
 - SARIF output format
-- Cross-check intelligence (enrichment + freshness + coverage combined findings)
+- Cross-check intelligence (enrichment + freshness + griffe + coverage combined findings)
 
 **Vision:**
 
 - Editor/LSP integration for real-time feedback
 - GitHub Actions annotation format for PR inline comments
-- Numpy/Sphinx docstring style support
 
 ### Risk Mitigation Strategy
 
@@ -863,9 +1046,16 @@ Shared growth:
 - Namespace package false positives -- mitigated by explicitly scoping to mkdocstrings workflows where `__init__.py` is always required; namespace package support deferred to growth
 - Cross-platform path handling -- mitigated by using `pathlib.Path` throughout (consistent on Linux/macOS/Windows)
 
-**Market Risks:** Minimal -- no existing tool maps git diffs to AST symbols for stale docstring detection. Novel capability in the Python ecosystem. Coverage check fills a gap where developers currently discover missing `__init__.py` only after mkdocs builds silently omit modules.
+**Griffe Technical Risks:**
 
-**Resource Risks:** Solo developer. Coverage is the simplest check (pure filesystem, no AST, no git, ~50-100 lines of implementation). All scaffolding and shared infrastructure already exist. Minimal risk.
+- Griffe API stability -- mitigated by using only stable public APIs (`griffe.load()`, `GriffeLoader`) and capturing warnings via standard Python logging rather than griffe internals. Defensive pattern matching on warning messages absorbs minor wording changes across griffe versions
+- Warning message parsing fragility -- mitigated by classifying unrecognized warnings as `griffe-format-warning` (catch-all rule) rather than dropping them. New griffe warning types produce findings rather than silent misses
+- Package loading failures -- mitigated by wrapping `griffe.load()` in exception handling; syntax errors or import failures in user code produce zero findings rather than crashes
+- Optional dependency UX -- mitigated by graceful skip (return empty list) when griffe is not installed, with verbose-mode messaging to guide installation
+
+**Market Risks:** Minimal -- no existing tool maps git diffs to AST symbols for stale docstring detection. No existing linter catches griffe parser warnings before `mkdocs build`. Novel capabilities in the Python ecosystem. Coverage check fills a gap where developers currently discover missing `__init__.py` only after mkdocs builds silently omit modules.
+
+**Resource Risks:** Solo developer. Griffe check is moderate complexity — requires understanding griffe's API and logging system, but no AST analysis or git integration. All scaffolding and shared infrastructure already exist. Minimal risk.
 
 ## Functional Requirements
 
@@ -994,6 +1184,35 @@ Shared growth:
 - **FR79:** The system can operate as a pure function with no side effects beyond filesystem existence checks, producing deterministic output for a given filesystem state
 - **FR80:** The system can skip files that are not under `src_root` (e.g., test files outside the source tree), producing zero findings for those files without raising exceptions
 
+### Griffe Detection
+
+- **FR81:** The system can detect docstring parameters that lack type annotations in both the docstring text and the function signature, producing a finding when griffe's parser warns about missing types
+- **FR82:** The system can detect docstring parameters that do not appear in the function signature, producing a finding when griffe's parser warns about unknown parameters
+- **FR83:** The system can detect docstring formatting issues (confusing indentation, malformed entries, missing blank lines, skipped sections) that degrade rendered documentation quality
+- **FR84:** The system can load a Python package via griffe's package loader and capture parser warnings emitted during docstring parsing
+- **FR85:** The system can filter captured griffe warnings to only those originating from files in the discovered file list, respecting `--staged`, `--all`, and `--files` discovery modes
+
+### Griffe Finding Production
+
+- **FR86:** The system can produce a structured griffe finding carrying file path, line number, symbol name, rule identifier (`griffe-missing-type`, `griffe-unknown-param`, or `griffe-format-warning`), griffe's warning message, and category (`required` or `recommended` based on rule)
+- **FR87:** The system can classify each griffe warning into one of 3 rule identifiers by matching the warning message against known patterns: `"No type or annotation for parameter"` maps to `griffe-missing-type`, `"does not appear in the function signature"` maps to `griffe-unknown-param`, and all other warnings (indentation, malformed entries, missing blank lines, skipped sections) map to `griffe-format-warning`
+- **FR88:** The system can produce one finding per griffe warning (not deduplicated per symbol), allowing multiple findings for the same symbol when griffe reports multiple individually-fixable issues (e.g., 3 untyped parameters on one function produce 3 separate findings)
+- **FR89:** The system can produce zero findings when analyzing well-documented code with typed parameters and valid parameter names
+
+### Griffe Edge Cases
+
+- **FR90:** The system can return an empty list immediately when griffe is not installed, without raising exceptions or producing error findings
+- **FR91:** The system can handle griffe package loading failures (syntax errors in user code, missing third-party imports, permission errors) by returning an empty list without crashing
+- **FR92:** The system can classify griffe warnings from future griffe versions that do not match known patterns as `griffe-format-warning` rather than dropping them
+- **FR93:** The system can produce zero findings when all discovered files are outside the loaded griffe package (e.g., all files filtered out after warning-to-file matching)
+
+### Griffe Integration
+
+- **FR94:** The system can accept a `src-root` path and a list of discovered Python file paths as inputs and return a list of findings as output
+- **FR95:** A developer can run the griffe check standalone via `docvet griffe` or as part of all checks via `docvet check`
+- **FR96:** The system can capture griffe parser warnings via a temporary logging handler attached to the griffe logger, removing the handler after loading completes to ensure no permanent modification to global logging state
+- **FR97:** The CLI can detect griffe availability before invoking the check function and emit a verbose-mode note when griffe is skipped, plus a stderr warning when griffe is in `fail-on` but not installed
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -1078,3 +1297,28 @@ Shared growth:
 ### Coverage Integration
 
 - **NFR38:** Coverage has no cross-imports with enrichment, freshness, or any other check module -- it depends only on `checks.Finding` and `pathlib`
+
+### Griffe Performance
+
+- **NFR39:** The griffe check can process a 200-file package via `docvet griffe --all` in under 10 seconds -- aspirational benchmark; performance is dominated by griffe's package loading I/O, not docvet's warning mapping logic
+- **NFR40:** The griffe check is designed to add negligible overhead beyond griffe's package loading and docstring parsing -- design invariant, not a CI-enforced benchmark
+
+### Griffe Correctness
+
+- **NFR41:** The griffe check produces zero findings on well-documented code where all parameters have type annotations and match the function signature (deterministic, reproducible)
+- **NFR42:** The griffe check produces zero findings and raises no exceptions when griffe is not installed -- the check silently skips without affecting other checks
+- **NFR43:** Unrecognized griffe warning messages (from future griffe versions) are classified as `griffe-format-warning` rather than dropped or causing exceptions
+
+### Griffe Maintainability
+
+- **NFR44:** The griffe check can be tested using mocked griffe logging output with no actual package loading, enabling fast unit tests with predictable warning scenarios
+- **NFR45:** Adding a new griffe rule identifier requires changes to at most 2 files: the griffe module (`griffe_compat.py`) and its tests (`test_griffe_compat.py`). No config changes needed (zero configuration)
+
+### Griffe Compatibility
+
+- **NFR46:** The griffe check works with griffe 1.x releases, using only stable public APIs (`griffe.load()`, `GriffeLoader`) and standard Python logging for warning capture
+
+### Griffe Integration
+
+- **NFR47:** Griffe reuses the shared `Finding` dataclass without modification -- no new fields, no subclassing, no changes to the frozen 6-field shape
+- **NFR48:** Griffe has no cross-imports with enrichment, freshness, coverage, or any other check module -- it depends only on `checks.Finding`, `pathlib`, and the optional `griffe` package
