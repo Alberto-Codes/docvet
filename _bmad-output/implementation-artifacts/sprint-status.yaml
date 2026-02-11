@@ -72,7 +72,7 @@ development_status:
 
   # Epic 5: Freshness Drift Mode & CLI Integration
   epic-5: in-progress
-  5-1-blame-timestamp-parser: review
+  5-1-blame-timestamp-parser: done
   5-2-drift-and-age-detection-orchestrator: backlog
   5-3-cli-wiring-for-drift-mode: backlog
   epic-5-retrospective: optional
