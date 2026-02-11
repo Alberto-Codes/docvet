@@ -1,6 +1,6 @@
 # Story 5.1: Blame Timestamp Parser
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -302,6 +302,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-10: Implemented `_parse_blame_timestamps` parser and 13 unit tests (Story 5.1 complete)
+- 2026-02-10: Code review — added 3 edge case tests (truncated block + valid block, malformed author-time ValueError, malformed author-time IndexError); 16 total blame parser tests
 
 ### File List
 
