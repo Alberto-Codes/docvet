@@ -1041,6 +1041,9 @@ class TestCheckFreshnessDrift:
         drift_findings = [f for f in findings if f.rule == "stale-drift"]
         assert len(drift_findings) == 1
         assert drift_findings[0].symbol == "documented_func"
+        # Verify no stale-age (73 days < 90-day default threshold)
+        age_findings = [f for f in findings if f.rule == "stale-age"]
+        assert len(age_findings) == 0
 
     def test_stale_age_finding_produced(self) -> None:
         # AC 2: docstring 147 days old → stale-age
@@ -1234,6 +1237,15 @@ class TestCheckFreshnessDrift:
         config = FreshnessConfig()
         assert check_freshness_drift("test.py", "", tree, config, now=_BASE_TS) == []
 
+    def test_whitespace_only_blame_output_returns_empty_list(self) -> None:
+        # Whitespace-only blame_output passes 'if not' gate but parses to empty dict
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        assert (
+            check_freshness_drift("test.py", "  \n\n  ", tree, config, now=_BASE_TS)
+            == []
+        )
+
     def test_deterministic_output(self) -> None:
         # AC 15: identical inputs → identical output
         tree = ast.parse(_DRIFT_SOURCE)
@@ -1276,6 +1288,29 @@ class TestCheckFreshnessDrift:
         assert "code modified 2023-12-13" in msg
         assert "docstring last modified 2023-10-01" in msg
         assert "(73 days drift)" in msg
+
+    def test_finding_message_format_age(self) -> None:
+        # Message contains expected date and day count for stale-age
+        tree = ast.parse(_DRIFT_SOURCE)
+        config = FreshnessConfig()
+        blame = _build_blame(
+            (4, _BASE_TS),
+            (5, _BASE_TS),
+            (6, _BASE_TS),
+        )
+        findings = check_freshness_drift(
+            "test.py", blame, tree, config, now=_BASE_TS + 147 * _DAY
+        )
+        age_findings = [
+            f
+            for f in findings
+            if f.rule == "stale-age" and f.symbol == "documented_func"
+        ]
+        assert len(age_findings) == 1
+        msg = age_findings[0].message
+        assert "Function 'documented_func'" in msg
+        assert "docstring untouched since 2023-10-01" in msg
+        assert "(147 days)" in msg
 
     def test_finding_fields_correct(self) -> None:
         # Verify rule, category, file, line, symbol
