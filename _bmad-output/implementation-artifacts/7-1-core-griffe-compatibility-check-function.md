@@ -1,6 +1,6 @@
 # Story 7.1: Core Griffe Compatibility Check Function
 
-Status: review
+Status: done
 
 ## Story
 
@@ -102,7 +102,7 @@ So that I can detect docstrings that will render incorrectly in mkdocs-material 
 |----|---------|--------|
 | #1 | `TestCheckGriffeCompat::test_happy_path_missing_type`, `TestGriffeCompatSmoke::test_missing_type_findings_for_untyped_params` | PASS |
 | #2 | `TestCheckGriffeCompat::test_happy_path_unknown_param`, `TestGriffeCompatSmoke::test_unknown_param_finding_for_phantom` | PASS |
-| #3 | `TestCheckGriffeCompat::test_happy_path_format_warning` | PASS |
+| #3 | `TestCheckGriffeCompat::test_happy_path_format_warning`, `TestGriffeCompatSmoke::test_format_warning_findings_for_bad_format` | PASS |
 | #4 | `TestCheckGriffeCompat::test_multiple_findings_per_symbol_not_deduplicated`, `TestGriffeCompatSmoke::test_missing_type_findings_for_untyped_params` | PASS |
 | #5 | `TestCheckGriffeCompat::test_well_documented_code_returns_empty`, `TestGriffeCompatSmoke::test_well_documented_function_produces_no_findings` | PASS |
 | #6 | `TestCheckGriffeCompat::test_griffe_not_installed_returns_empty` | PASS |
@@ -187,10 +187,10 @@ So that I can detect docstrings that will render incorrectly in mkdocs-material 
 
 ### Quality Checklist (gated from Epic 6 retro)
 
-- [ ] AC-to-test traceability: every AC has >= 1 mapped test
-- [ ] Assertion strength: verify all 6 Finding fields (file, line, symbol, rule, message, category)
-- [ ] Edge case coverage: boundary tests, mix scenarios, skip conditions
-- [ ] Task tracking: verify code change exists before marking subtask done
+- [x] AC-to-test traceability: every AC has >= 1 mapped test
+- [x] Assertion strength: verify all 6 Finding fields (file, line, symbol, rule, message, category)
+- [x] Edge case coverage: boundary tests, mix scenarios, skip conditions
+- [x] Task tracking: verify code change exists before marking subtask done
 
 ### Project Structure Notes
 
@@ -242,7 +242,7 @@ Claude Opus 4.6
 - Task 3: Created `check_griffe_compat` orchestrator with guard clauses (griffe=None, empty files), package discovery (sorted directory scan), handler lifecycle (try/finally), and load-walk-parse pipeline. 14 unit tests.
 - Task 4: Created fixture package (`tests/fixtures/griffe_pkg/`) with known-bad docstrings triggering griffe-missing-type (3 untyped params), griffe-unknown-param (phantom param), and well-documented function (zero findings). 5 integration tests with real griffe loading.
 - Task 5: Filled AC-to-Test Mapping table — all 22 ACs mapped to 45 tests (40 unit + 5 integration).
-- Total: 602 tests (45 new), 0 regressions, all lint clean.
+- Total: 603 tests (46 new), 0 regressions, all lint clean.
 
 ### File List
 
@@ -256,3 +256,4 @@ New files:
 ### Change Log
 
 - 2026-02-11: Implemented Story 7.1 — core griffe compatibility check function (`check_griffe_compat`). Added 3 griffe rules (griffe-missing-type, griffe-unknown-param, griffe-format-warning) with warning capture via custom logging handler, griffe object tree walking with alias/file filtering, and layered exception handling. 45 tests (40 unit, 5 integration).
+- 2026-02-11: Code review fixes — (H1) Added `bad_format` fixture function triggering `griffe-format-warning` and integration test covering all 3 rule types for AC #21. (M1) Strengthened assertions in `test_happy_path_unknown_param` (4→6 fields) and `test_happy_path_format_warning` (2→6 fields). (M2) Restructured `check_griffe_compat` to match architecture spec: `src_root.iterdir()` now inside try/finally, renamed `logger` to `griffe_logger`. (M3) Checked off quality checklist items. 603 tests, 0 regressions.
