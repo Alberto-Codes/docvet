@@ -648,12 +648,14 @@ def test_run_freshness_drift_calls_check_freshness_drift_per_file(mocker):
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
     mock_blame = mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
     mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
+    mock_diff_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
     file_path = Path("/fake/file.py")
     mocker.patch("docvet.cli.discover_files", return_value=[file_path])
     result = runner.invoke(app, ["freshness", "--mode", "drift"])
     assert result.exit_code == 0
-    mock_blame.assert_called_once()
+    mock_blame.assert_called_once_with(file_path, ANY)
     mock_check.assert_called_once_with(str(file_path), "blame data", ANY, ANY)
+    mock_diff_check.assert_not_called()
 
 
 def test_run_freshness_drift_prints_findings_in_correct_format(mocker):
@@ -727,13 +729,18 @@ def test_run_freshness_drift_handles_syntax_error_with_warning(mocker):
 def test_run_freshness_drift_processes_multiple_files(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
-    mocker.patch("docvet.cli._get_git_blame", return_value="")
+    mocker.patch(
+        "docvet.cli._get_git_blame",
+        side_effect=lambda fp, _root: f"blame-{fp.stem}",
+    )
     mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
     files = [Path("/a.py"), Path("/b.py"), Path("/c.py")]
     mocker.patch("docvet.cli.discover_files", return_value=files)
     result = runner.invoke(app, ["freshness", "--mode", "drift"])
     assert result.exit_code == 0
     assert mock_check.call_count == 3
+    for file_path in files:
+        mock_check.assert_any_call(str(file_path), f"blame-{file_path.stem}", ANY, ANY)
 
 
 # ---------------------------------------------------------------------------
