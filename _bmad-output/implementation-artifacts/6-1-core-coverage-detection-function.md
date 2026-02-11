@@ -1,6 +1,6 @@
 # Story 6.1: Core Coverage Detection Function
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -54,30 +54,30 @@ So that I can identify Python files invisible to mkdocstrings before deploying d
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `src/docvet/checks/coverage.py` with `check_coverage` function (AC: #1-#9)
-  - [ ] 1.1 Module skeleton: imports, docstring, `from __future__ import annotations`
-  - [ ] 1.2 Implement `check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]`
-  - [ ] 1.3 Directory walk: from each file's parent up to `src_root`, checking `__init__.py` existence
-  - [ ] 1.4 Deduplication: one finding per missing directory, lexicographically first file as representative
-  - [ ] 1.5 Edge cases: top-level modules skipped, files outside `src_root` skipped, empty input returns `[]`
-  - [ ] 1.6 Deterministic output: findings sorted by directory path
-- [ ] Task 2: Create `tests/unit/checks/test_coverage.py` with comprehensive unit tests (AC: #1-#9)
-  - [ ] 2.1 Test basic detection: missing `__init__.py` produces finding with correct fields
-  - [ ] 2.2 Test zero findings: all `__init__.py` present
-  - [ ] 2.3 Test top-level module skip: file directly under `src_root`
-  - [ ] 2.4 Test deduplication: multiple files, one finding per directory
-  - [ ] 2.5 Test intermediate directory gap: nested hierarchy detection
-  - [ ] 2.6 Test empty `__init__.py` acceptance
-  - [ ] 2.7 Test file outside `src_root` skip
-  - [ ] 2.8 Test empty files list
-  - [ ] 2.9 Test deterministic sorting across multiple missing directories
-  - [ ] 2.10 Test finding field values: rule, category, symbol, line, message format
-  - [ ] 2.11 Test message uses relative path from src_root (not just leaf directory name)
-- [ ] Task 3: Run quality gates (AC: all)
-  - [ ] 3.1 `uv run ruff check .` — zero violations
-  - [ ] 3.2 `uv run ruff format --check .` — no changes needed
-  - [ ] 3.3 `uv run ty check` — zero errors
-  - [ ] 3.4 `uv run pytest` — all tests pass (existing + new)
+- [x] Task 1: Create `src/docvet/checks/coverage.py` with `check_coverage` function (AC: #1-#9)
+  - [x] 1.1 Module skeleton: imports, docstring, `from __future__ import annotations`
+  - [x] 1.2 Implement `check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]`
+  - [x] 1.3 Directory walk: from each file's parent up to `src_root`, checking `__init__.py` existence
+  - [x] 1.4 Deduplication: one finding per missing directory, lexicographically first file as representative
+  - [x] 1.5 Edge cases: top-level modules skipped, files outside `src_root` skipped, empty input returns `[]`
+  - [x] 1.6 Deterministic output: findings sorted by directory path
+- [x] Task 2: Create `tests/unit/checks/test_coverage.py` with comprehensive unit tests (AC: #1-#9)
+  - [x] 2.1 Test basic detection: missing `__init__.py` produces finding with correct fields
+  - [x] 2.2 Test zero findings: all `__init__.py` present
+  - [x] 2.3 Test top-level module skip: file directly under `src_root`
+  - [x] 2.4 Test deduplication: multiple files, one finding per directory
+  - [x] 2.5 Test intermediate directory gap: nested hierarchy detection
+  - [x] 2.6 Test empty `__init__.py` acceptance
+  - [x] 2.7 Test file outside `src_root` skip
+  - [x] 2.8 Test empty files list
+  - [x] 2.9 Test deterministic sorting across multiple missing directories
+  - [x] 2.10 Test finding field values: rule, category, symbol, line, message format
+  - [x] 2.11 Test message uses relative path from src_root (not just leaf directory name)
+- [x] Task 3: Run quality gates (AC: all)
+  - [x] 3.1 `uv run ruff check .` — zero violations
+  - [x] 3.2 `uv run ruff format --check .` — no changes needed
+  - [x] 3.3 `uv run ty check` — zero errors
+  - [x] 3.4 `uv run pytest` — all tests pass (existing + new)
 
 ## Dev Notes
 
@@ -258,12 +258,32 @@ d215bef feat(freshness): wire freshness diff mode into CLI (#38)
 - [Source: src/docvet/cli.py:294-302] — `_run_coverage` stub (Story 6.2 will replace)
 - [Source: _bmad-output/implementation-artifacts/epic-5-retro-2026-02-11.md] — Retro learnings (assertion strength, edge cases)
 
+## Change Log
+
+- 2026-02-11: Implemented `check_coverage` function and 21 unit tests covering all 10 ACs — zero-debug implementation
+
 ## Dev Agent Record
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+No debug issues encountered. Zero-debug implementation — all 21 tests passed on first run.
 
 ### Completion Notes List
 
+- Implemented `check_coverage(src_root, files)` in `src/docvet/checks/coverage.py` (65 lines)
+- Pure `pathlib` filesystem check — no AST, no git, no external dependencies
+- Algorithm: walk from each file's parent up to `src_root`, collect missing `__init__.py` dirs, deduplicate, sort by relative path
+- Created 21 unit tests across 10 test classes covering all ACs (#1-#10):
+  - Basic detection, zero findings, top-level module skip, deduplication (singular/plural), intermediate gap, deeply nested (3+ levels), empty `__init__.py` acceptance, outside `src_root` skip, mixed inside/outside, empty input, deterministic sorting (flat + nested), finding field correctness, exact message format, passing/failing mix, `__init__.py` as input, sibling dirs
+- All 6 Finding fields verified in assertion-strong tests (Epic 5 retro learning)
+- Edge cases proactively covered (Epic 4+ retro learning): deep nesting, sibling dirs, `__init__.py` as input
+- Quality gates: ruff check (0 violations), ruff format (0 changes), ty check (0 errors), pytest (549 passed, 0 failed)
+
 ### File List
+
+- `src/docvet/checks/coverage.py` — NEW: `check_coverage` function
+- `tests/unit/checks/test_coverage.py` — NEW: 21 unit tests for coverage check
