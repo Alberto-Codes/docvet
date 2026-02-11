@@ -1,6 +1,6 @@
 # Story 7.1: Core Griffe Compatibility Check Function
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -56,43 +56,43 @@ So that I can detect docstrings that will render incorrectly in mkdocs-material 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `_WarningCollector` handler class and `_classify_warning` function (AC: #10, #11, #12, #13, #14)
-  - [ ] 1.1 Create `src/docvet/checks/griffe_compat.py` with module docstring, `from __future__ import annotations`, imports
-  - [ ] 1.2 Add conditional griffe import (`try/except ImportError` with `TYPE_CHECKING` guard)
-  - [ ] 1.3 Add module-level constants: `_MISSING_TYPE_PATTERN`, `_UNKNOWN_PARAM_PATTERN`, `_WARNING_PATTERN`
-  - [ ] 1.4 Implement `_WarningCollector(logging.Handler)` with `level=WARNING` and `records: list[LogRecord]`
-  - [ ] 1.5 Implement `_classify_warning(message: str) -> tuple[str, str]` with priority-ordered substring matching
-  - [ ] 1.6 Write unit tests for `_WarningCollector` (collects WARNING, ignores DEBUG/INFO)
-  - [ ] 1.7 Write unit tests for `_classify_warning` (all 3 rules + catch-all + priority order)
+- [x] Task 1: Create `_WarningCollector` handler class and `_classify_warning` function (AC: #10, #11, #12, #13, #14)
+  - [x] 1.1 Create `src/docvet/checks/griffe_compat.py` with module docstring, `from __future__ import annotations`, imports
+  - [x] 1.2 Add conditional griffe import (`try/except ImportError` with `TYPE_CHECKING` guard)
+  - [x] 1.3 Add module-level constants: `_MISSING_TYPE_PATTERN`, `_UNKNOWN_PARAM_PATTERN`, `_WARNING_PATTERN`
+  - [x] 1.4 Implement `_WarningCollector(logging.Handler)` with `level=WARNING` and `records: list[LogRecord]`
+  - [x] 1.5 Implement `_classify_warning(message: str) -> tuple[str, str]` with priority-ordered substring matching
+  - [x] 1.6 Write unit tests for `_WarningCollector` (collects WARNING, ignores DEBUG/INFO)
+  - [x] 1.7 Write unit tests for `_classify_warning` (all 3 rules + catch-all + priority order)
 
-- [ ] Task 2: Create `_walk_objects`, `_resolve_file_set`, and `_build_finding_from_record` helpers (AC: #16, #17, #18, #19, #20, #22)
-  - [ ] 2.1 Implement `_resolve_file_set(files: Sequence[Path]) -> set[Path]` using `.resolve()` for absolute paths
-  - [ ] 2.2 Implement `_walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObject]` with alias skip, no-docstring skip, file filter
-  - [ ] 2.3 Implement `_build_finding_from_record(record: LogRecord, obj: GriffeObject) -> Finding | None` with regex parse, classify, construct
-  - [ ] 2.4 Write unit tests for `_walk_objects` (alias skip, no-docstring skip, file filter, nested members)
-  - [ ] 2.5 Write unit tests for `_build_finding_from_record` (matching format, non-matching format, all Finding fields verified)
+- [x] Task 2: Create `_walk_objects`, `_resolve_file_set`, and `_build_finding_from_record` helpers (AC: #16, #17, #18, #19, #20, #22)
+  - [x] 2.1 Implement `_resolve_file_set(files: Sequence[Path]) -> set[Path]` using `.resolve()` for absolute paths
+  - [x] 2.2 Implement `_walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObject]` with alias skip, no-docstring skip, file filter
+  - [x] 2.3 Implement `_build_finding_from_record(record: LogRecord, obj: GriffeObject) -> Finding | None` with regex parse, classify, construct
+  - [x] 2.4 Write unit tests for `_walk_objects` (alias skip, no-docstring skip, file filter, nested members)
+  - [x] 2.5 Write unit tests for `_build_finding_from_record` (matching format, non-matching format, all Finding fields verified)
 
-- [ ] Task 3: Create `check_griffe_compat` orchestrator (AC: #1, #2, #3, #4, #5, #6, #7, #8, #9, #15)
-  - [ ] 3.1 Implement `check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]` with guard clauses, handler lifecycle, package discovery, load/walk/parse pipeline
-  - [ ] 3.2 Write unit tests: griffe not installed returns `[]` (AC #6)
-  - [ ] 3.3 Write unit tests: empty files returns `[]` (AC #7)
-  - [ ] 3.4 Write unit tests: happy path with mocked griffe.load returning mock package (AC #1, #2, #3)
-  - [ ] 3.5 Write unit tests: multiple findings per symbol not deduplicated (AC #4)
-  - [ ] 3.6 Write unit tests: well-documented code returns `[]` (AC #5)
-  - [ ] 3.7 Write unit tests: load failure skips package and continues (AC #8)
-  - [ ] 3.8 Write unit tests: multiple packages loaded in sorted order (AC #9)
-  - [ ] 3.9 Write unit tests: handler removed in finally (AC #15)
-  - [ ] 3.10 Write unit tests: files outside package produce zero findings (AC #16)
+- [x] Task 3: Create `check_griffe_compat` orchestrator (AC: #1, #2, #3, #4, #5, #6, #7, #8, #9, #15)
+  - [x] 3.1 Implement `check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]` with guard clauses, handler lifecycle, package discovery, load/walk/parse pipeline
+  - [x] 3.2 Write unit tests: griffe not installed returns `[]` (AC #6)
+  - [x] 3.3 Write unit tests: empty files returns `[]` (AC #7)
+  - [x] 3.4 Write unit tests: happy path with mocked griffe.load returning mock package (AC #1, #2, #3)
+  - [x] 3.5 Write unit tests: multiple findings per symbol not deduplicated (AC #4)
+  - [x] 3.6 Write unit tests: well-documented code returns `[]` (AC #5)
+  - [x] 3.7 Write unit tests: load failure skips package and continues (AC #8)
+  - [x] 3.8 Write unit tests: multiple packages loaded in sorted order (AC #9)
+  - [x] 3.9 Write unit tests: handler removed in finally (AC #15)
+  - [x] 3.10 Write unit tests: files outside package produce zero findings (AC #16)
 
-- [ ] Task 4: Create integration test fixture and smoke test (AC: #21)
-  - [ ] 4.1 Create `tests/fixtures/griffe_pkg/__init__.py` (empty)
-  - [ ] 4.2 Create `tests/fixtures/griffe_pkg/bad_docstrings.py` with known-bad docstrings triggering all 3 rules + one well-documented function
-  - [ ] 4.3 Create `tests/integration/test_griffe_compat.py` with `pytest.importorskip("griffe")` and smoke test validating full pipeline
-  - [ ] 4.4 Run full test suite (`uv run pytest`) and verify all pass
+- [x] Task 4: Create integration test fixture and smoke test (AC: #21)
+  - [x] 4.1 Create `tests/fixtures/griffe_pkg/__init__.py` (empty)
+  - [x] 4.2 Create `tests/fixtures/griffe_pkg/bad_docstrings.py` with known-bad docstrings triggering all 3 rules + one well-documented function
+  - [x] 4.3 Create `tests/integration/test_griffe_compat.py` with `pytest.importorskip("griffe")` and smoke test validating full pipeline
+  - [x] 4.4 Run full test suite (`uv run pytest`) and verify all pass
 
-- [ ] Task 5: Fill AC-to-Test Mapping table and verify completeness
-  - [ ] 5.1 Map every AC to at least one test function name
-  - [ ] 5.2 Verify all tests pass and no AC is uncovered
+- [x] Task 5: Fill AC-to-Test Mapping table and verify completeness
+  - [x] 5.1 Map every AC to at least one test function name
+  - [x] 5.2 Verify all tests pass and no AC is uncovered
 
 ## AC-to-Test Mapping
 
@@ -100,6 +100,28 @@ So that I can detect docstrings that will render incorrectly in mkdocs-material 
 
 | AC | Test(s) | Status |
 |----|---------|--------|
+| #1 | `TestCheckGriffeCompat::test_happy_path_missing_type`, `TestGriffeCompatSmoke::test_missing_type_findings_for_untyped_params` | PASS |
+| #2 | `TestCheckGriffeCompat::test_happy_path_unknown_param`, `TestGriffeCompatSmoke::test_unknown_param_finding_for_phantom` | PASS |
+| #3 | `TestCheckGriffeCompat::test_happy_path_format_warning` | PASS |
+| #4 | `TestCheckGriffeCompat::test_multiple_findings_per_symbol_not_deduplicated`, `TestGriffeCompatSmoke::test_missing_type_findings_for_untyped_params` | PASS |
+| #5 | `TestCheckGriffeCompat::test_well_documented_code_returns_empty`, `TestGriffeCompatSmoke::test_well_documented_function_produces_no_findings` | PASS |
+| #6 | `TestCheckGriffeCompat::test_griffe_not_installed_returns_empty` | PASS |
+| #7 | `TestCheckGriffeCompat::test_empty_files_returns_empty`, `TestGriffeCompatSmoke::test_empty_files_with_real_griffe` | PASS |
+| #8 | `TestCheckGriffeCompat::test_load_failure_skips_package_and_continues`, `test_load_failure_module_not_found`, `test_load_failure_syntax_error`, `test_load_failure_os_error` | PASS |
+| #9 | `TestCheckGriffeCompat::test_multiple_packages_sorted_order` | PASS |
+| #10 | `TestClassifyWarning::test_catchall_returns_format_warning`, `test_empty_message_returns_catchall`, `test_confusing_indentation_message` | PASS |
+| #11 | `TestClassifyWarning::test_unknown_param_returns_required`, `test_unknown_param_checked_before_missing_type` | PASS |
+| #12 | `TestClassifyWarning::test_missing_type_returns_recommended` | PASS |
+| #13 | `TestWarningCollector::test_collects_warning_records`, `test_collects_multiple_warnings` | PASS |
+| #14 | `TestWarningCollector::test_ignores_debug_records`, `test_ignores_info_records` | PASS |
+| #15 | `TestCheckGriffeCompat::test_handler_removed_in_finally` | PASS |
+| #16 | `TestWalkObjects::test_skips_objects_outside_file_set`, `TestCheckGriffeCompat::test_files_outside_package_produce_zero_findings` | PASS |
+| #17 | `TestWalkObjects::test_skips_alias_objects`, `test_skips_alias_child_but_continues_siblings` | PASS |
+| #18 | `TestWalkObjects::test_skips_objects_without_docstring` | PASS |
+| #19 | `TestBuildFindingFromRecord::test_matching_format_returns_finding`, `test_unknown_param_finding_fields`, `test_format_warning_finding_fields` | PASS |
+| #20 | `TestBuildFindingFromRecord::test_non_matching_format_returns_none` | PASS |
+| #21 | `TestGriffeCompatSmoke::test_full_pipeline_produces_expected_findings` | PASS |
+| #22 | `TestBuildFindingFromRecord::test_message_format_matches_convention` | PASS |
 
 ## Dev Notes
 
@@ -206,8 +228,31 @@ checks/griffe_compat.py
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- One test fix: `test_handler_removed_in_finally` initially failed because `mock_griffe.LoadingError = Exception` catches `RuntimeError` (subclass). Fixed by using `type("LoadingError", (Exception,), {})` for a narrow exception class.
+- Lint fixes: ruff auto-fixed import ordering; manually fixed E402 (importorskip pattern) with `noqa` and E501 (line length) by shortening docstrings.
 
 ### Completion Notes List
 
+- Task 1: Created `_WarningCollector` handler class and `_classify_warning` function with 3-rule priority-ordered classification. 12 unit tests.
+- Task 2: Created `_resolve_file_set`, `_walk_objects` (iterative stack with alias/docstring/file filtering), and `_build_finding_from_record` (regex parse + classify + Finding construction). 14 unit tests.
+- Task 3: Created `check_griffe_compat` orchestrator with guard clauses (griffe=None, empty files), package discovery (sorted directory scan), handler lifecycle (try/finally), and load-walk-parse pipeline. 14 unit tests.
+- Task 4: Created fixture package (`tests/fixtures/griffe_pkg/`) with known-bad docstrings triggering griffe-missing-type (3 untyped params), griffe-unknown-param (phantom param), and well-documented function (zero findings). 5 integration tests with real griffe loading.
+- Task 5: Filled AC-to-Test Mapping table — all 22 ACs mapped to 45 tests (40 unit + 5 integration).
+- Total: 602 tests (45 new), 0 regressions, all lint clean.
+
 ### File List
+
+New files:
+- `src/docvet/checks/griffe_compat.py`
+- `tests/unit/checks/test_griffe_compat.py`
+- `tests/integration/test_griffe_compat.py`
+- `tests/fixtures/griffe_pkg/__init__.py`
+- `tests/fixtures/griffe_pkg/bad_docstrings.py`
+
+### Change Log
+
+- 2026-02-11: Implemented Story 7.1 — core griffe compatibility check function (`check_griffe_compat`). Added 3 griffe rules (griffe-missing-type, griffe-unknown-param, griffe-format-warning) with warning capture via custom logging handler, griffe object tree walking with alias/file filtering, and layered exception handling. 45 tests (40 unit, 5 integration).
