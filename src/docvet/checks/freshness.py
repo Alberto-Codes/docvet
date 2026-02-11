@@ -124,19 +124,19 @@ def _classify_changed_lines(
     """
     # 1. Docstring updated → suppress finding
     if symbol.docstring_range is not None:
-        doc_lines = set(range(symbol.docstring_range[0], symbol.docstring_range[1] + 1))
-        if changed_lines & doc_lines:
+        ds, de = symbol.docstring_range
+        if any(ds <= line <= de for line in changed_lines):
             return None
 
     # 2. Signature changed → HIGH
     if symbol.signature_range is not None:
-        sig_lines = set(range(symbol.signature_range[0], symbol.signature_range[1] + 1))
-        if changed_lines & sig_lines:
+        ss, se = symbol.signature_range
+        if any(ss <= line <= se for line in changed_lines):
             return "signature"
 
     # 3. Body changed → MEDIUM
-    body_lines = set(range(symbol.body_range[0], symbol.body_range[1] + 1))
-    if changed_lines & body_lines:
+    bs, be = symbol.body_range
+    if any(bs <= line <= be for line in changed_lines):
         return "body"
 
     # 4. Else → LOW (import/formatting)
@@ -195,4 +195,5 @@ def check_freshness_diff(
         )
         findings.append(_build_finding(file_path, symbol, rule, message, category))
 
+    findings.sort(key=lambda f: f.line)
     return findings
