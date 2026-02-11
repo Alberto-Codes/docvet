@@ -1,6 +1,6 @@
 # Story 5.3: CLI Wiring for Drift Mode
 
-Status: review
+Status: done
 
 ## Story
 
@@ -181,3 +181,27 @@ Claude Opus 4.6
 
 - `src/docvet/cli.py` — added `_get_git_blame` helper, `check_freshness_drift` import, drift branch in `_run_freshness`
 - `tests/unit/test_cli.py` — added 9 tests (`_get_git_blame` + drift wiring), deleted 1 "not implemented" test
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Alberto-Codes on 2026-02-11
+**Outcome:** Approved with fixes applied
+
+### Review Summary
+
+All 8 ACs verified as implemented. All 6 tasks (19 subtasks) confirmed done. Git vs story File List: 0 discrepancies. 528 tests pass, ruff clean.
+
+### Findings (5 total: 0 High, 2 Medium, 3 Low)
+
+**Fixed (2 Medium):**
+- **M1:** `_get_git_blame` wiring test used `assert_called_once()` without verifying arguments — strengthened to `assert_called_once_with(file_path, ANY)` and added negative assertion that `check_freshness_diff` is NOT called during drift mode (also fixes L1)
+- **M2:** Multi-file drift test used empty blame for all files — updated to use `side_effect` returning unique blame data per file and verify per-file data isolation
+
+**Acknowledged (3 Low — not fixed, accepted):**
+- **L1:** No negative assertion for `check_freshness_diff` during drift mode — fixed as part of M1
+- **L2:** Negated conditional `is not FreshnessMode.DIFF` instead of positive `is FreshnessMode.DRIFT` — matches story design spec, equivalent with 2-value enum
+- **L3:** Read/parse/SyntaxError pattern duplicated across runners — pre-existing pattern, beyond story scope
+
+### Change Log
+
+- 2026-02-11: Code review — 2 MEDIUM fixes applied to `tests/unit/test_cli.py`, story approved and marked done
