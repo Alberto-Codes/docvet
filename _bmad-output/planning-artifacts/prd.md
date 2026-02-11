@@ -13,8 +13,12 @@ stepsCompleted:
   - 'step-11-polish'
   - 'step-12-complete'
 status: 'complete'
-lastEdited: '2026-02-09'
+lastEdited: '2026-02-11'
 editHistory:
+  - date: '2026-02-11'
+    changes: 'Fixed 3 validation findings: NFR3/NFR21 reworded as design invariants (measurability fix); FR44/FR51/FR79 removed module name references (implementation leakage fix); Journey traceability attribution corrected missing-typed-attributes from J2 to J4'
+  - date: '2026-02-11'
+    changes: 'Added coverage check (Layer 6) as next epic; added 1 journey, coverage module spec, 12 FRs (FR69-FR80), 6 NFRs (NFR33-NFR38); fixed 3 validation items (FR12 cross-ref definition, FR49 wording, stale-import traceability); incorporated 7 party-mode review findings (message content, src_root default, namespace workaround, symbol convention, deterministic ordering)'
   - date: '2026-02-09'
     changes: 'Added freshness check (Layer 4) as next epic; added 3 journeys, freshness module spec, 26 FRs, 13 NFRs; fixed enrichment traceability gap with edge-case journey'
 classification:
@@ -38,14 +42,15 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-wire-discovery-cli.md'
   - 'gh-issue-8'
   - 'gh-issue-9'
+  - 'gh-issue-10'
 documentCounts:
   briefs: 0
   research: 0
   brainstorming: 0
-  projectDocs: 16
+  projectDocs: 17
 workflowType: 'prd'
 projectName: 'docvet'
-featureScope: 'enrichment-and-freshness-checks'
+featureScope: 'enrichment-freshness-and-coverage-checks'
 ---
 
 # Product Requirements Document - docvet
@@ -55,23 +60,25 @@ featureScope: 'enrichment-and-freshness-checks'
 
 ## Executive Summary
 
-docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for two check modules: the **enrichment check** (Layer 3: completeness) and the **freshness check** (Layer 4: accuracy). Together they cover the two AST-based layers of docvet's six-layer quality model.
+docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for three check modules: the **enrichment check** (Layer 3: completeness), the **freshness check** (Layer 4: accuracy), and the **coverage check** (Layer 6: visibility). Together they cover three of the four docvet-owned layers in the six-layer quality model.
 
-The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. The freshness check detects stale docstrings — code that changed without a corresponding docstring update — by mapping git diff hunks and git blame timestamps to AST symbols. Both complement ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022 and never addressed staleness detection; ruff stops at D417 (param completeness).
+The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. The freshness check detects stale docstrings — code that changed without a corresponding docstring update — by mapping git diff hunks and git blame timestamps to AST symbols. The coverage check detects Python files invisible to mkdocstrings due to missing `__init__.py` files in parent directories. All three complement ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022 and never addressed staleness or visibility detection; ruff stops at D417 (param completeness).
 
 **Target users:** Python developers writing Google-style docstrings, teams using mkdocs-material + mkdocstrings.
 
-**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`.
+**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration.
 
 ### Key Terms
 
 - **Detection scenario**: A specific code pattern that triggers a check (e.g., "function with `raise` but no `Raises:` section"). 14 total for enrichment.
-- **Rule identifier**: A stable kebab-case name emitted in findings (e.g., `missing-raises`, `stale-signature`). 10 enrichment + 5 freshness = 15 total. Multiple scenarios can share one rule ID.
+- **Rule identifier**: A stable kebab-case name emitted in findings (e.g., `missing-raises`, `stale-signature`, `missing-init`). 10 enrichment + 5 freshness + 1 coverage = 16 total. Multiple scenarios can share one rule ID.
 - **Required vs recommended**: Category baked into each rule definition. Required = misleading omission; recommended = improvement opportunity. Freshness maps severity to category: HIGH→required, MEDIUM/LOW→recommended.
 - **Missing vs incomplete**: Enrichment MVP detects *missing* sections only (no `Raises:` section at all). *Incomplete* sections (has `Raises:` but doesn't list all exceptions) are a Growth feature.
 - **Diff mode**: Freshness check mode that analyzes `git diff` output to detect symbols where code changed but docstring did not. Primary workflow — fast, runs per-commit.
 - **Drift mode**: Freshness check mode that analyzes `git blame` timestamps to detect docstrings that fell behind their code by configurable time thresholds. Periodic sweep — slower, runs quarterly.
 - **Staleness severity**: Diff mode classifies findings as HIGH (signature changed), MEDIUM (body changed), or LOW (imports/formatting changed). Higher severity = greater likelihood the docstring actively misleads.
+- **Coverage check**: Layer 6 (visibility) detection. Identifies Python files whose parent directories lack `__init__.py`, making them invisible to mkdocstrings — they exist but won't appear in generated documentation.
+- **Package boundary**: The `src-root` directory (e.g., `src/` or project root) above which `__init__.py` is not required. Coverage walks upward from each file's parent to this boundary.
 
 ## Success Criteria
 
@@ -84,6 +91,7 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - The check respects existing `EnrichmentConfig` toggles, so teams customize which rules run without noise
 - A developer runs `docvet freshness` and sees which docstrings are stale after code changes, with severity-tiered findings (HIGH for signature changes, MEDIUM for body changes, LOW for imports/formatting)
 - A tech lead runs `docvet freshness --mode drift --all` and discovers docstrings that drifted out of sync over time — long-untouched docstrings on recently-modified code
+- A developer runs `docvet coverage --all` and discovers Python files invisible to mkdocstrings because parent directories lack `__init__.py` — files that exist but won't appear in generated documentation
 
 ### Business Success
 
@@ -93,16 +101,19 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - All 14 detection scenarios (10 rule identifiers) ship together, delivering complete Layer 3 coverage in a single release
 - No existing tool maps git diffs to AST symbols for stale docstring detection -- freshness check is a novel capability in the Python ecosystem
 - Diff mode integrates into pre-commit workflows; drift mode enables periodic audits -- two time horizons, one tool
+- Coverage check closes the visibility gap -- developers currently discover missing `__init__.py` only when mkdocs builds silently omit their modules; docvet catches this before deployment
 
 ### Technical Success
 
 - `check_enrichment(source, tree, config, file_path)` returns `list[Finding]` with zero side effects -- pure function, deterministic output
 - `check_freshness_diff(file_path, diff_output, tree)` returns `list[Finding]` with deterministic severity assignment based on what changed
 - `check_freshness_drift(file_path, blame_output, tree, config)` returns `list[Finding]` with configurable drift and age thresholds
+- `check_coverage(src_root, files)` returns `list[Finding]` with pure filesystem logic -- no AST, no git, no configuration
 - Each `Finding` carries: `file`, `line`, `symbol`, `rule` (kebab-case stable identifier), `message`, `category` (`required` | `recommended`)
 - All 14 enrichment detection scenarios (10 rule identifiers) implemented and individually toggleable via `EnrichmentConfig`
 - All 5 freshness rule identifiers (3 diff + 2 drift) implemented with severity-to-category mapping
-- No new runtime dependencies -- stdlib `ast` + existing `ast_utils.Symbol` infrastructure
+- Coverage check: 1 rule identifier (`missing-init`) detecting missing `__init__.py` in parent directory hierarchies
+- No new runtime dependencies -- stdlib `ast`, `pathlib`, and existing `ast_utils.Symbol` infrastructure
 - Checks are isolated -- no imports from other check modules, no shared mutable state
 - Quality gates pass: ruff, ty, pytest with >=85% coverage, interrogate
 
@@ -117,6 +128,8 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - Unit tests with mocked git blame output produce expected drift findings (`stale-drift`, `stale-age`) at configurable thresholds
 - Integration tests with real git repos (temp dirs with known commits) verify end-to-end diff and drift detection
 - Edge case tests: new files produce zero findings, deleted functions produce zero findings
+- Coverage unit tests with `tmp_path` filesystem fixtures verify `missing-init` detection across nested package hierarchies
+- A properly packaged project (all `__init__.py` present) produces zero coverage findings
 
 ## Product Scope
 
@@ -128,13 +141,17 @@ darglint -- the only tool that partially addressed Args/Returns/Raises alignment
 
 The enrichment MVP delivers all 10 rule identifiers (14 detection scenarios), the shared `Finding` type, full `EnrichmentConfig` integration, and comprehensive unit tests. This is fully implemented (3 epics, 11 stories, 415 tests). See "Project Scoping & Phased Development > Enrichment MVP Feature Set" for the authoritative implementation checklist.
 
-### Next Epic - Freshness Check (Layer 4)
+### Freshness Check (Layer 4) — Complete
 
-The freshness epic delivers 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), reuses the shared `Finding` type, integrates with existing `FreshnessConfig`, and includes unit tests with mocked git output plus integration tests with real git repos. See "Project Scoping & Phased Development > Freshness Feature Set" for the authoritative implementation checklist.
+The freshness module delivers 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), reuses the shared `Finding` type, integrates with existing `FreshnessConfig`, and includes unit tests with mocked git output plus integration tests with real git repos. See "Project Scoping & Phased Development > Freshness Feature Set" for the authoritative implementation checklist.
+
+### Next Epic — Coverage Check (Layer 6)
+
+The coverage epic delivers 1 rule identifier (`missing-init`) that detects Python files invisible to mkdocstrings due to missing `__init__.py` in parent directories. The simplest of the four checks — pure filesystem traversal, no AST analysis, no git integration, no per-check configuration. Reuses the shared `Finding` type and existing CLI/discovery infrastructure. See "Project Scoping & Phased Development > Coverage Feature Set" for the authoritative implementation checklist.
 
 ### Growth & Vision
 
-Growth features include inline suppression, JSON output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), and cross-check intelligence (enrichment + freshness combined findings). Vision includes editor/LSP integration and additional docstring style support. See "Project Scoping & Phased Development > Post-MVP Features" for the full Phase 2 and Phase 3 roadmap.
+Growth features include inline suppression, JSON output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), and cross-check intelligence (enrichment + freshness + coverage combined findings). Vision includes editor/LSP integration, additional docstring style support, and the griffe compatibility check (Layer 5). See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
 
 ## User Journeys
 
@@ -342,9 +359,29 @@ Category `recommended`. The `>>>` format works but renders poorly in mkdocs-mate
 
 **Resolution:** Wei clears all four finding types in a single commit. These rules are lower-frequency than `missing-raises` or `missing-attributes` -- most codebases encounter them in a handful of files rather than dozens. But they close the completeness gap: every enrichment rule now has a demonstrated correction path, and Wei's library produces zero enrichment findings across all 10 rules.
 
+### Journey 9: The Invisible Module (Coverage Check)
+
+**Persona:** Tomás, a developer on a team that recently adopted mkdocs-material for API documentation. He added a new `analytics` subpackage to the project last sprint, creating `src/myproject/analytics/tracker.py` and `src/myproject/analytics/reporter.py` with thorough docstrings. The mkdocs build completed without errors, but neither module appeared in the generated API reference.
+
+**Opening Scene:** Tomás spent 30 minutes debugging his mkdocs configuration before a teammate mentioned: "Did you add an `__init__.py` to the `analytics/` directory?" He hadn't. Without `__init__.py`, Python can't import the package, and mkdocstrings can't discover the modules. He creates the missing file, rebuilds, and the docs appear. He wishes he'd caught this before deploying a docs build with silently missing content.
+
+**Rising Action:** Tomás adds `docvet coverage --all` to the team's CI pipeline. The next PR from a colleague adds a `src/myproject/exports/csv_writer.py` module nested two levels deep — but the colleague only created `src/myproject/exports/__init__.py`, forgetting that `src/myproject/exports/formats/` (an intermediate directory) also needs one. The coverage check catches it:
+
+```
+src/myproject/exports/formats/csv_writer.py:1: missing-init Directory 'formats' is missing __init__.py — file invisible to mkdocstrings
+```
+
+One finding, category `required`. The file path, directory name, and consequence are immediately clear.
+
+**Climax:** The colleague creates `src/myproject/exports/formats/__init__.py`, re-runs `docvet coverage --all` — zero findings. Every Python file in the project is now importable and visible to mkdocstrings.
+
+**Resolution:** The team keeps `docvet coverage` in `fail-on` in CI. Missing `__init__.py` is now caught at PR time, not after a docs deployment with silently absent modules. The check is fast (pure filesystem traversal, no AST or git needed) and produces zero findings on properly packaged code.
+
+**Edge Case -- Top-Level Boundary:** Tomás notices that `docvet coverage` does not flag `src/myproject/__init__.py` as missing when it already exists, nor does it walk above `src/` (the configured `src-root`) looking for more `__init__.py` files. The check respects the package boundary: it walks from each file's parent up to `src-root`, not beyond.
+
 ### Journey Requirements Traceability
 
-All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` and `missing-typed-attributes` (Journey 2), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). CLI/reporting layer dependencies (output formatting, summary line, exit codes, discovery modes) are out of enrichment and freshness module scope but required for full journey completion in the same release.
+All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 16 rule identifiers (10 enrichment + 5 freshness + 1 coverage) have journey coverage. CLI/reporting layer dependencies (output formatting, summary line, exit codes, discovery modes) are out of check module scope but required for full journey completion in the same release.
 
 ## Enrichment Module Specification
 
@@ -600,6 +637,86 @@ age-threshold = 90     # days — docstring untouched for this long triggers sta
 - No cross-imports between freshness and enrichment modules
 - `FreshnessConfig` imported from `docvet.config` (already exists with `drift_threshold` and `age_threshold` fields)
 
+## Coverage Module Specification
+
+### Project-Type Overview
+
+The coverage check detects Python files that are invisible to mkdocstrings — they exist in the source tree but won't appear in generated API documentation because a parent directory lacks `__init__.py`. This is the simplest of the four checks: pure filesystem traversal with no AST parsing, no git integration, and no per-check configuration. The check mirrors Python's import resolution logic: if the interpreter can't import a module because the package hierarchy is broken, mkdocstrings can't document it either.
+
+### Integration Contract
+
+**Public API:**
+
+```python
+def check_coverage(
+    src_root: Path,
+    files: list[Path],
+) -> list[Finding]:
+    """Detect Python files invisible to mkdocstrings due to missing __init__.py."""
+```
+
+- **Pure function**: no I/O beyond filesystem stat calls (`Path.exists()`), deterministic output for a given filesystem state
+- **`src_root` defines the package boundary**: the check walks upward from each file's parent directory, stopping at `src_root`. Directories at or above `src_root` are not checked — `src_root` itself is not expected to have `__init__.py`. Default: project root (git root or CWD) when `src-root` is not configured in `pyproject.toml`. If a file is not under `src_root` (e.g., test files outside the source tree), skip it — return no findings for that file
+- **`files` is the discovery output**: the same `list[Path]` that enrichment and freshness receive from the CLI discovery pipeline
+- **No config parameter**: coverage has no toggles or thresholds — it either finds a missing `__init__.py` or it doesn't
+- **Deduplication**: each missing `__init__.py` directory is reported once, even if multiple files are affected by the same gap. The finding references one representative affected file
+- **Returns empty list on fully packaged code**: not `None`, not a sentinel
+- **Skips non-package files**: files directly under `src_root` (not in a subdirectory) are not checked — they are top-level modules, not packages
+
+**Import contract:**
+
+- `checks.coverage` exports `check_coverage`
+- Imports `Finding` from `docvet.checks` and `Path` from `pathlib`
+- No cross-imports between coverage and enrichment or freshness — depends only on `checks.Finding`
+
+### Rule Taxonomy
+
+1 rule identifier. The simplest taxonomy in docvet.
+
+| Rule Identifier | Category | Description |
+|----------------|----------|-------------|
+| `missing-init` | required | A parent directory between the Python file and `src_root` lacks `__init__.py`, making the file invisible to mkdocstrings |
+
+**Key notes:**
+
+- **Category is always `required`**: a missing `__init__.py` is a definitive visibility gap, not a style preference. The file is genuinely invisible to mkdocstrings — there is no ambiguity.
+- **One finding per missing directory, not per affected file**: if `pkg/sub/` lacks `__init__.py` and contains 5 Python files, the check emits one finding referencing the directory and one representative file, not 5 identical findings. The finding message includes the affected file count for triage (e.g., `Directory 'sub' is missing __init__.py — 5 files invisible to mkdocstrings`).
+- **`__init__.py` can be empty**: the check verifies existence only, not content. An empty `__init__.py` satisfies the requirement.
+
+### Scripting & CI Support
+
+- **Output format**: `file:line: rule message` — identical to enrichment and freshness. Example: `src/myproject/analytics/tracker.py:1: missing-init Directory 'analytics' is missing __init__.py — file invisible to mkdocstrings`
+- **`docvet coverage`**: runs the coverage check standalone.
+- **`docvet check`**: runs coverage alongside enrichment, freshness, and griffe.
+- **Exit codes**: governed by top-level `fail-on` / `warn-on` lists. Default config places coverage in `warn-on`. Moving to `fail-on` makes `missing-init` findings cause non-zero exit.
+- **Line number**: always `1` (module level) — the finding applies to the file as a whole, not a specific line.
+- **Symbol name**: `"<module>"` — consistent with the `ast_utils.Symbol.name` convention for module-level symbols used by enrichment and freshness. Maintains uniform `Finding.symbol` semantics across all checks.
+- **Composability**: `docvet coverage` produces `list[Finding]` independently. `docvet check` aggregates findings from all checks.
+
+### Technical Guidance for Implementation
+
+1. **Collect directories to check**: for each file in `files`, compute all parent directories between the file's parent and `src_root` (exclusive). Use `Path.relative_to(src_root)` to get the relative path, then iterate over its parent chain.
+2. **Check for `__init__.py`**: for each directory in the chain, check if `directory / "__init__.py"` exists. Collect directories where it does not.
+3. **Deduplicate**: use a `set[Path]` of already-reported directories. Each missing directory is reported once with one representative affected file.
+4. **Emit findings**: one `Finding` per missing directory. `file` = path to an affected `.py` file, `line` = 1, `symbol` = `"<module>"`, `rule` = `"missing-init"`, `category` = `"required"`. **Representative file selection**: use the lexicographically first affected file (sorted by path string) for deterministic output.
+
+**Edge cases:**
+
+- **Top-level modules** (files directly under `src_root`): not in a package, no `__init__.py` needed. Skip.
+- **Namespace packages (PEP 420)**: out of MVP scope. Namespace packages intentionally omit `__init__.py` but are rare in mkdocstrings workflows. **Known limitation**: namespace package directories will produce false-positive `missing-init` findings. **Workaround**: add namespace package directories to the top-level `exclude` patterns in `[tool.docvet]`, which the discovery pipeline applies before files reach `check_coverage`. A future config toggle could allow excluding specific directories from coverage checking without excluding them from other checks.
+- **Excluded directories**: files in excluded directories (from top-level config) are already filtered out by the discovery pipeline before reaching `check_coverage`. No additional exclusion logic needed.
+- **Non-Python files**: discovery pipeline returns only `.py` files. No filtering needed in the check.
+- **Symlinks**: discovery pipeline skips symlinks. No special handling needed.
+- **Empty `__init__.py`**: satisfies the check. Content is irrelevant — existence is the requirement.
+
+**Dependencies:**
+
+- No new runtime dependencies: stdlib `pathlib` only
+- Reuses `Finding` from `checks/__init__.py`
+- No AST imports, no git imports, no `ast_utils` dependency
+- No cross-imports between coverage and any other check module
+- No `CoverageConfig` needed — zero configuration parameters
+
 ## Project Scoping & Phased Development
 
 ### Strategy & Philosophy
@@ -633,11 +750,11 @@ age-threshold = 90     # days — docstring untouched for this long triggers sta
 - Tests against existing fixture files (`missing_raises.py`, `missing_yields.py`, `complete_module.py`)
 - CLI wiring via existing `_run_enrichment` stub in `cli.py`
 
-### Freshness Feature Set (Next Epic)
+### Freshness Feature Set (Phase 2 — Complete)
 
-**Status:** Not started. All prerequisites exist: `Finding` dataclass, `FreshnessConfig`, `map_lines_to_symbols`, `_run_freshness` CLI stub.
+**Status:** Fully implemented (2 epics, 6 stories). Diff mode and drift mode both operational with CLI wiring.
 
-**Core User Journeys Enabled:** Journeys 6-7. Journey 6 demonstrates diff mode (stale-signature, stale-body). Journey 7 demonstrates drift mode (stale-drift, stale-age).
+**Core User Journeys Enabled:** Journeys 6-7. Journey 6 demonstrates diff mode (stale-signature, stale-body, stale-import). Journey 7 demonstrates drift mode (stale-drift, stale-age).
 
 **Existing infrastructure (already implemented):**
 
@@ -666,6 +783,33 @@ age-threshold = 90     # days — docstring untouched for this long triggers sta
 - Edge case tests: new files, deleted functions, moved code, empty diff/blame output
 - CLI wiring via existing `_run_freshness` stub in `cli.py`
 
+### Coverage Feature Set (Next Epic)
+
+**Status:** Not started. All prerequisites exist: `Finding` dataclass, `_run_coverage` CLI stub, discovery pipeline, `coverage` in `_VALID_CHECK_NAMES` and default `warn_on`.
+
+**Core User Journeys Enabled:** Journey 9. The coverage module enables the invisible-module detection workflow.
+
+**Existing infrastructure (already implemented):**
+
+- `Finding` dataclass in `checks/__init__.py` (shared with enrichment and freshness)
+- `_run_coverage` CLI stub in `cli.py`
+- `coverage` CLI command with full discovery pipeline support (DIFF, STAGED, ALL, FILES modes)
+- `coverage` registered in `_VALID_CHECK_NAMES` and default `warn_on` list in `DocvetConfig`
+- File discovery via `discovery.py` (returns sorted absolute `.py` file paths)
+
+**Prerequisite deliverables:** None. All shared infrastructure already exists.
+
+**Main Deliverables:**
+
+- `check_coverage(src_root, files) -> list[Finding]` pure function in `checks/coverage.py`
+- 1 rule identifier: `missing-init` (category `required`)
+- Parent directory hierarchy walking from each file up to `src_root`
+- Deduplication: one finding per missing directory, not per affected file
+- Zero findings on properly packaged code (all `__init__.py` present)
+- Unit tests with `tmp_path` filesystem fixtures (≥85% project-wide coverage)
+- Edge case tests: top-level modules, nested packages, empty `__init__.py`
+- CLI wiring: replace `_run_coverage` stub in `cli.py`
+
 ### Post-Epic Features
 
 **Growth (sequencing TBD based on early adopter feedback):**
@@ -680,12 +824,17 @@ Freshness growth:
 - Auto-fix suggestions for stale `Args:` sections after signature changes
 - Per-rule disable toggles (e.g., `ignore-stale-import = true`)
 
+Coverage growth:
+- Namespace package support (PEP 420): config toggle to exclude specific directories from `missing-init` checking
+- `__init__.py` content analysis: detect empty `__init__.py` that should re-export package symbols
+- Auto-fix: create missing `__init__.py` files via `--fix` flag
+
 Shared growth:
 - JSON output format for CI integration pipelines
 - Rule documentation URLs in findings (ruff pattern)
 - Per-rule severity override in config
 - SARIF output format
-- Cross-check intelligence (enrichment + freshness combined findings)
+- Cross-check intelligence (enrichment + freshness + coverage combined findings)
 
 **Vision:**
 
@@ -708,9 +857,15 @@ Shared growth:
 - Platform-specific git output variations -- mitigated by targeting git 2.x unified diff format, which is stable across platforms
 - `Symbol.signature_range` / `Symbol.body_range` accuracy for line classification -- mitigated by reusing battle-tested `ast_utils` infrastructure from enrichment
 
-**Market Risks:** Minimal -- no existing tool maps git diffs to AST symbols for stale docstring detection. Novel capability in the Python ecosystem.
+**Coverage Technical Risks:**
 
-**Resource Risks:** Solo developer, but freshness is simpler than enrichment (2 functions vs 10 rules). All scaffolding and shared infrastructure already exist. Risk is timeline, not feasibility.
+- `src_root` resolution accuracy -- mitigated by reusing the existing `src-root` config from `DocvetConfig` and falling back to project root; well-defined boundary
+- Namespace package false positives -- mitigated by explicitly scoping to mkdocstrings workflows where `__init__.py` is always required; namespace package support deferred to growth
+- Cross-platform path handling -- mitigated by using `pathlib.Path` throughout (consistent on Linux/macOS/Windows)
+
+**Market Risks:** Minimal -- no existing tool maps git diffs to AST symbols for stale docstring detection. Novel capability in the Python ecosystem. Coverage check fills a gap where developers currently discover missing `__init__.py` only after mkdocs builds silently omit modules.
+
+**Resource Risks:** Solo developer. Coverage is the simplest check (pure filesystem, no AST, no git, ~50-100 lines of implementation). All scaffolding and shared infrastructure already exist. Minimal risk.
 
 ## Functional Requirements
 
@@ -777,7 +932,7 @@ Shared growth:
 ### Diff Mode Detection
 
 - **FR43:** The system can parse git diff output to extract changed hunk line ranges for a given file
-- **FR44:** The system can map changed line ranges to AST symbols using the existing line-to-symbol mapping from `ast_utils`
+- **FR44:** The system can map changed line ranges to AST symbols using the existing line-to-symbol mapping infrastructure
 - **FR45:** The system can classify each changed line within a symbol as belonging to the signature range, docstring range, or body range
 - **FR46:** The system can detect symbols where code lines (signature or body) changed but docstring lines did not change
 - **FR47:** The system can assign HIGH severity (category `required`) when a symbol's signature range contains changed lines
@@ -787,7 +942,7 @@ Shared growth:
 ### Drift Mode Detection
 
 - **FR50:** The system can parse `git blame --line-porcelain` output to extract per-line modification timestamps for a given file
-- **FR51:** The system can group per-line timestamps by symbol using the existing line-to-symbol mapping from `ast_utils`
+- **FR51:** The system can group per-line timestamps by symbol using the existing line-to-symbol mapping infrastructure
 - **FR52:** The system can detect symbols where the most recent code modification exceeds the most recent docstring modification by more than a configurable drift threshold (default: 30 days)
 - **FR53:** The system can detect symbols where the docstring has not been modified within a configurable age threshold (default: 90 days)
 - **FR54:** The system can skip symbols with no docstring in both diff and drift modes, producing zero findings for undocumented symbols
@@ -818,13 +973,34 @@ Shared growth:
 - **FR67:** A developer can run the freshness check standalone via `docvet freshness` or as part of all checks via `docvet check`
 - **FR68:** A developer can select diff or drift mode via `--mode` CLI option, with diff as the default
 
+### Coverage Detection
+
+- **FR69:** The system can detect Python files whose parent directories lack `__init__.py`, making them invisible to mkdocstrings for API documentation generation
+- **FR70:** The system can walk the directory hierarchy from each Python file's parent upward to the configured `src-root`, checking each intermediate directory for `__init__.py` existence
+- **FR71:** The system can stop the upward directory walk at `src-root` — directories at or above `src-root` are not required to have `__init__.py`
+- **FR72:** The system can skip top-level modules (Python files directly under `src-root`) since they are not in a package and do not require `__init__.py`
+- **FR73:** The system can treat an empty `__init__.py` file as satisfying the requirement — only existence is checked, not content
+- **FR74:** The system can produce at most one finding per missing `__init__.py` directory, even when multiple Python files are affected by the same gap
+
+### Coverage Finding Production
+
+- **FR75:** The system can produce a structured coverage finding carrying the path of a representative affected file (lexicographically first by path), line 1, `"<module>"` as symbol, `missing-init` as rule identifier, a message naming the directory missing `__init__.py` and the count of affected files, and category `required`
+- **FR76:** The system can produce zero findings when all parent directories between discovered files and `src-root` contain `__init__.py`
+
+### Coverage Integration
+
+- **FR77:** The system can accept a `src-root` path and a list of discovered Python file paths as inputs and return a list of findings as output
+- **FR78:** A developer can run the coverage check standalone via `docvet coverage` or as part of all checks via `docvet check`
+- **FR79:** The system can operate as a pure function with no side effects beyond filesystem existence checks, producing deterministic output for a given filesystem state
+- **FR80:** The system can skip files that are not under `src_root` (e.g., test files outside the source tree), producing zero findings for those files without raising exceptions
+
 ## Non-Functional Requirements
 
 ### Performance
 
 - **NFR1:** The enrichment check can analyze a single file (≤1000 lines) in under 50ms -- aspirational benchmark validated during implementation, not a CI-enforced gate
 - **NFR2:** The enrichment check can process a 200-file codebase via `docvet enrichment --all` in under 5 seconds on commodity hardware -- aspirational benchmark; the real gate is "fast enough for pre-commit hooks and CI pipelines without noticeable delay"
-- **NFR3:** The enrichment check adds no measurable overhead beyond AST parsing
+- **NFR3:** The enrichment check is designed to add negligible overhead beyond AST parsing -- design invariant, not a CI-enforced benchmark
 - **NFR4:** Memory usage scales linearly with file count, not quadratically -- each file is processed independently with no cross-file state (design invariant, not tested explicitly)
 
 ### Correctness
@@ -857,7 +1033,7 @@ Shared growth:
 ### Freshness Performance
 
 - **NFR20:** Diff mode can process a single file's git diff and produce findings in under 100ms -- aspirational benchmark validated during implementation, not a CI-enforced gate
-- **NFR21:** Drift mode performance is dominated by git blame I/O; the freshness pure function itself adds no measurable overhead beyond timestamp parsing and symbol comparison
+- **NFR21:** Drift mode performance is dominated by git blame I/O; the freshness pure function is designed to add negligible overhead beyond timestamp parsing and symbol comparison -- design invariant, not a CI-enforced benchmark
 - **NFR22:** Memory usage for freshness scales linearly with file count -- each file is processed independently with no cross-file state
 
 ### Freshness Correctness
@@ -881,3 +1057,24 @@ Shared growth:
 
 - **NFR31:** Freshness reuses the shared `Finding` dataclass without modification -- no new fields, no subclassing, no changes to the frozen 6-field shape
 - **NFR32:** Freshness has no cross-imports with enrichment or any other check module -- it depends only on `checks.Finding` and `ast_utils`
+
+### Coverage Performance
+
+- **NFR33:** The coverage check can process a 200-file codebase via `docvet coverage --all` in under 1 second -- pure filesystem stat calls with no AST parsing, no git commands, and no subprocess overhead
+
+### Coverage Correctness
+
+- **NFR34:** The coverage check produces zero findings on a properly packaged project where all parent directories between Python files and `src-root` contain `__init__.py` (deterministic, reproducible)
+- **NFR35:** The coverage check produces identical output for identical filesystem state regardless of execution environment, time, or file processing order — findings are sorted by directory path, and representative files are selected as the lexicographically first affected file
+
+### Coverage Maintainability
+
+- **NFR36:** The coverage check can be tested using `tmp_path` filesystem fixtures with no git repository, no AST parsing, and no external dependencies
+
+### Coverage Compatibility
+
+- **NFR37:** The coverage check works on Linux, macOS, and Windows using `pathlib.Path` for all path operations -- no platform-specific code paths
+
+### Coverage Integration
+
+- **NFR38:** Coverage has no cross-imports with enrichment, freshness, or any other check module -- it depends only on `checks.Finding` and `pathlib`
