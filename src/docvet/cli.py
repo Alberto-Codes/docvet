@@ -11,7 +11,7 @@ from typing import Annotated
 import typer
 
 from docvet.checks.enrichment import check_enrichment
-from docvet.checks.freshness import check_freshness_diff
+from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode, discover_files
 
@@ -182,6 +182,32 @@ def _get_git_diff(
     return result.stdout
 
 
+def _get_git_blame(file_path: Path, project_root: Path) -> str:
+    """Get git blame porcelain output for a single file.
+
+    Runs ``git blame --line-porcelain`` and returns the raw output
+    for drift/age analysis.
+
+    Args:
+        file_path: Absolute path to the file.
+        project_root: Project root for git working directory.
+
+    Returns:
+        Raw porcelain blame output string. Returns an empty string
+        if the git command exits with a non-zero status.
+    """
+    result = subprocess.run(
+        ["git", "blame", "--line-porcelain", "--", str(file_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=project_root,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout
+
+
 # ---------------------------------------------------------------------------
 # Private check runners
 # ---------------------------------------------------------------------------
@@ -221,9 +247,10 @@ def _run_freshness(
     """Run the freshness check on discovered files.
 
     For diff mode, reads each file, obtains its git diff, parses the
-    AST, and calls ``check_freshness_diff``. Findings are printed to
-    stdout in ``file:line: rule message`` format. Drift mode is not
-    yet implemented.
+    AST, and calls ``check_freshness_diff``. For drift mode, runs
+    ``git blame --line-porcelain`` per file and calls
+    ``check_freshness_drift``. Findings are printed to stdout in
+    ``file:line: rule message`` format.
 
     Args:
         files: Discovered Python file paths.
@@ -232,7 +259,21 @@ def _run_freshness(
         discovery_mode: Controls which git diff variant to run.
     """
     if freshness_mode is not FreshnessMode.DIFF:
-        typer.echo("freshness drift: not yet implemented")
+        for file_path in files:
+            source = file_path.read_text(encoding="utf-8")
+            try:
+                tree = ast.parse(source, filename=str(file_path))
+            except SyntaxError:
+                typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+                continue
+            blame_output = _get_git_blame(file_path, config.project_root)
+            findings = check_freshness_drift(
+                str(file_path), blame_output, tree, config.freshness
+            )
+            for finding in findings:
+                typer.echo(
+                    f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"
+                )
         return
 
     for file_path in files:
