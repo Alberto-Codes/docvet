@@ -10,7 +10,13 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
-from docvet.cli import FreshnessMode, _run_enrichment, _run_freshness, app
+from docvet.cli import (
+    FreshnessMode,
+    _run_coverage,
+    _run_enrichment,
+    _run_freshness,
+    app,
+)
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode
 
@@ -36,6 +42,7 @@ def _mock_config_and_discovery(mocker):
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
     mocker.patch("docvet.cli._run_enrichment")
     mocker.patch("docvet.cli._run_freshness")
+    mocker.patch("docvet.cli._run_coverage")
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +123,10 @@ def test_check_when_invoked_runs_all_checks_in_order(mocker):
         "docvet.cli._run_freshness",
         side_effect=lambda f, c, **kw: typer.echo("freshness: ok"),
     )
+    mocker.patch(
+        "docvet.cli._run_coverage",
+        side_effect=lambda f, c: typer.echo("coverage: ok"),
+    )
     result = runner.invoke(app, ["check"])
     output = result.output
     assert output.index("enrichment:") < output.index("freshness:")
@@ -141,7 +152,6 @@ def test_freshness_when_invoked_with_mode_drift_exits_successfully():
 def test_coverage_when_invoked_exits_successfully():
     result = runner.invoke(app, ["coverage"])
     assert result.exit_code == 0
-    assert "coverage: not yet implemented" in result.output
 
 
 def test_griffe_when_invoked_exits_successfully():
@@ -436,7 +446,7 @@ def test_freshness_when_invoked_with_drift_passes_freshness_mode(mocker):
     )
 
 
-def test_coverage_when_invoked_calls_discover_and_run_stub(mocker):
+def test_coverage_when_invoked_calls_discover_and_run_coverage(mocker):
     mock_discover = mocker.patch(
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
@@ -444,6 +454,22 @@ def test_coverage_when_invoked_calls_discover_and_run_stub(mocker):
     runner.invoke(app, ["coverage"])
     mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
     mock_run.assert_called_once_with([Path("/fake/file.py")], ANY)
+
+
+def test_coverage_when_invoked_with_all_calls_discover_with_all_mode(mocker):
+    mock_discover = mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
+    )
+    runner.invoke(app, ["coverage", "--all"])
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=())
+
+
+def test_coverage_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
+    mock_discover = mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
+    )
+    runner.invoke(app, ["coverage", "--staged"])
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.STAGED, files=())
 
 
 def test_griffe_when_invoked_calls_discover_and_run_stub(mocker):
@@ -880,3 +906,95 @@ def test_check_subcommand_passes_discovery_mode_to_run_freshness(mocker):
     mock_freshness = mocker.patch("docvet.cli._run_freshness")
     runner.invoke(app, ["check", "--all"])
     mock_freshness.assert_called_once_with(ANY, ANY, discovery_mode=DiscoveryMode.ALL)
+
+
+# ---------------------------------------------------------------------------
+# _run_coverage behavior tests
+# ---------------------------------------------------------------------------
+
+
+def test_run_coverage_when_files_have_missing_init_prints_formatted_output(mocker):
+    mocker.patch("docvet.cli._run_coverage", side_effect=_run_coverage)
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/pkg/sub/module.py",
+            line=1,
+            symbol="<module>",
+            rule="missing-init",
+            message="Directory 'pkg/sub' lacks __init__.py (1 file affected)",
+            category="required",
+        ),
+    ]
+    mocker.patch("docvet.cli.check_coverage", return_value=findings)
+    mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("src/pkg/sub/module.py")]
+    )
+    result = runner.invoke(app, ["coverage"])
+    assert result.exit_code == 0
+    assert "src/pkg/sub/module.py:1: missing-init" in result.output
+    assert "Directory 'pkg/sub' lacks __init__.py (1 file affected)" in result.output
+
+
+def test_run_coverage_when_no_findings_produces_no_output(mocker):
+    mocker.patch("docvet.cli._run_coverage", side_effect=_run_coverage)
+    mocker.patch("docvet.cli.check_coverage", return_value=[])
+    result = runner.invoke(app, ["coverage"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_run_coverage_passes_correct_src_root_path(mocker):
+    mocker.patch("docvet.cli._run_coverage", side_effect=_run_coverage)
+    fake_config = DocvetConfig(src_root="src", project_root=Path("/project"))
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_coverage", return_value=[])
+    mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("/project/src/app.py")]
+    )
+    result = runner.invoke(app, ["coverage"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(Path("/project/src"), ANY)
+
+
+def test_run_coverage_with_default_config_uses_project_root_as_src_root(mocker):
+    mocker.patch("docvet.cli._run_coverage", side_effect=_run_coverage)
+    fake_config = DocvetConfig(project_root=Path("/project"))
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_coverage", return_value=[])
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("/project/app.py")])
+    result = runner.invoke(app, ["coverage"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(Path("/project/."), ANY)
+
+
+def test_run_coverage_passes_discovered_files(mocker):
+    mocker.patch("docvet.cli._run_coverage", side_effect=_run_coverage)
+    files = [Path("/a.py"), Path("/b.py")]
+    mocker.patch("docvet.cli.discover_files", return_value=files)
+    mock_check = mocker.patch("docvet.cli.check_coverage", return_value=[])
+    result = runner.invoke(app, ["coverage"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(ANY, files)
+
+
+def test_check_command_includes_coverage_findings(mocker):
+    mocker.patch("docvet.cli._run_coverage", side_effect=_run_coverage)
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/pkg/mod.py",
+            line=1,
+            symbol="<module>",
+            rule="missing-init",
+            message="Directory 'pkg' lacks __init__.py (1 file affected)",
+            category="required",
+        ),
+    ]
+    mocker.patch("docvet.cli.check_coverage", return_value=findings)
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("src/pkg/mod.py")])
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 0
+    assert "missing-init" in result.output
