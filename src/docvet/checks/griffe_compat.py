@@ -155,21 +155,16 @@ def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
     file_set = _resolve_file_set(files)
     findings: list[Finding] = []
 
-    # Discover packages: child directories of src_root with __init__.py
-    packages = sorted(
-        d.name
-        for d in src_root.iterdir()
-        if d.is_dir() and (d / "__init__.py").exists()
-    )
-
-    logger = logging.getLogger("griffe")
+    griffe_logger = logging.getLogger("griffe")
     handler = _WarningCollector()
-    logger.addHandler(handler)
+    griffe_logger.addHandler(handler)
     try:
-        for package_name in packages:
+        for child in sorted(src_root.iterdir()):
+            if not child.is_dir() or not (child / "__init__.py").exists():
+                continue
             try:
                 package = griffe.load(
-                    package_name,
+                    child.name,
                     search_paths=[str(src_root)],
                     docstring_parser="google",
                     allow_inspection=False,
@@ -191,6 +186,6 @@ def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
                     if finding is not None:
                         findings.append(finding)
     finally:
-        logger.removeHandler(handler)
+        griffe_logger.removeHandler(handler)
 
     return findings
