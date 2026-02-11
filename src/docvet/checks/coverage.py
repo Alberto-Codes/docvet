@@ -53,11 +53,13 @@ def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
 
     # Build findings: one per directory, sorted by relative path
     findings: list[Finding] = []
-    for dir_path in sorted(missing_dirs, key=lambda d: d.relative_to(src_root)):
+    for dir_path in sorted(
+        missing_dirs, key=lambda d: d.relative_to(src_root).as_posix()
+    ):
         affected = missing_dirs[dir_path]
         representative = str(sorted(affected)[0])
         count = len(affected)
-        dir_rel = dir_path.relative_to(src_root)
+        dir_rel = dir_path.relative_to(src_root).as_posix()
         message = (
             f"Directory '{dir_rel}' lacks __init__.py "
             f"({count} file{'s' if count != 1 else ''} affected)"
