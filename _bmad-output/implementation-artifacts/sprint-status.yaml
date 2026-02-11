@@ -64,15 +64,15 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Freshness Diff Mode Detection
-  epic-4: in-progress
+  epic-4: done
   4-1-diff-hunk-parser-and-shared-infrastructure: done
   4-2-line-classification-and-diff-mode-orchestrator: done
   4-3-cli-wiring-for-freshness-diff-mode: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   # Epic 5: Freshness Drift Mode & CLI Integration
-  epic-5: backlog
-  5-1-blame-timestamp-parser: backlog
+  epic-5: in-progress
+  5-1-blame-timestamp-parser: ready-for-dev
   5-2-drift-and-age-detection-orchestrator: backlog
   5-3-cli-wiring-for-drift-mode: backlog
   epic-5-retrospective: optional
