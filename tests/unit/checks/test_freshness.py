@@ -497,7 +497,7 @@ class TestCheckFreshnessDiff:
         assert len(findings) == 0
 
     def test_stale_import_with_module_docstring(self) -> None:
-        # AC 9 variant: module with docstring, import change → stale-import
+        # Module body change: import line falls in module body_range → stale-body
         source = (
             '"""Module doc."""\n'  # line 1: module docstring
             "import os\n"  # line 2: import (module body)
@@ -527,9 +527,7 @@ class TestCheckFreshnessDiff:
     def test_highest_severity_wins(self) -> None:
         # AC 10: signature + body changes (no docstring) → one stale-signature finding
         tree = ast.parse(_SIMPLE_SOURCE)
-        diff = _make_diff(start=1, count=3)  # lines 1-3 = signature + docstring + body
-        # Wait — line 2 is docstring, so docstring change → suppressed.
-        # Need a diff that hits signature and body but NOT docstring.
+        # Diff must hit signature (line 1) and body (line 3) but NOT docstring (line 2).
         diff = (
             "diff --git a/test.py b/test.py\n"
             "--- a/test.py\n"
