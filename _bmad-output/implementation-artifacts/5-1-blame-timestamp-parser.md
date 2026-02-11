@@ -1,6 +1,6 @@
 # Story 5.1: Blame Timestamp Parser
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,37 +23,37 @@ so that drift mode can determine when each line of code was last modified.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `_parse_blame_timestamps` to `src/docvet/checks/freshness.py` (AC: 1-8)
-  - [ ] 1.1: Add a "Drift mode helpers" section header after the `check_freshness_diff` function (line ~199), following the module organization pattern
-  - [ ] 1.2: Implement `_parse_blame_timestamps(blame_output: str) -> dict[int, int]:` with Google-style docstring
-  - [ ] 1.3: Early return empty dict on empty input (`if not blame_output: return {}`)
-  - [ ] 1.4: Implement state machine: track `current_line` (from SHA line) and `current_timestamp` (from `author-time` line)
-  - [ ] 1.5: SHA line detection: check `len(parts) >= 3` and `len(parts[0]) == 40` after `line.split()`, extract `int(parts[2])` as final line number
-  - [ ] 1.6: `author-time` detection: `line.startswith("author-time ")`, extract `int(line.split()[1])` as Unix timestamp
-  - [ ] 1.7: Tab-prefixed content line detection: `line.startswith("\t")`, emit `{current_line: current_timestamp}` to result dict, reset state
-  - [ ] 1.8: Silently skip all other lines (other blame headers, empty lines, corrupted data)
-  - [ ] 1.9: Handle edge cases: boundary commits, zero SHA (uncommitted), truncated blocks (missing author-time or content line)
-- [ ] Task 2: Create unit tests for `_parse_blame_timestamps` in `tests/unit/checks/test_freshness.py` (AC: 1-8)
-  - [ ] 2.1: Add `_parse_blame_timestamps` to imports from `docvet.checks.freshness`
-  - [ ] 2.2: Add realistic `_BLAME_SINGLE_ENTRY` constant — one complete blame block for a single line
-  - [ ] 2.3: Add `_BLAME_MULTI_ENTRY` constant — multiple blame blocks covering 3+ lines with different timestamps
-  - [ ] 2.4: Test basic single entry → returns `{line_num: timestamp}` (AC 1, 2, 3)
-  - [ ] 2.5: Test multiple entries → returns complete `dict[int, int]` mapping (AC 1)
-  - [ ] 2.6: Test empty string → returns empty dict (AC 5)
-  - [ ] 2.7: Test header fields silently skipped (AC 4) — verify only line numbers and timestamps extracted, not author names etc.
-  - [ ] 2.8: Test boundary commit (SHA starts with `^` or has boundary marker) → parses normally (AC 6)
-  - [ ] 2.9: Test uncommitted changes (zero SHA `0000000...`) → parses normally (AC 7)
-  - [ ] 2.10: Test corrupted/truncated blame data → silently skipped, no exception (AC 8)
-  - [ ] 2.11: Test blame block missing `author-time` → that block skipped, no crash
-  - [ ] 2.12: Test blame block missing tab-prefixed content line (truncated at end) → partial data handled gracefully
-  - [ ] 2.13: Test whitespace-only input → returns empty dict
-  - [ ] 2.14: Test SHA line with only 2 fields (malformed) → silently skipped
-- [ ] Task 3: Run quality gates (AC: all)
-  - [ ] 3.1: `uv run ruff check .` — all checks pass
-  - [ ] 3.2: `uv run ruff format --check .` — all files formatted
-  - [ ] 3.3: `uv run ty check` — all type checks pass
-  - [ ] 3.4: `uv run pytest tests/unit/checks/test_freshness.py -v` — all freshness tests pass
-  - [ ] 3.5: `uv run pytest` — full suite passes, 0 regressions
+- [x] Task 1: Add `_parse_blame_timestamps` to `src/docvet/checks/freshness.py` (AC: 1-8)
+  - [x] 1.1: Add a "Drift mode helpers" section header after the `check_freshness_diff` function (line ~199), following the module organization pattern
+  - [x] 1.2: Implement `_parse_blame_timestamps(blame_output: str) -> dict[int, int]:` with Google-style docstring
+  - [x] 1.3: Early return empty dict on empty input (`if not blame_output: return {}`)
+  - [x] 1.4: Implement state machine: track `current_line` (from SHA line) and `current_timestamp` (from `author-time` line)
+  - [x] 1.5: SHA line detection: check `len(parts) >= 3` and `len(parts[0]) == 40` after `line.split()`, extract `int(parts[2])` as final line number
+  - [x] 1.6: `author-time` detection: `line.startswith("author-time ")`, extract `int(line.split()[1])` as Unix timestamp
+  - [x] 1.7: Tab-prefixed content line detection: `line.startswith("\t")`, emit `{current_line: current_timestamp}` to result dict, reset state
+  - [x] 1.8: Silently skip all other lines (other blame headers, empty lines, corrupted data)
+  - [x] 1.9: Handle edge cases: boundary commits, zero SHA (uncommitted), truncated blocks (missing author-time or content line)
+- [x] Task 2: Create unit tests for `_parse_blame_timestamps` in `tests/unit/checks/test_freshness.py` (AC: 1-8)
+  - [x] 2.1: Add `_parse_blame_timestamps` to imports from `docvet.checks.freshness`
+  - [x] 2.2: Add realistic `_BLAME_SINGLE_ENTRY` constant — one complete blame block for a single line
+  - [x] 2.3: Add `_BLAME_MULTI_ENTRY` constant — multiple blame blocks covering 3+ lines with different timestamps
+  - [x] 2.4: Test basic single entry → returns `{line_num: timestamp}` (AC 1, 2, 3)
+  - [x] 2.5: Test multiple entries → returns complete `dict[int, int]` mapping (AC 1)
+  - [x] 2.6: Test empty string → returns empty dict (AC 5)
+  - [x] 2.7: Test header fields silently skipped (AC 4) — verify only line numbers and timestamps extracted, not author names etc.
+  - [x] 2.8: Test boundary commit (SHA starts with `^` or has boundary marker) → parses normally (AC 6)
+  - [x] 2.9: Test uncommitted changes (zero SHA `0000000...`) → parses normally (AC 7)
+  - [x] 2.10: Test corrupted/truncated blame data → silently skipped, no exception (AC 8)
+  - [x] 2.11: Test blame block missing `author-time` → that block skipped, no crash
+  - [x] 2.12: Test blame block missing tab-prefixed content line (truncated at end) → partial data handled gracefully
+  - [x] 2.13: Test whitespace-only input → returns empty dict
+  - [x] 2.14: Test SHA line with only 2 fields (malformed) → silently skipped
+- [x] Task 3: Run quality gates (AC: all)
+  - [x] 3.1: `uv run ruff check .` — all checks pass
+  - [x] 3.2: `uv run ruff format --check .` — all files formatted
+  - [x] 3.3: `uv run ty check` — all type checks pass
+  - [x] 3.4: `uv run pytest tests/unit/checks/test_freshness.py -v` — all freshness tests pass
+  - [x] 3.5: `uv run pytest` — full suite passes, 0 regressions
 
 ## Dev Notes
 
@@ -284,10 +284,26 @@ No new files. No changes to any other source files.
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- Initial test run: 6 failures due to test constants using 43-char SHAs instead of 40-char. Fixed by replacing with proper 40-char hex strings.
 
 ### Completion Notes List
 
+- Implemented `_parse_blame_timestamps` state machine parser in freshness.py (lines 207–261), following architecture Decision 3 exactly
+- Added "Drift mode helpers" section header at line 202, consistent with existing module organization
+- No new imports needed — all existing imports sufficient for this parser
+- 13 unit tests added in `TestParseBlameTimestamps` class covering all 8 ACs plus edge cases
+- Test constants `_BLAME_SINGLE_ENTRY` and `_BLAME_MULTI_ENTRY` use realistic git blame porcelain format
+- All quality gates pass: ruff lint, ruff format, ty check, 485/485 tests (13 new, 0 regressions)
+
 ### Change Log
 
+- 2026-02-10: Implemented `_parse_blame_timestamps` parser and 13 unit tests (Story 5.1 complete)
+
 ### File List
+
+- `src/docvet/checks/freshness.py` — MODIFIED: added drift mode section header and `_parse_blame_timestamps` function (lines 202–261)
+- `tests/unit/checks/test_freshness.py` — MODIFIED: added `_parse_blame_timestamps` import, `_BLAME_SINGLE_ENTRY` and `_BLAME_MULTI_ENTRY` constants, `TestParseBlameTimestamps` class with 13 tests
