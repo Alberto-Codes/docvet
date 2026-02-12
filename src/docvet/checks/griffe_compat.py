@@ -14,12 +14,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 try:
-    import griffe
+    import griffe  # ty: ignore[unresolved-import]
 except ImportError:
     griffe = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
-    from griffe import Object as GriffeObject
+    from griffe import Object as GriffeObject  # ty: ignore[unresolved-import]
 
 from docvet.checks import Finding
 
