@@ -1,6 +1,6 @@
 # Story 8.2: Core Reporting Functions
 
-Status: review
+Status: done
 
 ## Story
 
@@ -424,8 +424,41 @@ No debug issues encountered. Zero-debug implementation — architecture spec qua
 ### Change Log
 
 - 2026-02-11: Implemented all 5 public reporting functions and 31 tests (Story 8.2)
+- 2026-02-11: Code review — fixed 3 MEDIUM + 3 LOW issues, added 3 tests (34 total)
 
 ### File List
 
 - `src/docvet/reporting.py` (new) — reporting module with format_terminal, format_markdown, format_verbose_header, write_report, determine_exit_code
-- `tests/unit/test_reporting.py` (new) — 31 tests covering all 22 ACs
+- `tests/unit/test_reporting.py` (new) — 34 tests covering all 22 ACs
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.6 | **Date:** 2026-02-11 | **Verdict:** Approve (after fixes)
+
+### Findings Summary
+
+- **0 Critical** | **3 Medium** (all fixed) | **4 Low** (3 fixed, 1 deferred)
+
+### Fixed Issues
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| M1 | Medium | `write_report` doesn't validate `fmt` parameter — silent fallthrough to terminal for unknown values | Added `elif fmt == "terminal"` with `ValueError` for unknown formats |
+| M2 | Medium | Weak markdown table row assertions — `in` checks instead of exact row verification | Replaced with exact row content assertions + blank-line assertion |
+| M3 | Medium | No test verifies correct color mapping (red=required, yellow=recommended) | Added `typer.style()` assertions for specific color values |
+| L1 | Low | No markdown blank-line-before-summary assertion | Folded into M2 fix (added `lines[4] == ""` assertion) |
+| L2 | Low | No terminal test with mixed categories in summary | Added `test_mixed_categories_summary` |
+| L3 | Low | No test for `write_report([], path, fmt="terminal")` | Added `test_empty_findings_terminal_write` |
+
+### Deferred Issues
+
+| # | Severity | Issue | Reason |
+|---|----------|-------|--------|
+| L4 | Low | `_COLORS` type annotation `dict[str, str]` vs typer's `Optional[str]` | `ty check` passes; changing would cascade to `_colorize` signature with no practical impact |
+
+### Review Stats
+
+- **Tests:** 31 → 34 (added `test_mixed_categories_summary`, `test_empty_findings_terminal_write`, `test_invalid_fmt_raises`)
+- **All 22 ACs:** Verified implemented and tested
+- **All 11 tasks:** Verified complete — no false `[x]` claims
+- **668 total tests passing** (665 + 3 new)
