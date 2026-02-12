@@ -11,6 +11,7 @@ from typing import Annotated
 
 import typer
 
+from docvet.checks import Finding
 from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
 from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
@@ -216,17 +217,20 @@ def _get_git_blame(file_path: Path, project_root: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _run_enrichment(files: list[Path], config: DocvetConfig) -> None:
+def _run_enrichment(files: list[Path], config: DocvetConfig) -> list[Finding]:
     """Run the enrichment check on discovered files.
 
     Reads each file, parses its AST, and runs all enabled enrichment
-    rules. Findings are printed to stdout in ``file:line: rule message``
-    format. Files that fail to parse are skipped with a warning.
+    rules. Files that fail to parse are skipped with a warning.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
+
+    Returns:
+        All enrichment findings across all files.
     """
+    all_findings: list[Finding] = []
     for file_path in files:
         source = file_path.read_text(encoding="utf-8")
         try:
@@ -235,10 +239,8 @@ def _run_enrichment(files: list[Path], config: DocvetConfig) -> None:
             typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
             continue
         findings = check_enrichment(source, tree, config.enrichment, str(file_path))
-        for finding in findings:
-            typer.echo(
-                f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"
-            )
+        all_findings.extend(findings)
+    return all_findings
 
 
 def _run_freshness(
@@ -246,22 +248,25 @@ def _run_freshness(
     config: DocvetConfig,
     freshness_mode: FreshnessMode = FreshnessMode.DIFF,
     discovery_mode: DiscoveryMode = DiscoveryMode.DIFF,
-) -> None:
+) -> list[Finding]:
     """Run the freshness check on discovered files.
 
     For diff mode, reads each file, parses the AST, obtains its git
     diff, and calls ``check_freshness_diff``. For drift mode, reads
     each file, parses the AST, runs ``git blame --line-porcelain``,
-    and calls ``check_freshness_drift``. Findings are printed to
-    stdout in ``file:line: rule message`` format.
+    and calls ``check_freshness_drift``.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         freshness_mode: The freshness check strategy (diff or drift).
         discovery_mode: Controls which git diff variant to run.
+
+    Returns:
+        All freshness findings across all files.
     """
     if freshness_mode is not FreshnessMode.DIFF:
+        all_findings: list[Finding] = []
         for file_path in files:
             source = file_path.read_text(encoding="utf-8")
             try:
@@ -273,12 +278,10 @@ def _run_freshness(
             findings = check_freshness_drift(
                 str(file_path), blame_output, tree, config.freshness
             )
-            for finding in findings:
-                typer.echo(
-                    f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"
-                )
-        return
+            all_findings.extend(findings)
+        return all_findings
 
+    all_findings: list[Finding] = []
     for file_path in files:
         source = file_path.read_text(encoding="utf-8")
         try:
@@ -288,55 +291,53 @@ def _run_freshness(
             continue
         diff_output = _get_git_diff(file_path, config.project_root, discovery_mode)
         findings = check_freshness_diff(str(file_path), diff_output, tree)
-        for finding in findings:
-            typer.echo(
-                f"{finding.file}:{finding.line}: {finding.rule} {finding.message}"
-            )
+        all_findings.extend(findings)
+    return all_findings
 
 
-def _run_coverage(files: list[Path], config: DocvetConfig) -> None:
+def _run_coverage(files: list[Path], config: DocvetConfig) -> list[Finding]:
     """Run the coverage check on discovered files.
 
     Resolves the source root from configuration and checks all discovered
-    files for missing ``__init__.py`` in parent directories.  Findings are
-    printed to stdout in ``file:line: rule message`` format.
+    files for missing ``__init__.py`` in parent directories.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
+
+    Returns:
+        All coverage findings.
     """
     src_root = config.project_root / config.src_root
-    findings = check_coverage(src_root, files)
-    for finding in findings:
-        typer.echo(f"{finding.file}:{finding.line}: {finding.rule} {finding.message}")
+    return check_coverage(src_root, files)
 
 
 def _run_griffe(
     files: list[Path], config: DocvetConfig, *, verbose: bool = False
-) -> None:
+) -> list[Finding]:
     """Run the griffe compatibility check on discovered files.
 
     Checks if griffe is installed, resolves the source root from
-    configuration, and runs ``check_griffe_compat``.  Findings are
-    printed to stdout in ``file:line: rule message`` format.
+    configuration, and runs ``check_griffe_compat``.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         verbose: Whether verbose mode is enabled.
+
+    Returns:
+        All griffe compatibility findings.
     """
     if importlib.util.find_spec("griffe") is None:
         if "griffe" in config.fail_on:
             typer.echo("warning: griffe check skipped (griffe not installed)", err=True)
         elif verbose:
             typer.echo("griffe: skipped (griffe not installed)", err=True)
-        return
+        return []
     src_root = config.project_root / config.src_root
     if not src_root.is_dir():
-        return
-    findings = check_griffe_compat(src_root, files)
-    for finding in findings:
-        typer.echo(f"{finding.file}:{finding.line}: {finding.rule} {finding.message}")
+        return []
+    return check_griffe_compat(src_root, files)
 
 
 # ---------------------------------------------------------------------------
@@ -410,10 +411,18 @@ def check(
     _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    _run_enrichment(discovered, config)
-    _run_freshness(discovered, config, discovery_mode=discovery_mode)
-    _run_coverage(discovered, config)
-    _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))
+    enrichment_findings = _run_enrichment(discovered, config)
+    freshness_findings = _run_freshness(
+        discovered, config, discovery_mode=discovery_mode
+    )
+    coverage_findings = _run_coverage(discovered, config)
+    griffe_findings = _run_griffe(
+        discovered, config, verbose=ctx.obj.get("verbose", False)
+    )
+    for f in (
+        enrichment_findings + freshness_findings + coverage_findings + griffe_findings
+    ):
+        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
 
 
 @app.command()
@@ -435,7 +444,9 @@ def enrichment(
     _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    _run_enrichment(discovered, config)
+    findings = _run_enrichment(discovered, config)
+    for f in findings:
+        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
 
 
 @app.command()
@@ -461,9 +472,11 @@ def freshness(
     _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    _run_freshness(
+    findings = _run_freshness(
         discovered, config, freshness_mode=mode, discovery_mode=discovery_mode
     )
+    for f in findings:
+        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
 
 
 @app.command()
@@ -485,7 +498,9 @@ def coverage(
     _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    _run_coverage(discovered, config)
+    findings = _run_coverage(discovered, config)
+    for f in findings:
+        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
 
 
 @app.command()
@@ -507,4 +522,6 @@ def griffe(
     _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))
+    findings = _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))
+    for f in findings:
+        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
