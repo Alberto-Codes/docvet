@@ -21,9 +21,17 @@ stepsCompleted:
   - 'griffe-6'
   - 'griffe-7'
   - 'griffe-8'
-lastStep: 'griffe-8'
+  - 'reporting-2'
+  - 'reporting-3-skipped'
+  - 'reporting-4'
+  - 'reporting-5'
+  - 'reporting-6'
+  - 'reporting-7'
+  - 'reporting-8'
+lastStep: 'reporting-8'
 status: 'complete'
-completedAt: '2026-02-09'
+completedAt: '2026-02-11'
+reportingStartedAt: '2026-02-11'
 freshnessStartedAt: '2026-02-09'
 griffeStartedAt: '2026-02-11'
 inputDocuments:
@@ -2321,3 +2329,803 @@ No version conflicts — griffe `>=1.0` is the only external dependency, and the
   - (c) Verbose mode shows skip message when griffe not installed
   - (d) `src_root` resolved from `config.project_root / config.src_root`
   - (e) Stderr warning when griffe in `fail-on` but not installed
+
+## Reporting Module — Project Context Analysis
+
+### Requirements Overview
+
+**Functional Requirements:**
+13 FRs (FR98-FR110 with sub-items) across 5 categories. The reporting module is a cross-cutting output layer that formats findings for terminal and markdown consumption, produces summary statistics, and drives exit code logic for CI integration.
+
+- **Terminal Formatting (FR98, FR101, FR101a, FR101b, FR102):** 5 FRs defining terminal output — self-contained `file:line: rule message [category]` lines with ANSI color coding, file grouping via blank lines, sorted by `(file, line)`. Two independent ANSI suppression mechanisms: `NO_COLOR` env var and non-TTY detection.
+- **Markdown Formatting (FR99):** 1 FR defining markdown table output — 6 columns (File, Line, Rule, Symbol, Message, Category), valid GitHub-flavored markdown. No ANSI codes ever.
+- **Summary & Zero-Finding Behavior (FR100, FR104, FR104a):** 3 FRs defining summary line format (`N findings (X required, Y recommended)`) when count > 0, zero output on zero findings (non-verbose), `"No findings.\n"` on zero findings with verbose.
+- **Exit Code Logic (FR105, FR106, FR107):** 3 FRs defining CI gating — exit 1 when any `fail-on` check has findings, exit 0 otherwise. Exit code depends on check names in `fail-on`, not on individual rule categories.
+- **Integration & File Output (FR103, FR108, FR109, FR110):** 4 FRs defining `--output` file write, `--format` selection, findings aggregation from all checks, and verbose header with file count and check list.
+
+**Non-Functional Requirements:**
+6 NFRs across 4 categories that shape internal design:
+
+- **Performance (NFR49):** 1000 findings formatted in under 100ms — string concatenation only, negligible overhead
+- **Correctness (NFR50-51):** Deterministic output (sorted by `(file, line)` before formatting), zero output on empty input (no "0 findings" noise)
+- **Compatibility (NFR52-53):** No external color dependencies (typer/raw ANSI only), valid GFM markdown output, NO_COLOR respect
+- **Integration (NFR54):** No cross-imports with any check module — depends only on `checks.Finding` and `config.DocvetConfig`
+
+**Scale & Complexity:**
+
+- Primary domain: CLI tool / output formatting
+- Complexity level: Low
+- Estimated architectural components: ~4 internal components (terminal formatter, markdown formatter, file writer, exit code resolver)
+
+### Existing Infrastructure the Reporting Module Depends On
+
+**`checks/__init__.py` — Finding dataclass:**
+- Frozen 6-field shape: `file`, `line`, `symbol`, `rule`, `message`, `category`
+- Stable v1 API (NFR17) — reporting formats these fields, never modifies them
+- `category` is `Literal["required", "recommended"]` — directly maps to color coding and summary counts
+
+**`config.py` — DocvetConfig:**
+- `fail_on: list[str]` and `warn_on: list[str]` — drive exit code logic
+- Mutual exclusivity already enforced at config load time (warn_on drops checks present in fail_on)
+- `_VALID_CHECK_NAMES = {"enrichment", "freshness", "coverage", "griffe"}` — the set of recognized check names
+
+**`cli.py` — Existing global options and stubs:**
+- `OutputFormat` enum: `TERMINAL`, `MARKDOWN`
+- Global options stored in `ctx.obj`: `verbose` (bool), `format` (str|None), `output` (str|None)
+- `_print_global_context` — acknowledges options to stderr (will be replaced)
+- 4 `_run_*` functions: currently `-> None` (print inline), must become `-> list[Finding]`
+- `check` command: calls all 4 `_run_*` sequentially, no findings aggregation, no exit code logic
+
+### CLI Refactor Scope
+
+The prerequisite refactor changes each `_run_*` from void to `-> list[Finding]`:
+
+| Function | Current Return | Current Side Effect | Change Required |
+|----------|---------------|-------------------|-----------------|
+| `_run_enrichment` | `None` | `typer.echo()` per finding | Return `list[Finding]`, remove echo loop |
+| `_run_freshness` | `None` | `typer.echo()` per finding | Return `list[Finding]`, remove echo loops (2 branches) |
+| `_run_coverage` | `None` | `typer.echo()` per finding | Return `list[Finding]`, remove echo loop |
+| `_run_griffe` | `None` | `typer.echo()` per finding, stderr messages | Return `list[Finding]`, keep stderr messages, remove finding echo loop |
+
+After refactor, the `check` command and each standalone subcommand collect `dict[str, list[Finding]]`, pass to reporting functions, and call `determine_exit_code`.
+
+**`_run_freshness` note:** Has two return-path branches (diff at line 282 vs drift at line 264). Both need the same treatment — collect findings into a list and return. Currently they have separate `for finding in findings: typer.echo(...)` loops.
+
+**`_run_griffe` note:** All skip paths (`find_spec` check at line 328, `src_root.is_dir()` at line 335) must `return []`, not just `return`. This ensures `findings["griffe"] = _run_griffe(...)` always gets a list, keeping `determine_exit_code` logic clean.
+
+### Technical Constraints & Dependencies
+
+- **No new runtime dependencies:** ANSI codes via `typer.style()` or raw escape sequences; `pathlib.Path` for file I/O
+- **`typer.style()` for ANSI:** wraps click's ANSI handling, respects terminal capabilities. May need explicit `NO_COLOR` check if `typer.style()` doesn't honor it natively
+- **File grouping is visual only:** blank lines between file groups, no separate header lines, no indentation. Each finding line is independently greppable
+- **Module location:** `src/docvet/reporting.py` (sibling to `cli.py`, not inside `checks/`)
+- **Import direction:** `cli.py` imports from `reporting.py`; `reporting.py` imports from `checks/__init__.py` and `config.py`. No reverse imports.
+- **No `ReportingConfig`:** unlike enrichment and freshness, reporting has zero per-module config. All configuration comes from top-level `DocvetConfig` (`fail_on`, `warn_on`) and CLI flags (`--format`, `--output`, `--verbose`).
+
+### Cross-Cutting Concerns Identified
+
+- **ANSI suppression (two independent triggers):** `NO_COLOR` env var (convention: any non-empty value disables colors) and non-TTY stdout (`sys.stdout.isatty()` returns False). Both must suppress ANSI codes independently. `format_markdown` never uses ANSI regardless.
+- **Verbose mode split:** With findings + verbose → add header prefix showing files/checks. Zero findings + verbose → `"No findings.\n"`. Zero findings + non-verbose → empty string. Three distinct behaviors.
+- **Exit code coordination:** The `check` command aggregates findings from 4 checks into `dict[str, list[Finding]]`. Each standalone subcommand (`enrichment`, `freshness`, etc.) produces a single-key dict. Both paths call `determine_exit_code` with the same interface.
+- **Griffe skip interaction:** When griffe is not installed and `_run_griffe` returns early with no findings, the check name "griffe" still needs to be present (as empty list) in `findings_by_check` if it's in `fail_on` — otherwise exit code logic might silently pass. The stderr warning about griffe not installed is a CLI concern, not a reporting concern.
+- **`fail_on`/`warn_on` conflict resolution semantics:** The current config loader silently drops `warn_on` entries that appear in `fail_on` (line 410 of `config.py`). The PRD specifies "a check name in both lists is a config error." These are different behaviors — silent-drop is conflict _resolution_, erroring is _validation_. The reporting module can assume no overlap either way, but the behavior must be decided before shipping: changing from silent-drop to error later would break existing user configs. This is an architectural decision for step 4.
+- **`--output` replaces stdout, not supplements it:** When `--output report.md` is specified, formatted output writes to file _instead of_ stdout. No dual output. This follows the PRD ("writes the formatted report to a file instead of stdout") and matches ruff's `--output-file` behavior.
+- **Standalone subcommand exit code scope:** Running `docvet enrichment` when `fail_on = ["freshness"]` always exits 0, regardless of enrichment findings — because the `findings_by_check` dict only contains `"enrichment"`, which isn't in `fail_on`. This is intentional and correct (exit code is config-driven, not presence-driven), but is a potential user surprise worth documenting in CLI help or verbose output.
+- **Default `fail_on` is empty:** The default config has `fail_on = []` and all 4 checks in `warn_on`. This means by default every finding is advisory — exit code is always 0. This is the most common initial user experience and must be tested explicitly.
+
+## Reporting Core Architectural Decisions
+
+### Decision Priority Analysis
+
+**Critical Decisions (Block Implementation):**
+1. ANSI color strategy (`no_color` parameter, pure formatters)
+2. Verbose header data flow (separate `format_verbose_header` function)
+3. CLI dispatch pattern (shared `_output_and_exit` helper)
+
+**Important Decisions (Shape Architecture):**
+4. `fail_on`/`warn_on` conflict behavior (warn + drop)
+5. `write_report` format behavior (respect `fmt`, force `no_color` for files)
+6. Terminal line format (color `[category]` tag only)
+
+**Deferred Decisions (Post-MVP):**
+- JSON/SARIF output formats
+- Verbose code snippets and fix suggestions per finding
+- Configurable grouping (by file, rule, check, category)
+- GitHub Actions annotation format
+
+### Decision 1: ANSI Color Strategy — `no_color` Parameter
+
+**Decision:** `format_terminal` accepts a `no_color: bool` parameter. The function is pure — no environment variable inspection, no `sys.stdout.isatty()` calls. The CLI layer resolves color eligibility and passes the result.
+
+**Rationale:** Keeps formatting functions testable without env patching or TTY mocking. Matches how `verbose` is already passed as a parameter. The internal ANSI implementation (typer.style vs raw codes) becomes a private detail.
+
+**Resolution point:** `_output_and_exit` resolves `no_color` internally — it has all the context: `--output` flag (force `no_color=True` for file writes), `NO_COLOR` env var, `sys.stdout.isatty()`. Callers of `_output_and_exit` do not pass `no_color`.
+
+**Signature:**
+```python
+def format_terminal(
+    findings: list[Finding],
+    *,
+    verbose: bool = False,
+    no_color: bool = False,
+) -> str:
+```
+
+**Anti-patterns:**
+- Never inspect `os.environ` or `sys.stdout` inside `format_terminal` or `format_markdown`
+- Never pass `no_color` from subcommand code — `_output_and_exit` owns this resolution
+
+### Decision 2: Verbose Header — Separate Function
+
+**Decision:** Verbose header is a separate `format_verbose_header` function, not a parameter on `format_terminal`. The CLI coordinator (`_output_and_exit`) composes header + findings output.
+
+**Rationale:** Single-responsibility — `format_terminal` formats findings, `format_verbose_header` formats the diagnostic header. Avoids parameter bloat on `format_terminal`. Each function is independently testable.
+
+**Verbose header destination:** **stderr**, not stdout. Consistent with `_print_global_context` behavior and CLI conventions (ruff, pytest send diagnostic info to stderr). Findings go to stdout. This keeps piped output clean (`docvet check --all > findings.txt` captures findings only).
+
+**Signature:**
+```python
+def format_verbose_header(file_count: int, checks: Sequence[str]) -> str:
+    """Return 'Checking 12 files [enrichment, freshness, coverage, griffe]\\n'."""
+```
+
+**Zero-findings verbose case:** When verbose is enabled and zero findings exist, `_output_and_exit` prints `"No findings.\n"` to stdout. This is a CLI coordination concern, not a `format_terminal` concern — `format_terminal` with empty input returns empty string regardless of verbose flag.
+
+**Anti-patterns:**
+- Never add `file_count` or `checks` parameters to `format_terminal`
+- Never print verbose header to stdout — it would pollute piped output
+
+### Decision 3: `fail_on`/`warn_on` Conflict — Warn Then Drop
+
+**Decision:** When a check name appears in both `fail_on` and `warn_on`, the config loader prints a stderr warning, then applies `fail_on` precedence (drops the entry from `warn_on`). Not a hard error.
+
+**Rationale:** Pragmatic middle ground — users get informed about config redundancy without breakage. Provides migration path if we tighten to hard error later. Existing behavior already drops silently; this adds visibility.
+
+**Implementation location:** `config.py` in `load_config`, at config load time (before any checks run). The reporting module can assume no overlap.
+
+**Warning format:**
+```
+docvet: 'enrichment' appears in both fail-on and warn-on; using fail-on
+```
+
+**Anti-patterns:**
+- Never validate `fail_on`/`warn_on` overlap in `reporting.py` — that's `config.py`'s job
+- Never silently drop without warning (current behavior)
+- Never hard-error without a deprecation warning period
+
+### Decision 4: `write_report` Format — Respect `fmt`, Force No ANSI
+
+**Decision:** `write_report` respects the `fmt` parameter for file output. `fmt="markdown"` calls `format_markdown`. `fmt="terminal"` calls `format_terminal` with `no_color=True` (ANSI always stripped for files). When `--output` is set without explicit `--format`, default to `markdown`.
+
+**Rationale:** Respects user's explicit choice while preventing ANSI codes in files (never useful). One-line conditional, avoids surprising overrides.
+
+**Signature:**
+```python
+def write_report(
+    findings: list[Finding],
+    output: Path,
+    *,
+    fmt: str = "markdown",
+) -> None:
+    """Write formatted report to a file.
+
+    Raises:
+        FileNotFoundError: If parent directory does not exist.
+    """
+```
+
+**Anti-patterns:**
+- Never write ANSI escape codes to files regardless of `fmt`
+- Never silently create parent directories — raise `FileNotFoundError`
+- Never default `fmt` to `"terminal"` for file output
+
+### Decision 5: CLI Dispatch — Shared `_output_and_exit` Helper
+
+**Decision:** A single `_output_and_exit` helper in `cli.py` coordinates all post-check logic. Every subcommand builds `dict[str, list[Finding]]` and calls this helper. The helper handles: verbose header (stderr), format selection, `--output` file write, stdout printing, and exit code determination.
+
+**Rationale:** DRY — all 5 subcommands (check + 4 standalone) have identical post-check logic. Extracting it to one helper eliminates 4 near-identical blocks. The helper lives in `cli.py` (not `reporting.py`) because it coordinates between reporting functions and CLI concerns (ctx, exit codes, stdout/stderr).
+
+**Signature:**
+```python
+def _output_and_exit(
+    ctx: typer.Context,
+    findings_by_check: dict[str, list[Finding]],
+    config: DocvetConfig,
+    file_count: int,
+    checks: list[str],
+) -> None:
+    """Format findings, print/write output, and exit with correct code."""
+```
+
+**Internal flow:**
+1. Resolve `no_color` from `NO_COLOR` env var, `sys.stdout.isatty()`, and `--output` flag
+2. Flatten `findings_by_check` values into `all_findings: list[Finding]`
+3. If verbose: print `format_verbose_header(file_count, checks)` to stderr
+4. Format findings: `format_terminal(all_findings, no_color=no_color)` or `format_markdown(all_findings)` based on `--format`
+5. If `--output`: call `write_report(all_findings, output, fmt=...)` — may override format default to markdown
+6. Else: print formatted output to stdout
+7. If verbose and zero findings: print `"No findings.\n"` to stdout
+8. `raise typer.Exit(determine_exit_code(findings_by_check, config))`
+
+**Anti-patterns:**
+- Never inline post-check logic in individual subcommands
+- Never test formatting logic via `_output_and_exit` — test `reporting.py` functions directly
+- Never call `_output_and_exit` without a complete `findings_by_check` dict (every ran check must have a key, even if empty list)
+
+### Decision 6: Terminal Line Format — Color `[category]` Tag Only
+
+**Decision:** Each terminal output line follows `file:line: rule message [category]`. Only the `[category]` tag is ANSI-colored: red for `[required]`, yellow for `[recommended]`. The rest of the line (file path, line number, rule name, message) renders in default terminal color.
+
+**Rationale:** Matches ruff's pattern — diagnostic level indicator is colored, not the entire line. Preserves readability of paths and messages. Enables visual triage via color while keeping the line greppable and parseable.
+
+**Color mapping:**
+```python
+_COLORS = {
+    "required": typer.colors.RED,
+    "recommended": typer.colors.YELLOW,
+}
+```
+
+**Line format:**
+```
+src/core/engine.py:23: missing-raises Function 'process_batch' raises ValueError but has no Raises: section [required]
+```
+Where `[required]` is red and everything else is uncolored.
+
+**Note:** The `[category]` suffix is new — current `_run_*` functions print `file:line: rule message` without category. This is a visible output change captured in the CLI refactor PR.
+
+**Anti-patterns:**
+- Never color the entire line — reduces readability
+- Never color the rule name — it's a stable identifier for grep, not a severity indicator
+- Never omit `[category]` from terminal output — it's the primary triage signal
+
+## Reporting Implementation Patterns & Consistency Rules
+
+### Pattern Categories Defined
+
+**7 conflict areas** where AI agents could make different implementation choices for the reporting module.
+
+### 1. String Building Pattern
+
+**Decision: List-of-lines joined with `"\n"`**
+
+```python
+def format_terminal(findings: list[Finding], *, verbose: bool = False, no_color: bool = False) -> str:
+    if not findings:
+        return ""
+    lines: list[str] = []
+    # ... build lines ...
+    lines.append("")       # blank line before summary
+    lines.append(summary)
+    return "\n".join(lines) + "\n"
+```
+
+- Build a `list[str]` of output lines
+- Join with `"\n"` at the end, append trailing `"\n"`
+- Never use `io.StringIO`, never use `+=` string concatenation
+- Consistent with freshness's `_build_finding` pattern (build parts, compose at end)
+
+**Anti-patterns:**
+- Never use `print()` inside formatting functions — they return strings, not print
+- Never build output incrementally with `result += line + "\n"` — O(n^2) on large inputs
+- Never use `io.StringIO` — unnecessary complexity for line-based output
+
+### 2. Finding Sort Convention
+
+**Decision: Sort by `(file, line)` tuple, stable sort**
+
+```python
+sorted_findings = sorted(findings, key=lambda f: (f.file, f.line))
+```
+
+- Sort once at the top of each formatter, before any processing
+- Both `format_terminal` and `format_markdown` sort identically
+- `itertools.groupby` on `f.file` after sorting for file grouping in terminal format
+- Never sort by rule, symbol, category, or message — `(file, line)` only
+- Ties (same file and line, different rules) preserve check execution order via stable sort — this is deterministic because `check` calls checks in fixed order
+
+### 3. File Grouping Pattern (Terminal)
+
+**Decision: Blank lines between file groups, no headers, no indentation**
+
+```python
+from itertools import groupby
+
+lines: list[str] = []
+# groupby requires findings pre-sorted by file
+for file_path, group in groupby(sorted_findings, key=lambda f: f.file):
+    if lines:
+        lines.append("")  # blank line between file groups
+    for finding in group:
+        tag = _colorize(f"[{finding.category}]", _COLORS[finding.category], no_color=no_color)
+        lines.append(f"{finding.file}:{finding.line}: {finding.rule} {finding.message} {tag}")
+
+# blank line before summary for visual separation (ruff convention)
+lines.append("")
+lines.append(summary)
+```
+
+- Each line is self-contained and independently greppable
+- Blank line between groups is visual only — not semantically significant
+- Blank line before summary line (matches ruff convention)
+- No file header lines (e.g., no `=== src/foo.py ===`)
+- No indentation under file groups
+
+### 4. ANSI Color Application
+
+**Decision: Private `_colorize` helper using `typer.style()`**
+
+```python
+def _colorize(text: str, color: str, *, no_color: bool) -> str:
+    if no_color:
+        return text
+    return typer.style(text, fg=color)
+
+_COLORS: dict[str, str] = {
+    "required": typer.colors.RED,
+    "recommended": typer.colors.YELLOW,
+}
+```
+
+- Single `_colorize` helper for all color application
+- `no_color=True` → return text unchanged (zero ANSI codes)
+- `typer.style()` for color application — consistent with existing CLI code
+- `_COLORS` dict maps category names to typer color constants
+- `format_markdown` never calls `_colorize` — markdown output is ANSI-free by design
+
+### 5. Summary Line Format
+
+**Decision: Fixed format with both category counts always shown**
+
+```python
+from collections import Counter
+
+if findings:  # guard on input, not derived state
+    counts = Counter(f.category for f in findings)
+    summary = f"{len(findings)} findings ({counts['required']} required, {counts['recommended']} recommended)"
+```
+
+- Always show both counts even when zero: `5 findings (5 required, 0 recommended)`
+- No period at the end
+- No bold/color on summary line in terminal format
+- In markdown format: `**5 findings** (5 required, 0 recommended)` — bold total count only
+- Guard summary construction with `if findings:` — never produce a summary line when list is empty
+- Never guard on `if len(counter) > 0` — use the input directly
+
+### 6. CLI Refactor Pattern
+
+**Decision: Uniform `-> list[Finding]` return, minimal side-effect changes**
+
+```python
+# Before (current):
+def _run_enrichment(files: list[Path], config: DocvetConfig) -> None:
+    for file_path in files:
+        ...
+        for finding in findings:
+            typer.echo(f"{finding.file}:{finding.line}: {finding.rule} {finding.message}")
+
+# After (refactored):
+def _run_enrichment(files: list[Path], config: DocvetConfig) -> list[Finding]:
+    all_findings: list[Finding] = []
+    for file_path in files:
+        ...
+        all_findings.extend(findings)
+    return all_findings
+```
+
+- Replace `typer.echo()` loops with `all_findings.extend(findings)`
+- Keep all existing stderr messages (warnings, verbose notes) — they're diagnostic, not findings
+- Return type changes from `None` to `list[Finding]`
+- `_run_griffe` skip paths return `[]` not `None`
+
+**`_run_freshness` special case:** Has two branches (diff vs drift) with early return. Keep the early return pattern — use two separate `all_findings` lists, one per branch:
+
+```python
+def _run_freshness(...) -> list[Finding]:
+    if freshness_mode is not FreshnessMode.DIFF:
+        all_findings: list[Finding] = []
+        for file_path in files:
+            ...
+            all_findings.extend(findings)
+        return all_findings
+
+    all_findings: list[Finding] = []
+    for file_path in files:
+        ...
+        all_findings.extend(findings)
+    return all_findings
+```
+
+Do not restructure to use one list — keep the early return, it's clearer.
+
+### 7. Test Patterns
+
+**Formatter tests (in `tests/unit/test_reporting.py`):**
+- Use `Finding` factory fixtures with known values
+- Assert exact output strings for small inputs (2-3 findings)
+- Assert `"\033[" not in result` when `no_color=True` — input must have at least one finding
+- Assert `"\033[" in result` when `no_color=False` — input must have at least one finding
+- Assert `len(result) == 0` or `result == ""` when findings list is empty
+- Assert summary line format via `assert "N findings" in result`
+- Test stable sort: two findings with same `(file, line)` but different rules — verify order matches insertion order
+
+**Exit code tests:**
+- Test all combinations: fail-on with findings, fail-on without findings, warn-on with findings, empty fail-on, empty findings
+- Pure function — no mocking needed, just construct `dict[str, list[Finding]]` and `DocvetConfig`
+
+**`write_report` tests (in `tests/unit/test_reporting.py`):**
+- Use `tmp_path` fixture for file I/O
+- Write to `tmp_path / "report.md"`, read back, assert content matches `format_markdown` output
+- Test error case: `tmp_path / "nonexistent" / "report.md"` raises `FileNotFoundError`
+
+**`_output_and_exit` tests (in `tests/unit/test_cli.py`):**
+- Mock `format_terminal`, `format_markdown`, `determine_exit_code` from `reporting`
+- Assert correct function called based on `--format`
+- Assert verbose header printed to stderr via `capsys.readouterr().err`
+- Assert `typer.Exit` raised with correct code
+- Don't test formatting logic here — that's `test_reporting.py`'s job
+
+### Enforcement Guidelines
+
+**All AI Agents MUST:**
+- Use `list[str]` + `"\n".join()` for string building in formatters
+- Sort findings by `(file, line)` before any processing
+- Use `_colorize` helper for all ANSI color application — never inline ANSI codes
+- Return `list[Finding]` from all `_run_*` functions, never `None`
+- Keep `format_terminal` and `format_markdown` as pure functions (no I/O, no env inspection)
+- Test ANSI presence/absence explicitly with `"\033["` checks
+- Guard summary line construction with `if findings:` — never on derived state
+- Use `tmp_path` for all `write_report` test I/O
+
+## Reporting Project Structure & Boundaries
+
+### Complete Directory Structure
+
+```
+src/docvet/
+    __init__.py
+    cli.py                  ← MODIFIED (refactor _run_* returns, add _output_and_exit, import from reporting)
+    config.py               ← MODIFIED (add fail_on/warn_on overlap warning)
+    reporting.py             ← NEW (format_terminal, format_markdown, format_verbose_header, write_report, determine_exit_code)
+    discovery.py
+    ast_utils.py
+    checks/
+        __init__.py          (Finding dataclass — unchanged)
+        enrichment.py
+        freshness.py
+        coverage.py
+        griffe_compat.py
+
+tests/
+    conftest.py              ← MODIFIED (add shared make_finding factory fixture)
+    unit/
+        test_cli.py          ← MODIFIED (update _run_* tests, add _output_and_exit tests)
+        test_config.py       ← MODIFIED (add overlap warning test, update existing overlap tests with stderr assertions)
+        test_reporting.py    ← NEW (formatter tests, exit code tests, write_report tests)
+        checks/
+            test_enrichment.py
+            test_freshness.py
+            test_coverage.py
+            test_griffe_compat.py
+```
+
+### Architectural Boundaries
+
+**Public API boundary (`reporting.py` exports):**
+- `format_terminal(findings, *, no_color=False) -> str`
+- `format_markdown(findings) -> str`
+- `format_verbose_header(file_count, checks) -> str`
+- `write_report(findings, output, *, fmt="markdown") -> None`
+- `determine_exit_code(findings_by_check, config) -> int`
+
+Note: `format_terminal` has no `verbose` parameter — verbose header is handled by `format_verbose_header` (separate function, printed to stderr by CLI), and "No findings." zero-finding case is handled by `_output_and_exit` in `cli.py`.
+
+**Module dependency boundary:**
+- `reporting.py` imports: `checks.Finding`, `config.DocvetConfig`, `typer` (for styling), `pathlib`, `collections`, `itertools`
+- `reporting.py` never imports: `cli`, `discovery`, `ast_utils`, `enrichment`, `freshness`, `coverage`, `griffe_compat`
+- `cli.py` imports from `reporting.py` — not the reverse
+
+**Import style (cli.py → reporting.py):**
+```python
+from docvet.reporting import (
+    determine_exit_code,
+    format_markdown,
+    format_terminal,
+    format_verbose_header,
+    write_report,
+)
+```
+Individual function imports — matches existing `cli.py` pattern for check module imports (`from docvet.checks.enrichment import check_enrichment`).
+
+**Data boundary:**
+- Input: `list[Finding]` (immutable, frozen dataclass) and `DocvetConfig` (frozen dataclass)
+- Output: `str` (formatted text) or `int` (exit code)
+- Side effects: `write_report` performs file I/O only. All other functions are pure.
+
+**Caller contract (CLI → reporting):**
+- CLI resolves `no_color` from env/TTY/`--output` inside `_output_and_exit`
+- CLI builds `dict[str, list[Finding]]` from `_run_*` return values
+- CLI calls `format_verbose_header` → stderr, `format_terminal`/`format_markdown` → stdout or file
+- CLI calls `determine_exit_code` → `typer.Exit(code)`
+
+### Requirements to Structure Mapping
+
+| FR | Summary | File |
+|---|---|---|
+| FR98 | Terminal format with file grouping | `reporting.py` → `format_terminal` |
+| FR99 | Markdown table format | `reporting.py` → `format_markdown` |
+| FR100 | Summary line | `reporting.py` → `format_terminal`, `format_markdown` |
+| FR101 | ANSI colors | `reporting.py` → `_colorize`, `_COLORS` |
+| FR101a | NO_COLOR suppression | `cli.py` → `_output_and_exit` (resolves `no_color`) |
+| FR101b | Non-TTY suppression | `cli.py` → `_output_and_exit` (resolves `no_color`) |
+| FR102 | Sort by (file, line) | `reporting.py` → `format_terminal`, `format_markdown` |
+| FR103 | --output file write | `reporting.py` → `write_report` |
+| FR104 | Zero output on zero findings | `reporting.py` → `format_terminal`, `format_markdown` |
+| FR104a | "No findings." on verbose | `cli.py` → `_output_and_exit` |
+| FR105 | Exit 1 on fail-on findings | `reporting.py` → `determine_exit_code` |
+| FR106 | Exit 0 on warn-on only | `reporting.py` → `determine_exit_code` |
+| FR107 | Exit 0 on zero findings | `reporting.py` → `determine_exit_code` |
+| FR108 | --format selection | `cli.py` → `_output_and_exit` |
+| FR109 | Aggregate findings | `cli.py` → `check` command + `_output_and_exit` |
+| FR110 | Verbose header | `reporting.py` → `format_verbose_header` |
+
+### Rule-to-Function Mapping
+
+| Function | Responsibility |
+|---|---|
+| `format_terminal` | FR98, FR100, FR101, FR102, FR104 |
+| `format_markdown` | FR99, FR100, FR102, FR104 |
+| `format_verbose_header` | FR110 |
+| `write_report` | FR103 |
+| `determine_exit_code` | FR105, FR106, FR107 |
+| `_colorize` | FR101 (internal helper) |
+| `_output_and_exit` (cli.py) | FR101a, FR101b, FR104a, FR108, FR109 |
+
+### Integration Points
+
+**Internal (within docvet):**
+- `cli.py` → `reporting.py`: format + exit code calls
+- `reporting.py` → `checks/__init__.py`: `Finding` type
+- `reporting.py` → `config.py`: `DocvetConfig` type (for `determine_exit_code`)
+
+**External (user-facing):**
+- stdout: formatted findings (terminal or markdown)
+- stderr: verbose header, diagnostic messages, overlap warnings
+- file: `--output` report (markdown or plain text)
+- exit code: 0 or 1
+
+### File Organization Within `reporting.py`
+
+```python
+# 1. Imports and __future__
+# 2. Constants (_COLORS dict)
+# 3. Private helpers (_colorize)
+# 4. Public functions (format_terminal, format_markdown, format_verbose_header, write_report, determine_exit_code)
+```
+
+Order: constants → helpers → public functions. Matches established pattern from all check modules.
+
+### Shared Test Infrastructure
+
+**`make_finding` factory fixture in `tests/conftest.py`:**
+```python
+@pytest.fixture
+def make_finding():
+    def _make(*, file="test.py", line=1, symbol="func", rule="test-rule", message="test message", category="required"):
+        return Finding(file=file, line=line, symbol=symbol, rule=rule, message=message, category=category)
+    return _make
+```
+
+Reusable across `test_reporting.py` (formatter tests) and `test_cli.py` (`_output_and_exit` tests). Avoids duplicated Finding construction boilerplate.
+
+### Test File Modification Notes
+
+**`test_config.py`:** Existing tests for `fail_on`/`warn_on` overlap behavior currently test silent-drop. After Decision 3 (warn + drop), these tests must also assert the stderr warning message is printed. Add `capsys` fixture to capture stderr output.
+
+## Reporting Architecture Validation Results
+
+### Coherence Validation
+
+**Decision Compatibility:**
+All 6 reporting decisions interlock without contradiction:
+- Decision 1 (no_color parameter) feeds into Decision 5 (_output_and_exit resolves it) and Decision 6 (color [category] tag only)
+- Decision 2 (separate format_verbose_header) composes with Decision 5 — header to stderr, findings to stdout
+- Decision 3 (warn + drop) ensures Decision 5's `determine_exit_code` can assume no `fail_on`/`warn_on` overlap
+- Decision 4 (write_report respects fmt) feeds into Decision 5 — `_output_and_exit` handles `--output` flag
+- Decision 6 (color [category] tag only) constrains Decision 1's `_colorize` usage to a single call site per finding line
+- Party mode refinement (dropping `verbose` from `format_terminal`) eliminates dead parameter — coherent with Decision 2
+
+No version conflicts — stdlib and typer only.
+
+**Note on context analysis text:** The context analysis section (reporting-2) mentions `format_terminal` with a `verbose` parameter. Decision 2 and party mode review determined this parameter is unnecessary. When any discrepancy exists between context analysis and decisions, **decisions are authoritative**.
+
+**Pattern Consistency:**
+- String building (Pattern 1), sort convention (Pattern 2), file grouping (Pattern 3) compose naturally via `list[str]` + `sorted()` + `groupby()`
+- Color application (Pattern 4) is isolated in `_colorize` — only called from `format_terminal`, never from `format_markdown`
+- Summary line (Pattern 5) uses same format in both formatters (plain in terminal, bold total in markdown)
+- CLI refactor (Pattern 6) and test patterns (Pattern 7) align with Decision 5's coordination model
+- All patterns follow established project conventions: `_prefix` for private helpers, constants at top, public API at bottom
+
+**Structure Alignment:**
+- One source file + one test file — same pattern as coverage and griffe
+- Module dependency boundary (never imports cli, discovery, ast_utils, other checks) consistent with all check modules
+- `_output_and_exit` in `cli.py` (not `reporting.py`) respects the coordinator-vs-library boundary
+- Individual function imports from `reporting` in `cli.py` — matches existing check import pattern
+- Public API contract (`format_terminal`, `format_markdown`, `format_verbose_header`, `write_report`, `determine_exit_code`) is the largest among all modules (5 functions vs 1-2 for checks) but each function has a focused responsibility
+
+### Requirements Coverage Validation
+
+**Functional Requirements (FR98-FR110): 16/16 covered**
+
+| FR | Summary | Covered By |
+|---|---|---|
+| FR98 | Terminal format with file grouping | Decision 6 + Pattern 3 (format_terminal + groupby) |
+| FR99 | Markdown table format | Structure (format_markdown, 6 columns) |
+| FR100 | Summary line | Pattern 5 (Counter-based, both counts always shown) |
+| FR101 | ANSI colors | Pattern 4 (_colorize + _COLORS dict) |
+| FR101a | NO_COLOR suppression | Decision 1 + 5 (_output_and_exit resolves no_color from env) |
+| FR101b | Non-TTY suppression | Decision 1 + 5 (_output_and_exit resolves no_color from isatty) |
+| FR102 | Sort by (file, line) | Pattern 2 (sorted() at top of each formatter) |
+| FR103 | --output file write | Decision 4 (write_report, respects fmt, forces no_color) |
+| FR104 | Zero output on zero findings | Pattern 1 (empty input → empty string) |
+| FR104a | "No findings." on verbose | Decision 5 (_output_and_exit handles this case) |
+| FR105 | Exit 1 on fail-on findings | Structure (determine_exit_code) |
+| FR106 | Exit 0 on warn-on only | Structure (determine_exit_code) |
+| FR107 | Exit 0 on zero findings | Structure (determine_exit_code) |
+| FR108 | --format selection | Decision 5 (_output_and_exit) |
+| FR109 | Aggregate findings | Structure (check command + _output_and_exit) |
+| FR110 | Verbose header | Decision 2 (format_verbose_header, stderr) |
+
+**Non-Functional Requirements (NFR49-NFR54): 6/6 covered**
+
+| NFR | Summary | Covered By |
+|---|---|---|
+| NFR49 | 1000 findings < 100ms | Pattern 1 (list + join, no O(n^2) concat) |
+| NFR50 | Deterministic output | Pattern 2 (sorted by (file, line), stable sort) |
+| NFR51 | Zero output on empty | Pattern 1 (if not findings: return "") |
+| NFR52 | No external color deps, NO_COLOR | Decision 1 + Pattern 4 (typer.style only) |
+| NFR53 | Valid GFM, no ANSI in markdown | Structure (format_markdown never calls _colorize) |
+| NFR54 | No cross-check imports | Structure (module dependency boundary) |
+
+### Implementation Readiness Validation
+
+**Decision Completeness:**
+- All 6 decisions include signatures, rationale, code examples, and anti-patterns
+- `_output_and_exit` internal flow fully specified (8-step sequence in Decision 5)
+- Color mapping dict, summary line format, and line format all have concrete code examples
+- Three rounds of party mode review resolved 8 findings before implementation
+
+**Structure Completeness:**
+- All new files identified with `← NEW` markers
+- All modified files identified with `← MODIFIED` and scope described
+- Shared `make_finding` fixture specified for test infrastructure
+- Import style explicitly documented (individual function imports)
+- File organization within `reporting.py` specified (constants → helpers → public)
+
+**Pattern Completeness:**
+- 7 patterns cover all implementation conflict points
+- Test patterns specify what to assert, what to mock, and what NOT to test in each file
+- Enforcement guidelines provide 8 mandatory rules for agents
+- Pipe escape for `format_markdown` explicitly documented
+
+### Gap Analysis Results
+
+**Critical Gaps:** None identified. All 16 FRs and 6 NFRs have explicit architectural coverage.
+
+**Important Gaps — 3 edge cases resolved during validation:**
+
+1. **`--output` with zero findings:** `_output_and_exit` skips `write_report` when all findings are empty — don't create the file. CI uses exit codes for run confirmation, not file existence. Verbose "No findings." goes to stdout, not to the output file.
+
+2. **`_output_and_exit` format resolution — three cases:**
+   - `--output` set, `--format` not set → default to `"markdown"`
+   - `--output` set, `--format` explicitly set → respect user's choice
+   - `--output` not set → use `--format` or default to `"terminal"`
+
+3. **Pipe escape in `format_markdown`:** `message.replace("|", "\\|")` before inserting into markdown table rows. Prevents GFM table breakage on messages containing `|` characters. Apply to `message` field only (symbol names don't contain pipes in practice).
+
+**Scope Boundaries (not gaps):**
+1. **JSON/SARIF output** — deferred to post-MVP growth
+2. **Verbose code snippets** — deferred to post-MVP growth
+3. **Configurable grouping** — deferred to post-MVP growth
+4. **GitHub Actions annotation format** — deferred to post-MVP growth
+
+### Architecture Completeness Checklist
+
+**Requirements Analysis**
+
+- [x] Project context thoroughly analyzed (16 FRs, 6 NFRs)
+- [x] Scale and complexity assessed (low, string formatting)
+- [x] Technical constraints identified (typer + stdlib only, no new deps)
+- [x] Cross-cutting concerns mapped (ANSI suppression, verbose split, exit code coordination, config overlap, default fail_on empty)
+
+**Architectural Decisions**
+
+- [x] 6 decisions documented with rationale, code examples, and anti-patterns
+- [x] Technology stack constrained to typer + stdlib (pathlib, collections, itertools)
+- [x] Integration patterns defined (cli → reporting → checks.Finding + config.DocvetConfig)
+- [x] Performance addressed (list + join pattern, negligible overhead)
+
+**Implementation Patterns**
+
+- [x] Naming conventions established (_colorize, _COLORS, _output_and_exit)
+- [x] Structure patterns defined (file organization order, string building)
+- [x] Format patterns specified (terminal line format, markdown table, summary line)
+- [x] Process patterns documented (sort → group → format → output)
+- [x] Test patterns specified with assertions, mocking strategy, and fixture sharing
+
+**Project Structure**
+
+- [x] Complete directory structure with NEW/MODIFIED markers
+- [x] Component boundaries established (public API, module dependency, data boundary, caller contract)
+- [x] Integration points mapped (cli, reporting, checks.Finding, config.DocvetConfig)
+- [x] Requirements-to-structure mapping complete (FR→file table, function→FR table)
+- [x] Shared test infrastructure documented (make_finding fixture)
+
+### Architecture Readiness Assessment
+
+**Overall Status:** READY FOR IMPLEMENTATION
+
+**Confidence Level:** High
+
+**Key Strengths:**
+- Complete FR and NFR coverage with no critical gaps
+- All 6 decisions interlock coherently — no contradictions or incompatibilities
+- Code examples and anti-patterns provide clear implementation guidance for AI agents
+- Three rounds of party mode review resolved 8 findings before implementation begins
+- `format_terminal` simplified (no dead `verbose` parameter) — clean API
+- Shared test fixture strategy eliminates boilerplate
+- Edge cases explicitly documented (zero findings + --output, --format default with --output, pipe escape)
+- Three-story decomposition provides clear implementation sequence
+
+**Areas for Future Enhancement:**
+- JSON/SARIF output formats (growth)
+- Verbose code snippets and fix suggestions per finding (growth)
+- Configurable grouping by file, rule, check, or category (growth)
+- GitHub Actions annotation format for PR inline comments (growth)
+
+### Implementation Handoff
+
+**AI Agent Guidelines:**
+- Follow all 6 architectural decisions exactly as documented
+- Use implementation patterns consistently — list+join, sorted, groupby, _colorize
+- Respect project structure and boundaries — no cross-check imports, reporting.py is pure except write_report
+- Refer to this document for all architectural questions before escalating
+- When context analysis text conflicts with decisions, **decisions are authoritative**
+- Escape pipe characters in `format_markdown` message field
+- Never add `verbose` parameter to `format_terminal` — verbose concerns are handled elsewhere
+
+**Implementation Sequence (three-story pattern):**
+
+**Story 1 — CLI refactor prerequisite + config overlap warning:**
+- AC sketch:
+  - (a) All 4 `_run_*` functions return `list[Finding]` instead of `None`
+  - (b) All `_run_griffe` skip paths return `[]` not `None`
+  - (c) `_run_freshness` both branches (diff/drift) return `list[Finding]`
+  - (d) All `typer.echo()` finding-printing loops removed from `_run_*` functions
+  - (e) Existing stderr messages (warnings, verbose notes) preserved unchanged
+  - (f) Config loader prints stderr warning when check name appears in both `fail_on` and `warn_on`
+  - (g) Shared `make_finding` factory fixture added to `tests/conftest.py`
+  - (h) Existing CLI and config tests updated to match new return types and stderr assertions
+
+**Story 2 — Core reporting functions + tests:**
+- AC sketch:
+  - (a) `format_terminal` returns self-contained `file:line: rule message [category]` lines with file grouping via blank lines and ANSI-colored `[category]` tag
+  - (b) `format_terminal` with `no_color=True` produces output with zero ANSI escape codes
+  - (c) `format_markdown` returns valid GFM table with 6 columns and bold summary line
+  - (d) `format_markdown` escapes pipe characters in message field
+  - (e) `format_verbose_header` returns `"Checking N files [check1, check2, ...]\n"`
+  - (f) `write_report` writes formatted content to file; raises `FileNotFoundError` on missing parent dir
+  - (g) `determine_exit_code` returns 1 when any `fail_on` check has findings, 0 otherwise
+  - (h) Both formatters return empty string for empty input; summary line only when count > 0
+  - (i) Findings sorted by `(file, line)` before formatting — deterministic output
+
+**Story 3 — CLI wiring:**
+- AC sketch:
+  - (a) `_output_and_exit` coordinates verbose header (stderr), formatting, file output, and exit code
+  - (b) `docvet check` aggregates findings from all 4 checks into `dict[str, list[Finding]]`
+  - (c) Each standalone subcommand (`enrichment`, `freshness`, `coverage`, `griffe`) produces single-key dict and calls `_output_and_exit`
+  - (d) `--format markdown` selects markdown formatter; `--format terminal` selects terminal formatter
+  - (e) `--output` writes to file (default markdown) instead of stdout; skipped when zero findings
+  - (f) Exit code driven by `determine_exit_code` — `fail_on` config, not categories
+  - (g) Verbose mode: header to stderr when findings exist; "No findings." to stdout when zero findings
+  - (h) `no_color` resolved from `NO_COLOR` env var OR non-TTY stdout OR `--output` flag
