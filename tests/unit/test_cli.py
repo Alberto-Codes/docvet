@@ -1358,7 +1358,12 @@ def test_run_freshness_drift_direct_returns_list_of_findings(mocker):
     )
     assert isinstance(result, list)
     assert len(result) == 1
+    assert result[0].file == "src/app.py"
+    assert result[0].line == 10
+    assert result[0].symbol == "do_stuff"
     assert result[0].rule == "stale-drift"
+    assert result[0].message == "73 days drift"
+    assert result[0].category == "recommended"
 
 
 def test_run_freshness_drift_direct_mixed_files_skips_syntax_errors(mocker):
