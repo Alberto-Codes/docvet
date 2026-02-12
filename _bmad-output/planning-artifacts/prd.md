@@ -16,6 +16,10 @@ status: 'complete'
 lastEdited: '2026-02-11'
 editHistory:
   - date: '2026-02-11'
+    changes: '3 structural improvements from validation holistic quality assessment: added Document Roadmap subsection to Executive Summary for reader orientation; added transition prose between Coverage and Griffe module specs clarifying Layer 6→Layer 5 progression; consolidated reporting prerequisites into single scannable subsection (merged duplicated prerequisite deliverables)'
+  - date: '2026-02-11'
+    changes: 'Added reporting module specification; added 1 journey (J11), Reporting Module Specification section, 13 FRs (FR98-FR110 with FR101a/b and FR104a sub-items), 6 NFRs (NFR49-NFR54); updated Executive Summary, Success Criteria, Product Scope to cover reporting; moved griffe to Complete status; added Reporting Feature Set to Project Scoping; incorporated 10 party-mode review findings (verbose MVP behavior, GH issue #12 reconciliation, fail-on/warn-on mutual exclusivity invariant, terminal greppability fix to self-contained lines, CLI refactor as explicit prerequisite, write_report error on missing parent dir, NO_COLOR and non-TTY split, summary line zero-count format, verbose zero-findings output, markdown ANSI-free guarantee)'
+  - date: '2026-02-11'
     changes: 'Added griffe compatibility check (Layer 5) as next epic; added 1 journey, griffe module spec, 3 rules (griffe-missing-type, griffe-unknown-param, griffe-format-warning), FRs (FR81-FR97), NFRs (NFR39-NFR48); updated Executive Summary, Success Criteria, Product Scope to cover all four docvet-owned layers; moved coverage to Complete status; incorporated 6 party-mode review findings (CLI skip messaging, search path clarification, all-files-filtered-out FR, warning pattern enumeration, multi-finding-per-symbol clarification, format-warning split as growth candidate)'
   - date: '2026-02-11'
     changes: 'Fixed 3 validation findings: NFR3/NFR21 reworded as design invariants (measurability fix); FR44/FR51/FR79 removed module name references (implementation leakage fix); Journey traceability attribution corrected missing-typed-attributes from J2 to J4'
@@ -46,14 +50,15 @@ inputDocuments:
   - 'gh-issue-9'
   - 'gh-issue-10'
   - 'gh-issue-11'
+  - 'gh-issue-12'
 documentCounts:
   briefs: 0
   research: 0
   brainstorming: 0
-  projectDocs: 17
+  projectDocs: 18
 workflowType: 'prd'
 projectName: 'docvet'
-featureScope: 'enrichment-freshness-coverage-and-griffe-checks'
+featureScope: 'enrichment-freshness-coverage-griffe-and-reporting'
 ---
 
 # Product Requirements Document - docvet
@@ -63,13 +68,13 @@ featureScope: 'enrichment-freshness-coverage-and-griffe-checks'
 
 ## Executive Summary
 
-docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for four check modules: the **enrichment check** (Layer 3: completeness), the **freshness check** (Layer 4: accuracy), the **griffe compatibility check** (Layer 5: rendering), and the **coverage check** (Layer 6: visibility). Together they cover all four docvet-owned layers in the six-layer quality model.
+docvet is a Python CLI tool for comprehensive docstring quality vetting. This PRD defines requirements for four check modules: the **enrichment check** (Layer 3: completeness), the **freshness check** (Layer 4: accuracy), the **griffe compatibility check** (Layer 5: rendering), and the **coverage check** (Layer 6: visibility). Together they cover all four docvet-owned layers in the six-layer quality model. It also defines the **reporting module** — the cross-cutting output layer that formats findings for terminal and markdown consumption, produces summary statistics, and drives exit code logic for CI integration.
 
 The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. The freshness check detects stale docstrings — code that changed without a corresponding docstring update — by mapping git diff hunks and git blame timestamps to AST symbols. The griffe compatibility check catches docstrings that parse fine as text but produce warnings during mkdocs build — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered documentation. The coverage check detects Python files invisible to mkdocstrings due to missing `__init__.py` files in parent directories. All four complement ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022 and never addressed staleness, rendering, or visibility detection; ruff stops at D417 (param completeness).
 
 **Target users:** Python developers writing Google-style docstrings, teams using mkdocs-material + mkdocstrings.
 
-**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Griffe: 3 rule identifiers for rendering compatibility warnings, optional dependency on griffe library, no per-check configuration. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration.
+**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Griffe: 3 rule identifiers for rendering compatibility warnings, optional dependency on griffe library, no per-check configuration. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration. Reporting: terminal formatter (ANSI colors, file grouping, summary line), markdown formatter (table format for CI/PR comments), `--output` file support, exit code logic based on `fail-on` / `warn-on` configuration.
 
 ### Key Terms
 
@@ -85,6 +90,20 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - **Coverage check**: Layer 6 (visibility) detection. Identifies Python files whose parent directories lack `__init__.py`, making them invisible to mkdocstrings — they exist but won't appear in generated documentation.
 - **Package boundary**: The `src-root` directory (e.g., `src/` or project root) above which `__init__.py` is not required. Coverage walks upward from each file's parent to this boundary.
 
+### Document Roadmap
+
+This PRD is organized in 6 parts:
+
+1. **Success Criteria & Scope** (Sections 1-3): Vision, competitive context, MVP boundaries, and growth roadmap
+2. **User Journeys** (Section 4): 11 scenarios demonstrating all 19 rules in action across 7 developer personas
+3. **Module Specifications** (Sections 5-9): Technical contracts for enrichment, freshness, coverage, griffe, and reporting — each with integration contract, rule taxonomy, config schema, and implementation guidance
+4. **Phased Development** (Section 10): Epic breakdown with 4 complete phases, reporting as next epic, and post-epic growth candidates
+5. **Requirements** (Sections 11-12): 110 FRs and 54 NFRs with traceability to journeys and success criteria
+6. **Metadata** (YAML frontmatter): Edit history, input documents, classification, and workflow tracking
+
+For implementation: start with Module Specifications (Sections 5-9) and FRs/NFRs (Sections 11-12).
+For stakeholder review: focus on Success Criteria (Section 1) and User Journeys (Section 4).
+
 ## Success Criteria
 
 ### User Success
@@ -98,6 +117,9 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - A tech lead runs `docvet freshness --mode drift --all` and discovers docstrings that drifted out of sync over time — long-untouched docstrings on recently-modified code
 - A developer runs `docvet coverage --all` and discovers Python files invisible to mkdocstrings because parent directories lack `__init__.py` — files that exist but won't appear in generated documentation
 - A developer runs `docvet griffe` and discovers docstrings that will produce warnings during `mkdocs build` — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered output
+- A developer runs `docvet check --all` and sees findings grouped by file with color-coded categories, followed by a summary line (`N findings (X required, Y recommended)`) that enables instant triage
+- A CI pipeline runs `docvet check` and exits with code 1 when any `fail-on` check produces findings, gating the build on documentation quality
+- A developer runs `docvet check --all --format markdown --output report.md` and gets a formatted report suitable for attaching to a PR comment or archiving as a build artifact
 
 ### Business Success
 
@@ -110,6 +132,7 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - Coverage check closes the visibility gap -- developers currently discover missing `__init__.py` only when mkdocs builds silently omit their modules; docvet catches this before deployment
 - Griffe compatibility check catches rendering issues at lint time instead of during `mkdocs build` -- developers fix docstring formatting before deployment, not after a broken docs build
 - Completes docvet's four-layer model (completeness, accuracy, rendering, visibility) -- the only Python tool providing unified docstring quality coverage from content to deployment
+- Reporting output follows industry conventions (`file:line: rule message` for terminal, table format for markdown) — feels native alongside ruff, ty, and pytest output
 
 ### Technical Success
 
@@ -119,12 +142,14 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - `check_coverage(src_root, files)` returns `list[Finding]` with pure filesystem logic -- no AST, no git, no configuration
 - `check_griffe_compat(src_root, files)` returns `list[Finding]` by loading the package via griffe and capturing parser warnings -- optional dependency, graceful skip when griffe not installed
 - Each `Finding` carries: `file`, `line`, `symbol`, `rule` (kebab-case stable identifier), `message`, `category` (`required` | `recommended`)
+- `format_terminal(findings)` returns a color-coded, file-grouped string with summary line; `format_markdown(findings)` returns a GitHub-compatible markdown table — both consume `list[Finding]` without check-specific knowledge
 - All 14 enrichment detection scenarios (10 rule identifiers) implemented and individually toggleable via `EnrichmentConfig`
 - All 5 freshness rule identifiers (3 diff + 2 drift) implemented with severity-to-category mapping
 - Griffe check: 3 rule identifiers (`griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`) capturing rendering compatibility warnings
 - Coverage check: 1 rule identifier (`missing-init`) detecting missing `__init__.py` in parent directory hierarchies
 - No new runtime dependencies for enrichment, freshness, or coverage -- stdlib `ast`, `pathlib`, and existing `ast_utils.Symbol` infrastructure. Griffe check requires optional `griffe` dependency
 - Checks are isolated -- no imports from other check modules, no shared mutable state
+- Exit code logic: `0` when no `fail-on` checks produce findings, `1` when any `fail-on` check produces findings — independent of `warn-on` findings count
 - Quality gates pass: ruff, ty, pytest with >=85% coverage, interrogate
 
 ### Measurable Outcomes
@@ -143,6 +168,9 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 - Unit tests with known-bad docstrings (missing type annotations, unknown parameters, malformed formatting) produce expected griffe findings for each of the 3 rule identifiers
 - Well-documented code with typed Args and valid parameter names produces zero griffe findings
 - When griffe is not installed, `check_griffe_compat` returns an empty list without raising exceptions
+- Terminal output groups findings by file and appends a summary line (`N findings (X required, Y recommended)`) when count > 0
+- Markdown output produces a table with columns for File, Line, Rule, Symbol, Message, and Category — valid GitHub-flavored markdown
+- `--output report.md` writes the formatted report to a file instead of stdout; `--format markdown` selects the markdown formatter
 
 ## Product Scope
 
@@ -162,13 +190,17 @@ The freshness module delivers 5 rule identifiers across diff mode (3 severity-ti
 
 The coverage module delivers 1 rule identifier (`missing-init`) that detects Python files invisible to mkdocstrings due to missing `__init__.py` in parent directories. The simplest of the four checks — pure filesystem traversal, no AST analysis, no git integration, no per-check configuration. This is fully implemented (1 epic, 2 stories, 557 tests). See "Project Scoping & Phased Development > Coverage Feature Set" for the authoritative implementation checklist.
 
-### Next Epic — Griffe Compatibility Check (Layer 5)
+### Griffe Compatibility Check (Layer 5) — Complete
 
-The griffe epic delivers 3 rule identifiers (`griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`) that capture rendering compatibility warnings by parsing docstrings with the griffe library — the same parser used by mkdocstrings during `mkdocs build`. Griffe is an optional dependency (`pip install docvet[griffe]`); the check gracefully skips when griffe is not installed. Operates at the package level (griffe loads entire packages, not individual files), with warnings filtered to discovered files and mapped to `Finding` objects. No per-check configuration. See "Project Scoping & Phased Development > Griffe Feature Set" for the authoritative implementation checklist.
+The griffe module delivers 3 rule identifiers (`griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`) that capture rendering compatibility warnings by parsing docstrings with the griffe library — the same parser used by mkdocstrings during `mkdocs build`. Griffe is an optional dependency (`pip install docvet[griffe]`); the check gracefully skips when griffe is not installed. This is fully implemented (1 epic, 2 stories, 617 tests). See "Project Scoping & Phased Development > Griffe Feature Set" for the authoritative implementation checklist.
+
+### Next Epic — Reporting Module
+
+The reporting epic delivers the output formatting layer that all check modules depend on for user-facing output. Currently each `_run_*` CLI function prints findings inline with duplicated `typer.echo()` calls and no summary, grouping, or exit code logic. The reporting module extracts this into shared formatters (`format_terminal`, `format_markdown`), adds file-grouped output with ANSI color coding, a summary line, `--output` file support, and exit code logic based on `fail-on` / `warn-on` configuration. No new runtime dependencies — ANSI codes via typer/stdlib, no external color libraries. See "Project Scoping & Phased Development > Reporting Feature Set" for the authoritative implementation checklist.
 
 ### Growth & Vision
 
-Growth features include inline suppression, JSON output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), and cross-check intelligence (enrichment + freshness + griffe + coverage combined findings). Vision includes editor/LSP integration and additional docstring style support. See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
+Growth features include inline suppression, JSON/SARIF output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), verbose mode with code snippets and suggestions (reporting), and cross-check intelligence (enrichment + freshness + griffe + coverage combined findings). Vision includes editor/LSP integration, GitHub Actions annotation format for PR inline comments, and additional docstring style support. See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
 
 ## User Journeys
 
@@ -426,9 +458,61 @@ Category `required` — the docstring actively misleads callers about the functi
 
 **Edge Case -- Griffe Not Installed:** A contributor working on a minimal dev setup without the griffe extra (`pip install docvet` instead of `pip install docvet[griffe]`) runs `docvet check`. The griffe check silently skips — no error, no finding, zero noise. Enrichment, freshness, and coverage still run normally. The contributor sees a note in verbose output: `griffe: skipped (griffe not installed)`.
 
+### Journey 11: The CI Report (Reporting & Exit Codes)
+
+**Persona:** Sofia, a DevOps engineer configuring docvet in a GitHub Actions CI pipeline for a team of 8 developers. She wants the pipeline to fail on documentation regressions while producing a readable summary artifact.
+
+**Opening Scene:** Sofia adds `docvet check --all` to the team's CI workflow. The pipeline runs, producing 23 findings across 6 files. But the output is a flat stream of `file:line: rule message` lines with no visual hierarchy. She can see individual findings but can't quickly answer "how many are required vs recommended?" or "which files have the most issues?" The exit code is 0 regardless of findings — the pipeline never fails.
+
+**Rising Action:** Sofia configures `fail-on` and `warn-on` in `pyproject.toml`:
+
+```toml
+[tool.docvet]
+fail-on = ["enrichment", "coverage"]
+warn-on = ["freshness", "griffe"]
+```
+
+She runs `docvet check --all` again. The terminal output now groups findings by file, with color-coded categories:
+
+```
+src/core/engine.py:23: missing-raises Function 'process_batch' raises ValueError but has no Raises: section [required]
+src/core/engine.py:91: stale-signature Function 'process_batch' signature changed but docstring not updated [required]
+
+src/models/schema.py:15: missing-attributes Dataclass 'SchemaResult' has 4 fields but no Attributes: section [required]
+src/models/schema.py:42: griffe-missing-type Function 'validate' parameter 'strict' has no type annotation [recommended]
+
+23 findings (8 required, 15 recommended)
+```
+
+Because enrichment is in `fail-on` and produced findings, the exit code is 1. The pipeline fails. The summary line tells the team exactly what to prioritize.
+
+**Climax:** Sofia adds markdown reporting to the CI workflow for artifact archiving:
+
+```yaml
+- run: docvet check --all --format markdown --output docvet-report.md
+  continue-on-error: true
+- uses: actions/upload-artifact@v4
+  with:
+    name: docvet-report
+    path: docvet-report.md
+```
+
+The markdown report produces a table:
+
+| File | Line | Rule | Symbol | Message | Category |
+|------|------|------|--------|---------|----------|
+| src/core/engine.py | 23 | missing-raises | process_batch | ... | required |
+| ... | ... | ... | ... | ... | ... |
+
+Reviewers can download the artifact or paste it into a PR comment for discussion.
+
+**Resolution:** Over two sprints, the team fixes all `required` findings. The pipeline goes green. Sofia sees `0 findings` and exit code 0. The team has a sustainable CI gate that enforces documentation quality without manual review overhead.
+
+**Edge Case -- All Findings Advisory:** A colleague's PR produces 5 findings, but all are from freshness (in `warn-on`). Exit code is 0 — the pipeline passes. The findings appear in the log as advisory output. The developer reviews them during cleanup but isn't blocked from merging.
+
 ### Journey Requirements Traceability
 
-All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). All 3 griffe rule identifiers are demonstrated in Journey 10: `griffe-missing-type` (recommended, main scenario), `griffe-unknown-param` (required, edge case), and `griffe-format-warning` (recommended, implied by griffe's formatting checks). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 19 rule identifiers (10 enrichment + 5 freshness + 3 griffe + 1 coverage) have journey coverage. CLI/reporting layer dependencies (output formatting, summary line, exit codes, discovery modes) are out of check module scope but required for full journey completion in the same release.
+All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). All 3 griffe rule identifiers are demonstrated in Journey 10: `griffe-missing-type` (recommended, main scenario), `griffe-unknown-param` (required, edge case), and `griffe-format-warning` (recommended, implied by griffe's formatting checks). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 19 rule identifiers (10 enrichment + 5 freshness + 3 griffe + 1 coverage) have journey coverage. Journey 11 demonstrates the reporting module: terminal formatting with file grouping and color-coded categories, markdown table output for CI artifacts, summary line, exit code logic based on `fail-on`/`warn-on` configuration, and `--output` file support. Reporting is a cross-cutting capability required by all check module journeys for full journey completion.
 
 ## Enrichment Module Specification
 
@@ -764,6 +848,10 @@ def check_coverage(
 - No cross-imports between coverage and any other check module
 - No `CoverageConfig` needed — zero configuration parameters
 
+---
+
+The coverage check (Layer 6: visibility) ensures Python files are importable by mkdocstrings — a prerequisite for documentation generation. The next layer, rendering compatibility (Layer 5), assumes files are importable and validates that their docstrings will render correctly. The **griffe compatibility check** operates at this rendering layer, using the same parser as mkdocstrings to catch formatting and typing issues that degrade rendered output. Unlike coverage's per-file filesystem check, griffe operates at the package level — it loads entire packages via `griffe.load()` and filters results to the requested file set.
+
 ## Griffe Module Specification
 
 ### Project-Type Overview
@@ -876,6 +964,131 @@ No `GriffeConfig` needed — zero configuration parameters. The griffe check use
 - No cross-imports between griffe_compat and any other check module
 - No `GriffeConfig` needed — zero configuration parameters
 
+## Reporting Module Specification
+
+### Project-Type Overview
+
+The reporting module is a cross-cutting output layer consumed by all check subcommands and the `check` aggregator. It replaces the current inline `typer.echo()` calls in each `_run_*` function with shared formatters that produce structured output. The module provides two formatters (terminal and markdown), a summary line, file-grouped output, and exit code determination based on `fail-on` / `warn-on` configuration. It has no awareness of individual check modules — it operates entirely on `list[Finding]` and `DocvetConfig`.
+
+### Integration Contract
+
+**Public API:**
+
+```python
+def format_terminal(
+    findings: list[Finding],
+    *,
+    verbose: bool = False,
+) -> str:
+    """Format findings for terminal output with ANSI colors and file grouping."""
+
+def format_markdown(findings: list[Finding]) -> str:
+    """Format findings as a GitHub-compatible markdown table."""
+
+def write_report(
+    findings: list[Finding],
+    output: Path,
+    *,
+    fmt: str = "markdown",
+) -> None:
+    """Write formatted report to a file."""
+
+def determine_exit_code(
+    findings_by_check: dict[str, list[Finding]],
+    config: DocvetConfig,
+) -> int:
+    """Return 0 if no fail-on checks produced findings, 1 otherwise."""
+```
+
+**Key contract details:**
+
+- **Check-agnostic**: formatters consume `list[Finding]` without knowledge of which check produced them. The `Finding.rule` field provides sufficient context for display — no `check` field needed. Note: GH Issue #12 proposed a `Finding` with `severity` and `check` fields; this is superseded by the existing frozen `Finding` API (6 fields: `file`, `line`, `symbol`, `rule`, `message`, `category`) which is stable for v1 per NFR17.
+- **`fail-on` / `warn-on` mutual exclusivity**: `determine_exit_code` assumes each check name appears in at most one of `fail_on` or `warn_on`. This invariant is enforced by `DocvetConfig` validation at config load time — a check name in both lists is a config error. The reporting module does not re-validate this.
+- **`format_terminal` produces ANSI-colored output**: uses `typer.style()` or raw ANSI escape codes for category colors (e.g., red for `required`, yellow for `recommended`). File headers are bold. No external color library (no `click`, no `rich`, no `colorama`).
+- **File grouping in terminal output**: findings sorted by `(file, line)`. Each line is self-contained: `file:line: rule message [category]`. Visual grouping via blank lines between files — no indentation, no separate file header lines. This preserves greppability (each line is parseable independently) while providing visual hierarchy.
+- **Summary line**: appended when finding count > 0. Format: `N findings (X required, Y recommended)`. Both category counts always shown even when zero (e.g., `5 findings (5 required, 0 recommended)`). Printed to stdout after all findings.
+- **`format_markdown` produces a table**: columns for File, Line, Rule, Symbol, Message, Category. Valid GitHub-flavored markdown. Summary line appended below the table.
+- **`write_report` writes to a file**: uses `format_markdown` (or `format_terminal` without ANSI codes) based on `fmt` parameter. Raises `FileNotFoundError` if the parent directory does not exist — a linter should not silently create directories.
+- **`determine_exit_code` drives CI gating**: iterates `findings_by_check`, returns `1` if any check name in `config.fail_on` has a non-empty findings list. Returns `0` otherwise. `warn-on` checks produce output but do not affect exit code.
+- **`verbose` mode (MVP)**: when enabled and findings exist, terminal output prefixes the findings block with a header showing the number of files checked and which checks ran (e.g., `Checking 12 files [enrichment, freshness, coverage, griffe]`). When enabled and zero findings exist, prints `No findings.` to stdout instead of silent empty output — confirms the tool ran successfully. Growth candidate: per-finding code snippets and fix suggestions.
+- **`verbose` mode with zero findings**: `format_terminal` with `verbose=True` and an empty finding list returns `"No findings.\n"` instead of empty string. This is the only case where zero findings produces output.
+- **Zero findings (non-verbose)**: formatters return an empty string (no output, no summary line). `determine_exit_code` returns `0`.
+- **Pure functions**: `format_terminal` and `format_markdown` have no side effects. `write_report` performs file I/O only. `determine_exit_code` is pure.
+
+**Import contract:**
+
+- `reporting` exports `format_terminal`, `format_markdown`, `write_report`, `determine_exit_code`
+- Imports `Finding` from `docvet.checks` and `DocvetConfig` from `docvet.config`
+- No imports from any check module — depends only on `checks.Finding` and `config.DocvetConfig`
+
+### Output Formats
+
+**Terminal format (default):**
+
+```
+src/core/engine.py:23: missing-raises Function 'process_batch' raises ValueError but has no Raises: section [required]
+src/core/engine.py:91: stale-body Function 'process_batch' body changed but docstring not updated [recommended]
+
+src/models/schema.py:15: missing-attributes Dataclass 'SchemaResult' has 4 fields but no Attributes: section [required]
+
+3 findings (2 required, 1 recommended)
+```
+
+Each line is self-contained (`file:line: rule message [category]`) and independently greppable. Blank lines between file groups provide visual separation. This matches the ruff/ty output convention.
+
+**Markdown format:**
+
+```markdown
+| File | Line | Rule | Symbol | Message | Category |
+|------|------|------|--------|---------|----------|
+| src/core/engine.py | 23 | missing-raises | process_batch | Function 'process_batch' raises ValueError but has no Raises: section | required |
+| src/core/engine.py | 91 | stale-body | process_batch | Function 'process_batch' body changed but docstring not updated | recommended |
+| src/models/schema.py | 15 | missing-attributes | SchemaResult | Dataclass 'SchemaResult' has 4 fields but no Attributes: section | required |
+
+**3 findings** (2 required, 1 recommended)
+```
+
+### Exit Code Logic
+
+Exit code is determined at the CLI level after all checks complete:
+
+- **Exit 0**: no findings from any `fail-on` check. `warn-on` findings are printed but do not affect exit code.
+- **Exit 1**: at least one finding from a `fail-on` check. The CLI prints all findings (from both `fail-on` and `warn-on` checks) before exiting.
+- **No findings at all**: exit 0, no output (silent success).
+
+The exit code depends on which *check names* are in `fail-on`, not on individual rule identifiers or categories. A `required` finding from a `warn-on` check does not cause exit 1. A `recommended` finding from a `fail-on` check does cause exit 1.
+
+### Scripting & CI Support
+
+- **Greppable**: every terminal output line is self-contained as `file:line: rule message [category]` — parseable by standard text tools (`grep`, `awk`, `cut`). Blank lines between file groups are visual only
+- **GitHub PR comments**: markdown format is valid GFM, suitable for `gh pr comment` or GitHub Actions step summaries
+- **Artifact archiving**: `--output report.md` writes to file for `actions/upload-artifact`
+- **Piping**: terminal format without `--format` goes to stdout; warnings and verbose messages go to stderr. Supports `docvet check --all > findings.txt 2>/dev/null`
+
+### Technical Guidance for Implementation
+
+1. **Sort findings**: by `(file, line)` before formatting — deterministic output regardless of check execution order
+2. **File grouping (terminal)**: iterate sorted findings, emit blank line between file groups. Each line is self-contained (`file:line: rule message [category]`) — no separate file header lines, no indentation
+3. **ANSI colors**: use `typer.style()` for `required` (red) and `recommended` (yellow). File headers in bold. Respect `NO_COLOR` environment variable (suppress ANSI codes when set)
+4. **Summary line**: count findings by category using `collections.Counter`. Format: `f"{total} findings ({required} required, {recommended} recommended)"`. Always show both counts even when zero — consistent format simplifies parsing
+5. **Exit code**: CLI collects `dict[str, list[Finding]]` mapping check names to findings. Passes to `determine_exit_code(findings_by_check, config)`. Result becomes `raise typer.Exit(code)`
+6. **`--output` integration**: CLI checks `ctx.obj["output"]`; if set, calls `write_report` instead of printing to stdout
+
+**Edge cases:**
+
+- **Zero findings**: no output, exit 0
+- **All findings from warn-on checks**: output printed, exit 0
+- **Mixed fail-on and warn-on findings**: all output printed, exit 1
+- **`--format markdown` to stdout**: works (no file needed); `--output` is independent of `--format`
+- **Non-TTY stdout (piped)**: ANSI codes should be suppressed automatically. `typer.style()` handles this; if not, check `sys.stdout.isatty()`
+- **Empty `fail-on` list**: no check can cause exit 1 — always exit 0 (all checks are advisory)
+
+**Dependencies:**
+
+- No new runtime dependencies: `typer` (already a dependency) for ANSI styling, stdlib `pathlib` for file I/O
+- Imports `Finding` from `checks/__init__.py` and `DocvetConfig` from `config.py`
+- No cross-imports with any check module
+
 ## Project Scoping & Phased Development
 
 ### Strategy & Philosophy
@@ -959,23 +1172,11 @@ No `GriffeConfig` needed — zero configuration parameters. The griffe check use
 - Edge case tests: top-level modules, nested packages, empty `__init__.py`
 - CLI wiring: `_run_coverage` in `cli.py`
 
-### Griffe Feature Set (Next Epic)
+### Griffe Feature Set (Phase 4 — Complete)
 
-**Status:** Not started. All prerequisites exist: `Finding` dataclass, `_run_griffe` CLI stub, discovery pipeline, `griffe` in `_VALID_CHECK_NAMES` and default `warn_on`, optional `griffe` dependency in `pyproject.toml`.
+**Status:** Fully implemented (1 epic, 2 stories, 617 tests).
 
 **Core User Journeys Enabled:** Journey 10. The griffe module enables the rendering compatibility detection workflow.
-
-**Existing infrastructure (already implemented):**
-
-- `Finding` dataclass in `checks/__init__.py` (shared with enrichment, freshness, and coverage)
-- `_run_griffe` CLI stub in `cli.py`
-- `griffe` CLI command with full discovery pipeline support (DIFF, STAGED, ALL, FILES modes)
-- `griffe` registered in `_VALID_CHECK_NAMES` and default `warn_on` list in `DocvetConfig`
-- Optional dependency: `griffe` extra in `pyproject.toml`
-- File discovery via `discovery.py` (returns sorted absolute `.py` file paths)
-- `src-root` resolution logic in `cli.py` (shared with coverage)
-
-**Prerequisite deliverables:** None. All shared infrastructure already exists.
 
 **Main Deliverables:**
 
@@ -987,7 +1188,38 @@ No `GriffeConfig` needed — zero configuration parameters. The griffe check use
 - Zero findings on well-documented code with typed Args and valid parameter names
 - Unit tests with known-bad docstrings (≥85% project-wide coverage)
 - Edge case tests: griffe not installed, empty file list, package load errors, unrecognized warnings
-- CLI wiring: replace `_run_griffe` stub in `cli.py`
+- CLI wiring: `_run_griffe` in `cli.py`
+
+### Reporting Feature Set (Next Epic)
+
+**Status:** Not started. CLI infrastructure exists (global `--format`, `--output`, `--verbose` options; `OutputFormat` enum) but options are acknowledged-only — no formatting logic is wired.
+
+**Core User Journeys Enabled:** Journey 11. The reporting module enables the CI report workflow and completes Journeys 3 and 5 (which reference summary line and exit code behavior).
+
+**Prerequisites:**
+
+All shared infrastructure already exists:
+- `Finding` dataclass in `checks/__init__.py` (shared across all 4 check modules)
+- `OutputFormat` enum in `cli.py` (terminal, markdown)
+- Global `--format`, `--output`, `--verbose` options in CLI `main()` callback, stored in `ctx.obj`
+- `DocvetConfig` with `fail_on` and `warn_on` lists in `config.py`
+- All 4 check modules returning `list[Finding]` independently
+
+One internal refactor required before reporting implementation:
+
+1. **CLI refactor PR:** Change all 4 `_run_*` functions in `cli.py` from void (print inline) to `-> list[Finding]` (return findings). The `check` command and each standalone subcommand collect findings into `dict[str, list[Finding]]`, pass to reporting functions for formatted output, and call `determine_exit_code` for exit logic. Mechanical change — each `_run_*` already produces `list[Finding]` internally, just needs to return instead of print.
+
+**Main Deliverables:**
+
+- `format_terminal(findings, *, verbose=False) -> str` in `reporting.py` — self-contained per-line output with visual file grouping and summary line
+- `format_markdown(findings) -> str` in `reporting.py` — GitHub-compatible markdown table with summary line
+- `write_report(findings, output, *, fmt="markdown") -> None` in `reporting.py` — file output (raises error if parent directory does not exist)
+- `determine_exit_code(findings_by_check, config) -> int` in `reporting.py` — fail-on/warn-on exit logic
+- CLI wiring: `check` and each standalone subcommand call reporting functions for formatted output and exit code determination
+- Zero output on zero findings (non-verbose); `"No findings.\n"` on zero findings with `--verbose`
+- `NO_COLOR` environment variable support and non-TTY detection (suppress ANSI codes independently)
+- Unit tests for both formatters, exit code logic, verbose behavior, and edge cases (≥85% project-wide coverage)
+- Integration: `docvet check` aggregates findings from all checks, formats once, exits with correct code
 
 ### Post-Epic Features
 
@@ -1013,11 +1245,17 @@ Griffe growth:
 - Griffe parser option passthrough (`warn_unknown_params`, `warn_missing_types`) for teams that want to customize warning behavior
 - Numpy/Sphinx docstring style support (griffe supports all three styles natively)
 
-Shared growth:
+Reporting growth:
+- Verbose mode: code snippets and fix suggestions per finding
 - JSON output format for CI integration pipelines
+- SARIF output format for GitHub Code Scanning integration
+- GitHub Actions annotation format (`::warning file=...`) for PR inline comments
+- Configurable grouping (by file, by rule, by check, by category)
+- `--fix` dry-run mode showing proposed changes alongside findings
+
+Shared growth:
 - Rule documentation URLs in findings (ruff pattern)
 - Per-rule severity override in config
-- SARIF output format
 - Cross-check intelligence (enrichment + freshness + griffe + coverage combined findings)
 
 **Vision:**
@@ -1053,9 +1291,15 @@ Shared growth:
 - Package loading failures -- mitigated by wrapping `griffe.load()` in exception handling; syntax errors or import failures in user code produce zero findings rather than crashes
 - Optional dependency UX -- mitigated by graceful skip (return empty list) when griffe is not installed, with verbose-mode messaging to guide installation
 
+**Reporting Technical Risks:**
+
+- Terminal color rendering differences across platforms -- mitigated by using `typer.style()` (wraps click's ANSI handling) and respecting `NO_COLOR`; non-TTY detection suppresses colors
+- Exit code logic correctness -- mitigated by simple boolean check (any fail-on check with findings → exit 1); comprehensive unit tests with all combinations of fail-on/warn-on/empty findings
+- CLI refactor scope (replacing 4 inline `typer.echo()` patterns) -- mitigated by the reporting module being a pure consumer of `list[Finding]`; existing tests verify check output, reporting tests verify formatting independently
+
 **Market Risks:** Minimal -- no existing tool maps git diffs to AST symbols for stale docstring detection. No existing linter catches griffe parser warnings before `mkdocs build`. Novel capabilities in the Python ecosystem. Coverage check fills a gap where developers currently discover missing `__init__.py` only after mkdocs builds silently omit modules.
 
-**Resource Risks:** Solo developer. Griffe check is moderate complexity — requires understanding griffe's API and logging system, but no AST analysis or git integration. All scaffolding and shared infrastructure already exist. Minimal risk.
+**Resource Risks:** Solo developer. Reporting module is low complexity — string formatting with no external dependencies, well-defined input contract (`list[Finding]`), and clear output specifications. All check modules and CLI infrastructure already exist. The main effort is CLI refactoring (replacing inline prints with shared formatters) which is mechanical. Minimal risk.
 
 ## Functional Requirements
 
@@ -1213,6 +1457,37 @@ Shared growth:
 - **FR96:** The system can capture griffe parser warnings via a temporary logging handler attached to the griffe logger, removing the handler after loading completes to ensure no permanent modification to global logging state
 - **FR97:** The CLI can detect griffe availability before invoking the check function and emit a verbose-mode note when griffe is skipped, plus a stderr warning when griffe is in `fail-on` but not installed
 
+### Reporting Output
+
+- **FR98:** The system can format a list of findings for terminal display, grouping findings by file path with each finding indented under its file header showing line number, rule identifier, message, and category
+- **FR99:** The system can format a list of findings as a GitHub-compatible markdown table with columns for File, Line, Rule, Symbol, Message, and Category
+- **FR100:** The system can append a summary line to formatted output when the finding count is greater than zero, showing total count and breakdown by category (e.g., `N findings (X required, Y recommended)`)
+- **FR101:** The system can apply ANSI color codes to terminal output, using distinct colors for `required` and `recommended` categories
+- **FR101a:** The system can suppress ANSI color codes when the `NO_COLOR` environment variable is set, per the `no-color.org` convention
+- **FR101b:** The system can suppress ANSI color codes when stdout is not a TTY (e.g., piped output), independent of the `NO_COLOR` variable
+- **FR102:** The system can sort findings by file path and line number before formatting, producing deterministic output regardless of check execution order
+
+### Reporting File Output
+
+- **FR103:** A developer can write formatted findings to a file via `--output <path>`, producing a markdown or terminal-formatted report at the specified path
+- **FR104:** The system can produce zero output (no findings, no summary line) when all checks return empty finding lists and verbose mode is not enabled
+- **FR104a:** The system can produce a `"No findings."` message when all checks return empty finding lists and verbose mode is enabled, confirming the tool ran successfully
+
+### Exit Code Logic
+
+- **FR105:** The system can return exit code 1 when any check name listed in `fail-on` configuration has produced at least one finding
+- **FR106:** The system can return exit code 0 when no check name listed in `fail-on` configuration has produced findings, regardless of how many findings `warn-on` checks produced
+- **FR107:** The system can return exit code 0 when all checks produce zero findings
+
+### Reporting Verbose Mode
+
+- **FR110:** The system can prefix terminal output with a verbose header showing the number of files checked and which checks ran (e.g., `Checking 12 files [enrichment, freshness, coverage, griffe]`) when `--verbose` is enabled and findings exist
+
+### Reporting Integration
+
+- **FR108:** A developer can select output format via `--format terminal` or `--format markdown`, with terminal as the default when no format is specified
+- **FR109:** The system can aggregate findings from all enabled checks (`enrichment`, `freshness`, `coverage`, `griffe`) into a single formatted output and a single exit code determination, replacing the current per-check inline printing
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -1322,3 +1597,21 @@ Shared growth:
 
 - **NFR47:** Griffe reuses the shared `Finding` dataclass without modification -- no new fields, no subclassing, no changes to the frozen 6-field shape
 - **NFR48:** Griffe has no cross-imports with enrichment, freshness, coverage, or any other check module -- it depends only on `checks.Finding`, `pathlib`, and the optional `griffe` package
+
+### Reporting Performance
+
+- **NFR49:** The reporting module can format 1000 findings in under 100ms — formatting is string concatenation with no I/O beyond optional file write, negligible relative to check execution time
+
+### Reporting Correctness
+
+- **NFR50:** The reporting module produces identical formatted output for identical finding lists regardless of execution environment, time, or check execution order — findings are sorted by `(file, line)` before formatting
+- **NFR51:** The reporting module produces zero output (empty string, no summary line) when given an empty finding list — no "0 findings" noise on clean code
+
+### Reporting Compatibility
+
+- **NFR52:** The reporting module uses no external color dependencies — ANSI codes via `typer.style()` or raw escape sequences only. Respects `NO_COLOR` environment variable per the `no-color.org` convention
+- **NFR53:** Markdown output is valid GitHub-flavored markdown — tables render correctly in GitHub PR comments, issue bodies, and Actions step summaries. `format_markdown` never includes ANSI escape codes regardless of TTY state or `NO_COLOR` setting
+
+### Reporting Integration
+
+- **NFR54:** The reporting module has no cross-imports with any check module — it depends only on `checks.Finding` and `config.DocvetConfig`
