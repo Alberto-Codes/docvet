@@ -1,6 +1,6 @@
 # Story 7.2: CLI Wiring for Griffe Compatibility Check
 
-Status: review
+Status: done
 
 ## Story
 
@@ -82,8 +82,8 @@ So that I can integrate griffe checking into my development workflow and CI pipe
 | AC5 | `test_run_griffe_when_griffe_not_installed_and_verbose_emits_note` | PASS |
 | AC6 | `test_run_griffe_when_griffe_not_installed_and_fail_on_emits_warning` | PASS |
 | AC7 | `test_check_command_includes_griffe_findings`, `test_check_passes_verbose_to_run_griffe`, `test_check_when_invoked_runs_all_checks_in_order` | PASS |
-| AC8 | `test_check_when_invoked_with_all_calls_discover_with_all_mode` (existing) | PASS |
-| AC9 | `test_check_when_invoked_with_staged_calls_discover_with_staged_mode` (existing) | PASS |
+| AC8 | `test_griffe_when_invoked_with_all_calls_discover_with_all_mode` | PASS |
+| AC9 | `test_griffe_when_invoked_with_staged_calls_discover_with_staged_mode` | PASS |
 | AC10 | `test_run_griffe_when_src_root_not_exists_returns_silently` | PASS |
 
 ## Dev Notes
@@ -212,3 +212,4 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-11: Wired griffe compatibility check into CLI — replaced stub with real implementation, added griffe availability detection and verbose/fail-on messaging, 11 new tests (614 total)
+- 2026-02-11: Code review fixes — added 3 missing tests (griffe --all/--staged discovery, fail-on priority over verbose), moved MagicMock to module-level import (617 total)
