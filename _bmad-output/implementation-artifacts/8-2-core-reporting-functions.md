@@ -1,6 +1,6 @@
 # Story 8.2: Core Reporting Functions
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -104,95 +104,95 @@ So that findings can be rendered consistently for terminal, markdown, and CI con
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `src/docvet/reporting.py` with module structure (AC: all)
-  - [ ] Add `from __future__ import annotations` and module docstring
-  - [ ] Add imports: `collections.Counter`, `itertools.groupby`, `pathlib.Path`, `collections.abc.Sequence`
-  - [ ] Add `typer` import for `typer.style()` and `typer.colors`
-  - [ ] Add `Finding` import from `docvet.checks`
-  - [ ] Add `DocvetConfig` import from `docvet.config`
-  - [ ] Define `_COLORS` constant dict mapping `"required"` to `typer.colors.RED`, `"recommended"` to `typer.colors.YELLOW`
+- [x] Task 1: Create `src/docvet/reporting.py` with module structure (AC: all)
+  - [x] Add `from __future__ import annotations` and module docstring
+  - [x] Add imports: `collections.Counter`, `itertools.groupby`, `pathlib.Path`, `collections.abc.Sequence`
+  - [x] Add `typer` import for `typer.style()` and `typer.colors`
+  - [x] Add `Finding` import from `docvet.checks`
+  - [x] Add `DocvetConfig` import from `docvet.config`
+  - [x] Define `_COLORS` constant dict mapping `"required"` to `typer.colors.RED`, `"recommended"` to `typer.colors.YELLOW`
 
-- [ ] Task 2: Implement `_colorize` helper (AC: #3, #4)
-  - [ ] Signature: `_colorize(text: str, color: str, *, no_color: bool) -> str`
-  - [ ] If `no_color` is True, return `text` unchanged
-  - [ ] Otherwise return `typer.style(text, fg=color)`
+- [x] Task 2: Implement `_colorize` helper (AC: #3, #4)
+  - [x] Signature: `_colorize(text: str, color: str, *, no_color: bool) -> str`
+  - [x] If `no_color` is True, return `text` unchanged
+  - [x] Otherwise return `typer.style(text, fg=color)`
 
-- [ ] Task 3: Implement `format_terminal` (AC: #1, #2, #3, #4, #5, #18, #19, #20)
-  - [ ] Signature: `format_terminal(findings: list[Finding], *, no_color: bool = False) -> str`
-  - [ ] Return `""` if `not findings`
-  - [ ] Sort by `(file, line)` via `sorted(findings, key=lambda f: (f.file, f.line))`
-  - [ ] Use `itertools.groupby` on `f.file` for file grouping
-  - [ ] Insert blank line (`""`) between file groups (check `if lines:` before each group)
-  - [ ] Format each line: `f"{finding.file}:{finding.line}: {finding.rule} {finding.message} {tag}"`
-  - [ ] `tag = _colorize(f"[{finding.category}]", _COLORS[finding.category], no_color=no_color)`
-  - [ ] Append blank line before summary, then summary: `f"{len(findings)} findings ({counts['required']} required, {counts['recommended']} recommended)"`
-  - [ ] Use `Counter(f.category for f in findings)` for counts
-  - [ ] Return `"\n".join(lines) + "\n"`
+- [x] Task 3: Implement `format_terminal` (AC: #1, #2, #3, #4, #5, #18, #19, #20)
+  - [x] Signature: `format_terminal(findings: list[Finding], *, no_color: bool = False) -> str`
+  - [x] Return `""` if `not findings`
+  - [x] Sort by `(file, line)` via `sorted(findings, key=lambda f: (f.file, f.line))`
+  - [x] Use `itertools.groupby` on `f.file` for file grouping
+  - [x] Insert blank line (`""`) between file groups (check `if lines:` before each group)
+  - [x] Format each line: `f"{finding.file}:{finding.line}: {finding.rule} {finding.message} {tag}"`
+  - [x] `tag = _colorize(f"[{finding.category}]", _COLORS[finding.category], no_color=no_color)`
+  - [x] Append blank line before summary, then summary: `f"{len(findings)} findings ({counts['required']} required, {counts['recommended']} recommended)"`
+  - [x] Use `Counter(f.category for f in findings)` for counts
+  - [x] Return `"\n".join(lines) + "\n"`
 
-- [ ] Task 4: Implement `format_markdown` (AC: #6, #7, #8, #9, #18, #19)
-  - [ ] Signature: `format_markdown(findings: list[Finding]) -> str`
-  - [ ] Return `""` if `not findings`
-  - [ ] Sort by `(file, line)` (same as terminal)
-  - [ ] Build GFM table with header: `| File | Line | Rule | Symbol | Message | Category |`
-  - [ ] Add separator: `|------|------|------|--------|---------|----------|`
-  - [ ] For each finding: `| {file} | {line} | {rule} | {symbol} | {escaped_message} | {category} |`
-  - [ ] Escape pipes in message: `finding.message.replace("|", "\\|")`
-  - [ ] Append blank line before summary
-  - [ ] Summary: `f"**{len(findings)} findings** ({counts['required']} required, {counts['recommended']} recommended)"`
-  - [ ] Return `"\n".join(lines) + "\n"`
+- [x] Task 4: Implement `format_markdown` (AC: #6, #7, #8, #9, #18, #19)
+  - [x] Signature: `format_markdown(findings: list[Finding]) -> str`
+  - [x] Return `""` if `not findings`
+  - [x] Sort by `(file, line)` (same as terminal)
+  - [x] Build GFM table with header: `| File | Line | Rule | Symbol | Message | Category |`
+  - [x] Add separator: `|------|------|------|--------|---------|----------|`
+  - [x] For each finding: `| {file} | {line} | {rule} | {symbol} | {escaped_message} | {category} |`
+  - [x] Escape pipes in message: `finding.message.replace("|", "\\|")`
+  - [x] Append blank line before summary
+  - [x] Summary: `f"**{len(findings)} findings** ({counts['required']} required, {counts['recommended']} recommended)"`
+  - [x] Return `"\n".join(lines) + "\n"`
 
-- [ ] Task 5: Implement `format_verbose_header` (AC: #10)
-  - [ ] Signature: `format_verbose_header(file_count: int, checks: Sequence[str]) -> str`
-  - [ ] Return `f"Checking {file_count} files [{', '.join(checks)}]\n"`
+- [x] Task 5: Implement `format_verbose_header` (AC: #10)
+  - [x] Signature: `format_verbose_header(file_count: int, checks: Sequence[str]) -> str`
+  - [x] Return `f"Checking {file_count} files [{', '.join(checks)}]\n"`
 
-- [ ] Task 6: Implement `write_report` (AC: #11, #12, #13, #21)
-  - [ ] Signature: `write_report(findings: list[Finding], output: Path, *, fmt: str = "markdown") -> None`
-  - [ ] If `fmt == "markdown"`: content = `format_markdown(findings)`
-  - [ ] If `fmt == "terminal"`: content = `format_terminal(findings, no_color=True)`
-  - [ ] Write content to `output` via `output.write_text(content)`
-  - [ ] Let `FileNotFoundError` propagate naturally from `write_text` if parent doesn't exist
+- [x] Task 6: Implement `write_report` (AC: #11, #12, #13, #21)
+  - [x] Signature: `write_report(findings: list[Finding], output: Path, *, fmt: str = "markdown") -> None`
+  - [x] If `fmt == "markdown"`: content = `format_markdown(findings)`
+  - [x] If `fmt == "terminal"`: content = `format_terminal(findings, no_color=True)`
+  - [x] Write content to `output` via `output.write_text(content)`
+  - [x] Let `FileNotFoundError` propagate naturally from `write_text` if parent doesn't exist
 
-- [ ] Task 7: Implement `determine_exit_code` (AC: #14, #15, #16, #17, #22)
-  - [ ] Signature: `determine_exit_code(findings_by_check: dict[str, list[Finding]], config: DocvetConfig) -> int`
-  - [ ] For each check name in `config.fail_on`: if `findings_by_check.get(check, [])` is non-empty, return `1`
-  - [ ] Otherwise return `0`
+- [x] Task 7: Implement `determine_exit_code` (AC: #14, #15, #16, #17, #22)
+  - [x] Signature: `determine_exit_code(findings_by_check: dict[str, list[Finding]], config: DocvetConfig) -> int`
+  - [x] For each check name in `config.fail_on`: if `findings_by_check.get(check, [])` is non-empty, return `1`
+  - [x] Otherwise return `0`
 
-- [ ] Task 8: Create `tests/unit/test_reporting.py` with formatter tests (AC: #1-#9, #18-#20)
-  - [ ] Test `format_terminal` with multi-file findings: assert sorted output, file grouping, summary line
-  - [ ] Test `format_terminal` with single-file findings: no blank-line separators between findings
-  - [ ] Test `format_terminal` with `no_color=False`: assert `"\033["` present in output
-  - [ ] Test `format_terminal` with `no_color=True`: assert `"\033["` not in output
-  - [ ] Test `format_terminal` with empty list: assert returns `""`
-  - [ ] Test `format_terminal` summary shows both counts including zeros
-  - [ ] Test `format_terminal` blank line before summary
-  - [ ] Test `format_terminal` stable sort: two findings with same `(file, line)` preserve insertion order
-  - [ ] Test `format_terminal` with 3+ files: verify multiple blank-line separators between groups
-  - [ ] Test `format_markdown` with multi-file findings: assert table format, sorted, bold summary
-  - [ ] Test `format_markdown` with pipe in message: assert `\|` escape
-  - [ ] Test `format_markdown` with empty list: assert returns `""`
-  - [ ] Test `format_markdown` no ANSI codes with mixed-category findings (assert `"\033["` not in result — use both required and recommended to cover all code paths)
-  - [ ] Test `format_markdown` stable sort: two findings with same `(file, line)` preserve insertion order
-  - [ ] Test `format_markdown` summary shows both counts including zeros
+- [x] Task 8: Create `tests/unit/test_reporting.py` with formatter tests (AC: #1-#9, #18-#20)
+  - [x] Test `format_terminal` with multi-file findings: assert sorted output, file grouping, summary line
+  - [x] Test `format_terminal` with single-file findings: no blank-line separators between findings
+  - [x] Test `format_terminal` with `no_color=False`: assert `"\033["` present in output
+  - [x] Test `format_terminal` with `no_color=True`: assert `"\033["` not in output
+  - [x] Test `format_terminal` with empty list: assert returns `""`
+  - [x] Test `format_terminal` summary shows both counts including zeros
+  - [x] Test `format_terminal` blank line before summary
+  - [x] Test `format_terminal` stable sort: two findings with same `(file, line)` preserve insertion order
+  - [x] Test `format_terminal` with 3+ files: verify multiple blank-line separators between groups
+  - [x] Test `format_markdown` with multi-file findings: assert table format, sorted, bold summary
+  - [x] Test `format_markdown` with pipe in message: assert `\|` escape
+  - [x] Test `format_markdown` with empty list: assert returns `""`
+  - [x] Test `format_markdown` no ANSI codes with mixed-category findings (assert `"\033["` not in result — use both required and recommended to cover all code paths)
+  - [x] Test `format_markdown` stable sort: two findings with same `(file, line)` preserve insertion order
+  - [x] Test `format_markdown` summary shows both counts including zeros
 
-- [ ] Task 9: Add `format_verbose_header` tests (AC: #10)
-  - [ ] Test with sample inputs: `format_verbose_header(12, ["enrichment", "freshness"])` returns `"Checking 12 files [enrichment, freshness]\n"`
-  - [ ] Test with single check
-  - [ ] Test with 4 checks (all enabled)
+- [x] Task 9: Add `format_verbose_header` tests (AC: #10)
+  - [x] Test with sample inputs: `format_verbose_header(12, ["enrichment", "freshness"])` returns `"Checking 12 files [enrichment, freshness]\n"`
+  - [x] Test with single check
+  - [x] Test with 4 checks (all enabled)
 
-- [ ] Task 10: Add `write_report` tests (AC: #11, #12, #13, #21)
-  - [ ] Test markdown write: write to `tmp_path / "report.md"`, read back, assert matches `format_markdown` output
-  - [ ] Test terminal write: write with `fmt="terminal"`, read back, assert content matches `format_terminal(findings, no_color=True)` output exactly (verifies both ANSI stripping and content correctness)
-  - [ ] Test missing parent directory: `tmp_path / "nonexistent" / "report.md"` raises `FileNotFoundError`
-  - [ ] Test empty findings write: writes empty content to file
+- [x] Task 10: Add `write_report` tests (AC: #11, #12, #13, #21)
+  - [x] Test markdown write: write to `tmp_path / "report.md"`, read back, assert matches `format_markdown` output
+  - [x] Test terminal write: write with `fmt="terminal"`, read back, assert content matches `format_terminal(findings, no_color=True)` output exactly (verifies both ANSI stripping and content correctness)
+  - [x] Test missing parent directory: `tmp_path / "nonexistent" / "report.md"` raises `FileNotFoundError`
+  - [x] Test empty findings write: writes empty content to file
 
-- [ ] Task 11: Add `determine_exit_code` tests (AC: #14, #15, #16, #17, #22)
-  - [ ] Test fail_on check with findings: returns 1
-  - [ ] Test empty fail_on: returns 0 regardless of findings
-  - [ ] Test all empty findings: returns 0 regardless of fail_on
-  - [ ] Test findings in non-fail_on check: returns 0
-  - [ ] Test fail_on with missing key in findings_by_check: returns 1 if another fail_on check has findings
-  - [ ] Test fail_on with check name not in findings_by_check: returns 0 (`.get()` returns empty list)
-  - [ ] Test completely empty findings_by_check dict `{}` with non-empty fail_on: returns 0
+- [x] Task 11: Add `determine_exit_code` tests (AC: #14, #15, #16, #17, #22)
+  - [x] Test fail_on check with findings: returns 1
+  - [x] Test empty fail_on: returns 0 regardless of findings
+  - [x] Test all empty findings: returns 0 regardless of fail_on
+  - [x] Test findings in non-fail_on check: returns 0
+  - [x] Test fail_on with missing key in findings_by_check: returns 1 if another fail_on check has findings
+  - [x] Test fail_on with check name not in findings_by_check: returns 0 (`.get()` returns empty list)
+  - [x] Test completely empty findings_by_check dict `{}` with non-empty fail_on: returns 0
 
 ## AC-to-Test Mapping
 
@@ -200,6 +200,28 @@ So that findings can be rendered consistently for terminal, markdown, and CI con
 
 | AC | Test(s) | Status |
 |----|---------|--------|
+| AC#1 | `TestFormatTerminal::test_multi_file_sorted_grouped_summary` | Pass |
+| AC#2 | `TestFormatTerminal::test_single_file_no_blank_separators` | Pass |
+| AC#3 | `TestFormatTerminal::test_color_present_by_default` | Pass |
+| AC#4 | `TestFormatTerminal::test_no_color_suppresses_ansi` | Pass |
+| AC#5 | `TestFormatTerminal::test_empty_returns_empty_string` | Pass |
+| AC#6 | `TestFormatMarkdown::test_multi_file_table_sorted_summary` | Pass |
+| AC#7 | `TestFormatMarkdown::test_pipe_escaped_in_message` | Pass |
+| AC#8 | `TestFormatMarkdown::test_empty_returns_empty_string` | Pass |
+| AC#9 | `TestFormatMarkdown::test_no_ansi_codes` | Pass |
+| AC#10 | `TestFormatVerboseHeader::test_standard_output` | Pass |
+| AC#11 | `TestWriteReport::test_markdown_write` | Pass |
+| AC#12 | `TestWriteReport::test_terminal_write_no_color` | Pass |
+| AC#13 | `TestWriteReport::test_missing_parent_raises` | Pass |
+| AC#14 | `TestDetermineExitCode::test_fail_on_check_with_findings_returns_1` | Pass |
+| AC#15 | `TestDetermineExitCode::test_empty_fail_on_returns_0` | Pass |
+| AC#16 | `TestDetermineExitCode::test_all_empty_findings_returns_0` | Pass |
+| AC#17 | `TestDetermineExitCode::test_findings_in_non_fail_on_returns_0` | Pass |
+| AC#18 | `TestFormatTerminal::test_stable_sort_same_file_line`, `TestFormatMarkdown::test_stable_sort_same_file_line` | Pass |
+| AC#19 | `TestFormatTerminal::test_summary_shows_both_counts_including_zeros`, `TestFormatMarkdown::test_summary_shows_both_counts_including_zeros` | Pass |
+| AC#20 | `TestFormatTerminal::test_blank_line_before_summary` | Pass |
+| AC#21 | `TestWriteReport::test_empty_findings_write` | Pass |
+| AC#22 | `TestDetermineExitCode::test_fail_on_with_missing_key_and_present_findings` | Pass |
 
 ## Dev Notes
 
@@ -381,10 +403,29 @@ Recent commits follow established patterns:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No debug issues encountered. Zero-debug implementation — architecture spec quality confirmed.
+
 ### Completion Notes List
 
+- Created `src/docvet/reporting.py` with 5 public functions and 1 private helper
+- All formatting functions are pure (no I/O, no side effects) — only `write_report` does file I/O
+- Used `list[str]` string building pattern with `"\n".join(lines) + "\n"` throughout
+- `_colorize` helper wraps `typer.style()` with `no_color` gating
+- `format_terminal` uses `itertools.groupby` for file grouping, `Counter` for category counts
+- `format_markdown` builds GFM table with pipe escaping in message column
+- `determine_exit_code` is a pure function — no mocking needed in tests
+- 31 new tests covering all 22 ACs, 665 total tests passing (634 + 31)
+- All lint and format checks pass
+
+### Change Log
+
+- 2026-02-11: Implemented all 5 public reporting functions and 31 tests (Story 8.2)
+
 ### File List
+
+- `src/docvet/reporting.py` (new) — reporting module with format_terminal, format_markdown, format_verbose_header, write_report, determine_exit_code
+- `tests/unit/test_reporting.py` (new) — 31 tests covering all 22 ACs
