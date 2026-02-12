@@ -12,9 +12,14 @@ stepsCompleted:
   - 'coverage-step-02'
   - 'coverage-step-03'
   - 'coverage-step-04'
+  - 'griffe-step-01'
+  - 'griffe-step-02'
+  - 'griffe-step-03'
+  - 'griffe-step-04'
 status: 'complete'
 freshnessStartedAt: '2026-02-09'
 coverageStartedAt: '2026-02-11'
+griffeStartedAt: '2026-02-11'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -238,6 +243,23 @@ This document provides the complete epic and story breakdown for docvet, decompo
 | FR78 | Epic 6 | CLI standalone and combined modes |
 | FR79 | Epic 6 | Pure function guarantee |
 | FR80 | Epic 6 | Skip files outside `src_root` |
+| FR81 | Epic 7 | Detect missing type annotations via griffe |
+| FR82 | Epic 7 | Detect unknown parameters via griffe |
+| FR83 | Epic 7 | Detect formatting issues via griffe |
+| FR84 | Epic 7 | Load package via griffe and capture warnings |
+| FR85 | Epic 7 | Filter warnings to discovered file set |
+| FR86 | Epic 7 | Structured griffe finding (6 fields) |
+| FR87 | Epic 7 | Warning classification into 3 rules |
+| FR88 | Epic 7 | One finding per warning (no per-symbol dedup) |
+| FR89 | Epic 7 | Zero findings on well-documented code |
+| FR90 | Epic 7 | Graceful skip when griffe not installed |
+| FR91 | Epic 7 | Handle package load failures gracefully |
+| FR92 | Epic 7 | Future griffe version warnings classified as format-warning |
+| FR93 | Epic 7 | Zero findings when all files filtered out |
+| FR94 | Epic 7 | Public API: `(src_root, files) -> list[Finding]` |
+| FR95 | Epic 7 | CLI: `docvet griffe` and `docvet check` |
+| FR96 | Epic 7 | Temporary logging handler lifecycle |
+| FR97 | Epic 7 | CLI griffe availability detection + messaging |
 
 ## Epic List
 
@@ -746,6 +768,12 @@ A developer can run `docvet freshness --mode drift` and get findings for docstri
 A developer can run `docvet coverage` and discover Python files invisible to mkdocstrings because parent directories lack `__init__.py`. The check walks from each file's parent directory up to `src-root`, flags gaps in the package hierarchy with one deduplicated finding per missing directory, and integrates with the existing CLI (`docvet coverage` standalone or `docvet check` combined). Category is always `required` — a missing `__init__.py` is a definitive visibility gap.
 
 **FRs covered:** FR69, FR70, FR71, FR72, FR73, FR74, FR75, FR76, FR77, FR78, FR79, FR80
+
+### Epic 7: Griffe Compatibility Check (Rendering Warning Detection)
+
+A developer can run `docvet griffe` and discover docstrings that will produce warnings during mkdocs build — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered documentation. Uses the griffe library (optional dependency) to parse docstrings at the package level, captures parser warnings via logging, and maps them to findings. Two stories: core function + tests, then CLI wiring.
+
+**FRs covered:** FR81, FR82, FR83, FR84, FR85, FR86, FR87, FR88, FR89, FR90, FR91, FR92, FR93, FR94, FR95, FR96, FR97
 
 ## Epic 4: Freshness Diff Mode Detection
 
@@ -1332,3 +1360,245 @@ So that I can integrate coverage checking into my development workflow and CI pi
 - Symbol name convention: `"<module>"` for consistency with enrichment and freshness module-level symbol naming
 - No architecture document for coverage — PRD technical guidance is the implementation specification
 - Simplest of the four checks: estimated ~50-100 lines of implementation
+
+---
+
+## Griffe Requirements Inventory
+
+### Griffe Functional Requirements
+
+**Griffe Detection (FR81-FR85):**
+
+- FR81: The system can detect docstring parameters that lack type annotations in both the docstring text and the function signature, producing a finding when griffe's parser warns about missing types
+- FR82: The system can detect docstring parameters that do not appear in the function signature, producing a finding when griffe's parser warns about unknown parameters
+- FR83: The system can detect docstring formatting issues (confusing indentation, malformed entries, missing blank lines, skipped sections) that degrade rendered documentation quality
+- FR84: The system can load a Python package via griffe's package loader and capture parser warnings emitted during docstring parsing
+- FR85: The system can filter captured griffe warnings to only those originating from files in the discovered file list, respecting `--staged`, `--all`, and `--files` discovery modes
+
+**Griffe Finding Production (FR86-FR89):**
+
+- FR86: The system can produce a structured griffe finding carrying file path, line number, symbol name, rule identifier (`griffe-missing-type`, `griffe-unknown-param`, or `griffe-format-warning`), griffe's warning message, and category (`required` or `recommended` based on rule)
+- FR87: The system can classify each griffe warning into one of 3 rule identifiers by matching the warning message against known patterns
+- FR88: The system can produce one finding per griffe warning (not deduplicated per symbol), allowing multiple findings for the same symbol when griffe reports multiple individually-fixable issues
+- FR89: The system can produce zero findings when analyzing well-documented code with typed parameters and valid parameter names
+
+**Griffe Edge Cases (FR90-FR93):**
+
+- FR90: The system can return an empty list immediately when griffe is not installed, without raising exceptions or producing error findings
+- FR91: The system can handle griffe package loading failures (syntax errors in user code, missing third-party imports, permission errors) by returning an empty list without crashing
+- FR92: The system can classify griffe warnings from future griffe versions that do not match known patterns as `griffe-format-warning` rather than dropping them
+- FR93: The system can produce zero findings when all discovered files are outside the loaded griffe package
+
+**Griffe Integration (FR94-FR97):**
+
+- FR94: The system can accept a `src-root` path and a list of discovered Python file paths as inputs and return a list of findings as output
+- FR95: A developer can run the griffe check standalone via `docvet griffe` or as part of all checks via `docvet check`
+- FR96: The system can capture griffe parser warnings via a temporary logging handler attached to the griffe logger, removing the handler after loading completes to ensure no permanent modification to global logging state
+- FR97: The CLI can detect griffe availability before invoking the check function and emit a verbose-mode note when griffe is skipped, plus a stderr warning when griffe is in `fail-on` but not installed
+
+### Griffe Non-Functional Requirements
+
+**Griffe Performance (NFR39-NFR40):**
+
+- NFR39: The griffe check can process a 200-file package via `docvet griffe --all` in under 10 seconds — aspirational benchmark; performance is dominated by griffe's package loading I/O
+- NFR40: The griffe check is designed to add negligible overhead beyond griffe's package loading and docstring parsing — design invariant
+
+**Griffe Correctness (NFR41-NFR43):**
+
+- NFR41: The griffe check produces zero findings on well-documented code where all parameters have type annotations and match the function signature
+- NFR42: The griffe check produces zero findings and raises no exceptions when griffe is not installed
+- NFR43: Unrecognized griffe warning messages (from future griffe versions) are classified as `griffe-format-warning` rather than dropped or causing exceptions
+
+**Griffe Maintainability (NFR44-NFR45):**
+
+- NFR44: The griffe check can be tested using mocked griffe logging output with no actual package loading
+- NFR45: Adding a new griffe rule identifier requires changes to at most 2 files: the griffe module (`griffe_compat.py`) and its tests (`test_griffe_compat.py`)
+
+**Griffe Compatibility (NFR46):**
+
+- NFR46: The griffe check works with griffe 1.x releases, using only stable public APIs
+
+**Griffe Integration (NFR47-NFR48):**
+
+- NFR47: Griffe reuses the shared `Finding` dataclass without modification
+- NFR48: Griffe has no cross-imports with enrichment, freshness, coverage, or any other check module
+
+### Griffe Additional Requirements
+
+**From Architecture (6 decisions, validated):**
+
+- No prerequisite PRs needed — all shared infrastructure already implemented (`Finding`, `_run_griffe` stub, griffe CLI command, discovery pipeline, `src-root` resolution, optional `griffe` dependency)
+- Single `griffe_compat.py` file with one public function: `check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]`
+- Conditional import: `try: import griffe except ImportError: griffe = None` with `TYPE_CHECKING` guard for type hints
+- Warning capture via custom `_WarningCollector(logging.Handler)` with per-object attribution via snapshot pattern (`before:after` slice)
+- Package loading: `griffe.load(package_name, search_paths=[str(src_root)], docstring_parser="google", allow_inspection=False)` with lazy parsing
+- Package discovery: walk `src_root` for immediate child directories with `__init__.py`
+- `_walk_objects` recursive generator: skip aliases (`obj.is_alias`), skip no-docstring, filter by `file_set`
+- `_classify_warning` pure function: substring matching with priority order (`griffe-unknown-param` first, then `griffe-missing-type`, catch-all `griffe-format-warning`)
+- `_build_finding_from_record` helper: parse `_WARNING_PATTERN = re.compile(r"^(.+?):(\d+): (.+)$")`, classify, construct Finding
+- Finding field sources: `file=str(obj.filepath)`, `line=parsed from warning`, `symbol=obj.name`, `message=f"{obj.kind.value.capitalize()} '{obj.name}' {message_text}"`
+- Layered exception handling: load-time explicit catch (`LoadingError`, `ModuleNotFoundError`, `OSError`, `SyntaxError`), walk-time alias skip, handler cleanup via try/finally
+- `_resolve_file_set(files)` normalizes paths to absolute via `.resolve()` for set membership comparison
+- Handler attached once wrapping all package loads (not per-package), removed in `finally` block
+- Trust griffe for deduplication — no docvet-level dedup in MVP
+- Two-story pattern: Story 1 = core function + unit tests + integration smoke test; Story 2 = CLI wiring
+- Test fixture: `tests/fixtures/griffe_pkg/` with `__init__.py` + `bad_docstrings.py` containing known-bad docstrings
+- Mock strategy: unit tests use mocked griffe objects (`MagicMock(spec=griffe.Function)`) and log records; integration tests use real `griffe.load()` with `pytest.importorskip("griffe")`
+- Never use runtime `isinstance` checks against griffe types — `from __future__ import annotations` defers annotation evaluation
+- CLI wiring (Story 2): resolve `src_root` from `config.project_root / config.src_root` (same as coverage), validate exists, handle FR97 verbose messaging and stderr warnings
+
+---
+
+## Epic 7: Griffe Compatibility Check (Rendering Warning Detection)
+
+A developer can run `docvet griffe` and discover docstrings that will produce warnings during mkdocs build — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered documentation. Uses the griffe library (optional dependency) to parse docstrings at the package level, captures parser warnings via logging, and maps them to findings with 3 rule identifiers.
+
+### Story 7.1: Core Griffe Compatibility Check Function
+
+As a developer,
+I want a `check_griffe_compat` function that loads a Python package via griffe, captures parser warnings, and produces findings for rendering compatibility issues,
+So that I can detect docstrings that will render incorrectly in mkdocs-material documentation before deployment.
+
+**Acceptance Criteria:**
+
+**Given** a Python package with a function whose Args parameter lacks a type annotation in both docstring and signature
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it returns a `Finding` with `rule="griffe-missing-type"`, `category="recommended"`, the specific line number from the warning, and a message including the symbol name and griffe's warning text
+
+**Given** a Python package with a function that documents a parameter not in the function signature
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it returns a `Finding` with `rule="griffe-unknown-param"`, `category="required"`, and a message identifying the phantom parameter
+
+**Given** a Python package with a function whose docstring has formatting issues (confusing indentation, malformed entries)
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it returns a `Finding` with `rule="griffe-format-warning"`, `category="recommended"`
+
+**Given** a function with 3 untyped parameters
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it returns 3 separate `griffe-missing-type` findings (one per parameter, not deduplicated per symbol — FR88)
+
+**Given** a well-documented package where all parameters have type annotations and match the function signature
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it returns an empty list (zero findings — FR89, NFR41)
+
+**Given** griffe is not installed (`griffe is None`)
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it returns an empty list immediately without raising exceptions (FR90, NFR42)
+
+**Given** an empty `files` list
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it returns an empty list immediately without invoking griffe package loading
+
+**Given** a package that fails to load via griffe (syntax errors in user code, missing imports)
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it catches the exception (`LoadingError`, `ModuleNotFoundError`, `OSError`, `SyntaxError`) and continues to the next package (FR91)
+
+**Given** `src_root` contains multiple packages (multiple child directories with `__init__.py`)
+**When** `check_griffe_compat(src_root, files)` is called
+**Then** it loads each package in sorted order and produces findings from all loadable packages; a failure in one package does not abort others
+
+**Given** a griffe warning with an unrecognized message format (from a future griffe version)
+**When** `_classify_warning(message)` is called
+**Then** it returns `("griffe-format-warning", "recommended")` as the catch-all classification (FR92, NFR43)
+
+**Given** the `_classify_warning` function receives a message containing `"does not appear in the function signature"`
+**When** called
+**Then** it returns `("griffe-unknown-param", "required")` — checked before `griffe-missing-type` (priority order)
+
+**Given** the `_classify_warning` function receives a message containing `"No type or annotation for"`
+**When** called
+**Then** it returns `("griffe-missing-type", "recommended")`
+
+**Given** the `_WarningCollector` logging handler attached to `logging.getLogger("griffe")`
+**When** griffe emits WARNING-level log records during docstring parsing
+**Then** the handler collects all records in its `records` list
+
+**Given** the `_WarningCollector` handler
+**When** griffe emits DEBUG or INFO level records
+**Then** the handler ignores them (level filter set to WARNING)
+
+**Given** the logging handler lifecycle
+**When** `check_griffe_compat` completes (normally or via exception)
+**Then** the handler is removed from the griffe logger via try/finally (FR96 — no permanent global state modification)
+
+**Given** the `files` parameter contains only files outside the loaded griffe package
+**When** `_walk_objects(package, file_set)` walks the object tree
+**Then** all objects are filtered out and zero findings are produced (FR93)
+
+**Given** the `_walk_objects` generator encounters an alias object (`obj.is_alias`)
+**When** walking the griffe object tree
+**Then** it skips the alias without accessing its attributes (avoids `AliasResolutionError`)
+
+**Given** a griffe object with `obj.docstring is None`
+**When** `_walk_objects` encounters it
+**Then** it skips the object (no docstring to parse, no warnings to produce)
+
+**Given** the `_build_finding_from_record` helper receives a log record whose `getMessage()` matches `_WARNING_PATTERN` (`^(.+?):(\d+): (.+)$`)
+**When** called with the record and griffe object
+**Then** it extracts the line number from the warning (group 2), classifies the message text (group 3), and constructs a `Finding` with `file=str(obj.filepath)`, `line=parsed_line`, `symbol=obj.name`, and the classified rule/category
+
+**Given** a log record whose `getMessage()` does not match `_WARNING_PATTERN`
+**When** `_build_finding_from_record` is called
+**Then** it returns `None` (defensive — unrecognized format skipped)
+
+**Given** the `tests/fixtures/griffe_pkg/` fixture package with known-bad docstrings
+**When** `check_griffe_compat` is called with real griffe loading (integration test, requires `pytest.importorskip("griffe")`)
+**Then** it produces the expected findings for all 3 rule types and zero findings for the well-documented function
+
+**FRs:** FR81, FR82, FR83, FR84, FR85, FR86, FR87, FR88, FR89, FR90, FR91, FR92, FR93, FR94, FR96
+**NFRs:** NFR39, NFR40, NFR41, NFR42, NFR43, NFR44, NFR45, NFR46, NFR47, NFR48
+
+### Story 7.2: CLI Wiring for Griffe Compatibility Check
+
+As a developer,
+I want to run `docvet griffe` from the command line and see rendering compatibility findings in the standard output format,
+So that I can integrate griffe checking into my development workflow and CI pipelines.
+
+**Acceptance Criteria:**
+
+**Given** a codebase with docstrings that produce griffe parser warnings
+**When** `docvet griffe` is run
+**Then** findings are printed to terminal in `file:line: rule message` format (one per line)
+
+**Given** a codebase with well-documented code (no griffe warnings)
+**When** `docvet griffe` is run
+**Then** it produces no output and exits with code 0
+
+**Given** the existing `_run_griffe` stub in `cli.py`
+**When** the griffe check is wired
+**Then** it resolves `src_root` from `config.project_root / config.src_root` (same pattern as `_run_coverage`) and passes `src_root` and discovered files to `check_griffe_compat`
+
+**Given** griffe is not installed
+**When** `docvet griffe` is run
+**Then** the CLI detects griffe unavailability via `importlib.util.find_spec("griffe")` and skips the check silently (exit 0, no error)
+
+**Given** griffe is not installed and verbose mode is enabled
+**When** `docvet griffe` is run
+**Then** the CLI emits a note: `griffe: skipped (griffe not installed)` (FR97)
+
+**Given** griffe is not installed and griffe is in the `fail-on` list
+**When** `docvet check` is run
+**Then** the CLI emits a stderr warning that the griffe check was skipped due to missing dependency (FR97)
+
+**Given** `docvet check` is run (all checks)
+**When** griffe is installed and in the enabled checks
+**Then** griffe findings are included alongside findings from enrichment, freshness, and coverage
+
+**Given** `docvet griffe --all` is run
+**When** the run completes
+**Then** all Python files in the project are analyzed (discovery passes full file list to `check_griffe_compat`)
+
+**Given** `docvet griffe --staged` is run
+**When** the run completes
+**Then** only staged files are passed to `check_griffe_compat` (griffe still loads the full package but findings are filtered to staged files)
+
+**Given** `src_root` cannot be resolved (e.g., configured path does not exist)
+**When** `docvet griffe` is run
+**Then** the CLI handles the error gracefully (same error handling as `_run_coverage`)
+
+**FRs:** FR95, FR97
+**NFRs:** NFR39
+
+---
+
+**Epic 7 Summary:** 2 stories covering all 17 FRs (FR81-FR97) and all 10 NFRs (NFR39-NFR48). Story 7.1 delivers the core `check_griffe_compat` function with all 3 rule identifiers, graceful skip when griffe is not installed, exception handling, file filtering, and comprehensive unit + integration tests. Story 7.2 wires it into the CLI with `src_root` resolution, griffe availability detection, and verbose messaging.

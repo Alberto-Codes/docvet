@@ -21,6 +21,13 @@ so that {{benefit}}.
 - [ ] Task 2 (AC: #)
   - [ ] Subtask 2.1
 
+## AC-to-Test Mapping
+
+<!-- Dev agent MUST fill this table before marking story done. Every AC needs at least one test. -->
+
+| AC | Test(s) | Status |
+|----|---------|--------|
+
 ## Dev Notes
 
 - Relevant architecture patterns and constraints
