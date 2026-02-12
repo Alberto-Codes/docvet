@@ -1,6 +1,6 @@
 # Story 8.1: CLI Refactor — Return Findings from Check Runners
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -58,64 +58,64 @@ So that findings can be routed to a unified reporting pipeline for formatting an
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Refactor `_run_enrichment` to return `list[Finding]` (AC: #1, #7)
-  - [ ] Remove `typer.echo()` loop for findings
-  - [ ] Add `all_findings: list[Finding] = []` accumulator
-  - [ ] Replace echo loop with `all_findings.extend(findings)`
-  - [ ] Return `all_findings`
-  - [ ] Keep stderr `SyntaxError` warning unchanged
+- [x] Task 1: Refactor `_run_enrichment` to return `list[Finding]` (AC: #1, #7)
+  - [x] Remove `typer.echo()` loop for findings
+  - [x] Add `all_findings: list[Finding] = []` accumulator
+  - [x] Replace echo loop with `all_findings.extend(findings)`
+  - [x] Return `all_findings`
+  - [x] Keep stderr `SyntaxError` warning unchanged
 
-- [ ] Task 2: Refactor `_run_freshness` to return `list[Finding]` (AC: #2, #3, #7)
-  - [ ] Add `all_findings` accumulator in drift branch (lines 265-280)
-  - [ ] Replace drift echo loop with `all_findings.extend(findings)`
-  - [ ] Return `all_findings` from drift branch
-  - [ ] Add `all_findings` accumulator in diff branch (lines 282-294)
-  - [ ] Replace diff echo loop with `all_findings.extend(findings)`
-  - [ ] Return `all_findings` from diff branch
-  - [ ] Keep stderr `SyntaxError` warning unchanged in both branches
+- [x] Task 2: Refactor `_run_freshness` to return `list[Finding]` (AC: #2, #3, #7)
+  - [x] Add `all_findings` accumulator in drift branch (lines 265-280)
+  - [x] Replace drift echo loop with `all_findings.extend(findings)`
+  - [x] Return `all_findings` from drift branch
+  - [x] Add `all_findings` accumulator in diff branch (lines 282-294)
+  - [x] Replace diff echo loop with `all_findings.extend(findings)`
+  - [x] Return `all_findings` from diff branch
+  - [x] Keep stderr `SyntaxError` warning unchanged in both branches
 
-- [ ] Task 3: Refactor `_run_coverage` to return `list[Finding]` (AC: #4)
-  - [ ] Return `check_coverage(...)` result directly (already returns `list[Finding]`)
-  - [ ] Remove echo loop
+- [x] Task 3: Refactor `_run_coverage` to return `list[Finding]` (AC: #4)
+  - [x] Return `check_coverage(...)` result directly (already returns `list[Finding]`)
+  - [x] Remove echo loop
 
-- [ ] Task 4: Refactor `_run_griffe` to return `list[Finding]` (AC: #5, #6, #7)
-  - [ ] Change `find_spec` skip path (line 328-333) to `return []`
-  - [ ] Change `src_root.is_dir()` skip path (line 335-336) to `return []`
-  - [ ] Add `all_findings` accumulator and replace echo loop
-  - [ ] Return `all_findings`
-  - [ ] Keep stderr warning messages unchanged
+- [x] Task 4: Refactor `_run_griffe` to return `list[Finding]` (AC: #5, #6, #7)
+  - [x] Change `find_spec` skip path (line 328-333) to `return []`
+  - [x] Change `src_root.is_dir()` skip path (line 335-336) to `return []`
+  - [x] Add `all_findings` accumulator and replace echo loop
+  - [x] Return `all_findings`
+  - [x] Keep stderr warning messages unchanged
 
-- [ ] Task 5: Add `fail_on`/`warn_on` overlap warning in `config.py` (AC: #8)
-  - [ ] In `load_config`, after computing `fail_on_set` (line 409)
-  - [ ] For each check in `warn_on` that appears in `fail_on_set`, print stderr warning
-  - [ ] Warning format: `docvet: '<check>' appears in both fail-on and warn-on; using fail-on`
-  - [ ] Existing silent-drop behavior (`final_warn_on` line 410) preserved
+- [x] Task 5: Add `fail_on`/`warn_on` overlap warning in `config.py` (AC: #8)
+  - [x] In `load_config`, after computing `fail_on_set` (line 409)
+  - [x] For each check in `warn_on` that appears in `fail_on_set`, print stderr warning
+  - [x] Warning format: `docvet: '<check>' appears in both fail-on and warn-on; using fail-on`
+  - [x] Existing silent-drop behavior (`final_warn_on` line 410) preserved
 
-- [ ] Task 6: Add `make_finding` factory fixture in `tests/conftest.py` (AC: #9)
-  - [ ] Import `Finding` from `docvet.checks`
-  - [ ] Create `make_finding` fixture with defaults: `file="test.py"`, `line=1`, `symbol="func"`, `rule="test-rule"`, `message="test message"`, `category="required"`
+- [x] Task 6: Add `make_finding` factory fixture in `tests/conftest.py` (AC: #9)
+  - [x] Import `Finding` from `docvet.checks`
+  - [x] Create `make_finding` fixture with defaults: `file="test.py"`, `line=1`, `symbol="func"`, `rule="test-rule"`, `message="test message"`, `category="required"`
 
-- [ ] Task 7: Update existing CLI tests (AC: #10)
-  - [ ] Add direct-call tests for each `_run_*` that assert `list[Finding]` return value and contents
-  - [ ] Add direct-call test for `_run_freshness` drift mode with mixed files (some parseable, some SyntaxError) — verify returned list only contains findings from parseable files
-  - [ ] Add test for `_run_griffe` skip paths returning `[]` (assert return value, not just output)
-  - [ ] Existing `side_effect=_run_*` behavior tests still pass — bridge in subcommands preserves output
-  - [ ] Ensure all existing behavior tests (file discovery, config loading) continue to pass
+- [x] Task 7: Update existing CLI tests (AC: #10)
+  - [x] Add direct-call tests for each `_run_*` that assert `list[Finding]` return value and contents
+  - [x] Add direct-call test for `_run_freshness` drift mode with mixed files (some parseable, some SyntaxError) — verify returned list only contains findings from parseable files
+  - [x] Add test for `_run_griffe` skip paths returning `[]` (assert return value, not just output)
+  - [x] Existing `side_effect=_run_*` behavior tests still pass — bridge in subcommands preserves output
+  - [x] Ensure all existing behavior tests (file discovery, config loading) continue to pass
 
-- [ ] Task 8: Add config overlap warning tests in `tests/unit/test_config.py` (AC: #8)
-  - [ ] Test overlap emits stderr warning with check name
-  - [ ] Test non-overlapping config emits no warning
-  - [ ] Existing overlap behavior tests (silent drop) updated with stderr assertions
+- [x] Task 8: Add config overlap warning tests in `tests/unit/test_config.py` (AC: #8)
+  - [x] Test overlap emits stderr warning with check name
+  - [x] Test non-overlapping config emits no warning
+  - [x] Existing overlap behavior tests (silent drop) updated with stderr assertions
 
-- [ ] Task 9: Temporarily update subcommand functions to consume `list[Finding]` returns (AC: #1-6)
-  - [ ] In `check()` function: capture return values from all 4 `_run_*` calls, echo each finding
-  - [ ] In `enrichment()` function: capture `_run_enrichment` return, echo findings
-  - [ ] In `freshness()` function: capture `_run_freshness` return, echo findings
-  - [ ] In `coverage()` function: capture `_run_coverage` return, echo findings
-  - [ ] In `griffe()` function: capture `_run_griffe` return, echo findings
-  - [ ] Bridge echo format: `f"{f.file}:{f.line}: {f.rule} {f.message}"` (same as current)
-  - [ ] **Location:** Echo loops go in the subcommand functions (`check()`, `enrichment()`, etc.), NOT in `_run_*` functions
-  - [ ] This is a bridge — Story 8.3 replaces with `_output_and_exit`
+- [x] Task 9: Temporarily update subcommand functions to consume `list[Finding]` returns (AC: #1-6)
+  - [x] In `check()` function: capture return values from all 4 `_run_*` calls, echo each finding
+  - [x] In `enrichment()` function: capture `_run_enrichment` return, echo findings
+  - [x] In `freshness()` function: capture `_run_freshness` return, echo findings
+  - [x] In `coverage()` function: capture `_run_coverage` return, echo findings
+  - [x] In `griffe()` function: capture `_run_griffe` return, echo findings
+  - [x] Bridge echo format: `f"{f.file}:{f.line}: {f.rule} {f.message}"` (same as current)
+  - [x] **Location:** Echo loops go in the subcommand functions (`check()`, `enrichment()`, etc.), NOT in `_run_*` functions
+  - [x] This is a bridge — Story 8.3 replaces with `_output_and_exit`
 
 ## AC-to-Test Mapping
 
@@ -123,6 +123,16 @@ So that findings can be routed to a unified reporting pipeline for formatting an
 
 | AC | Test(s) | Status |
 |----|---------|--------|
+| #1 | `test_run_enrichment_direct_returns_list_of_findings`, `test_run_enrichment_direct_multiple_files_accumulates_findings`, `test_run_enrichment_when_file_has_findings_prints_formatted_output` | PASS |
+| #2 | `test_run_freshness_diff_direct_returns_list_of_findings`, `test_run_freshness_when_file_has_findings_prints_formatted_output` | PASS |
+| #3 | `test_run_freshness_drift_direct_returns_list_of_findings`, `test_run_freshness_drift_prints_findings_in_correct_format` | PASS |
+| #4 | `test_run_coverage_direct_returns_list_of_findings`, `test_run_coverage_when_files_have_missing_init_prints_formatted_output` | PASS |
+| #5 | `test_run_griffe_direct_returns_list_of_findings`, `test_run_griffe_direct_src_root_not_exists_returns_empty_list`, `test_run_griffe_direct_griffe_not_installed_returns_empty_list` | PASS |
+| #6 | `test_run_griffe_direct_griffe_not_installed_returns_empty_list`, `test_run_griffe_when_griffe_not_installed_and_fail_on_emits_warning`, `test_run_griffe_when_griffe_not_installed_and_verbose_emits_note` | PASS |
+| #7 | `test_run_enrichment_when_syntax_error_skips_file_with_warning`, `test_run_freshness_when_syntax_error_skips_file_with_warning`, `test_run_freshness_drift_handles_syntax_error_with_warning`, `test_run_griffe_when_griffe_not_installed_and_fail_on_emits_warning` | PASS |
+| #8 | `test_load_config_overlap_emits_stderr_warning`, `test_load_config_no_overlap_emits_no_warning`, `test_load_config_overlap_multiple_checks_emits_warning_for_each`, `test_load_config_overlap_default_warn_on_emits_warning` | PASS |
+| #9 | `make_finding` fixture available in `tests/conftest.py` (verified by import and fixture creation) | PASS |
+| #10 | All 13 new direct-call tests + all 104 existing tests pass (634 total) | PASS |
 
 ## Dev Notes
 
@@ -299,8 +309,35 @@ This two-layer approach validates both the function contract (direct-call) and t
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- No debug issues encountered. All tasks implemented cleanly following architecture spec.
+- One test fix needed: `test_run_freshness_drift_direct_mixed_files_skips_syntax_errors` initially mocked `ast.parse` globally, which interfered with pytest internals. Fixed by using real `ast.parse` with genuinely invalid syntax instead.
+- Updated autouse fixture and 7 explicit `_run_*` mock patches to include `return_value=[]` since subcommands now iterate over return values.
 
 ### Completion Notes List
 
+- Refactored all 4 `_run_*` functions to return `list[Finding]` instead of printing inline
+- Preserved early return pattern in `_run_freshness` with two separate `all_findings` lists
+- Simplified `_run_coverage` to direct `return check_coverage(...)` and `_run_griffe` to direct `return check_griffe_compat(...)`
+- Changed `_run_griffe` skip paths from `return`/`return None` to `return []`
+- Added bridge echo loops in all 5 subcommand functions (temporary, replaced in Story 8.3)
+- Added `fail_on`/`warn_on` overlap warning in `config.py` with stderr output
+- Added `make_finding` shared test fixture in `tests/conftest.py`
+- Added 13 new direct-call tests for `_run_*` functions verifying `list[Finding]` return
+- Added 4 new config overlap warning tests
+- All 634 tests pass (617 original + 17 new), linting clean
+
 ### File List
+
+- `src/docvet/cli.py` — Refactored 4 `_run_*` functions to return `list[Finding]`, added `Finding` import, updated 5 subcommand functions with bridge echo loops
+- `src/docvet/config.py` — Added overlap warning stderr emission in `load_config`
+- `tests/conftest.py` — Added `make_finding` factory fixture with `Finding` import
+- `tests/unit/test_cli.py` — Updated autouse fixture and 7 explicit patches with `return_value=[]`, rewrote `test_check_when_invoked_runs_all_checks_in_order` to use Finding return values, removed unused `import typer`, added 13 new direct-call tests
+- `tests/unit/test_config.py` — Added 4 new overlap warning stderr tests
+
+### Change Log
+
+- 2026-02-11: Implemented Story 8.1 — CLI refactor to return findings from check runners. All 9 tasks completed, 634 tests passing.
