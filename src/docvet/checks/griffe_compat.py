@@ -11,7 +11,7 @@ import logging
 import re
 from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 try:
     import griffe
@@ -45,7 +45,7 @@ class _WarningCollector(logging.Handler):
         self.records.append(record)
 
 
-def _classify_warning(message: str) -> tuple[str, str]:
+def _classify_warning(message: str) -> tuple[str, Literal["required", "recommended"]]:
     """Classify a griffe warning message into a rule and category.
 
     Uses priority-ordered substring matching: unknown-param is checked
@@ -98,7 +98,7 @@ def _walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObje
             continue
         if current.docstring is not None and current.filepath in file_set:
             yield current
-        stack.extend(current.members.values())
+        stack.extend(current.members.values())  # type: ignore[arg-type]
 
 
 def _build_finding_from_record(
@@ -177,7 +177,7 @@ def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
             ):
                 continue
 
-            for obj in _walk_objects(package, file_set):
+            for obj in _walk_objects(package, file_set):  # type: ignore[arg-type]
                 before = len(handler.records)
                 _ = obj.docstring.parsed  # type: ignore[union-attr]
                 after = len(handler.records)
