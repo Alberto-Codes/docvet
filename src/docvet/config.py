@@ -407,6 +407,12 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         else list(defaults.warn_on)
     )
     fail_on_set = set(fail_on)
+    for check in warn_on:
+        if check in fail_on_set:
+            print(
+                f"docvet: '{check}' appears in both fail-on and warn-on; using fail-on",
+                file=sys.stderr,
+            )
     final_warn_on: list[str] = [c for c in warn_on if c not in fail_on_set]
 
     raw_pkg = parsed.get("package_name")
