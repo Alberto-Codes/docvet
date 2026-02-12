@@ -86,5 +86,5 @@ development_status:
   # Epic 7: Griffe Compatibility Check (Rendering Warning Detection)
   epic-7: in-progress
   7-1-core-griffe-compatibility-check-function: done
-  7-2-cli-wiring-for-griffe-compatibility-check: review
+  7-2-cli-wiring-for-griffe-compatibility-check: done
   epic-7-retrospective: optional
