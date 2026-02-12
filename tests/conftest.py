@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import ast
+from typing import Literal
 
 import pytest
 
 from docvet.checks import Finding
+
+_Category = Literal["required", "recommended"]
 
 
 @pytest.fixture
@@ -30,7 +33,7 @@ def make_finding():
         symbol: str = "func",
         rule: str = "test-rule",
         message: str = "test message",
-        category: str = "required",
+        category: _Category = "required",
     ) -> Finding:
         return Finding(
             file=file,
