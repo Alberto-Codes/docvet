@@ -84,7 +84,14 @@ development_status:
   epic-6-retrospective: done
 
   # Epic 7: Griffe Compatibility Check (Rendering Warning Detection)
-  epic-7: in-progress
+  epic-7: done
   7-1-core-griffe-compatibility-check-function: done
   7-2-cli-wiring-for-griffe-compatibility-check: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
+
+  # Epic 8: Reporting & CI Integration
+  epic-8: in-progress
+  8-1-cli-refactor-return-findings-from-check-runners: ready-for-dev
+  8-2-core-reporting-functions: backlog
+  8-3-cli-wiring-unified-output-and-exit-code-pipeline: backlog
+  epic-8-retrospective: optional
