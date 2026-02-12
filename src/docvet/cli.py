@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import enum
+import importlib.util
 import subprocess
 from pathlib import Path
 from typing import Annotated
@@ -13,6 +14,7 @@ import typer
 from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
 from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
+from docvet.checks.griffe_compat import check_griffe_compat
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode, discover_files
 
@@ -309,14 +311,32 @@ def _run_coverage(files: list[Path], config: DocvetConfig) -> None:
         typer.echo(f"{finding.file}:{finding.line}: {finding.rule} {finding.message}")
 
 
-def _run_griffe(files: list[Path], config: DocvetConfig) -> None:
-    """Stub for griffe compatibility check.
+def _run_griffe(
+    files: list[Path], config: DocvetConfig, *, verbose: bool = False
+) -> None:
+    """Run the griffe compatibility check on discovered files.
+
+    Checks if griffe is installed, resolves the source root from
+    configuration, and runs ``check_griffe_compat``.  Findings are
+    printed to stdout in ``file:line: rule message`` format.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
+        verbose: Whether verbose mode is enabled.
     """
-    typer.echo("griffe: not yet implemented")
+    if importlib.util.find_spec("griffe") is None:
+        if "griffe" in config.fail_on:
+            typer.echo("warning: griffe check skipped (griffe not installed)", err=True)
+        elif verbose:
+            typer.echo("griffe: skipped (griffe not installed)", err=True)
+        return
+    src_root = config.project_root / config.src_root
+    if not src_root.is_dir():
+        return
+    findings = check_griffe_compat(src_root, files)
+    for finding in findings:
+        typer.echo(f"{finding.file}:{finding.line}: {finding.rule} {finding.message}")
 
 
 # ---------------------------------------------------------------------------
@@ -393,7 +413,7 @@ def check(
     _run_enrichment(discovered, config)
     _run_freshness(discovered, config, discovery_mode=discovery_mode)
     _run_coverage(discovered, config)
-    _run_griffe(discovered, config)
+    _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))
 
 
 @app.command()
@@ -487,4 +507,4 @@ def griffe(
     _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    _run_griffe(discovered, config)
+    _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from unittest.mock import ANY
+from unittest.mock import ANY, MagicMock
 
 import pytest
 import typer
@@ -15,6 +15,7 @@ from docvet.cli import (
     _run_coverage,
     _run_enrichment,
     _run_freshness,
+    _run_griffe,
     app,
 )
 from docvet.config import DocvetConfig, load_config
@@ -43,6 +44,7 @@ def _mock_config_and_discovery(mocker):
     mocker.patch("docvet.cli._run_enrichment")
     mocker.patch("docvet.cli._run_freshness")
     mocker.patch("docvet.cli._run_coverage")
+    mocker.patch("docvet.cli._run_griffe")
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +129,10 @@ def test_check_when_invoked_runs_all_checks_in_order(mocker):
         "docvet.cli._run_coverage",
         side_effect=lambda f, c: typer.echo("coverage: ok"),
     )
+    mocker.patch(
+        "docvet.cli._run_griffe",
+        side_effect=lambda f, c, **kw: typer.echo("griffe: ok"),
+    )
     result = runner.invoke(app, ["check"])
     output = result.output
     assert output.index("enrichment:") < output.index("freshness:")
@@ -157,7 +163,6 @@ def test_coverage_when_invoked_exits_successfully():
 def test_griffe_when_invoked_exits_successfully():
     result = runner.invoke(app, ["griffe"])
     assert result.exit_code == 0
-    assert "griffe: not yet implemented" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -411,7 +416,7 @@ def test_check_when_invoked_passes_config_to_run_stubs(mocker):
         fake_files, fake_config, discovery_mode=DiscoveryMode.DIFF
     )
     mock_coverage.assert_called_once_with(fake_files, fake_config)
-    mock_griffe.assert_called_once_with(fake_files, fake_config)
+    mock_griffe.assert_called_once_with(fake_files, fake_config, verbose=False)
 
 
 def test_check_when_discovery_returns_empty_does_not_call_stubs(mocker):
@@ -472,14 +477,14 @@ def test_coverage_when_invoked_with_staged_calls_discover_with_staged_mode(mocke
     mock_discover.assert_called_once_with(ANY, DiscoveryMode.STAGED, files=())
 
 
-def test_griffe_when_invoked_calls_discover_and_run_stub(mocker):
+def test_griffe_when_invoked_calls_discover_and_run_griffe(mocker):
     mock_discover = mocker.patch(
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     mock_run = mocker.patch("docvet.cli._run_griffe")
     runner.invoke(app, ["griffe"])
     mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
-    mock_run.assert_called_once_with([Path("/fake/file.py")], ANY)
+    mock_run.assert_called_once_with([Path("/fake/file.py")], ANY, verbose=False)
 
 
 def test_enrichment_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
@@ -998,3 +1003,191 @@ def test_check_command_includes_coverage_findings(mocker):
     result = runner.invoke(app, ["check"])
     assert result.exit_code == 0
     assert "missing-init" in result.output
+
+
+# ---------------------------------------------------------------------------
+# _run_griffe behavior tests
+# ---------------------------------------------------------------------------
+
+
+def test_run_griffe_when_file_has_findings_prints_formatted_output(tmp_path, mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    from docvet.checks import Finding
+
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    fake_config = DocvetConfig(project_root=tmp_path)
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=15,
+            symbol="do_stuff",
+            rule="griffe-unknown-param",
+            message="Function 'do_stuff' does not appear in the function signature",
+            category="required",
+        ),
+    ]
+    mocker.patch("docvet.cli.check_griffe_compat", return_value=findings)
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("src/app.py")])
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    assert (
+        "src/app.py:15: griffe-unknown-param "
+        "Function 'do_stuff' does not appear in the function signature"
+    ) in result.output
+
+
+def test_run_griffe_when_no_findings_produces_no_output(tmp_path, mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    fake_config = DocvetConfig(project_root=tmp_path)
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_run_griffe_passes_correct_src_root_path(tmp_path, mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    fake_config = DocvetConfig(src_root="src", project_root=tmp_path)
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    mocker.patch("docvet.cli.discover_files", return_value=[src_dir / "app.py"])
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(src_dir, ANY)
+
+
+def test_run_griffe_with_default_config_uses_project_root_dot(tmp_path, mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    fake_config = DocvetConfig(project_root=tmp_path)
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    mocker.patch("docvet.cli.discover_files", return_value=[tmp_path / "app.py"])
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(tmp_path / ".", ANY)
+
+
+def test_run_griffe_passes_discovered_files(tmp_path, mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    fake_config = DocvetConfig(project_root=tmp_path)
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    files = [Path("/a.py"), Path("/b.py")]
+    mocker.patch("docvet.cli.discover_files", return_value=files)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    mock_check.assert_called_once_with(ANY, files)
+
+
+def test_run_griffe_when_griffe_not_installed_skips_silently(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    assert result.output == ""
+    mock_check.assert_not_called()
+
+
+def test_run_griffe_when_griffe_not_installed_and_verbose_emits_note(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["--verbose", "griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert "griffe: skipped (griffe not installed)" in output
+    mock_check.assert_not_called()
+
+
+def test_run_griffe_when_griffe_not_installed_and_fail_on_emits_warning(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"])
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert "warning: griffe check skipped (griffe not installed)" in output
+    mock_check.assert_not_called()
+
+
+def test_run_griffe_when_src_root_not_exists_returns_silently(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    fake_config = DocvetConfig(project_root=Path("/nonexistent"), src_root="nope")
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake.py")])
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    assert result.output == ""
+    mock_check.assert_not_called()
+
+
+def test_check_command_includes_griffe_findings(tmp_path, mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    from docvet.checks import Finding
+
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    fake_config = DocvetConfig(project_root=tmp_path)
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    findings = [
+        Finding(
+            file="src/mod.py",
+            line=5,
+            symbol="func",
+            rule="griffe-unknown-param",
+            message="Function 'func' does not appear in the function signature",
+            category="required",
+        ),
+    ]
+    mocker.patch("docvet.cli.check_griffe_compat", return_value=findings)
+    mocker.patch("docvet.cli.discover_files", return_value=[Path("src/mod.py")])
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 0
+    assert "griffe-unknown-param" in result.output
+
+
+def test_check_passes_verbose_to_run_griffe(mocker):
+    mock_griffe = mocker.patch("docvet.cli._run_griffe")
+    runner.invoke(app, ["--verbose", "check"])
+    mock_griffe.assert_called_once_with(ANY, ANY, verbose=True)
+
+
+def test_griffe_when_invoked_with_all_calls_discover_with_all_mode(mocker):
+    mock_discover = mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
+    )
+    runner.invoke(app, ["griffe", "--all"])
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=())
+
+
+def test_griffe_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
+    mock_discover = mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
+    )
+    runner.invoke(app, ["griffe", "--staged"])
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.STAGED, files=())
+
+
+def test_run_griffe_when_griffe_not_installed_fail_on_takes_priority_over_verbose(
+    mocker,
+):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"])
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["--verbose", "griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert "warning: griffe check skipped (griffe not installed)" in output
+    assert "griffe: skipped (griffe not installed)" not in output
+    mock_check.assert_not_called()
