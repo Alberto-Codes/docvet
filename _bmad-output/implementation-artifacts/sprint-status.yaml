@@ -91,7 +91,7 @@ development_status:
 
   # Epic 8: Reporting & CI Integration
   epic-8: in-progress
-  8-1-cli-refactor-return-findings-from-check-runners: review
+  8-1-cli-refactor-return-findings-from-check-runners: done
   8-2-core-reporting-functions: backlog
   8-3-cli-wiring-unified-output-and-exit-code-pipeline: backlog
   epic-8-retrospective: optional
