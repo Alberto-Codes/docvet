@@ -16,7 +16,11 @@ stepsCompleted:
   - 'griffe-step-02'
   - 'griffe-step-03'
   - 'griffe-step-04'
-status: 'complete'
+  - 'reporting-step-01'
+  - 'reporting-step-02'
+  - 'reporting-step-03'
+  - 'reporting-step-04'
+reportingStartedAt: '2026-02-11'
 freshnessStartedAt: '2026-02-09'
 coverageStartedAt: '2026-02-11'
 griffeStartedAt: '2026-02-11'
@@ -96,6 +100,34 @@ This document provides the complete epic and story breakdown for docvet, decompo
 - FR41: The system can provide `Finding` as a shared type importable by all check modules without cross-check dependencies
 - FR42: A developer can run the enrichment check standalone via `docvet enrichment` or as part of all checks via `docvet check`
 
+**Reporting Output (FR98-FR102):**
+
+- FR98: The system can format a list of findings for terminal display, grouping findings by file path with each finding as a self-contained `file:line: rule message [category]` line
+- FR99: The system can format a list of findings as a GitHub-compatible markdown table with columns for File, Line, Rule, Symbol, Message, and Category
+- FR100: The system can append a summary line when finding count > 0: `N findings (X required, Y recommended)`
+- FR101: The system can apply ANSI color codes to terminal output (red for `required`, yellow for `recommended` on the `[category]` tag)
+- FR101a: The system can suppress ANSI color codes when `NO_COLOR` environment variable is set
+- FR101b: The system can suppress ANSI color codes when stdout is not a TTY
+- FR102: The system can sort findings by `(file, line)` before formatting for deterministic output
+
+**Reporting File Output (FR103-FR104a):**
+
+- FR103: A developer can write formatted findings to a file via `--output <path>`
+- FR104: The system can produce zero output when all checks return empty finding lists and verbose mode is not enabled
+- FR104a: The system can produce a `"No findings."` message when all checks return empty finding lists and verbose mode is enabled
+
+**Exit Code Logic (FR105-FR107):**
+
+- FR105: The system can return exit code 1 when any check name listed in `fail-on` has produced at least one finding
+- FR106: The system can return exit code 0 when no `fail-on` check has findings, regardless of `warn-on` findings count
+- FR107: The system can return exit code 0 when all checks produce zero findings
+
+**Reporting Integration (FR108-FR110):**
+
+- FR108: A developer can select output format via `--format terminal` or `--format markdown`, with terminal as default
+- FR109: The system can aggregate findings from all enabled checks into a single formatted output and a single exit code determination
+- FR110: The system can prefix terminal output with a verbose header showing files checked and checks ran when `--verbose` is enabled
+
 ### NonFunctional Requirements
 
 **Performance (NFR1-NFR4):**
@@ -132,6 +164,24 @@ This document provides the complete epic and story breakdown for docvet, decompo
 - NFR18: The enrichment check integrates with the existing CLI dispatch pattern (`_run_enrichment` stub) without requiring changes to CLI argument parsing or global option handling
 - NFR19: Config additions (`require-attributes` toggle) are backward-compatible (existing `pyproject.toml` files without this key continue to work with the default value)
 
+**Reporting Performance (NFR49):**
+
+- NFR49: The reporting module can format 1000 findings in under 100ms (string concatenation with no I/O beyond optional file write)
+
+**Reporting Correctness (NFR50-NFR51):**
+
+- NFR50: The reporting module produces identical formatted output for identical finding lists regardless of execution environment, time, or check execution order (sorted by `(file, line)`)
+- NFR51: The reporting module produces zero output (empty string, no summary line) when given an empty finding list
+
+**Reporting Compatibility (NFR52-NFR53):**
+
+- NFR52: The reporting module uses no external color dependencies (ANSI codes via `typer.style()` or raw escape sequences only); respects `NO_COLOR` environment variable
+- NFR53: Markdown output is valid GitHub-flavored markdown; `format_markdown` never includes ANSI escape codes regardless of TTY state
+
+**Reporting Integration (NFR54):**
+
+- NFR54: The reporting module has no cross-imports with any check module (depends only on `checks.Finding` and `config.DocvetConfig`)
+
 ### Additional Requirements
 
 **From Architecture:**
@@ -149,6 +199,19 @@ This document provides the complete epic and story breakdown for docvet, decompo
 - Line-based node index (`_build_node_index`) for O(1) AST node lookup per symbol
 - Finding construction uses literal strings for `rule` and `category` (no dynamic strings)
 - Taxonomy-table order for both function definitions and dispatch
+
+**From Architecture — Reporting Module:**
+
+- **CLI Refactor Prerequisite:** All 4 `_run_*` functions must change from `-> None` to `-> list[Finding]`; remove all `typer.echo()` finding-printing loops; `_run_griffe` skip paths must return `[]` not `None`
+- **ANSI Color Strategy (Decision 1):** `format_terminal` accepts `no_color: bool` parameter; pure function, no env/TTY inspection; CLI resolves color eligibility
+- **Verbose Header (Decision 2):** Separate `format_verbose_header` function printed to stderr; `format_terminal` has no `verbose` parameter
+- **`fail_on`/`warn_on` Conflict (Decision 3):** Config loader prints stderr warning when overlap, applies `fail_on` precedence (drops from `warn_on`)
+- **`write_report` Format (Decision 4):** Respects `fmt` parameter; `fmt="terminal"` uses `no_color=True`; `--output` without `--format` defaults to markdown
+- **CLI Dispatch (Decision 5):** Shared `_output_and_exit` helper in `cli.py` coordinates verbose header, format selection, file output, stdout, and exit code
+- **Terminal Line Format (Decision 6):** `file:line: rule message [category]`; only `[category]` tag is ANSI-colored
+- **Implementation patterns:** List-of-lines + `"\n".join()`; `itertools.groupby` for file grouping; `Counter` for summary; `_colorize` helper; pipe escape in markdown
+- **Edge cases resolved:** `--output` with zero findings skips `write_report`; default `fail_on` is empty (all advisory, exit 0); standalone subcommand scope (only its own check name in dict)
+- **Three-story decomposition:** Story 1 (CLI refactor + config warning), Story 2 (core reporting functions), Story 3 (CLI wiring)
 
 **From Validation Report:**
 
@@ -260,6 +323,22 @@ This document provides the complete epic and story breakdown for docvet, decompo
 | FR95 | Epic 7 | CLI: `docvet griffe` and `docvet check` |
 | FR96 | Epic 7 | Temporary logging handler lifecycle |
 | FR97 | Epic 7 | CLI griffe availability detection + messaging |
+| FR98 | Epic 8 | Terminal format with file grouping and `[category]` tag |
+| FR99 | Epic 8 | Markdown table format (6 columns, GFM) |
+| FR100 | Epic 8 | Summary line (`N findings (X required, Y recommended)`) |
+| FR101 | Epic 8 | ANSI color codes (red=required, yellow=recommended) |
+| FR101a | Epic 8 | `NO_COLOR` env var suppression |
+| FR101b | Epic 8 | Non-TTY suppression |
+| FR102 | Epic 8 | Sort by `(file, line)` before formatting |
+| FR103 | Epic 8 | `--output` file write |
+| FR104 | Epic 8 | Zero output on zero findings (non-verbose) |
+| FR104a | Epic 8 | `"No findings."` on verbose + zero findings |
+| FR105 | Epic 8 | Exit code 1 on `fail-on` findings |
+| FR106 | Epic 8 | Exit code 0 on `warn-on` only |
+| FR107 | Epic 8 | Exit code 0 on zero findings |
+| FR108 | Epic 8 | `--format` selection (terminal/markdown) |
+| FR109 | Epic 8 | Aggregate findings from all checks |
+| FR110 | Epic 8 | Verbose header (files checked, checks ran) |
 
 ## Epic List
 
@@ -1602,3 +1681,248 @@ So that I can integrate griffe checking into my development workflow and CI pipe
 ---
 
 **Epic 7 Summary:** 2 stories covering all 17 FRs (FR81-FR97) and all 10 NFRs (NFR39-NFR48). Story 7.1 delivers the core `check_griffe_compat` function with all 3 rule identifiers, graceful skip when griffe is not installed, exception handling, file filtering, and comprehensive unit + integration tests. Story 7.2 wires it into the CLI with `src_root` resolution, griffe availability detection, and verbose messaging.
+
+---
+
+## Epic 8: Reporting & CI Integration
+
+A developer can run any `docvet` command and receive formatted, color-coded findings output with summary statistics, file export capability, and CI-appropriate exit codes — replacing the current inline `typer.echo()` output with a unified reporting pipeline. The reporting module is a cross-cutting output layer with pure formatting functions (`format_terminal`, `format_markdown`, `format_verbose_header`, `write_report`) and exit code logic (`determine_exit_code`), wired through a shared `_output_and_exit` CLI coordinator.
+
+**FRs covered:** FR98, FR99, FR100, FR101, FR101a, FR101b, FR102, FR103, FR104, FR104a, FR105, FR106, FR107, FR108, FR109, FR110
+
+### Story 8.1: CLI Refactor — Return Findings from Check Runners
+
+As a developer,
+I want the CLI check runners to return structured findings instead of printing inline,
+So that findings can be routed to a unified reporting pipeline for formatting and CI exit code logic.
+
+**Acceptance Criteria:**
+
+**Given** `_run_enrichment` processing files with enrichment findings
+**When** `_run_enrichment(files, config)` is called
+**Then** it returns a `list[Finding]` containing all enrichment findings across all files
+**And** no `typer.echo()` calls are made for individual findings
+
+**Given** `_run_freshness` in diff mode processing files with freshness findings
+**When** `_run_freshness(...)` is called in diff mode
+**Then** it returns a `list[Finding]` containing all diff-mode findings
+**And** the early return pattern with two separate branches is preserved
+
+**Given** `_run_freshness` in drift mode processing files with freshness findings
+**When** `_run_freshness(...)` is called in drift mode
+**Then** it returns a `list[Finding]` containing all drift-mode findings
+
+**Given** `_run_coverage` processing files with coverage findings
+**When** `_run_coverage(files, config)` is called
+**Then** it returns a `list[Finding]` containing all coverage findings
+
+**Given** `_run_griffe` processing files with griffe findings
+**When** `_run_griffe(files, config)` is called
+**Then** it returns a `list[Finding]` containing all griffe findings
+**And** all skip paths (`find_spec` check, `src_root.is_dir()`) return `[]` not `None`
+
+**Given** `_run_griffe` when griffe is not installed
+**When** `_run_griffe(files, config)` is called
+**Then** it returns an empty list `[]`
+**And** the existing stderr warning about griffe not installed is preserved
+
+**Given** existing stderr messages in `_run_*` functions (warnings, verbose notes)
+**When** any `_run_*` function is called
+**Then** all existing stderr messages are preserved unchanged (only finding-printing `typer.echo()` calls are removed)
+
+**Given** a `pyproject.toml` with a check name appearing in both `fail-on` and `warn-on`
+**When** the config is loaded
+**Then** a warning is printed to stderr: `docvet: '<check>' appears in both fail-on and warn-on; using fail-on`
+**And** the check name is dropped from `warn_on` (fail_on precedence)
+
+**Given** a shared test fixture `make_finding`
+**When** `tests/conftest.py` is imported
+**Then** a `make_finding` factory fixture is available that creates `Finding` instances with sensible defaults for all 6 fields
+
+**Given** existing CLI tests for `_run_*` functions
+**When** tests are updated
+**Then** they verify the new `list[Finding]` return type
+**And** existing behavior tests (file discovery, config loading) continue to pass
+
+**FRs:** (enabler — no direct FRs; enables FR98-FR110)
+**NFRs:** NFR54
+
+### Story 8.2: Core Reporting Functions
+
+As a developer,
+I want a reporting module with pure formatting functions and exit code logic,
+So that findings can be rendered consistently for terminal, markdown, and CI contexts.
+
+**Acceptance Criteria:**
+
+**Given** a list of findings from multiple files
+**When** `format_terminal(findings)` is called
+**Then** it returns a string with one `file:line: rule message [category]` line per finding, findings sorted by `(file, line)`, blank lines between file groups, and a summary line
+
+**Given** a list of findings all from the same file
+**When** `format_terminal(findings)` is called
+**Then** no blank-line separators appear between findings (blank lines only separate different file groups)
+
+**Given** a list of findings with mixed categories
+**When** `format_terminal(findings, no_color=False)` is called (default)
+**Then** `[required]` tags are colored red and `[recommended]` tags are colored yellow via ANSI codes
+**And** the rest of each line (file, line number, rule, message) is uncolored
+
+**Given** a list of findings
+**When** `format_terminal(findings, no_color=True)` is called
+**Then** the output contains zero ANSI escape sequences (`\033[` not present)
+**And** all content is otherwise identical to the colored version
+
+**Given** an empty list of findings
+**When** `format_terminal([])` is called
+**Then** it returns an empty string (no summary line, no headers, no newlines)
+
+**Given** a list of findings from multiple files
+**When** `format_markdown(findings)` is called
+**Then** it returns a valid GFM markdown table with columns: File, Line, Rule, Symbol, Message, Category
+**And** findings are sorted by `(file, line)`
+**And** a bold summary line is appended: `**N findings** (X required, Y recommended)`
+
+**Given** a finding whose message contains a pipe character `|`
+**When** `format_markdown(findings)` is called
+**Then** the pipe is escaped as `\|` in the table cell to prevent GFM table breakage
+
+**Given** an empty list of findings
+**When** `format_markdown([])` is called
+**Then** it returns an empty string
+
+**Given** `format_markdown` output
+**When** examined for ANSI escape sequences
+**Then** none are present (markdown output is always ANSI-free regardless of any parameter)
+
+**Given** 12 files and checks `["enrichment", "freshness"]`
+**When** `format_verbose_header(12, ["enrichment", "freshness"])` is called
+**Then** it returns `"Checking 12 files [enrichment, freshness]\n"`
+
+**Given** findings and an output path with an existing parent directory
+**When** `write_report(findings, output_path, fmt="markdown")` is called
+**Then** it writes the `format_markdown` output to the file
+
+**Given** findings and `fmt="terminal"`
+**When** `write_report(findings, output_path, fmt="terminal")` is called
+**Then** it writes `format_terminal` output with `no_color=True` (ANSI always stripped for files)
+
+**Given** an output path whose parent directory does not exist
+**When** `write_report(findings, output_path)` is called
+**Then** it raises `FileNotFoundError`
+
+**Given** `findings_by_check = {"enrichment": [finding1], "freshness": []}` and `config.fail_on = ["enrichment"]`
+**When** `determine_exit_code(findings_by_check, config)` is called
+**Then** it returns `1` (enrichment is in fail_on and has findings)
+
+**Given** `findings_by_check = {"enrichment": [finding1]}` and `config.fail_on = []`
+**When** `determine_exit_code(findings_by_check, config)` is called
+**Then** it returns `0` (no checks in fail_on, all findings are advisory)
+
+**Given** `findings_by_check = {"enrichment": [], "freshness": []}` (all empty)
+**When** `determine_exit_code(findings_by_check, config)` is called
+**Then** it returns `0` regardless of `fail_on` contents
+
+**Given** `findings_by_check = {"freshness": [finding1]}` and `config.fail_on = ["enrichment"]`
+**When** `determine_exit_code(findings_by_check, config)` is called
+**Then** it returns `0` (freshness is not in fail_on)
+
+**Given** two findings with the same `(file, line)` but different rules
+**When** either formatter is called
+**Then** they appear in stable order (matching insertion/check execution order)
+
+**Given** a list of findings with count > 0
+**When** either formatter produces a summary line
+**Then** it always shows both category counts: `N findings (X required, Y recommended)` — even when one count is zero
+
+**FRs:** FR98, FR99, FR100, FR101, FR102, FR103, FR104, FR105, FR106, FR107, FR110
+**NFRs:** NFR49, NFR50, NFR51, NFR52, NFR53, NFR54
+
+### Story 8.3: CLI Wiring — Unified Output and Exit Code Pipeline
+
+As a developer,
+I want `docvet check` and each standalone subcommand to produce unified, formatted output with proper exit codes,
+So that I can use docvet in CI pipelines with configurable fail/warn thresholds and export reports.
+
+**Acceptance Criteria:**
+
+**Given** `docvet check` run on a project with findings
+**When** the command completes
+**Then** findings from all enabled checks are aggregated into `dict[str, list[Finding]]` and passed to `_output_and_exit`
+**And** formatted output is printed to stdout with a summary line
+
+**Given** `docvet enrichment` (standalone subcommand) run on a project with findings
+**When** the command completes
+**Then** findings are passed as `{"enrichment": findings}` to `_output_and_exit`
+**And** the same formatting/exit code pipeline is used as `docvet check`
+
+**Given** `docvet freshness`, `docvet coverage`, `docvet griffe` standalone subcommands
+**When** each command completes
+**Then** each produces a single-key `dict[str, list[Finding]]` and calls `_output_and_exit`
+
+**Given** `--format markdown` flag
+**When** any docvet command is run
+**Then** `format_markdown` is used instead of `format_terminal` for stdout output
+
+**Given** `--format terminal` flag (or no `--format` flag)
+**When** any docvet command is run
+**Then** `format_terminal` is used for stdout output (terminal is the default)
+
+**Given** `--output report.md` flag with findings
+**When** any docvet command is run
+**Then** formatted output is written to `report.md` instead of stdout
+**And** when `--format` is not explicitly set, the file format defaults to markdown
+
+**Given** `--format markdown --output report.md` (both flags explicitly set)
+**When** any docvet command is run with findings
+**Then** the user's explicit `--format markdown` is respected and markdown output is written to the file
+
+**Given** `--output report.md` flag with zero findings
+**When** any docvet command is run
+**Then** `write_report` is not called (no file is created)
+**And** if verbose, `"No findings.\n"` is printed to stdout
+
+**Given** `--verbose` flag with findings
+**When** any docvet command is run
+**Then** `format_verbose_header` output is printed to stderr (not stdout)
+**And** findings are printed to stdout
+
+**Given** `--verbose` flag with zero findings
+**When** any docvet command is run
+**Then** `format_verbose_header` output is printed to stderr
+**And** `"No findings.\n"` is printed to stdout
+
+**Given** `config.fail_on = ["enrichment"]` and enrichment has findings
+**When** `docvet check` completes
+**Then** the exit code is 1
+
+**Given** `config.fail_on = ["enrichment"]` and enrichment has zero findings
+**When** `docvet check` completes
+**Then** the exit code is 0 (even if other checks have findings)
+
+**Given** `config.fail_on = []` (default config — all checks advisory)
+**When** `docvet check` completes with findings
+**Then** the exit code is 0
+
+**Given** `NO_COLOR` environment variable is set (any non-empty value)
+**When** terminal format output is produced
+**Then** ANSI codes are suppressed (`no_color=True` passed to `format_terminal`)
+
+**Given** stdout is not a TTY (e.g., piped to a file)
+**When** terminal format output is produced
+**Then** ANSI codes are suppressed
+
+**Given** `--output` flag is set
+**When** terminal format is used for file output
+**Then** ANSI codes are suppressed (forced `no_color=True`)
+
+**Given** `docvet enrichment` with `config.fail_on = ["freshness"]`
+**When** the command completes
+**Then** exit code is 0 (enrichment is not in fail_on; the single-key dict only contains "enrichment")
+
+**FRs:** FR101a, FR101b, FR103, FR104a, FR105, FR106, FR107, FR108, FR109, FR110
+**NFRs:** NFR49, NFR50
+
+---
+
+**Epic 8 Summary:** 3 stories, 46 ACs covering all 16 FRs (FR98-FR110) and all 6 NFRs (NFR49-NFR54). Story 8.1 refactors CLI runners to return findings and adds config overlap warning. Story 8.2 creates the core reporting module with 5 pure functions. Story 8.3 wires everything together with `_output_and_exit`.
