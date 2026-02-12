@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+import typer
 
 from docvet.checks import Finding
 from docvet.config import DocvetConfig
@@ -57,13 +58,18 @@ class TestFormatTerminal:
         assert len(lines) == 4
 
     def test_color_present_by_default(self, make_finding):
-        """AC#3: ANSI codes present when no_color=False (default)."""
+        """AC#3: ANSI codes present with correct color mapping."""
         findings = [
             make_finding(category="required"),
             make_finding(line=2, category="recommended"),
         ]
         result = format_terminal(findings)
         assert "\033[" in result
+        # Verify correct color mapping: red for required, yellow for recommended
+        expected_required = typer.style("[required]", fg=typer.colors.RED)
+        expected_recommended = typer.style("[recommended]", fg=typer.colors.YELLOW)
+        assert expected_required in result
+        assert expected_recommended in result
 
     def test_no_color_suppresses_ansi(self, make_finding):
         """AC#4: no_color=True removes all ANSI codes."""
@@ -127,6 +133,15 @@ class TestFormatTerminal:
         assert lines[5] == ""
         assert "3 findings" in lines[6]
 
+    def test_mixed_categories_summary(self, make_finding):
+        """Summary with both required and recommended counts."""
+        findings = [
+            make_finding(category="required"),
+            make_finding(line=2, category="recommended"),
+        ]
+        result = format_terminal(findings, no_color=True)
+        assert "2 findings (1 required, 1 recommended)" in result
+
     def test_trailing_newline(self, make_finding):
         """Output ends with exactly one trailing newline."""
         findings = [make_finding()]
@@ -168,10 +183,10 @@ class TestFormatMarkdown:
 
         assert lines[0] == "| File | Line | Rule | Symbol | Message | Category |"
         assert lines[1] == "|------|------|------|--------|---------|----------|"
-        # Sorted: a.py first
-        assert "src/a.py" in lines[2]
-        assert "src/b.py" in lines[3]
-        # Bold summary
+        # Sorted: a.py first — verify full row content
+        assert lines[2] == "| src/a.py | 5 | r2 | func_a | msg2 | recommended |"
+        assert lines[3] == "| src/b.py | 10 | r1 | func_b | msg1 | required |"
+        assert lines[4] == ""  # blank line before summary
         assert lines[5] == "**2 findings** (1 required, 1 recommended)"
 
     def test_pipe_escaped_in_message(self, make_finding):
@@ -284,6 +299,19 @@ class TestWriteReport:
         output = tmp_path / "report.md"
         write_report([], output)
         assert output.read_text() == ""
+
+    def test_empty_findings_terminal_write(self, tmp_path):
+        """Empty findings with terminal format writes empty content."""
+        output = tmp_path / "report.txt"
+        write_report([], output, fmt="terminal")
+        assert output.read_text() == ""
+
+    def test_invalid_fmt_raises(self, make_finding, tmp_path):
+        """Unknown fmt value raises ValueError."""
+        findings = [make_finding()]
+        output = tmp_path / "report.txt"
+        with pytest.raises(ValueError, match="Unknown format"):
+            write_report(findings, output, fmt="json")
 
 
 # ---------------------------------------------------------------------------
