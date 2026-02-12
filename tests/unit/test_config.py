@@ -578,3 +578,72 @@ def test_load_config_non_dict_docvet_section_exits(
     with pytest.raises(SystemExit):
         load_config()
     assert "[tool.docvet]" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# fail-on / warn-on overlap warning
+# ---------------------------------------------------------------------------
+
+
+def test_load_config_overlap_emits_stderr_warning(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nfail-on = ["freshness"]\nwarn-on = ["freshness", "enrichment"]\n'
+    )
+    cfg = load_config()
+    err = capsys.readouterr().err
+    assert (
+        "docvet: 'freshness' appears in both fail-on and warn-on; using fail-on" in err
+    )
+    assert cfg.fail_on == ["freshness"]
+    assert "freshness" not in cfg.warn_on
+    assert "enrichment" in cfg.warn_on
+
+
+def test_load_config_no_overlap_emits_no_warning(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nfail-on = ["freshness"]\nwarn-on = ["enrichment"]\n'
+    )
+    load_config()
+    err = capsys.readouterr().err
+    assert "appears in both" not in err
+
+
+def test_load_config_overlap_multiple_checks_emits_warning_for_each(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        "[tool.docvet]\n"
+        'fail-on = ["freshness", "coverage"]\n'
+        'warn-on = ["freshness", "coverage", "enrichment"]\n'
+    )
+    cfg = load_config()
+    err = capsys.readouterr().err
+    assert (
+        "docvet: 'freshness' appears in both fail-on and warn-on; using fail-on" in err
+    )
+    assert (
+        "docvet: 'coverage' appears in both fail-on and warn-on; using fail-on" in err
+    )
+    assert "freshness" not in cfg.warn_on
+    assert "coverage" not in cfg.warn_on
+    assert "enrichment" in cfg.warn_on
+
+
+def test_load_config_overlap_default_warn_on_emits_warning(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["freshness"]\n')
+    cfg = load_config()
+    err = capsys.readouterr().err
+    assert (
+        "docvet: 'freshness' appears in both fail-on and warn-on; using fail-on" in err
+    )
+    assert "freshness" not in cfg.warn_on
