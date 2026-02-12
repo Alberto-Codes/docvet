@@ -343,7 +343,7 @@ class TestCheckGriffeCompat:
     """Tests for check_griffe_compat orchestrator."""
 
     def test_griffe_not_installed_returns_empty(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """check_griffe_compat returns [] when griffe is not installed (AC #6)."""
         mocker.patch("docvet.checks.griffe_compat.griffe", None)
@@ -356,7 +356,7 @@ class TestCheckGriffeCompat:
         assert result == []
 
     def test_happy_path_missing_type(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """check_griffe_compat produces griffe-missing-type finding (AC #1)."""
         src_root = _setup_package_dir(tmp_path, "mypkg")
@@ -403,7 +403,7 @@ class TestCheckGriffeCompat:
         assert "Function" in result[0].message
 
     def test_happy_path_unknown_param(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """check_griffe_compat produces griffe-unknown-param finding (AC #2)."""
         src_root = _setup_package_dir(tmp_path, "mypkg")
@@ -448,7 +448,7 @@ class TestCheckGriffeCompat:
         assert "'phantom_func'" in result[0].message
 
     def test_happy_path_format_warning(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """check_griffe_compat produces griffe-format-warning finding (AC #3)."""
         src_root = _setup_package_dir(tmp_path, "mypkg")
@@ -491,7 +491,7 @@ class TestCheckGriffeCompat:
         assert "'messy_func'" in result[0].message
 
     def test_multiple_findings_per_symbol_not_deduplicated(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """3 untyped params → 3 separate findings, not deduplicated (AC #4)."""
         src_root = _setup_package_dir(tmp_path, "mypkg")
@@ -531,7 +531,7 @@ class TestCheckGriffeCompat:
         assert all(f.symbol == "multi_param" for f in result)
 
     def test_well_documented_code_returns_empty(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """Well-documented code produces zero findings (AC #5)."""
         src_root = _setup_package_dir(tmp_path, "mypkg")
@@ -563,7 +563,7 @@ class TestCheckGriffeCompat:
         assert result == []
 
     def test_load_failure_skips_package_and_continues(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """Load failure skips package, continues to next (AC #8)."""
         src_root = _setup_package_dir(tmp_path, "bad_pkg", "good_pkg")
@@ -606,7 +606,7 @@ class TestCheckGriffeCompat:
         assert result[0].symbol == "good_func"
 
     def test_multiple_packages_sorted_order(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """Multiple packages loaded in sorted order (AC #9)."""
         src_root = _setup_package_dir(tmp_path, "z_pkg", "a_pkg")
@@ -659,7 +659,7 @@ class TestCheckGriffeCompat:
         assert load_order == ["a_pkg", "z_pkg"]
 
     def test_handler_removed_in_finally(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """Handler removed from griffe logger even on exception (AC #15)."""
         src_root = _setup_package_dir(tmp_path, "mypkg")
@@ -682,7 +682,7 @@ class TestCheckGriffeCompat:
         assert handlers_after == handlers_before
 
     def test_files_outside_package_produce_zero_findings(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """Files outside loaded package produce zero findings (AC #16)."""
         src_root = _setup_package_dir(tmp_path, "mypkg")
@@ -720,7 +720,7 @@ class TestCheckGriffeCompat:
         assert result == []
 
     def test_load_failure_module_not_found(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """ModuleNotFoundError during load skips package (AC #8)."""
         src_root = _setup_package_dir(tmp_path, "broken_pkg")
@@ -734,7 +734,7 @@ class TestCheckGriffeCompat:
         assert result == []
 
     def test_load_failure_syntax_error(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """SyntaxError during load skips package (AC #8)."""
         src_root = _setup_package_dir(tmp_path, "syntax_pkg")
@@ -748,7 +748,7 @@ class TestCheckGriffeCompat:
         assert result == []
 
     def test_load_failure_os_error(
-        self, tmp_path: Path, mocker: pytest.fixture
+        self, tmp_path: Path, mocker
     ) -> None:
         """OSError during load skips package (AC #8)."""
         src_root = _setup_package_dir(tmp_path, "os_pkg")
