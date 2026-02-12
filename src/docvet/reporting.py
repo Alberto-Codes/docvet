@@ -131,11 +131,15 @@ def write_report(
 
     Raises:
         FileNotFoundError: If the parent directory does not exist.
+        ValueError: If fmt is not "markdown" or "terminal".
     """
     if fmt == "markdown":
         content = format_markdown(findings)
-    else:
+    elif fmt == "terminal":
         content = format_terminal(findings, no_color=True)
+    else:
+        msg = f"Unknown format: {fmt!r}. Expected 'markdown' or 'terminal'"
+        raise ValueError(msg)
     output.write_text(content)
 
 
