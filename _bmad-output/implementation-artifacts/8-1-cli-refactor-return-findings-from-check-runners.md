@@ -1,6 +1,6 @@
 # Story 8.1: CLI Refactor — Return Findings from Check Runners
 
-Status: review
+Status: done
 
 ## Story
 
@@ -81,8 +81,8 @@ So that findings can be routed to a unified reporting pipeline for formatting an
 - [x] Task 4: Refactor `_run_griffe` to return `list[Finding]` (AC: #5, #6, #7)
   - [x] Change `find_spec` skip path (line 328-333) to `return []`
   - [x] Change `src_root.is_dir()` skip path (line 335-336) to `return []`
-  - [x] Add `all_findings` accumulator and replace echo loop
-  - [x] Return `all_findings`
+  - [x] Return `check_griffe_compat(...)` result directly (already returns `list[Finding]`)
+  - [x] Remove echo loop
   - [x] Keep stderr warning messages unchanged
 
 - [x] Task 5: Add `fail_on`/`warn_on` overlap warning in `config.py` (AC: #8)
@@ -281,11 +281,11 @@ This two-layer approach validates both the function contract (direct-call) and t
 
 ### Quality Checklist
 
-- [ ] AC-to-test traceability: Every AC has mapped test(s)
-- [ ] Assertion strength: Verify return type, list contents, and all Finding fields
-- [ ] Edge cases: Empty file lists, syntax errors, griffe not installed, all skip paths, mixed parseable/unparseable files in drift mode
-- [ ] Negative assertions: No `typer.echo()` for findings, stderr messages preserved
-- [ ] Reviewer independently verifies AC-to-test mapping (Epic 7 retro action item #1)
+- [x] AC-to-test traceability: Every AC has mapped test(s)
+- [x] Assertion strength: Verify return type, list contents, and all Finding fields
+- [x] Edge cases: Empty file lists, syntax errors, griffe not installed, all skip paths, mixed parseable/unparseable files in drift mode
+- [x] Negative assertions: No `typer.echo()` for findings, stderr messages preserved
+- [x] Reviewer independently verifies AC-to-test mapping (Epic 7 retro action item #1)
 
 ### Project Structure Notes
 
