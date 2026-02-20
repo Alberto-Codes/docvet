@@ -90,8 +90,8 @@ development_status:
   epic-7-retrospective: done
 
   # Epic 8: Reporting & CI Integration
-  epic-8: in-progress
+  epic-8: done
   8-1-cli-refactor-return-findings-from-check-runners: done
   8-2-core-reporting-functions: done
   8-3-cli-wiring-unified-output-and-exit-code-pipeline: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: done

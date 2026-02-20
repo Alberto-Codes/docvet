@@ -13,8 +13,10 @@ stepsCompleted:
   - 'step-11-polish'
   - 'step-12-complete'
 status: 'complete'
-lastEdited: '2026-02-11'
+lastEdited: '2026-02-19'
 editHistory:
+  - date: '2026-02-19'
+    changes: 'Added v1.0 "Polish & Publish" section informed by market research (February 2026); added 3 journeys (J12 Explorer, J13 Integrator, J14 Enforcer), 17 FRs (FR111-FR127) covering packaging/pre-commit/GitHub Action/README/docs site/rule reference/dogfooding/API surface, 12 NFRs (NFR55-NFR66) covering packaging quality/documentation quality/CI integration/compatibility/dogfooding/API stability; updated Executive Summary with v1.0 publication scope; added Adoption Success to Success Criteria; updated Competitive Context with pydoclint/pydocstyle data; renamed Reporting to Complete status; added v1.0 Phase 6 to Project Scoping with 8 deliverables mapped to issues #49-#56; updated Growth & Vision with post-launch marketing tactics'
   - date: '2026-02-11'
     changes: '3 structural improvements from validation holistic quality assessment: added Document Roadmap subsection to Executive Summary for reader orientation; added transition prose between Coverage and Griffe module specs clarifying Layer 6→Layer 5 progression; consolidated reporting prerequisites into single scannable subsection (merged duplicated prerequisite deliverables)'
   - date: '2026-02-11'
@@ -51,14 +53,23 @@ inputDocuments:
   - 'gh-issue-10'
   - 'gh-issue-11'
   - 'gh-issue-12'
+  - 'gh-issue-49'
+  - 'gh-issue-50'
+  - 'gh-issue-51'
+  - 'gh-issue-52'
+  - 'gh-issue-53'
+  - 'gh-issue-54'
+  - 'gh-issue-55'
+  - 'gh-issue-56'
+  - '_bmad-output/planning-artifacts/research/market-python-devtool-presentation-research-2026-02-19.md'
 documentCounts:
   briefs: 0
-  research: 0
+  research: 1
   brainstorming: 0
   projectDocs: 18
 workflowType: 'prd'
 projectName: 'docvet'
-featureScope: 'enrichment-freshness-coverage-griffe-and-reporting'
+featureScope: 'enrichment-freshness-coverage-griffe-reporting-and-v1-publish'
 ---
 
 # Product Requirements Document - docvet
@@ -72,9 +83,11 @@ docvet is a Python CLI tool for comprehensive docstring quality vetting. This PR
 
 The enrichment check fills a 4-year ecosystem gap by detecting missing docstring sections (Raises, Yields, Attributes, Examples, and more) through AST analysis. The freshness check detects stale docstrings — code that changed without a corresponding docstring update — by mapping git diff hunks and git blame timestamps to AST symbols. The griffe compatibility check catches docstrings that parse fine as text but produce warnings during mkdocs build — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered documentation. The coverage check detects Python files invisible to mkdocstrings due to missing `__init__.py` files in parent directories. All four complement ruff (style) and interrogate (presence) rather than competing with them. darglint — the only prior tool in this space — has been unmaintained since 2022 and never addressed staleness, rendering, or visibility detection; ruff stops at D417 (param completeness).
 
+This PRD also defines the **v1.0 "Polish & Publish"** phase — the packaging, presentation, and integration infrastructure required to ship docvet as a credible, installable, and discoverable Python developer tool. This covers PyPI publication, pre-commit hook, GitHub Action, mkdocs-material documentation site, rule reference pages, README with comparison table, dogfooding on docvet's own codebase, and API surface audit.
+
 **Target users:** Python developers writing Google-style docstrings, teams using mkdocs-material + mkdocstrings.
 
-**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Griffe: 3 rule identifiers for rendering compatibility warnings, optional dependency on griffe library, no per-check configuration. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration. Reporting: terminal formatter (ANSI colors, file grouping, summary line), markdown formatter (table format for CI/PR comments), `--output` file support, exit code logic based on `fail-on` / `warn-on` configuration.
+**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Griffe: 3 rule identifiers for rendering compatibility warnings, optional dependency on griffe library, no per-check configuration. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration. Reporting: terminal formatter (ANSI colors, file grouping, summary line), markdown formatter (table format for CI/PR comments), `--output` file support, exit code logic based on `fail-on` / `warn-on` configuration. v1.0 Publish: PyPI package with classifiers and adjacent-tool tags, `.pre-commit-hooks.yaml` with `id: docvet`, first-party GitHub Action, mkdocs-material docs site with rule reference pages following the What/Why/Example/Fix template, README with layer comparison table and single-command quickstart, dogfooding badge.
 
 ### Key Terms
 
@@ -94,11 +107,11 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 
 This PRD is organized in 6 parts:
 
-1. **Success Criteria & Scope** (Sections 1-3): Vision, competitive context, MVP boundaries, and growth roadmap
-2. **User Journeys** (Section 4): 11 scenarios demonstrating all 19 rules in action across 7 developer personas
+1. **Success Criteria & Scope** (Sections 1-3): Vision, competitive context, MVP boundaries, v1.0 publication scope, and growth roadmap
+2. **User Journeys** (Section 4): 14 scenarios demonstrating all 19 rules in action across 10 developer personas, plus 3 adoption journeys (install, integrate, reference)
 3. **Module Specifications** (Sections 5-9): Technical contracts for enrichment, freshness, coverage, griffe, and reporting — each with integration contract, rule taxonomy, config schema, and implementation guidance
-4. **Phased Development** (Section 10): Epic breakdown with 4 complete phases, reporting as next epic, and post-epic growth candidates
-5. **Requirements** (Sections 11-12): 110 FRs and 54 NFRs with traceability to journeys and success criteria
+4. **Phased Development** (Section 10): Epic breakdown with 5 complete phases, v1.0 publish phase, and post-launch growth candidates
+5. **Requirements** (Sections 11-12): 127 FRs and 66 NFRs with traceability to journeys and success criteria
 6. **Metadata** (YAML frontmatter): Edit history, input documents, classification, and workflow tracking
 
 For implementation: start with Module Specifications (Sections 5-9) and FRs/NFRs (Sections 11-12).
@@ -133,6 +146,18 @@ For stakeholder review: focus on Success Criteria (Section 1) and User Journeys 
 - Griffe compatibility check catches rendering issues at lint time instead of during `mkdocs build` -- developers fix docstring formatting before deployment, not after a broken docs build
 - Completes docvet's four-layer model (completeness, accuracy, rendering, visibility) -- the only Python tool providing unified docstring quality coverage from content to deployment
 - Reporting output follows industry conventions (`file:line: rule message` for terminal, table format for markdown) — feels native alongside ruff, ty, and pytest output
+- Published on PyPI with classifiers, tags, and full README as description — discoverable via `pip search` and PyPI browsing
+- README comparison table makes the gap between ruff/interrogate/pydoclint and docvet immediately obvious — developers understand the value proposition in under 10 seconds
+- Documentation site built with mkdocs-material signals quality parity with ruff and ty — documentation quality is the #1 trust signal for Python developer tool adoption
+
+### Adoption Success
+
+- A developer discovers docvet, runs `pip install docvet && docvet check --all`, and gets meaningful findings on their codebase within 2 minutes — the zero-config trial that 73% of developers demand
+- A tech lead adds `docvet` to their `.pre-commit-config.yaml` with a 3-line YAML snippet and it fires on the next `git commit` — no custom scripting required
+- A CI engineer adds the docvet GitHub Action to their workflow with a 2-line YAML snippet and gets pass/fail gating on documentation quality
+- A developer receives a finding, navigates to the rule reference page, and understands What/Why/Example/Fix within 30 seconds — no context-switching to source code
+- Running `docvet check --all` on docvet's own codebase produces zero findings — the tool dogfoods itself, proving the "docs vetted | docvet" badge is earned
+- The docs site is live, loads in under 3 seconds, includes search, and covers Getting Started, all 19 rules, configuration, and CLI reference
 
 ### Technical Success
 
@@ -171,12 +196,19 @@ For stakeholder review: focus on Success Criteria (Section 1) and User Journeys 
 - Terminal output groups findings by file and appends a summary line (`N findings (X required, Y recommended)`) when count > 0
 - Markdown output produces a table with columns for File, Line, Rule, Symbol, Message, and Category — valid GitHub-flavored markdown
 - `--output report.md` writes the formatted report to a file instead of stdout; `--format markdown` selects the markdown formatter
+- `pip install docvet` installs cleanly in a fresh virtual environment with no compilation step
+- `pip install docvet[griffe]` installs the optional griffe dependency
+- Adding `- repo: https://github.com/Alberto-Codes/docvet` to `.pre-commit-config.yaml` with hook `id: docvet` runs `docvet check` on staged Python files
+- The GitHub Action runs `docvet check` with configurable arguments and exits with the correct code
+- Each of the 19 rule identifiers has a dedicated documentation page with What/Why/Example/Fix sections
+- Running `docvet check --all` on docvet's own codebase produces zero findings
+- The README includes a comparison table showing ruff, interrogate, pydoclint, and docvet coverage across the six-layer model
 
 ## Product Scope
 
 ### Competitive Context
 
-darglint -- the only tool that partially addressed Args/Returns/Raises alignment -- has been unmaintained since 2022. Ruff's D rules stop at D417 (param completeness) and explicitly chose not to go deeper into section completeness. No existing tool maps git diffs to AST symbols for stale docstring detection -- the closest prior art is manual `git blame` inspection. No existing linter catches griffe parser warnings before `mkdocs build` -- developers currently discover rendering issues only when reviewing built documentation. This leaves a 4-year vacuum in the ecosystem for docstring completeness (Layer 3), accuracy (Layer 4), and rendering compatibility (Layer 5). docvet fills all three gaps by complementing ruff (style) and interrogate (presence) rather than competing with them -- the six-layer quality model makes the composability explicit: layers 1-2 are delegated to existing tools, layers 3-6 are docvet's territory.
+darglint -- the only tool that partially addressed Args/Returns/Raises alignment -- has been archived since December 2022. pydoclint (~204 stars, ~282K monthly PyPI downloads) is the closest active competitor on Layer 3 completeness, with ~35 rules covering argument, return, yield, raise, and class attribute validation. However, ruff is actively reimplementing pydoclint rules under the DOC prefix (tracked in astral-sh/ruff#12434) — only ~7 of ~35 rules have reached ruff, all in preview mode. pydocstyle was deprecated and archived in November 2023; its maintainers explicitly recommend migrating to ruff. Ruff's D rules stop at D417 (param completeness) and explicitly chose not to go deeper into section completeness. No existing tool maps git diffs to AST symbols for stale docstring detection -- the closest prior art is manual `git blame` inspection. No existing linter catches griffe parser warnings before `mkdocs build` -- developers currently discover rendering issues only when reviewing built documentation. This leaves a vacuum in the ecosystem: Layer 3 (completeness) is partially addressed by pydoclint but being absorbed into ruff; Layers 4-6 (accuracy, rendering, visibility) are completely uncontested. docvet fills all gaps by complementing ruff (style) and interrogate (presence) rather than competing with them -- the six-layer quality model makes the composability explicit: layers 1-2 are delegated to existing tools, layers 3-6 are docvet's territory. The positioning: "ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right."
 
 ### MVP - Enrichment Check (Layer 3)
 
@@ -194,13 +226,17 @@ The coverage module delivers 1 rule identifier (`missing-init`) that detects Pyt
 
 The griffe module delivers 3 rule identifiers (`griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`) that capture rendering compatibility warnings by parsing docstrings with the griffe library — the same parser used by mkdocstrings during `mkdocs build`. Griffe is an optional dependency (`pip install docvet[griffe]`); the check gracefully skips when griffe is not installed. This is fully implemented (1 epic, 2 stories, 617 tests). See "Project Scoping & Phased Development > Griffe Feature Set" for the authoritative implementation checklist.
 
-### Next Epic — Reporting Module
+### Reporting Module — Complete
 
-The reporting epic delivers the output formatting layer that all check modules depend on for user-facing output. Currently each `_run_*` CLI function prints findings inline with duplicated `typer.echo()` calls and no summary, grouping, or exit code logic. The reporting module extracts this into shared formatters (`format_terminal`, `format_markdown`), adds file-grouped output with ANSI color coding, a summary line, `--output` file support, and exit code logic based on `fail-on` / `warn-on` configuration. No new runtime dependencies — ANSI codes via typer/stdlib, no external color libraries. See "Project Scoping & Phased Development > Reporting Feature Set" for the authoritative implementation checklist.
+The reporting module delivers the output formatting layer that all check modules depend on for user-facing output. Shared formatters (`format_terminal`, `format_markdown`), file-grouped output with ANSI color coding, summary line, `--output` file support, and exit code logic based on `fail-on` / `warn-on` configuration. No new runtime dependencies — ANSI codes via typer/stdlib, no external color libraries. This is fully implemented (1 epic, 3 stories, 678 tests). See "Project Scoping & Phased Development > Reporting Feature Set" for the authoritative implementation checklist.
+
+### v1.0 — Polish & Publish
+
+The v1.0 phase delivers the packaging, presentation, and integration infrastructure that makes docvet installable, discoverable, and trustworthy. All check modules and reporting are complete (678 tests, 19 rules); this phase wraps them for public consumption. Market research (February 2026) identified 8 deliverables mapped to GitHub issues #49-#56: dogfooding on own codebase (#49), README with comparison table and quickstart (#50), mkdocs-material documentation site (#51), rule reference pages with What/Why/Example/Fix template (#52), pre-commit hook (#53), GitHub Action and CI badge (#54), PyPI publish with classifiers and adjacent-tool tags (#55), and API surface audit (#56). Competitive analysis of ruff, interrogate, pydoclint, ty, and mypy confirmed these as table-stakes for adoption — 73% of developers demand hands-on value within minutes, documentation quality is the #1 trust signal (34.2%), and pre-commit hooks serve as viral distribution channels. See "Project Scoping & Phased Development > v1.0 Polish & Publish Feature Set" for the authoritative implementation checklist.
 
 ### Growth & Vision
 
-Growth features include inline suppression, JSON/SARIF output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), verbose mode with code snippets and suggestions (reporting), and cross-check intelligence (enrichment + freshness + griffe + coverage combined findings). Vision includes editor/LSP integration, GitHub Actions annotation format for PR inline comments, and additional docstring style support. See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
+Growth features include inline suppression, JSON/SARIF output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), verbose mode with code snippets and suggestions (reporting), and cross-check intelligence (enrichment + freshness + griffe + coverage combined findings). Post-launch growth includes a "Python Docstring Quality Layers" blog post to define the category, submissions to curated lists (vintasoftware/python-linters-and-code-analysis, best-of-python-dev, Slant.co), and early adopter outreach to mkdocs-material projects where griffe_compat is uniquely valuable. Vision includes editor/LSP integration, GitHub Actions annotation format for PR inline comments, and additional docstring style support. See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
 
 ## User Journeys
 
@@ -510,9 +546,110 @@ Reviewers can download the artifact or paste it into a PR comment for discussion
 
 **Edge Case -- All Findings Advisory:** A colleague's PR produces 5 findings, but all are from freshness (in `warn-on`). Exit code is 0 — the pipeline passes. The findings appear in the log as advisory output. The developer reviews them during cleanup but isn't blocked from merging.
 
+### Journey 12: Explorer -- "The Two-Minute Test"
+
+**Persona:** Alex, a mid-level Python developer who just heard about docvet from a colleague. He maintains a FastAPI service with Google-style docstrings and uses ruff + interrogate already.
+
+**Opening Scene:** Alex sees the README comparison table on GitHub — ruff covers layers 1-2, interrogate covers presence, docvet covers layers 3-6. The "checks if they're right" tagline hooks him. He decides to try it.
+
+**Rising Action:** Alex runs:
+
+```
+pip install docvet
+docvet check --all
+```
+
+Within 30 seconds, he sees output:
+
+```
+src/api/routes.py:45: missing-raises Function 'create_user' raises ValidationError but has no Raises: section [required]
+src/api/routes.py:89: stale-signature Function 'update_user' signature changed but docstring not updated [required]
+src/models/user.py:12: missing-attributes Dataclass 'UserProfile' has 6 fields but no Attributes: section [required]
+src/models/user.py:12: griffe-unknown-param Function 'from_dict' parameter 'raw' documented in docstring but not in signature [required]
+src/utils/__init__.py:1: missing-init Directory 'src/utils/helpers/' has no __init__.py (3 files invisible to mkdocstrings) [required]
+
+5 findings (5 required, 0 recommended)
+```
+
+Five real issues across all four docvet layers (enrichment, freshness, griffe, coverage) that ruff and interrogate never caught. Zero configuration needed.
+
+**Climax:** Alex fixes the 5 findings, runs `docvet check --all` again — zero findings. He adds `docvet` to his `dev` dependencies in `pyproject.toml`. Total time from discovery to adoption: under 2 minutes.
+
+**Resolution:** Alex adds the "docs vetted | docvet" badge to his project's README. He tells his colleague it actually found real issues.
+
+### Journey 13: Integrator -- "The Pre-Commit Gate"
+
+**Persona:** Priya, a tech lead managing a 50-developer team on a Python monorepo. They already use ruff and mypy in pre-commit. She wants documentation quality to be a commit-time gate.
+
+**Opening Scene:** Priya adds docvet to `.pre-commit-config.yaml`:
+
+```yaml
+- repo: https://github.com/Alberto-Codes/docvet
+  rev: v1.0.0
+  hooks:
+    - id: docvet
+```
+
+**Rising Action:** She configures `pyproject.toml` with the team's policy — enrichment and coverage are `fail-on` (blocking), freshness is `warn-on` (advisory):
+
+```toml
+[tool.docvet]
+fail-on = ["enrichment", "coverage"]
+warn-on = ["freshness"]
+```
+
+A developer commits code with a function that raises `KeyError` but has no `Raises:` section. Pre-commit fires:
+
+```
+docvet check.........................................................Failed
+src/services/cache.py:67: missing-raises Function 'get_entry' raises KeyError but has no Raises: section [required]
+
+1 finding (1 required, 0 recommended)
+```
+
+The commit is blocked. The developer adds the `Raises:` section and commits again — green.
+
+**Climax:** Priya adds the docvet GitHub Action to their CI workflow:
+
+```yaml
+- uses: Alberto-Codes/docvet-action@v1
+  with:
+    args: check --all
+```
+
+Now documentation quality is gated at both commit time and CI. The team's documentation debt stops growing.
+
+**Resolution:** After a month, the team has zero `required` findings across the monorepo. Priya presents the before/after metrics at a team retrospective. The freshness `warn-on` findings gradually decrease as developers get used to updating docstrings alongside code.
+
+### Journey 14: Enforcer -- "The Rule Reference Deep Dive"
+
+**Persona:** Carlos, a senior Python developer who just received a `griffe-unknown-param` finding on his PR. He's never seen this rule before and wants to understand what it means and whether to fix it or suppress it.
+
+**Opening Scene:** Carlos sees the finding in his CI output:
+
+```
+src/core/parser.py:156: griffe-unknown-param Function 'parse_tokens' parameter 'ctx' documented in docstring but not in signature [required]
+```
+
+The rule name `griffe-unknown-param` links to the docs site.
+
+**Rising Action:** Carlos navigates to the rule reference page for `griffe-unknown-param`. The page follows the standard template:
+
+**What it does:** Detects parameters documented in the docstring that don't appear in the function signature. griffe's parser reports this as a warning during mkdocs build.
+
+**Why is this bad?** The rendered API documentation will show a parameter that callers can't actually pass, creating confusion. If `ctx` was renamed to `context` in the signature but not in the docstring, users will see stale parameter documentation.
+
+**Example:** (Shows a function with mismatched parameter names)
+
+**Fix:** Update the docstring to match the current function signature. If the parameter was removed, remove its documentation.
+
+**Climax:** Carlos realizes `ctx` was renamed to `context` two weeks ago (his colleague's PR changed the signature but not the docstring). He fixes the docstring, and the finding resolves.
+
+**Resolution:** Carlos bookmarks the rule reference and starts checking it proactively before PRs. He tells the team that the rule pages are better than reading source code to understand findings.
+
 ### Journey Requirements Traceability
 
-All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). All 3 griffe rule identifiers are demonstrated in Journey 10: `griffe-missing-type` (recommended, main scenario), `griffe-unknown-param` (required, edge case), and `griffe-format-warning` (recommended, implied by griffe's formatting checks). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 19 rule identifiers (10 enrichment + 5 freshness + 3 griffe + 1 coverage) have journey coverage. Journey 11 demonstrates the reporting module: terminal formatting with file grouping and color-coded categories, markdown table output for CI artifacts, summary line, exit code logic based on `fail-on`/`warn-on` configuration, and `--output` file support. Reporting is a cross-cutting capability required by all check module journeys for full journey completion.
+All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). All 3 griffe rule identifiers are demonstrated in Journey 10: `griffe-missing-type` (recommended, main scenario), `griffe-unknown-param` (required, edge case), and `griffe-format-warning` (recommended, implied by griffe's formatting checks). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 19 rule identifiers (10 enrichment + 5 freshness + 3 griffe + 1 coverage) have journey coverage. Journey 11 demonstrates the reporting module: terminal formatting with file grouping and color-coded categories, markdown table output for CI artifacts, summary line, exit code logic based on `fail-on`/`warn-on` configuration, and `--output` file support. Reporting is a cross-cutting capability required by all check module journeys for full journey completion. Journeys 12-14 demonstrate v1.0 adoption infrastructure: Journey 12 (Explorer) covers first install, zero-config trial, and badge adoption (FR111-113, FR118-119, FR125-126). Journey 13 (Integrator) covers pre-commit hook and GitHub Action CI setup (FR114-117, FR120). Journey 14 (Enforcer) covers rule reference navigation and the What/Why/Example/Fix documentation template (FR121-124).
 
 ## Enrichment Module Specification
 
@@ -1190,9 +1327,9 @@ The exit code depends on which *check names* are in `fail-on`, not on individual
 - Edge case tests: griffe not installed, empty file list, package load errors, unrecognized warnings
 - CLI wiring: `_run_griffe` in `cli.py`
 
-### Reporting Feature Set (Next Epic)
+### Reporting Feature Set (Phase 5 — Complete)
 
-**Status:** Not started. CLI infrastructure exists (global `--format`, `--output`, `--verbose` options; `OutputFormat` enum) but options are acknowledged-only — no formatting logic is wired.
+**Status:** Fully implemented (1 epic, 3 stories, 678 tests). Terminal and markdown formatters, exit code logic, verbose mode, `--output` file support, and `_output_and_exit` unified pipeline all operational.
 
 **Core User Journeys Enabled:** Journey 11. The reporting module enables the CI report workflow and completes Journeys 3 and 5 (which reference summary line and exit code behavior).
 
@@ -1220,6 +1357,67 @@ One internal refactor required before reporting implementation:
 - `NO_COLOR` environment variable support and non-TTY detection (suppress ANSI codes independently)
 - Unit tests for both formatters, exit code logic, verbose behavior, and edge cases (≥85% project-wide coverage)
 - Integration: `docvet check` aggregates findings from all checks, formats once, exits with correct code
+
+### v1.0 Polish & Publish Feature Set (Phase 6)
+
+**Status:** Not started. All check modules and reporting are complete (678 tests, 19 rules, 5 subcommands). This phase packages docvet for public consumption.
+
+**Core User Journeys Enabled:** Journey 12 (Explorer: install & trial), Journey 13 (Integrator: CI/pre-commit setup), Journey 14 (Enforcer: rule reference deep dive).
+
+**Prerequisite:** All check modules and reporting module complete (Phases 1-5). GitHub issues #49-#56 created under the "v1.0 — Polish & Publish" milestone.
+
+**Deliverables:**
+
+**Dogfooding (#49):**
+- Run `docvet check --all` on docvet's own codebase and fix all findings
+- Add a CI step that runs docvet on itself as a regression gate
+- Display a "docs vetted | docvet" shield badge in the README
+
+**README (#50):**
+- Hero section: one-line tagline + six-layer diagram + 4-check bullet list
+- Comparison table showing layer coverage for ruff, interrogate, pydoclint, and docvet
+- Single-command quickstart: `pip install docvet && docvet check --all`
+- Pre-commit configuration snippet (3-line YAML)
+- Badge row: PyPI version, CI status, license, Python versions, "docs vetted | docvet"
+- Copy-paste badge snippet for adopters
+
+**Documentation Site (#51):**
+- Framework: mkdocs-material (same framework used by ruff and ty)
+- Navigation: Getting Started, Checks (one page per check type), Configuration, CLI Reference
+- Client-side full-text search
+- Published and accessible via GitHub Pages or similar hosting
+
+**Rule Reference (#52):**
+- One dedicated page per rule identifier (19 pages total)
+- Each page follows the What/Why/Example/Fix template (validated pattern from ruff and ty)
+- Severity indicator (HIGH/MEDIUM/LOW or required/recommended) on each page
+- Check type attribution (enrichment, freshness, coverage, griffe)
+
+**Pre-commit Hook (#53):**
+- `.pre-commit-hooks.yaml` in repo root with `id: docvet` hook
+- Hook runs `docvet check` on staged Python files
+- Respects `[tool.docvet]` configuration from `pyproject.toml`
+- Documentation: YAML snippet in README, dedicated section in docs site
+
+**GitHub Action (#54):**
+- First-party GitHub Action with minimal 2-line YAML usage example
+- Supports version pinning and `pyproject.toml`-based version detection
+- Configurable arguments (checks, format, output, verbose)
+- CI badge provided for README display
+
+**PyPI Publish (#55):**
+- Package published to PyPI as `docvet`
+- Classifiers: Development Status (Production/Stable), Environment (Console), Python versions (3.12, 3.13)
+- Tags include adjacent tool names for search discoverability: interrogate, pydocstyle, darglint, docstring, mkdocs
+- Full README rendered as PyPI description
+- Optional extras: `docvet[griffe]`
+- Test-publish to TestPyPI before production publish
+
+**API Surface Audit (#56):**
+- All public modules define `__all__` exports
+- Verify stable v1 public surface: `Finding`, check functions, CLI options
+- No internal symbols exported unintentionally
+- Document public API in docs site
 
 ### Post-Epic Features
 
@@ -1257,6 +1455,13 @@ Shared growth:
 - Rule documentation URLs in findings (ruff pattern)
 - Per-rule severity override in config
 - Cross-check intelligence (enrichment + freshness + griffe + coverage combined findings)
+
+**Post-Launch Marketing:**
+
+- "Python Docstring Quality Layers" blog post — define the category, introduce the six-layer model, position docvet as the tool for layers 3-6
+- Curated list submissions: vintasoftware/python-linters-and-code-analysis, best-of-python-dev, Slant.co comparison pages
+- Early adopter outreach to mkdocs-material projects where griffe_compat check is uniquely valuable
+- Conference lightning talks / blog series on docstring quality automation
 
 **Vision:**
 
@@ -1488,6 +1693,47 @@ Shared growth:
 - **FR108:** A developer can select output format via `--format terminal` or `--format markdown`, with terminal as the default when no format is specified
 - **FR109:** The system can aggregate findings from all enabled checks (`enrichment`, `freshness`, `coverage`, `griffe`) into a single formatted output and a single exit code determination, replacing the current per-check inline printing
 
+### Packaging & Distribution
+
+- **FR111:** The system can be installed from PyPI via `pip install docvet` with no compilation step — pure Python package with typer as the only required runtime dependency
+- **FR112:** The system can expose an optional `griffe` extra via `pip install docvet[griffe]` for users who want rendering compatibility checks
+- **FR113:** The system can publish PyPI package metadata that includes classifiers for Development Status (Production/Stable), Environment (Console), Python versions (3.12, 3.13), and tags including adjacent tool names (interrogate, pydocstyle, darglint, docstring, mkdocs) for search discoverability
+
+### Pre-commit Integration
+
+- **FR114:** The system can provide a `.pre-commit-hooks.yaml` in the repository root with hook id `docvet` that runs `docvet check` on staged Python files, using `language: python` and `types: [python]`
+- **FR115:** The pre-commit hook respects `[tool.docvet]` configuration from `pyproject.toml`, including `fail-on`, `warn-on`, and per-check configuration sections
+
+### GitHub Action
+
+- **FR116:** The system can provide a first-party composite GitHub Action (`runs-using: composite`) that runs `docvet check` with three configurable inputs: `version` (default: `latest`), `args` (default: `check`), and `src` (default: `.`), supporting version pinning via explicit input or automatic detection from `pyproject.toml`
+- **FR117:** The GitHub Action produces exit codes compatible with GitHub Actions pass/fail semantics — exit 0 on success, exit 1 when `fail-on` checks produce findings
+
+### README
+
+- **FR118:** The README includes a comparison table showing layer coverage for docvet vs ruff, interrogate, and pydoclint across the six-layer quality model
+- **FR119:** The README includes a single-command quickstart (`pip install docvet && docvet check --all`) and a pre-commit configuration snippet — a developer can go from discovery to first findings in under 2 minutes (install ~30s, first run ~5s on a 200-file codebase, review output ~85s)
+- **FR120:** The README includes a badge row (PyPI version, CI status, license, Python versions, "docs vetted | docvet"), a copy-paste badge snippet for adopters to display in their own projects, and a "Used By" section listing projects that run docvet in CI as a zero-cost credibility signal
+
+### Documentation Site
+
+- **FR121:** The system can serve a documentation site built with mkdocs-material, containing at minimum 6 pages: Getting Started (install + quickstart), Enrichment Check, Freshness Check, Coverage Check, Griffe Check, and CLI Reference (all subcommands and global options)
+- **FR122:** The system can generate documentation that includes client-side full-text search via mkdocs-material's built-in search plugin, and a Configuration page documenting every `[tool.docvet]` key with defaults, types, and examples matching the actual `config.py` schema
+
+### Rule Reference
+
+- **FR123:** Each of the 19 rule identifiers has a dedicated documentation page showing the rule code, check type, default severity, and category
+- **FR124:** Each rule reference page follows the What/Why/Example/Fix template: "What it does" (1-2 sentences), "Why is this bad?" (consequence explanation), "Example" (code showing the violation), and "Fix" (code showing the corrected version)
+
+### Dogfooding
+
+- **FR125:** Running `docvet check --all` on docvet's own codebase produces zero findings — the tool's own documentation meets its own quality standards
+- **FR126:** The README displays a "docs vetted | docvet" shields.io badge linking to the project, serving as a self-referential credibility signal
+
+### API Surface
+
+- **FR127:** All public modules define `__all__` exports, ensuring only intentional symbols are part of the stable v1 public API
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -1615,3 +1861,33 @@ Shared growth:
 ### Reporting Integration
 
 - **NFR54:** The reporting module has no cross-imports with any check module — it depends only on `checks.Finding` and `config.DocvetConfig`
+
+### Packaging Quality
+
+- **NFR55:** The PyPI package installs cleanly in a fresh virtual environment with no compilation step and no system-level dependencies (pure Python wheel)
+- **NFR56:** The package size stays under 500KB — no bundled binaries, test data, fixture files, or development artifacts in the published distribution
+
+### Documentation Quality
+
+- **NFR57:** The documentation site loads in under 3 seconds, includes client-side search, and renders without layout breaks on viewports >= 320px wide (mobile) through 1920px (desktop)
+- **NFR58:** Every CLI flag documented in the docs site matches the actual `--help` output — no drift between documentation and implementation. Verified by a CI check or manual review before each release
+
+### CI Integration Quality
+
+- **NFR59:** The pre-commit hook executes in under 10 seconds for 50 staged Python files on commodity hardware — aspirational benchmark; the real gate is "fast enough to not frustrate developers during commit"
+- **NFR60:** The GitHub Action runs in under 60 seconds for a 200-file codebase on a standard GitHub Actions runner — aspirational benchmark; dominated by pip install time, not check execution
+
+### v1.0 Compatibility
+
+- **NFR61:** The pre-commit hook works with pre-commit framework v3.x and v4.x without version-specific workarounds
+- **NFR62:** The GitHub Action works with `ubuntu-latest`, `macos-latest`, and `windows-latest` runners without platform-specific code paths
+
+### Dogfooding
+
+- **NFR63:** docvet's own codebase maintains zero findings from `docvet check --all` as a CI gate — any new finding in docvet's own code is a regression that blocks the pipeline. Pre-publish: the CI gate validates against the working tree version. Post-publish: the CI gate validates against the published package
+
+### API Stability
+
+- **NFR64:** The public API surface (`Finding` dataclass, check functions, CLI command names, CLI option names) is stable for v1 — no breaking changes within the v1.x lifecycle. Additions (new fields, new options) are allowed; removals and renames are not
+- **NFR65:** All public modules define `__all__` exports — importing `from docvet.checks import *` or `from docvet import *` produces only the intended public symbols
+- **NFR66:** The v1 API stability commitment covers: `Finding` (6 fields), `check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`, and all CLI subcommand names (`check`, `enrichment`, `freshness`, `coverage`, `griffe`)
