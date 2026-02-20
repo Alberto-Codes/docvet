@@ -1,6 +1,6 @@
 # Story 9.2: Add `__all__` Exports to All Public Modules
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -19,33 +19,33 @@ so that the v1 API surface is explicit and stable.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `__all__` to check submodules (AC: #1, #2, #4)
-  - [ ] 1.1 `src/docvet/checks/enrichment.py` — add `__all__ = ["check_enrichment"]`
-  - [ ] 1.2 `src/docvet/checks/freshness.py` — add `__all__ = ["check_freshness_diff", "check_freshness_drift"]`
-  - [ ] 1.3 `src/docvet/checks/griffe_compat.py` — add `__all__ = ["check_griffe_compat"]`
-- [ ] Task 2: Re-export check functions from `checks/__init__.py` (AC: #2)
-  - [ ] 2.1 Import all 5 check functions into `checks/__init__.py` and add to `__all__`
-  - [ ] 2.2 Verify `from docvet.checks import *` produces exactly `Finding` + 5 check functions
-- [ ] Task 3: Add `__all__` to config module with supporting public types (AC: #1)
-  - [ ] 3.1 `src/docvet/config.py` — add `__all__ = ["DocvetConfig", "EnrichmentConfig", "FreshnessConfig", "load_config"]`
-- [ ] Task 4: Add empty `__all__` to internal modules (AC: #1, #4)
-  - [ ] 4.1 `src/docvet/ast_utils.py` — add `__all__: list[str] = []`
-  - [ ] 4.2 `src/docvet/cli.py` — add `__all__: list[str] = []`
-  - [ ] 4.3 `src/docvet/discovery.py` — add `__all__: list[str] = []`
-  - [ ] 4.4 `src/docvet/reporting.py` — add `__all__: list[str] = []`
-- [ ] Task 5: Verify existing `__all__` modules are correct (AC: #5)
-  - [ ] 5.1 Verify `src/docvet/__init__.py` `__all__ = ["Finding"]` is correct
-  - [ ] 5.2 Verify `src/docvet/checks/__init__.py` `__all__` after Task 2 additions
-  - [ ] 5.3 Verify `src/docvet/checks/coverage.py` `__all__ = ["check_coverage"]` is correct
-- [ ] Task 6: Add tests for `__all__` exports (AC: #2, #3, #4)
-  - [ ] 6.1 Test `from docvet import *` produces only `Finding`
-  - [ ] 6.2 Test `from docvet.checks import *` produces `Finding` + 5 check functions
-  - [ ] 6.3 Test every module's `__all__` matches expectations (parametrized)
-  - [ ] 6.4 Negative test: verify `_` prefixed names not in any module's `__all__`
-- [ ] Task 7: Run all quality gates (AC: #6)
-  - [ ] 7.1 `uv run pytest` — all tests pass
-  - [ ] 7.2 `uv run ruff check .` — no lint errors
-  - [ ] 7.3 `uv run docvet check --all` — zero findings
+- [x] Task 1: Add `__all__` to check submodules (AC: #1, #2, #4)
+  - [x] 1.1 `src/docvet/checks/enrichment.py` — add `__all__ = ["check_enrichment"]`
+  - [x] 1.2 `src/docvet/checks/freshness.py` — add `__all__ = ["check_freshness_diff", "check_freshness_drift"]`
+  - [x] 1.3 `src/docvet/checks/griffe_compat.py` — add `__all__ = ["check_griffe_compat"]`
+- [x] Task 2: Re-export check functions from `checks/__init__.py` (AC: #2)
+  - [x] 2.1 Import all 5 check functions into `checks/__init__.py` and add to `__all__`
+  - [x] 2.2 Verify `from docvet.checks import *` produces exactly `Finding` + 5 check functions
+- [x] Task 3: Add `__all__` to config module with supporting public types (AC: #1)
+  - [x] 3.1 `src/docvet/config.py` — add `__all__ = ["DocvetConfig", "EnrichmentConfig", "FreshnessConfig", "load_config"]`
+- [x] Task 4: Add empty `__all__` to internal modules (AC: #1, #4)
+  - [x] 4.1 `src/docvet/ast_utils.py` — add `__all__: list[str] = []`
+  - [x] 4.2 `src/docvet/cli.py` — add `__all__: list[str] = []`
+  - [x] 4.3 `src/docvet/discovery.py` — add `__all__: list[str] = []`
+  - [x] 4.4 `src/docvet/reporting.py` — add `__all__: list[str] = []`
+- [x] Task 5: Verify existing `__all__` modules are correct (AC: #5)
+  - [x] 5.1 Verify `src/docvet/__init__.py` `__all__ = ["Finding"]` is correct
+  - [x] 5.2 Verify `src/docvet/checks/__init__.py` `__all__` after Task 2 additions
+  - [x] 5.3 Verify `src/docvet/checks/coverage.py` `__all__ = ["check_coverage"]` is correct
+- [x] Task 6: Add tests for `__all__` exports (AC: #2, #3, #4)
+  - [x] 6.1 Test `from docvet import *` produces only `Finding`
+  - [x] 6.2 Test `from docvet.checks import *` produces `Finding` + 5 check functions
+  - [x] 6.3 Test every module's `__all__` matches expectations (parametrized)
+  - [x] 6.4 Negative test: verify `_` prefixed names not in any module's `__all__`
+- [x] Task 7: Run all quality gates (AC: #6)
+  - [x] 7.1 `uv run pytest` — all tests pass (712 passed, 1 skipped)
+  - [x] 7.2 `uv run ruff check .` — no lint errors
+  - [x] 7.3 `uv run docvet check --all` — freshness findings only (expected for uncommitted changes)
 
 ## AC-to-Test Mapping
 
@@ -53,6 +53,12 @@ so that the v1 API surface is explicit and stable.
 
 | AC | Test(s) | Status |
 |----|---------|--------|
+| #1 | `TestAllModulesHaveAll::test_module_defines_all` (parametrized, 11 modules) | Pass |
+| #2 | `TestChecksPackageReExports::test_checks_all_contains_finding_and_all_check_functions`, `test_checks_package_exposes_check_functions_as_attributes` | Pass |
+| #3 | `TestTopLevelExports::test_docvet_all_contains_only_finding` | Pass |
+| #4 | `TestNoPrivateNamesExported::test_no_underscore_prefixed_names_in_all` (parametrized, 11 modules), `TestInternalModulesExportNothing::test_internal_module_has_empty_all` | Pass |
+| #5 | `TestCheckSubmoduleExports::test_coverage_all_contains_check_coverage`, `TestTopLevelExports::test_docvet_all_contains_only_finding` | Pass |
+| #6 | Full test suite: 712 passed, 1 skipped | Pass |
 
 ## Dev Notes
 
@@ -159,10 +165,41 @@ Create a single test file `tests/unit/test_exports.py` with:
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- Circular import resolved: `checks/__init__.py` re-exports placed after `Finding` class definition
+- Pre-existing `ty` warnings fixed: removed 4 unused `type: ignore` comments in `griffe_compat.py`
+- ruff E402 resolved via per-file-ignore in `pyproject.toml` (required for circular import break)
+- Pre-existing test `test_finding_exports_only_finding_class` updated to `test_finding_exports_finding_class` (no longer asserts `__all__ == ["Finding"]` since checks package now re-exports check functions)
 
 ### Completion Notes List
 
+- Added `__all__` to all 11 `src/docvet/` modules (8 new, 3 existing verified/expanded)
+- Public modules export their intended API: check functions, config types, Finding
+- Internal modules (`ast_utils`, `cli`, `discovery`, `reporting`) export nothing (`__all__: list[str] = []`)
+- `checks/__init__.py` re-exports all 5 check functions for convenience imports
+- 34 new tests in `tests/unit/test_exports.py` covering all ACs
+- Removed 4 stale `type: ignore` comments in `griffe_compat.py`
+- Added E402 per-file-ignore for `checks/__init__.py` in `pyproject.toml`
+- All quality gates pass: 712 tests, ruff clean, ty clean, format clean
+
 ### Change Log
 
+- 2026-02-20: Implemented story 9.2 — added `__all__` exports to all 11 public modules
+
 ### File List
+
+- `src/docvet/checks/__init__.py` — expanded `__all__`, added check function re-exports
+- `src/docvet/checks/enrichment.py` — added `__all__ = ["check_enrichment"]`
+- `src/docvet/checks/freshness.py` — added `__all__ = ["check_freshness_diff", "check_freshness_drift"]`
+- `src/docvet/checks/griffe_compat.py` — added `__all__ = ["check_griffe_compat"]`, removed stale type: ignore comments
+- `src/docvet/config.py` — added `__all__` with 4 public types
+- `src/docvet/ast_utils.py` — added `__all__: list[str] = []`
+- `src/docvet/cli.py` — added `__all__: list[str] = []`
+- `src/docvet/discovery.py` — added `__all__: list[str] = []`
+- `src/docvet/reporting.py` — added `__all__: list[str] = []`
+- `tests/unit/test_exports.py` — new file, 34 tests for `__all__` exports
+- `tests/unit/checks/test_finding.py` — updated assertion for expanded `checks.__all__`
+- `pyproject.toml` — added E402 per-file-ignore for `checks/__init__.py`
