@@ -12,6 +12,8 @@ import typer
 from docvet.checks import Finding
 from docvet.config import DocvetConfig
 
+__all__: list[str] = []
+
 _COLORS: dict[str, str] = {
     "required": typer.colors.RED,
     "recommended": typer.colors.YELLOW,
