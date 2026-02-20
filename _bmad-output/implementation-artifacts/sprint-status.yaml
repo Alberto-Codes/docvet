@@ -93,5 +93,5 @@ development_status:
   epic-8: in-progress
   8-1-cli-refactor-return-findings-from-check-runners: done
   8-2-core-reporting-functions: done
-  8-3-cli-wiring-unified-output-and-exit-code-pipeline: backlog
+  8-3-cli-wiring-unified-output-and-exit-code-pipeline: done
   epic-8-retrospective: optional
