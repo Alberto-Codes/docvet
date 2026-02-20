@@ -110,17 +110,18 @@ def test_griffe_help_when_invoked_shows_correct_description():
 # ---------------------------------------------------------------------------
 
 
-def test_version_flag_outputs_version_string():
+def test_app_when_invoked_with_version_flag_outputs_version_string():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert "docvet" in result.output
 
 
-def test_version_flag_includes_version_number():
+def test_app_when_invoked_with_version_flag_includes_version_number():
     import importlib.metadata
 
     expected_version = importlib.metadata.version("docvet")
     result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
     assert expected_version in result.output
 
 
