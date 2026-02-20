@@ -409,7 +409,7 @@ def _run_griffe(
 # ---------------------------------------------------------------------------
 
 
-def _version_callback(value: bool) -> None:
+def _version_callback(value: bool | None) -> None:
     """Print version and exit.
 
     Args:
