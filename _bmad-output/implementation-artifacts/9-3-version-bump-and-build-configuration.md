@@ -1,6 +1,6 @@
 # Story 9.3: Version Bump and Build Configuration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -50,7 +50,7 @@ so that the published package is correctly versioned and contains only productio
 | AC | Test(s) | Status |
 |----|---------|--------|
 | #1 | Manual: `pyproject.toml` shows `version = "1.0.0"` | PASS |
-| #2 | `test_version_flag_outputs_version_string`, `test_version_flag_includes_version_number`, `test_version_flag_exits_with_code_zero` | PASS |
+| #2 | `test_version_flag_outputs_version_string`, `test_version_flag_includes_version_number` | PASS |
 | #3 | Manual: `tar tzf dist/*.tar.gz` confirms no `tests/`, `_bmad-output/`, `_bmad/`, `.github/`, `docs/` | PASS |
 | #4 | Manual: `uv build` produces 34K wheel + 43K sdist (both under 500KB) | PASS |
 | #5 | Manual: `python -m zipfile -l dist/*.whl` shows only `docvet/` package files | PASS |
@@ -191,18 +191,20 @@ None — clean implementation with no debugging required.
 - Added `--version` flag using typer's eager callback pattern with `importlib.metadata.version()`
 - Added `_version_callback` function with proper Google-style docstring
 - Updated `main` callback signature and docstring to include `version` parameter
-- Added `[tool.hatch.build.targets.sdist]` exclusion list for non-distribution directories
-- Added 3 new tests for `--version` flag (output content, version number match, exit code)
+- Switched build backend from hatchling to `uv_build` — include-based approach eliminates need for sdist exclusion config
+- Added 2 new tests for `--version` flag (output content, version number match)
 - TDD approach: tests written first (RED), then implementation (GREEN)
-- Build verified: wheel 34K (only `docvet/` files), sdist 43K (excludes tests, BMAD, docs, GitHub)
-- All quality gates pass: 726 tests passed, ruff lint clean, ruff format clean
+- Build verified: wheel 34K (only `docvet/` files), sdist 29K (uv_build includes only src + pyproject.toml + readme by default)
+- All quality gates pass: 725 tests passed, ruff lint clean, ruff format clean
 
 ### Change Log
 
 - 2026-02-20: Implemented version bump, --version CLI flag, and sdist build exclusions for v1.0 release
+- 2026-02-20: Code review fixes — fixed `_version_callback` type annotation (`bool` → `bool | None`), removed redundant test
+- 2026-02-20: Switched build backend from hatchling to `uv_build` — removed `[tool.hatch.build.targets.sdist]` exclusion config entirely (uv_build's include-based defaults handle src layout correctly)
 
 ### File List
 
-- `pyproject.toml` (modified: version bump 0.1.0 → 1.0.0, added sdist exclusions)
-- `src/docvet/cli.py` (modified: added `importlib.metadata` import, `_version_callback`, `--version` option)
-- `tests/unit/test_cli.py` (modified: added 3 `--version` flag tests)
+- `pyproject.toml` (modified: version bump 0.1.0 → 1.0.0, switched build backend from hatchling to uv_build)
+- `src/docvet/cli.py` (modified: added `importlib.metadata` import, `_version_callback` with correct type annotation, `--version` option)
+- `tests/unit/test_cli.py` (modified: added 2 `--version` flag tests)
