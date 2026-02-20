@@ -13,8 +13,6 @@ from typing import Annotated
 
 import typer
 
-__all__: list[str] = []
-
 from docvet.checks import Finding
 from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
@@ -29,6 +27,8 @@ from docvet.reporting import (
     format_verbose_header,
     write_report,
 )
+
+__all__: list[str] = []
 
 # ---------------------------------------------------------------------------
 # Enums
