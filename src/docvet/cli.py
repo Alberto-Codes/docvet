@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import enum
+import importlib.metadata
 import importlib.util
 import os
 import subprocess
@@ -408,6 +409,21 @@ def _run_griffe(
 # ---------------------------------------------------------------------------
 
 
+def _version_callback(value: bool) -> None:
+    """Print version and exit.
+
+    Args:
+        value: Whether ``--version`` was passed.
+
+    Raises:
+        typer.Exit: After printing the version string.
+    """
+    if value:
+        version = importlib.metadata.version("docvet")
+        typer.echo(f"docvet {version}")
+        raise typer.Exit()
+
+
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
@@ -422,6 +438,15 @@ def main(
         Path | None, typer.Option("--output", help="Write report to file.")
     ] = None,
     config: ConfigOption = None,
+    version: Annotated[
+        bool | None,
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show version.",
+        ),
+    ] = None,
 ) -> None:
     """Global options for docvet.
 
@@ -431,6 +456,7 @@ def main(
         fmt: Output format (terminal or markdown).
         output: Optional file path for report output.
         config: Explicit path to a ``pyproject.toml``.
+        version: Show version and exit.
 
     Raises:
         typer.BadParameter: If the specified config file does not exist.
