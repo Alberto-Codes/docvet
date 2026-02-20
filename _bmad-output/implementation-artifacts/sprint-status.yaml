@@ -98,7 +98,7 @@ development_status:
 
   # Epic 9: Dogfooding & API Hardening
   epic-9: in-progress
-  9-1-fix-docvet-findings-on-own-codebase: ready-for-dev
+  9-1-fix-docvet-findings-on-own-codebase: review
   9-2-add-all-exports-to-all-public-modules: backlog
   9-3-version-bump-and-build-configuration: backlog
   epic-9-retrospective: optional

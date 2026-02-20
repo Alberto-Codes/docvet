@@ -14,7 +14,14 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class FreshnessConfig:
-    """Configuration for the freshness check."""
+    """Configuration for the freshness check.
+
+    Attributes:
+        drift_threshold (int): Maximum days since last docstring update
+            before flagging drift. Defaults to 30.
+        age_threshold (int): Maximum days since initial docstring creation
+            before flagging age. Defaults to 90.
+    """
 
     drift_threshold: int = 30
     age_threshold: int = 90
@@ -22,7 +29,31 @@ class FreshnessConfig:
 
 @dataclass(frozen=True)
 class EnrichmentConfig:
-    """Configuration for the enrichment check."""
+    """Configuration for the enrichment check.
+
+    Attributes:
+        require_examples (list[str]): Symbol kinds that must have an
+            ``Examples:`` section. Defaults to
+            ``["class", "protocol", "dataclass", "enum"]``.
+        require_raises (bool): Require ``Raises:`` sections. Defaults
+            to ``True``.
+        require_yields (bool): Require ``Yields:`` sections. Defaults
+            to ``True``.
+        require_warns (bool): Require ``Warns:`` sections. Defaults
+            to ``True``.
+        require_receives (bool): Require ``Receives:`` sections.
+            Defaults to ``True``.
+        require_other_parameters (bool): Require ``Other Parameters:``
+            sections. Defaults to ``True``.
+        require_typed_attributes (bool): Require typed attribute format.
+            Defaults to ``True``.
+        require_cross_references (bool): Require ``See Also:`` in
+            ``__init__.py`` modules. Defaults to ``True``.
+        prefer_fenced_code_blocks (bool): Prefer fenced code blocks
+            over indented blocks. Defaults to ``True``.
+        require_attributes (bool): Require ``Attributes:`` sections.
+            Defaults to ``True``.
+    """
 
     require_examples: list[str] = field(
         default_factory=lambda: ["class", "protocol", "dataclass", "enum"]
@@ -40,7 +71,23 @@ class EnrichmentConfig:
 
 @dataclass(frozen=True)
 class DocvetConfig:
-    """Top-level docvet configuration."""
+    """Top-level docvet configuration.
+
+    Attributes:
+        src_root (str): Source directory relative to project root.
+            Defaults to ``"."`` (auto-detects ``src/`` layout).
+        package_name (str | None): Explicit package name override.
+            Defaults to ``None`` (auto-detected).
+        exclude (list[str]): Directory names to exclude from checks.
+            Defaults to ``["tests", "scripts"]``.
+        fail_on (list[str]): Check names that cause exit code 1.
+            Defaults to ``[]``.
+        warn_on (list[str]): Check names reported without failing.
+            Defaults to all four checks.
+        freshness (FreshnessConfig): Freshness check settings.
+        enrichment (EnrichmentConfig): Enrichment check settings.
+        project_root (Path): Resolved project root directory.
+    """
 
     src_root: str = "."
     package_name: str | None = None

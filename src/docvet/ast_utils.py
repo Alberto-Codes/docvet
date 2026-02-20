@@ -18,21 +18,25 @@ class Symbol:
     """An extracted documentable symbol from a Python AST.
 
     Attributes:
-        name: Symbol name, or ``"<module>"`` for the module itself.
-        kind: One of ``"function"``, ``"class"``, ``"method"``, or
-            ``"module"``.
-        line: The ``def``/``class`` keyword line (``node.lineno``).
-        end_line: Last line of the symbol's body.
-        definition_start: First decorator line, or ``line`` when
+        name (str): Symbol name, or ``"<module>"`` for the module
+            itself.
+        kind (str): One of ``"function"``, ``"class"``, ``"method"``,
+            or ``"module"``.
+        line (int): The ``def``/``class`` keyword line
+            (``node.lineno``).
+        end_line (int): Last line of the symbol's body.
+        definition_start (int): First decorator line, or ``line`` when
             undecorated.
-        docstring: Raw docstring text, or *None* if absent.
-        docstring_range: ``(start_line, end_line)`` of the docstring
-            expression, or *None*.
-        signature_range: ``(start_line, end_line)`` of the function
-            signature, or *None* for classes and modules.
-        body_range: ``(start_line, end_line)`` of the body excluding
+        docstring (str | None): Raw docstring text, or *None* if
+            absent.
+        docstring_range (tuple[int, int] | None): Line range of the
+            docstring expression, or *None*.
+        signature_range (tuple[int, int] | None): Line range of the
+            function signature, or *None* for classes and modules.
+        body_range (tuple[int, int]): Line range of the body excluding
             the docstring.
-        parent: Immediate enclosing class name, or *None*.
+        parent (str | None): Immediate enclosing class name, or
+            *None*.
     """
 
     name: str

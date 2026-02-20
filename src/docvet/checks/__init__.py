@@ -6,6 +6,25 @@ detected issues.
 
 The Finding dataclass is the shared API contract between all check modules
 (enrichment, freshness, griffe, coverage) and the CLI layer.
+
+Attributes:
+    Finding: Immutable dataclass representing a docstring quality finding.
+
+Examples:
+    Import and inspect a finding:
+
+    ```python
+    from docvet.checks import Finding
+
+    f = Finding("app.py", 10, "foo", "missing-raises", "msg", "required")
+    assert f.rule == "missing-raises"
+    ```
+
+See Also:
+    `docvet.checks.enrichment`: Missing docstring section detection.
+    `docvet.checks.freshness`: Stale docstring detection via git.
+    `docvet.checks.coverage`: Missing ``__init__.py`` detection.
+    `docvet.checks.griffe_compat`: Griffe rendering compatibility.
 """
 
 from __future__ import annotations
@@ -28,12 +47,29 @@ class Finding:
     lifecycle (no fields added, removed, or renamed).
 
     Attributes:
-        file: Source file path where the finding was detected.
-        line: Line number of the symbol definition (def/class keyword line).
-        symbol: Name of the symbol with the issue (function/class/module name).
-        rule: Kebab-case rule identifier (e.g., "missing-raises").
-        message: Human-readable description of the issue.
-        category: Severity classification ("required" or "recommended").
+        file (str): Source file path where the finding was detected.
+        line (int): Line number of the symbol definition (def/class keyword
+            line).
+        symbol (str): Name of the symbol with the issue
+            (function/class/module name).
+        rule (str): Kebab-case rule identifier (e.g., ``"missing-raises"``).
+        message (str): Human-readable description of the issue.
+        category (str): Severity classification (``"required"`` or
+            ``"recommended"``).
+
+    Examples:
+        Create a finding for a function missing a Raises section:
+
+        ```python
+        Finding(
+            "cli.py",
+            42,
+            "main",
+            "missing-raises",
+            "Function 'main' raises Exit",
+            "required",
+        )
+        ```
     """
 
     file: str

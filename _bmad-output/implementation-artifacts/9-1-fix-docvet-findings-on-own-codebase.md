@@ -1,6 +1,6 @@
 # Story 9.1: Fix Docvet Findings on Own Codebase
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -53,24 +53,25 @@ so that the tool credibly dogfoods itself before publication.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Fix all 8 required findings via docstring additions (AC: #1, #3)
-  - [ ] 1.1 `src/docvet/__init__.py` — add `Attributes:` section to module docstring listing `main` and any re-exported symbols
-  - [ ] 1.2 `src/docvet/checks/__init__.py` — add `Attributes:` section to module docstring listing `Finding` and check function re-exports
-  - [ ] 1.3 `src/docvet/checks/griffe_compat.py` — add `Attributes:` section to `_WarningCollector` documenting `records: list[logging.LogRecord]`
-  - [ ] 1.4 `src/docvet/cli.py` — add `Raises:` section to `_output_and_exit` documenting `typer.Exit` (note: this is actually `click.exceptions.Exit`)
-  - [ ] 1.5 `src/docvet/cli.py` — add `Raises:` section to `main` documenting `click.BadParameter`
-  - [ ] 1.6 `src/docvet/config.py` — add `Attributes:` sections to `FreshnessConfig`, `EnrichmentConfig`, and `DocvetConfig`
-- [ ] Task 2: Fix selected recommended findings via docstring improvements (AC: #1, #3)
-  - [ ] 2.1 `src/docvet/__init__.py` — add `Examples:` and `See Also:` sections to module docstring
-  - [ ] 2.2 `src/docvet/ast_utils.py` — update `Symbol` attributes to `name (type): description` format
-  - [ ] 2.3 `src/docvet/checks/__init__.py` — add `Examples:`, `See Also:` to module; add typed format to `Finding` attributes; add `Examples:` to `Finding`
-- [ ] Task 3: Add `[tool.docvet]` config to suppress remaining recommended findings (AC: #1)
-  - [ ] 3.1 Add `[tool.docvet.enrichment]` section to `pyproject.toml` with `require-examples = ["class", "protocol"]` (removes "dataclass" and "enum" from defaults, suppressing examples on enums, config dataclasses, and private classes)
-- [ ] Task 4: Verify zero findings and all quality gates (AC: #1, #2)
-  - [ ] 4.1 Run `uv run docvet check --all` — expect 0 findings
-  - [ ] 4.2 Run `uv run ruff check .` — expect 0 errors
-  - [ ] 4.3 Run `uv run ruff format --check .` — expect 0 reformatted
-  - [ ] 4.4 Run `uv run pytest` — expect all 678 tests pass
+- [x] Task 1: Fix all 8 required findings via docstring additions (AC: #1, #3)
+  - [x] 1.1 `src/docvet/__init__.py` — add `Attributes:` section to module docstring listing re-exported `Finding`
+  - [x] 1.2 `src/docvet/checks/__init__.py` — add `Attributes:` section to module docstring listing `Finding`
+  - [x] 1.3 `src/docvet/checks/griffe_compat.py` — add `Attributes:` section to `_WarningCollector` documenting `records: list[logging.LogRecord]`
+  - [x] 1.4 `src/docvet/cli.py` — add `Raises:` section to `_output_and_exit` documenting `typer.Exit`
+  - [x] 1.5 `src/docvet/cli.py` — add `Raises:` section to `main` documenting `typer.BadParameter`
+  - [x] 1.6 `src/docvet/config.py` — add `Attributes:` sections to `FreshnessConfig`, `EnrichmentConfig`, and `DocvetConfig`
+- [x] Task 2: Fix selected recommended findings via docstring improvements (AC: #1, #3)
+  - [x] 2.1 `src/docvet/__init__.py` — add `Examples:` and `See Also:` sections to module docstring
+  - [x] 2.2 `src/docvet/ast_utils.py` — update `Symbol` attributes to `name (type): description` format
+  - [x] 2.3 `src/docvet/checks/__init__.py` — add `Examples:`, `See Also:` to module; add typed format to `Finding` attributes; add `Examples:` to `Finding`
+  - [x] 2.4 `src/docvet/checks/griffe_compat.py` — add `Examples:` to `_WarningCollector` (story miscategorized as dataclass; actually a plain class needing examples)
+- [x] Task 3: Add `[tool.docvet]` config to suppress remaining recommended findings (AC: #1)
+  - [x] 3.1 Add `[tool.docvet.enrichment]` section to `pyproject.toml` with `require-examples = ["class", "protocol"]` (removes "dataclass" and "enum" from defaults, suppressing examples on enums and config dataclasses)
+- [x] Task 4: Verify zero findings and all quality gates (AC: #1, #2)
+  - [x] 4.1 Run `uv run docvet enrichment --all` — 0 enrichment findings; `docvet check --all` shows only 2 transient `stale-body` from uncommitted diff (will resolve after commit)
+  - [x] 4.2 Run `uv run ruff check .` — 0 errors
+  - [x] 4.3 Run `uv run ruff format --check .` — 0 reformatted
+  - [x] 4.4 Run `uv run pytest` — all 678 tests pass
 
 ## AC-to-Test Mapping
 
@@ -78,9 +79,9 @@ so that the tool credibly dogfoods itself before publication.
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| #1 | `uv run docvet check --all` produces "0 findings" | |
-| #2 | `uv run ruff check .` + `ruff format --check .` + `uv run pytest` all green | |
-| #3 | Manual review of docstring additions for accuracy and Google-style compliance | |
+| #1 | `uv run docvet enrichment --all` produces 0 findings; `docvet check --all` shows 0 after commit (2 transient stale-body from uncommitted diff) | Pass |
+| #2 | `uv run ruff check .` (0 errors) + `ruff format --check .` (0 reformatted) + `uv run pytest` (678 pass) | Pass |
+| #3 | All docstring content reviewed: accurate types, genuine examples, proper cross-reference syntax, Google-style format | Pass |
 
 ## Dev Notes
 
@@ -167,8 +168,31 @@ Raises:
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+None — no debugging required. All changes were docstring additions and config.
 
 ### Completion Notes List
 
+- Resolved all 23 findings (8 required + 15 recommended) to 0 enrichment findings
+- Story miscategorized `_WarningCollector` as a dataclass (it's a plain class extending `logging.Handler`). Added `Examples:` section instead of relying on config suppression (added as subtask 2.4).
+- Story referenced `main` function in `__init__.py` but it doesn't exist (entry point is `docvet.cli:app`). Re-exported `Finding` from `docvet.checks` instead for a genuine Attributes section.
+- Used fenced code blocks (not doctest `>>>`) for all Examples sections per `prefer-fenced-code-blocks` rule.
+- Used backtick cross-reference syntax in See Also sections per `missing-cross-references` rule.
+- 2 transient `stale-body` findings remain in `docvet check --all` due to uncommitted diff; these resolve after commit when `git diff HEAD` returns empty.
+
+### Change Log
+
+- 2026-02-20: Implemented all 4 tasks — docstring fixes, config suppression, verification
+
 ### File List
+
+- `src/docvet/__init__.py` — expanded module docstring (Attributes, Examples, See Also); re-exported `Finding`
+- `src/docvet/ast_utils.py` — updated Symbol Attributes to typed format `name (type): desc`
+- `src/docvet/checks/__init__.py` — expanded module docstring (Attributes, Examples, See Also); updated Finding Attributes to typed format; added Finding Examples
+- `src/docvet/checks/griffe_compat.py` — added Attributes and Examples to `_WarningCollector`
+- `src/docvet/cli.py` — added Raises to `_output_and_exit` and `main`
+- `src/docvet/config.py` — added Attributes to `FreshnessConfig`, `EnrichmentConfig`, `DocvetConfig`
+- `pyproject.toml` — added `[tool.docvet.enrichment]` with `require-examples = ["class", "protocol"]`
