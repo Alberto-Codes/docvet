@@ -16,12 +16,14 @@ from typing import TYPE_CHECKING, Literal
 try:
     import griffe  # ty: ignore[unresolved-import]
 except ImportError:
-    griffe = None  # type: ignore[assignment]
+    griffe = None
 
 if TYPE_CHECKING:
     from griffe import Object as GriffeObject  # ty: ignore[unresolved-import]
 
 from docvet.checks import Finding
+
+__all__ = ["check_griffe_compat"]
 
 _UNKNOWN_PARAM_PATTERN = "does not appear in the function signature"
 _MISSING_TYPE_PATTERN = "No type or annotation for"
@@ -112,7 +114,7 @@ def _walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObje
             continue
         if current.docstring is not None and current.filepath in file_set:
             yield current
-        stack.extend(current.members.values())  # type: ignore[arg-type]
+        stack.extend(current.members.values())
 
 
 def _build_finding_from_record(
@@ -191,9 +193,9 @@ def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
             ):
                 continue
 
-            for obj in _walk_objects(package, file_set):  # type: ignore[arg-type]
+            for obj in _walk_objects(package, file_set):
                 before = len(handler.records)
-                _ = obj.docstring.parsed  # type: ignore[union-attr]
+                _ = obj.docstring.parsed
                 after = len(handler.records)
                 for record in handler.records[before:after]:
                     finding = _build_finding_from_record(record, obj)
