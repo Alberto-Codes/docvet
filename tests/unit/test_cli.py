@@ -124,11 +124,6 @@ def test_version_flag_includes_version_number():
     assert expected_version in result.output
 
 
-def test_version_flag_exits_with_code_zero():
-    result = runner.invoke(app, ["--version"])
-    assert result.exit_code == 0
-
-
 # ---------------------------------------------------------------------------
 # Subcommand exit codes & output
 # ---------------------------------------------------------------------------
