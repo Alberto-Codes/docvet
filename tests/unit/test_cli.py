@@ -1534,27 +1534,21 @@ class TestOutputAndExit:
     def test_terminal_format_is_default_when_format_not_set(self, make_finding):
         finding = make_finding()
         ctx = self._make_ctx()
-        self._call(
-            ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"]
-        )
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
         self.mock_format_terminal.assert_called_once_with([finding], no_color=ANY)
         self.mock_format_markdown.assert_not_called()
 
     def test_format_markdown_selects_format_markdown(self, make_finding):
         finding = make_finding()
         ctx = self._make_ctx(fmt="markdown")
-        self._call(
-            ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"]
-        )
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
         self.mock_format_markdown.assert_called_once_with([finding])
         self.mock_format_terminal.assert_not_called()
 
     def test_output_writes_file_via_write_report(self, make_finding):
         finding = make_finding()
         ctx = self._make_ctx(output="report.md")
-        self._call(
-            ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"]
-        )
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
         self.mock_write_report.assert_called_once_with(
             [finding], Path("report.md"), fmt="markdown"
         )
@@ -1564,9 +1558,7 @@ class TestOutputAndExit:
     def test_output_without_format_defaults_to_markdown_for_file(self, make_finding):
         finding = make_finding()
         ctx = self._make_ctx(output="report.md")
-        self._call(
-            ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"]
-        )
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
         self.mock_write_report.assert_called_once_with(
             [finding], Path("report.md"), fmt="markdown"
         )
@@ -1576,9 +1568,7 @@ class TestOutputAndExit:
     ):
         finding = make_finding()
         ctx = self._make_ctx(fmt="terminal", output="report.md")
-        self._call(
-            ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"]
-        )
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
         self.mock_write_report.assert_called_once_with(
             [finding], Path("report.md"), fmt="terminal"
         )
@@ -1624,9 +1614,7 @@ class TestOutputAndExit:
         finding = make_finding()
         ctx = self._make_ctx()
         config = DocvetConfig(fail_on=["enrichment"])
-        code = self._call(
-            ctx, {"enrichment": [finding]}, config, 1, ["enrichment"]
-        )
+        code = self._call(ctx, {"enrichment": [finding]}, config, 1, ["enrichment"])
         assert code == 1
         self.mock_determine_exit_code.assert_called_once_with(
             {"enrichment": [finding]}, config
@@ -1639,9 +1627,7 @@ class TestOutputAndExit:
         findings_by_check = {"enrichment": []}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(
-            findings_by_check, config
-        )
+        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
 
     def test_exit_code_0_when_fail_on_is_empty(self, make_finding):
         self.mock_determine_exit_code.return_value = 0
@@ -1651,9 +1637,7 @@ class TestOutputAndExit:
         findings_by_check = {"enrichment": [finding]}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(
-            findings_by_check, config
-        )
+        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
 
     def test_no_color_env_var_suppresses_ansi(self, monkeypatch, make_finding):
         monkeypatch.setenv("NO_COLOR", "1")
@@ -1677,9 +1661,7 @@ class TestOutputAndExit:
     def test_output_flag_forces_no_color_true(self, make_finding):
         finding = make_finding()
         ctx = self._make_ctx(fmt="terminal", output="report.md")
-        self._call(
-            ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"]
-        )
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
         self.mock_write_report.assert_called_once_with(
             [finding], Path("report.md"), fmt="terminal"
         )
@@ -1696,6 +1678,4 @@ class TestOutputAndExit:
         findings_by_check = {"enrichment": [finding]}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(
-            findings_by_check, config
-        )
+        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
