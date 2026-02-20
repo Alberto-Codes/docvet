@@ -1,6 +1,6 @@
 # Story 9.2: Add `__all__` Exports to All Public Modules
 
-Status: review
+Status: done
 
 ## Story
 
@@ -11,7 +11,7 @@ so that the v1 API surface is explicit and stable.
 ## Acceptance Criteria
 
 1. **Given** 11 modules in `src/docvet/` (8 currently lack `__all__`), **when** `__all__` is defined in every module, **then** each module's `__all__` lists only its intended public symbols per NFR66.
-2. **Given** `__all__` defined on all modules, **when** `from docvet.checks import *` is executed, **then** only `Finding` and the four check functions (`check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`) are produced.
+2. **Given** `__all__` defined on all modules, **when** `from docvet.checks import *` is executed, **then** only `Finding` and the five check functions (`check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`) are produced.
 3. **Given** `__all__` defined on all modules, **when** `from docvet import *` is executed, **then** only the intended top-level API (`Finding`) is produced.
 4. **Given** `__all__` defined on all modules, **when** internal helpers (prefixed with `_`) are checked, **then** none are accessible via `*` import from any module (negative assertion).
 5. **Given** modules that already have `__all__` (`__init__.py`, `checks/__init__.py`, `checks/coverage.py`), **when** reviewed, **then** they are unchanged or verified as correct.
@@ -183,11 +183,12 @@ Claude Opus 4.6
 - 34 new tests in `tests/unit/test_exports.py` covering all ACs
 - Removed 4 stale `type: ignore` comments in `griffe_compat.py`
 - Added E402 per-file-ignore for `checks/__init__.py` in `pyproject.toml`
-- All quality gates pass: 712 tests, ruff clean, ty clean, format clean
+- All quality gates pass: 723 tests, ruff clean, ty clean, format clean
 
 ### Change Log
 
 - 2026-02-20: Implemented story 9.2 — added `__all__` exports to all 11 public modules
+- 2026-02-20: Code review — fixed 4 findings (2 MEDIUM, 2 LOW)
 
 ### File List
 
@@ -200,6 +201,6 @@ Claude Opus 4.6
 - `src/docvet/cli.py` — added `__all__: list[str] = []`
 - `src/docvet/discovery.py` — added `__all__: list[str] = []`
 - `src/docvet/reporting.py` — added `__all__: list[str] = []`
-- `tests/unit/test_exports.py` — new file, 34 tests for `__all__` exports
+- `tests/unit/test_exports.py` — new file, 45 tests for `__all__` exports
 - `tests/unit/checks/test_finding.py` — updated assertion for expanded `checks.__all__`
 - `pyproject.toml` — added E402 per-file-ignore for `checks/__init__.py`
