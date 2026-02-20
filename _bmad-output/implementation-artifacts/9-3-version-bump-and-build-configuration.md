@@ -88,22 +88,11 @@ version: Annotated[
 
 **Key detail:** Use `importlib.metadata.version("docvet")` (stdlib since Python 3.8) — NOT `importlib.util`. The `importlib.util` import already in `cli.py` (line 7) is for griffe spec detection and is unrelated.
 
-**Key detail:** `importlib.metadata.version()` reads from the installed package's metadata. In dev mode (`uv sync` / editable install), it reads from `pyproject.toml` via hatchling. This means the version shown by `--version` will match `pyproject.toml` automatically.
+**Key detail:** `importlib.metadata.version()` reads from the installed package's metadata. In dev mode (`uv sync` / editable install), it reads from `pyproject.toml` via the build backend. This means the version shown by `--version` will match `pyproject.toml` automatically.
 
-**Task 3 — Sdist exclusions:** Hatchling's `src` layout already scopes the wheel to `src/docvet/`, so wheel exclusions are unnecessary. Only sdist needs exclusions:
+**Task 3 — Build backend:** Switched from hatchling to `uv_build`. The `uv_build` backend uses an include-based approach for `src/` layout projects — it automatically includes only `src/docvet/`, `pyproject.toml`, license, and readme files. No explicit exclusion config is needed, unlike hatchling which required a `[tool.hatch.build.targets.sdist] exclude` list.
 
-```toml
-[tool.hatch.build.targets.sdist]
-exclude = [
-    "tests/",
-    "_bmad-output/",
-    "_bmad/",
-    ".github/",
-    "docs/",
-]
-```
-
-**Rationale:** Sdist is a source distribution — by default it includes everything in the repo. Users who install from sdist don't need tests, CI config, planning artifacts, or docs source. The wheel (binary distribution) already only includes `src/docvet/` via hatchling's src layout convention.
+**Rationale:** `uv_build` is 10-35x faster than hatchling, tightly integrated with `uv`, and its include-based defaults produce cleaner distributions with zero configuration for standard `src/` layout projects.
 
 ### Previous Story Intelligence (9.1 + 9.2)
 
