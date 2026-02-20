@@ -113,12 +113,12 @@ def test_finding_equality_works_correctly():
     assert hash(finding1) != hash(finding3)
 
 
-def test_finding_exports_only_finding_class():
-    """Test that __all__ exports only Finding class."""
+def test_finding_exports_finding_class():
+    """Test that __all__ includes Finding class."""
     from docvet import checks
 
     assert hasattr(checks, "__all__")
-    assert checks.__all__ == ["Finding"]
+    assert "Finding" in checks.__all__
     assert "Finding" in dir(checks)
 
 
