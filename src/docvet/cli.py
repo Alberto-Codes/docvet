@@ -160,6 +160,9 @@ def _output_and_exit(
         config: Loaded docvet configuration.
         file_count: Number of files that were checked.
         checks: List of check names that were run.
+
+    Raises:
+        typer.Exit: With code 0 when no fail-on findings, code 1 otherwise.
     """
     output_path = ctx.obj.get("output")
     verbose = ctx.obj.get("verbose", False)
@@ -426,6 +429,9 @@ def main(
         fmt: Output format (terminal or markdown).
         output: Optional file path for report output.
         config: Explicit path to a ``pyproject.toml``.
+
+    Raises:
+        typer.BadParameter: If the specified config file does not exist.
     """
     ctx.ensure_object(dict)
     if ctx.resilient_parsing:

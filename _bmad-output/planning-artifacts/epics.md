@@ -20,1909 +20,370 @@ stepsCompleted:
   - 'reporting-step-02'
   - 'reporting-step-03'
   - 'reporting-step-04'
+  - 'v1-publish-step-01'
+  - 'v1-publish-step-02'
+  - 'v1-publish-step-03'
+  - 'v1-publish-step-04'
+v1PublishCompletedAt: '2026-02-19'
 reportingStartedAt: '2026-02-11'
 freshnessStartedAt: '2026-02-09'
 coverageStartedAt: '2026-02-11'
 griffeStartedAt: '2026-02-11'
+v1PublishStartedAt: '2026-02-19'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
-  - '_bmad-output/planning-artifacts/prd-validation-report.md'
+  - 'docs/product-vision.md'
 ---
 
-# docvet - Epic Breakdown
+# docvet v1.0 Polish & Publish - Epic Breakdown
 
 ## Overview
 
-This document provides the complete epic and story breakdown for docvet, decomposing the requirements from the PRD and Architecture into implementable stories for the **enrichment check module** (Layer 3: completeness).
+This document provides the epic and story breakdown for docvet's **v1.0 "Polish & Publish" phase** — the packaging, presentation, and integration infrastructure required to ship docvet as a credible, installable, and discoverable Python developer tool. All check modules and reporting are complete (678 tests, 19 rules, 5 subcommands); this phase wraps them for public consumption.
 
 ## Requirements Inventory
 
 ### Functional Requirements
 
-**Section Detection (FR1-FR15):**
+- **FR111:** The system can be installed from PyPI via `pip install docvet` with no compilation step — pure Python package with typer as the only required runtime dependency
+- **FR112:** The system can expose an optional `griffe` extra via `pip install docvet[griffe]` for users who want rendering compatibility checks — **ALREADY SATISFIED** (`pyproject.toml` lines 14-17)
+- **FR113:** The system can publish PyPI package metadata that includes classifiers for Development Status (Production/Stable), Environment (Console), Python versions (3.12, 3.13), and tags including adjacent tool names (interrogate, pydocstyle, darglint, docstring, mkdocs) for search discoverability
+- **FR114:** The system can provide a `.pre-commit-hooks.yaml` in the repository root with hook id `docvet` that runs `docvet check` on staged Python files, using `language: python` and `types: [python]`
+- **FR115:** The pre-commit hook respects `[tool.docvet]` configuration from `pyproject.toml`, including `fail-on`, `warn-on`, and per-check configuration sections — **ALREADY SATISFIED** (hook runs `docvet check`, CLI reads config)
+- **FR116:** The system can provide a first-party composite GitHub Action (`runs-using: composite`) that runs `docvet check` with three configurable inputs: `version` (default: `latest`), `args` (default: `check`), and `src` (default: `.`), supporting version pinning via explicit input or automatic detection from `pyproject.toml`
+- **FR117:** The GitHub Action produces exit codes compatible with GitHub Actions pass/fail semantics — exit 0 on success, exit 1 when `fail-on` checks produce findings — **ALREADY SATISFIED** (Action runs `docvet check`, which has correct exit codes)
+- **FR118:** The README includes a comparison table showing layer coverage for docvet vs ruff, interrogate, and pydoclint across the six-layer quality model
+- **FR119:** The README includes a single-command quickstart (`pip install docvet && docvet check --all`) and a pre-commit configuration snippet — a developer can go from discovery to first findings in under 2 minutes
+- **FR120:** The README includes a badge row (PyPI version, CI status, license, Python versions, "docs vetted | docvet"), a copy-paste badge snippet for adopters to display in their own projects, and a "Used By" section
+- **FR121:** The system can serve a documentation site built with mkdocs-material, containing at minimum 6 pages: Getting Started, Enrichment Check, Freshness Check, Coverage Check, Griffe Check, and CLI Reference
+- **FR122:** The system can generate documentation that includes client-side full-text search via mkdocs-material's built-in search plugin, and a Configuration page documenting every `[tool.docvet]` key with defaults, types, and examples
+- **FR123:** Each of the 19 rule identifiers has a dedicated documentation page showing the rule code, check type, default severity, and category
+- **FR124:** Each rule reference page follows the What/Why/Example/Fix template: "What it does", "Why is this bad?", "Example" (code showing violation), and "Fix" (code showing corrected version)
+- **FR125:** Running `docvet check --all` on docvet's own codebase produces zero findings — the tool's own documentation meets its own quality standards. **CURRENT STATE: 23 findings (8 required, 15 recommended) across 5 files**
+- **FR126:** The README displays a "docs vetted | docvet" shields.io badge linking to the project, serving as a self-referential credibility signal
+- **FR127:** All public modules define `__all__` exports, ensuring only intentional symbols are part of the stable v1 public API. **CURRENT STATE: 2 of 11 modules have `__all__`; 9 need it added**
 
-- FR1: The system can detect functions and methods that contain `raise` statements but lack a `Raises:` section in their docstring
-- FR2: The system can detect generator functions that contain `yield` expressions but lack a `Yields:` section in their docstring
-- FR3: The system can detect generators that use the `value = yield` send pattern but lack a `Receives:` section in their docstring
-- FR4: The system can detect functions that call `warnings.warn()` but lack a `Warns:` section in their docstring
-- FR5: The system can detect functions with `**kwargs` parameters but lack an `Other Parameters:` section in their docstring
-- FR6: The system can detect classes with `__init__` self-assignments that lack an `Attributes:` section in their docstring
-- FR7: The system can detect dataclasses, NamedTuples, and TypedDicts with fields that lack an `Attributes:` section in their docstring
-- FR8: The system can detect `__init__.py` modules that lack an `Attributes:` section documenting their exports
-- FR9: The system can detect public symbols (configurable by type) that lack an `Examples:` section in their docstring
-- FR10: The system can detect `__init__.py` modules that lack an `Examples:` section in their docstring
-- FR11: The system can detect `Attributes:` sections that lack typed format (`name (type): description`)
-- FR12: The system can detect `See Also:` sections that lack cross-reference syntax
-- FR13: The system can detect `__init__.py` modules that lack a `See Also:` section in their docstring
-- FR14: The system can detect `Examples:` sections that use `>>>` doctest format instead of fenced code blocks
-- FR15: The system can recognize `Args:` and `Returns:` section headers for docstring parsing context without checking for their absence
+#### Gap FRs (identified during party-mode review)
 
-**Finding Production (FR16-FR22):**
-
-- FR16: The system can produce a structured finding for each detected issue, carrying file path, line number, symbol name, rule identifier, human-readable message, and category
-- FR17: The system can categorize each finding as `required` (misleading omission) or `recommended` (improvement opportunity) based on the rule definition
-- FR18: The system can produce at most one finding per symbol per rule, even when multiple detection branches match the same symbol
-- FR19: The system can produce zero findings when analyzing well-documented code with complete docstrings
-- FR20: The system can produce zero findings for symbols that have no docstring
-- FR21: The system can produce findings only for missing sections, not for sections that exist but are incomplete
-- FR22: The system can provide Finding as an immutable (frozen) dataclass that cannot be modified after creation
-
-**Rule Management (FR23-FR25):**
-
-- FR23: The system can identify each finding with a stable, human-readable kebab-case rule identifier (e.g., `missing-raises`, `missing-yields`)
-- FR24: A developer can reference rule identifiers in configuration, output filtering, and issue tracking
-- FR25: The system can map 14 detection scenarios to 10 distinct rule identifiers, applying the same rule ID across related detection contexts
-
-**Configuration (FR26-FR31):**
-
-- FR26: A developer can enable or disable each of the 10 rules independently via boolean toggles in `[tool.docvet.enrichment]`
-- FR27: A developer can configure which symbol types trigger the `missing-examples` rule via a list of type names (class, protocol, dataclass, enum)
-- FR28: The system can validate `require-examples` entries against known symbol types, rejecting unrecognized entries at config load time
-- FR29: A developer can disable all enrichment findings by setting `require-examples = []` and all boolean toggles to `false`
-- FR30: The system can apply defaults (all rules enabled, `require-examples = ["class", "protocol", "dataclass", "enum"]`) when no enrichment configuration is provided
-- FR31: The system can recognize 8 Google-style section headers (`Raises:`, `Yields:`, `Receives:`, `Warns:`, `Other Parameters:`, `Attributes:`, `Examples:`, `See Also:`) for missing section detection
-
-**Symbol Analysis (FR32-FR38):**
-
-- FR32: The system can analyze function and method symbols for raise statements, yield expressions, send patterns, warnings calls, and kwargs parameters
-- FR33: The system can analyze class symbols to determine construct type (plain class with `__init__`, dataclass, NamedTuple, TypedDict)
-- FR34: The system can analyze module symbols to determine if the source file is an `__init__.py`
-- FR35: The system can extract and parse raw docstring text from symbols to identify which sections are present
-- FR36: The system can analyze any symbol with a non-empty docstring, regardless of docstring length or section count
-- FR37: The system can distinguish between symbols that have a docstring (analyze for completeness) and symbols with no docstring (skip -- presence checking is interrogate's job)
-- FR38: The system can process docstrings with broken indentation, missing section-header colons, or non-standard header names without raising exceptions, producing zero findings for symbols whose docstrings cannot be reliably parsed
-
-**Integration (FR39-FR42):**
-
-- FR39: The system can accept source code, a parsed AST, configuration, and file path as inputs and return a list of findings as output
-- FR40: The system can operate as a pure function with no I/O, no side effects, and deterministic output
-- FR41: The system can provide `Finding` as a shared type importable by all check modules without cross-check dependencies
-- FR42: A developer can run the enrichment check standalone via `docvet enrichment` or as part of all checks via `docvet check`
-
-**Reporting Output (FR98-FR102):**
-
-- FR98: The system can format a list of findings for terminal display, grouping findings by file path with each finding as a self-contained `file:line: rule message [category]` line
-- FR99: The system can format a list of findings as a GitHub-compatible markdown table with columns for File, Line, Rule, Symbol, Message, and Category
-- FR100: The system can append a summary line when finding count > 0: `N findings (X required, Y recommended)`
-- FR101: The system can apply ANSI color codes to terminal output (red for `required`, yellow for `recommended` on the `[category]` tag)
-- FR101a: The system can suppress ANSI color codes when `NO_COLOR` environment variable is set
-- FR101b: The system can suppress ANSI color codes when stdout is not a TTY
-- FR102: The system can sort findings by `(file, line)` before formatting for deterministic output
-
-**Reporting File Output (FR103-FR104a):**
-
-- FR103: A developer can write formatted findings to a file via `--output <path>`
-- FR104: The system can produce zero output when all checks return empty finding lists and verbose mode is not enabled
-- FR104a: The system can produce a `"No findings."` message when all checks return empty finding lists and verbose mode is enabled
-
-**Exit Code Logic (FR105-FR107):**
-
-- FR105: The system can return exit code 1 when any check name listed in `fail-on` has produced at least one finding
-- FR106: The system can return exit code 0 when no `fail-on` check has findings, regardless of `warn-on` findings count
-- FR107: The system can return exit code 0 when all checks produce zero findings
-
-**Reporting Integration (FR108-FR110):**
-
-- FR108: A developer can select output format via `--format terminal` or `--format markdown`, with terminal as default
-- FR109: The system can aggregate findings from all enabled checks into a single formatted output and a single exit code determination
-- FR110: The system can prefix terminal output with a verbose header showing files checked and checks ran when `--verbose` is enabled
+- **FR-G1:** The project includes a LICENSE file at the repository root and a `license` field in `pyproject.toml` — required for PyPI credibility and corporate adoption
+- **FR-G2:** The package version is bumped to `1.0.0` in `pyproject.toml` and is accessible via `docvet --version` at the CLI
+- **FR-G3:** The project includes a CHANGELOG.md with a v1.0.0 release entry summarizing the complete feature set
+- **FR-G4:** The package is validated on TestPyPI before production PyPI publish — install, import, and `docvet check --help` verified in a fresh virtual environment
+- **FR-G5:** The build configuration (`[tool.hatch.build]`) excludes non-distribution files (tests/, fixtures/, _bmad-output/, docs source, .github/) from the published wheel and sdist
 
 ### NonFunctional Requirements
 
-**Performance (NFR1-NFR4):**
-
-- NFR1: The enrichment check can analyze a single file (<=1000 lines) in under 50ms (aspirational benchmark, not CI-enforced)
-- NFR2: The enrichment check can process a 200-file codebase via `docvet enrichment --all` in under 5 seconds on commodity hardware (aspirational)
-- NFR3: The enrichment check adds no measurable overhead beyond AST parsing
-- NFR4: Memory usage scales linearly with file count, not quadratically (each file processed independently with no cross-file state)
-
-**Correctness (NFR5-NFR9):**
-
-- NFR5: The enrichment check produces zero false positives on well-documented code with complete docstrings (deterministic, reproducible)
-- NFR6: The enrichment check produces identical output for identical input regardless of execution environment, time, or ordering
-- NFR7: Malformed docstrings (broken indentation, missing colons, non-standard headers) result in zero findings for that symbol, never a crash or traceback
-- NFR8: The enrichment check never modifies input data (source, tree, and config remain unchanged after execution)
-- NFR9: Finding messages are actionable (each message names the specific symbol, the specific issue, and what section is missing)
-
-**Maintainability (NFR10-NFR13):**
-
-- NFR10: Each of the 10 rules can be understood, modified, and tested independently without knowledge of other rules
-- NFR11: Adding a new detection rule requires changes to at most 3 files: the rule implementation, its config toggle, and its tests
-- NFR12: Test coverage on `checks/enrichment.py` targets >=90% (aspirational), with project-wide coverage maintaining the >=85% CI gate
-- NFR13: All quality gates pass: ruff check, ruff format, ty check, pytest, interrogate (95% docstring coverage)
-
-**Compatibility (NFR14-NFR16):**
-
-- NFR14: The enrichment check works on Python 3.12 and 3.13 (CI tests both versions)
-- NFR15: The enrichment check works on Linux, macOS, and Windows without platform-specific code paths
-- NFR16: No new runtime dependencies (stdlib `ast`, `re`, and existing `ast_utils` only)
-
-**Integration (NFR17-NFR19):**
-
-- NFR17: `Finding`'s 6-field shape (`file`, `line`, `symbol`, `rule`, `message`, `category`) is stable for v1
-- NFR18: The enrichment check integrates with the existing CLI dispatch pattern (`_run_enrichment` stub) without requiring changes to CLI argument parsing or global option handling
-- NFR19: Config additions (`require-attributes` toggle) are backward-compatible (existing `pyproject.toml` files without this key continue to work with the default value)
-
-**Reporting Performance (NFR49):**
-
-- NFR49: The reporting module can format 1000 findings in under 100ms (string concatenation with no I/O beyond optional file write)
-
-**Reporting Correctness (NFR50-NFR51):**
-
-- NFR50: The reporting module produces identical formatted output for identical finding lists regardless of execution environment, time, or check execution order (sorted by `(file, line)`)
-- NFR51: The reporting module produces zero output (empty string, no summary line) when given an empty finding list
-
-**Reporting Compatibility (NFR52-NFR53):**
-
-- NFR52: The reporting module uses no external color dependencies (ANSI codes via `typer.style()` or raw escape sequences only); respects `NO_COLOR` environment variable
-- NFR53: Markdown output is valid GitHub-flavored markdown; `format_markdown` never includes ANSI escape codes regardless of TTY state
-
-**Reporting Integration (NFR54):**
-
-- NFR54: The reporting module has no cross-imports with any check module (depends only on `checks.Finding` and `config.DocvetConfig`)
+- **NFR55:** The PyPI package installs cleanly in a fresh virtual environment with no compilation step and no system-level dependencies (pure Python wheel)
+- **NFR56:** The package size stays under 500KB — no bundled binaries, test data, fixture files, or development artifacts in the published distribution
+- **NFR57:** The documentation site loads in under 3 seconds, includes client-side search, and renders without layout breaks on viewports >= 320px wide through 1920px
+- **NFR58:** Every CLI flag documented in the docs site matches the actual `--help` output — no drift between documentation and implementation
+- **NFR59:** The pre-commit hook executes in under 10 seconds for 50 staged Python files on commodity hardware
+- **NFR60:** The GitHub Action runs in under 60 seconds for a 200-file codebase on a standard GitHub Actions runner
+- **NFR61:** The pre-commit hook works with pre-commit framework v3.x and v4.x without version-specific workarounds
+- **NFR62:** The GitHub Action works with `ubuntu-latest`, `macos-latest`, and `windows-latest` runners without platform-specific code paths
+- **NFR63:** docvet's own codebase maintains zero findings from `docvet check --all` as a CI gate
+- **NFR64:** The public API surface (`Finding` dataclass, check functions, CLI command names, CLI option names) is stable for v1 — no breaking changes within the v1.x lifecycle
+- **NFR65:** All public modules define `__all__` exports — importing `from docvet.checks import *` or `from docvet import *` produces only the intended public symbols
+- **NFR66:** The v1 API stability commitment covers: `Finding` (6 fields), `check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`, and all CLI subcommand names
 
 ### Additional Requirements
 
 **From Architecture:**
+- No new runtime dependencies beyond typer (and optional griffe) — stdlib-only architecture
+- `Finding` dataclass shape is frozen for v1 — 6 fields, no additions or removals
+- All check modules are isolated — no cross-imports between check modules
+- Module layout follows `src/docvet/` structure with `checks/` subpackage
+- Google-style docstrings assumed throughout
 
-- No starter template needed -- brownfield project with scaffolding already implemented
-- Prerequisite PR 1: Add `require_attributes: bool = True` to `EnrichmentConfig`, update `_VALID_ENRICHMENT_KEYS`, update `_parse_enrichment` validation, update affected tests
-- Prerequisite PR 2: Create `src/docvet/checks/__init__.py` with `Finding` frozen dataclass (6 fields: `file`, `line`, `symbol`, `rule`, `message`, `category`)
-- Implementation sequence: config toggle -> Finding dataclass -> section parsing constants/functions -> node index builder -> 10 `_check_*` functions -> `check_enrichment` orchestrator
-- `missing-attributes` dispatch order is an architectural constraint: dataclass -> NamedTuple -> TypedDict -> plain class -> `__init__.py` module (first-match-wins, no fallthrough)
-- Config gating lives in the orchestrator, not inside `_check_*` functions
-- Defensive error handling: no try/except in MVP; correctness through design (regex returns empty set, `.get()` returns None)
-- Dual testing strategy: simple rules tested through `check_enrichment` orchestrator; `missing-attributes` tested directly + per-helper + integration
-- Private function per rule with uniform signature: `_check_*(symbol, sections, node_index, config, file_path) -> Finding | None`
-- Single compiled regex for section header matching (`_SECTION_PATTERN`)
-- Line-based node index (`_build_node_index`) for O(1) AST node lookup per symbol
-- Finding construction uses literal strings for `rule` and `category` (no dynamic strings)
-- Taxonomy-table order for both function definitions and dispatch
+**From Product Vision:**
+- Package targets PyPI publication as `docvet` — short, memorable, zero-conflict name
+- Fills the gap between style linting (ruff D rules) and presence checking (interrogate)
+- Layers 1-2 delegated to existing tools; layers 3-6 are docvet's territory
+- Target consumers: Python projects using Google-style docstrings, especially mkdocs-material + mkdocstrings workflows
+- Positioning: "ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right."
 
-**From Architecture — Reporting Module:**
+**From PRD Market Research:**
+- 73% of developers demand hands-on value within minutes — zero-config trial essential
+- Documentation quality is the #1 trust signal (34.2%) for Python developer tool adoption
+- Pre-commit hooks serve as viral distribution channels
+- 8 deliverables mapped to GitHub issues #49-#56: dogfooding, README, docs site, rule reference, pre-commit, GitHub Action, PyPI publish, API surface audit
 
-- **CLI Refactor Prerequisite:** All 4 `_run_*` functions must change from `-> None` to `-> list[Finding]`; remove all `typer.echo()` finding-printing loops; `_run_griffe` skip paths must return `[]` not `None`
-- **ANSI Color Strategy (Decision 1):** `format_terminal` accepts `no_color: bool` parameter; pure function, no env/TTY inspection; CLI resolves color eligibility
-- **Verbose Header (Decision 2):** Separate `format_verbose_header` function printed to stderr; `format_terminal` has no `verbose` parameter
-- **`fail_on`/`warn_on` Conflict (Decision 3):** Config loader prints stderr warning when overlap, applies `fail_on` precedence (drops from `warn_on`)
-- **`write_report` Format (Decision 4):** Respects `fmt` parameter; `fmt="terminal"` uses `no_color=True`; `--output` without `--format` defaults to markdown
-- **CLI Dispatch (Decision 5):** Shared `_output_and_exit` helper in `cli.py` coordinates verbose header, format selection, file output, stdout, and exit code
-- **Terminal Line Format (Decision 6):** `file:line: rule message [category]`; only `[category]` tag is ANSI-colored
-- **Implementation patterns:** List-of-lines + `"\n".join()`; `itertools.groupby` for file grouping; `Counter` for summary; `_colorize` helper; pipe escape in markdown
-- **Edge cases resolved:** `--output` with zero findings skips `write_report`; default `fail_on` is empty (all advisory, exit 0); standalone subcommand scope (only its own check name in dict)
-- **Three-story decomposition:** Story 1 (CLI refactor + config warning), Story 2 (core reporting functions), Story 3 (CLI wiring)
+### FR Triage (party-mode review)
 
-**From Validation Report:**
+#### Bucket 1: Already Satisfied (verify only)
 
-- FR12 ("cross-reference syntax") is the weakest FR -- never formally defined; tech spec must define what constitutes valid cross-reference syntax
-- FR8 ambiguity: "exports" in `__init__.py` context needs clarification (is it `__all__`, public names, or both?)
-- FR11 needs explicit pattern: `name (type): description` as expected match vs `name: description` as violation
-- 4 rules lack user journey demonstration: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, `prefer-fenced-code-blocks`
-- Decorator alias detection (e.g., `from dataclasses import dataclass as dc`) is explicitly out of MVP scope
-- `async` generator edge cases (`async for`/`async with` interaction with `missing-yields`/`missing-receives`) not explicitly addressed
+| FR | Description | Evidence |
+|----|-------------|----------|
+| FR112 | Optional `griffe` extra | `pyproject.toml` already declares `[project.optional-dependencies] griffe` |
+| FR115 | Pre-commit hook respects config | Hook runs `docvet check`, CLI already reads `pyproject.toml` |
+| FR117 | GitHub Action exit codes | Action runs `docvet check`, which already has correct exit codes |
+
+#### Bucket 2: New Artifact Creation
+
+| FR | Description | Artifact |
+|----|-------------|----------|
+| FR113 | PyPI classifiers + tags | `pyproject.toml` `[project]` section update |
+| FR114 | `.pre-commit-hooks.yaml` | New file, ~10 lines YAML |
+| FR116 | GitHub Action composite | New `action.yml`, ~30-40 lines |
+| FR118 | README comparison table | README content |
+| FR119 | README quickstart + snippet | README content |
+| FR120 | README badge row | README content |
+| FR121 | mkdocs-material docs site | `mkdocs.yml` + docs pages — **largest artifact** |
+| FR122 | Search + Configuration page | Part of docs site |
+| FR123 | 19 rule reference pages | 19 markdown files — **high volume, templated** |
+| FR124 | What/Why/Example/Fix per rule | Content for each of 19 pages |
+| FR126 | "docs vetted" badge | Badge markdown in README |
+| FR-G1 | LICENSE file | New file + `pyproject.toml` field |
+| FR-G3 | CHANGELOG.md | New file with v1.0.0 entry |
+
+#### Bucket 3: Code Changes
+
+| FR | Description | Scope |
+|----|-------------|-------|
+| FR111 | Installable from PyPI | Build config audit, license field, version bump |
+| FR125 | Zero findings on own codebase | **23 findings to fix** across 5 files |
+| FR127 | `__all__` on all public modules | 9 modules need `__all__` added |
+| FR-G2 | Version bump to 1.0.0 | `pyproject.toml` + verify `--version` works |
+| FR-G4 | TestPyPI validation | Build + upload + install verification |
+| FR-G5 | Build exclusions | `[tool.hatch.build]` config in `pyproject.toml` |
 
 ### FR Coverage Map
 
-| FR | Epic | Brief Description |
-|----|------|-------------------|
-| FR1 | Epic 1 | Detect missing Raises section |
-| FR2 | Epic 1 | Detect missing Yields section |
-| FR3 | Epic 1 | Detect missing Receives section |
-| FR4 | Epic 1 | Detect missing Warns section |
-| FR5 | Epic 1 | Detect missing Other Parameters section |
-| FR6 | Epic 2 | Detect missing Attributes on plain classes |
-| FR7 | Epic 2 | Detect missing Attributes on dataclasses/NamedTuples/TypedDicts |
-| FR8 | Epic 2 | Detect missing Attributes on `__init__.py` modules |
-| FR9 | Epic 3 | Detect missing Examples on configurable symbol types |
-| FR10 | Epic 3 | Detect missing Examples on `__init__.py` modules |
-| FR11 | Epic 3 | Detect untyped Attributes format |
-| FR12 | Epic 3 | Detect missing cross-reference syntax in See Also |
-| FR13 | Epic 3 | Detect missing See Also on `__init__.py` modules |
-| FR14 | Epic 3 | Detect doctest format instead of fenced code blocks |
-| FR15 | Epic 1 | Recognize Args/Returns headers for parsing context |
-| FR16 | Epic 1 | Finding dataclass with 6 fields |
-| FR17 | Epic 1 | Finding category (required/recommended) |
-| FR18 | Epic 1 | One finding per symbol per rule deduplication |
-| FR19 | Epic 1 | Zero findings on clean code |
-| FR20 | Epic 1 | Zero findings for undocumented symbols |
-| FR21 | Epic 1 | Missing-only detection (not incomplete) |
-| FR22 | Epic 1 | Finding is frozen/immutable |
-| FR23 | Epic 1 | Kebab-case rule identifiers |
-| FR24 | Epic 1 | Rule IDs usable in config/filtering/tracking |
-| FR25 | Epic 1 | 14 scenarios -> 10 rule ID mapping |
-| FR26 | Epic 1 | Per-rule boolean config toggles |
-| FR27 | Epic 3 | `require-examples` list config |
-| FR28 | Epic 1 | Validate `require-examples` entries |
-| FR29 | Epic 1 | Disable all findings via config |
-| FR30 | Epic 1 | Sensible defaults when no config provided |
-| FR31 | Epic 1 | Recognize 8 Google-style section headers |
-| FR32 | Epic 1 | Analyze functions for raise/yield/warn/kwargs patterns |
-| FR33 | Epic 2 | Analyze class construct types |
-| FR34 | Epic 2 | Analyze module symbols for `__init__.py` |
-| FR35 | Epic 1 | Extract and parse docstring sections |
-| FR36 | Epic 1 | Analyze any symbol with non-empty docstring |
-| FR37 | Epic 1 | Distinguish documented vs undocumented symbols |
-| FR38 | Epic 1 | Handle malformed docstrings gracefully |
-| FR39 | Epic 1 | Pure function API: source, tree, config, file_path -> findings |
-| FR40 | Epic 1 | No I/O, no side effects, deterministic |
-| FR41 | Epic 1 | Finding as shared type for all check modules |
-| FR42 | Epic 1 | CLI wiring: `docvet enrichment` and `docvet check` |
-| FR43 | Epic 4 | Parse git diff output for changed hunk line ranges |
-| FR44 | Epic 4 | Map changed lines to AST symbols |
-| FR45 | Epic 4 | Classify changed lines as signature/docstring/body |
-| FR46 | Epic 4 | Detect code change without docstring update |
-| FR47 | Epic 4 | HIGH severity for signature changes |
-| FR48 | Epic 4 | MEDIUM severity for body-only changes |
-| FR49 | Epic 4 | LOW severity for import/formatting-only changes |
-| FR50 | Epic 5 | Parse git blame --line-porcelain for timestamps |
-| FR51 | Epic 5 | Group timestamps by symbol |
-| FR52 | Epic 5 | Detect drift exceeding threshold |
-| FR53 | Epic 5 | Detect docstring age exceeding threshold |
-| FR54 | Epic 4+5 | Skip no-docstring symbols (both modes) |
-| FR55 | Epic 4 | Zero findings for new files |
-| FR56 | Epic 4 | Handle deleted functions gracefully |
-| FR57 | Epic 4 | Treat relocation as delete-plus-add |
-| FR58 | Epic 4 | Skip binary/non-Python files |
-| FR59 | Epic 4 | Structured finding production |
-| FR60 | Epic 4 | Reuse shared Finding dataclass |
-| FR61 | Epic 4+5 | One finding per symbol per rule, highest severity wins |
-| FR62 | Epic 4+5 | Zero findings when docstrings are up-to-date |
-| FR63 | Epic 5 | Configurable drift threshold |
-| FR64 | Epic 5 | Configurable age threshold |
-| FR65 | Epic 5 | Default thresholds |
-| FR66 | Epic 4+5 | Pure function API (file_path, git output, AST → findings) |
-| FR67 | Epic 4+5 | CLI: `docvet freshness` (Epic 4 diff, Epic 5 drift) |
-| FR68 | Epic 4+5 | CLI: diff default (Epic 4), `--mode drift` (Epic 5) |
-| FR69 | Epic 6 | Core missing `__init__.py` detection |
-| FR70 | Epic 6 | Directory hierarchy walking to `src-root` |
-| FR71 | Epic 6 | `src-root` boundary stopping |
-| FR72 | Epic 6 | Top-level module skipping |
-| FR73 | Epic 6 | Empty `__init__.py` acceptance |
-| FR74 | Epic 6 | Deduplication (one finding per directory) |
-| FR75 | Epic 6 | Finding structure (representative file, count) |
-| FR76 | Epic 6 | Zero findings on well-packaged code |
-| FR77 | Epic 6 | Input contract (`src_root`, `files`) |
-| FR78 | Epic 6 | CLI standalone and combined modes |
-| FR79 | Epic 6 | Pure function guarantee |
-| FR80 | Epic 6 | Skip files outside `src_root` |
-| FR81 | Epic 7 | Detect missing type annotations via griffe |
-| FR82 | Epic 7 | Detect unknown parameters via griffe |
-| FR83 | Epic 7 | Detect formatting issues via griffe |
-| FR84 | Epic 7 | Load package via griffe and capture warnings |
-| FR85 | Epic 7 | Filter warnings to discovered file set |
-| FR86 | Epic 7 | Structured griffe finding (6 fields) |
-| FR87 | Epic 7 | Warning classification into 3 rules |
-| FR88 | Epic 7 | One finding per warning (no per-symbol dedup) |
-| FR89 | Epic 7 | Zero findings on well-documented code |
-| FR90 | Epic 7 | Graceful skip when griffe not installed |
-| FR91 | Epic 7 | Handle package load failures gracefully |
-| FR92 | Epic 7 | Future griffe version warnings classified as format-warning |
-| FR93 | Epic 7 | Zero findings when all files filtered out |
-| FR94 | Epic 7 | Public API: `(src_root, files) -> list[Finding]` |
-| FR95 | Epic 7 | CLI: `docvet griffe` and `docvet check` |
-| FR96 | Epic 7 | Temporary logging handler lifecycle |
-| FR97 | Epic 7 | CLI griffe availability detection + messaging |
-| FR98 | Epic 8 | Terminal format with file grouping and `[category]` tag |
-| FR99 | Epic 8 | Markdown table format (6 columns, GFM) |
-| FR100 | Epic 8 | Summary line (`N findings (X required, Y recommended)`) |
-| FR101 | Epic 8 | ANSI color codes (red=required, yellow=recommended) |
-| FR101a | Epic 8 | `NO_COLOR` env var suppression |
-| FR101b | Epic 8 | Non-TTY suppression |
-| FR102 | Epic 8 | Sort by `(file, line)` before formatting |
-| FR103 | Epic 8 | `--output` file write |
-| FR104 | Epic 8 | Zero output on zero findings (non-verbose) |
-| FR104a | Epic 8 | `"No findings."` on verbose + zero findings |
-| FR105 | Epic 8 | Exit code 1 on `fail-on` findings |
-| FR106 | Epic 8 | Exit code 0 on `warn-on` only |
-| FR107 | Epic 8 | Exit code 0 on zero findings |
-| FR108 | Epic 8 | `--format` selection (terminal/markdown) |
-| FR109 | Epic 8 | Aggregate findings from all checks |
-| FR110 | Epic 8 | Verbose header (files checked, checks ran) |
+| FR | Epic | Description |
+|----|------|-------------|
+| FR111 | Epic 10 | PyPI installable, pure Python |
+| FR112 | — | Already satisfied (griffe extra exists) |
+| FR113 | Epic 10 | PyPI classifiers and tags |
+| FR114 | Epic 10 | `.pre-commit-hooks.yaml` |
+| FR115 | — | Already satisfied (CLI reads config) |
+| FR116 | Epic 10 | GitHub Action composite |
+| FR117 | — | Already satisfied (correct exit codes) |
+| FR118 | Epic 10 | README comparison table |
+| FR119 | Epic 10 | README quickstart + snippet |
+| FR120 | Epic 10 | README badge row |
+| FR121 | Epic 11 | mkdocs-material docs site |
+| FR122 | Epic 11 | Search + Configuration page |
+| FR123 | Epic 11 | 19 rule reference pages |
+| FR124 | Epic 11 | What/Why/Example/Fix template |
+| FR125 | Epic 9 | Zero findings on own codebase |
+| FR126 | Epic 10 | "docs vetted" badge |
+| FR127 | Epic 9 | `__all__` exports on all modules |
+| FR-G1 | Epic 10 | LICENSE file |
+| FR-G2 | Epic 9 | Version bump to 1.0.0 |
+| FR-G3 | Epic 10 | CHANGELOG.md |
+| FR-G4 | Epic 10 | TestPyPI validation |
+| FR-G5 | Epic 9 | Build exclusions config |
 
 ## Epic List
 
-### Epic 1: Function-Level Enrichment Detection
+### Epic 9: Dogfooding & API Hardening
 
-A developer can run `docvet enrichment` and get findings for missing `Raises:`, `Yields:`, `Receives:`, `Warns:`, and `Other Parameters:` sections on functions and methods — end-to-end from CLI invocation to terminal output. Includes the shared `Finding` dataclass, config updates, section parser, node index, 5 function-level `_check_*` rules, `check_enrichment` orchestrator, and CLI wiring.
+Fix all 23 docvet findings on docvet's own codebase, add `__all__` exports to all public modules, bump version to 1.0.0, and configure build exclusions — proving the tool works on itself and locking down the v1 public API surface.
 
-**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR15, FR16, FR17, FR18, FR19, FR20, FR21, FR22, FR23, FR24, FR25, FR26, FR28, FR29, FR30, FR31, FR32, FR35, FR36, FR37, FR38, FR39, FR40, FR41, FR42
+**FRs covered:** FR125, FR127, FR-G2, FR-G5
+**NFRs addressed:** NFR63, NFR65, NFR56
+**Prerequisite for:** Epic 10, Epic 11
 
-### Story 1.1: Add `require_attributes` Config Toggle
+### Epic 10: Package, Publish & Integrations
 
-As a developer,
-I want a `require-attributes` boolean toggle in `[tool.docvet.enrichment]`,
-So that teams can enable or disable Attributes checking for classes independently.
+Ship docvet as a credible PyPI package with LICENSE, classifiers, CHANGELOG, README (comparison table, quickstart, badges), pre-commit hook, GitHub Action, and TestPyPI validation — a developer can discover, install, and integrate docvet into their workflow.
 
-**Acceptance Criteria:**
+**FRs covered:** FR111, FR113, FR114, FR116, FR118, FR119, FR120, FR126, FR-G1, FR-G3, FR-G4
+**NFRs addressed:** NFR55, NFR56, NFR59, NFR60, NFR61, NFR62
+**Depends on:** Epic 9
 
-**Given** an `EnrichmentConfig` with no explicit `require-attributes` setting
-**When** the config is loaded from `pyproject.toml`
-**Then** `require_attributes` defaults to `True`
+### Epic 11: Documentation Site & Rule Reference
 
-**Given** a `pyproject.toml` with `require-attributes = false` under `[tool.docvet.enrichment]`
-**When** the config is loaded
-**Then** `require_attributes` is `False`
+Build an mkdocs-material documentation site with Getting Started, per-check pages, Configuration, CLI Reference, and 19 dedicated rule reference pages following the What/Why/Example/Fix template — a developer who receives a finding can understand and fix it in 30 seconds.
 
-**Given** an existing `pyproject.toml` without a `require-attributes` key
-**When** the config is loaded
-**Then** all existing config fields retain their values and no error is raised (backward-compatible)
-
-**Given** the `_VALID_ENRICHMENT_KEYS` set in `config.py`
-**When** inspected
-**Then** it includes `"require-attributes"`
-
-**Given** the `_parse_enrichment` function
-**When** it receives an unknown key (e.g., `require-foo = true`)
-**Then** it rejects the key at config load time with a clear error message
-
-**FRs:** FR26, FR29, FR30, NFR19
-
-### Story 1.2: Create `Finding` Dataclass
-
-As a developer,
-I want a shared, immutable `Finding` dataclass in `checks/__init__.py`,
-So that all check modules produce findings with a consistent, stable structure.
-
-**Acceptance Criteria:**
-
-**Given** the `checks/__init__.py` module
-**When** imported
-**Then** it exports `Finding` as the only public name
-
-**Given** a `Finding` instance
-**When** constructed with `file`, `line`, `symbol`, `rule`, `message`, `category`
-**Then** all 6 fields are accessible and the instance is frozen (immutable)
-
-**Given** a `Finding` instance
-**When** any field assignment is attempted (e.g., `finding.rule = "new"`)
-**Then** a `FrozenInstanceError` is raised
-
-**Given** the `category` field
-**When** a `Finding` is constructed
-**Then** it accepts `"required"` or `"recommended"` as valid values
-
-**Given** the `rule` field
-**When** a `Finding` is constructed
-**Then** it accepts any string (kebab-case rule identifiers like `"missing-raises"`)
-
-**FRs:** FR16, FR17, FR22, FR23, FR41, NFR17
-
-### Story 1.3: Section Header Parser and Node Index
-
-As a developer,
-I want shared infrastructure for parsing docstring sections and indexing AST nodes,
-So that all enrichment rules can efficiently determine which sections exist and look up AST nodes.
-
-**Acceptance Criteria:**
-
-**Given** a docstring containing `Raises:`, `Yields:`, and `Args:` section headers
-**When** `_parse_sections(docstring)` is called
-**Then** it returns `{"Raises", "Yields", "Args"}`
-
-**Given** a docstring with varied indentation (e.g., module-level with no indent, method-level with 8-space indent)
-**When** `_parse_sections(docstring)` is called
-**Then** it correctly identifies section headers regardless of leading whitespace
-
-**Given** a docstring with no recognized section headers
-**When** `_parse_sections(docstring)` is called
-**Then** it returns an empty set (never raises an exception)
-
-**Given** a malformed docstring with broken indentation or missing colons
-**When** `_parse_sections(docstring)` is called
-**Then** it returns an empty set (graceful degradation, no crash)
-
-**Given** `_SECTION_HEADERS` constant
-**When** inspected
-**Then** it contains all 10 recognized headers: `Args`, `Returns`, `Raises`, `Yields`, `Receives`, `Warns`, `Other Parameters`, `Attributes`, `Examples`, `See Also`
-
-**Given** an `ast.Module` tree with functions, classes, and async functions
-**When** `_build_node_index(tree)` is called
-**Then** it returns a `dict[int, ast.AST]` mapping line numbers to `FunctionDef | AsyncFunctionDef | ClassDef` nodes
-
-**Given** a module-level symbol (line 1) with no corresponding AST node
-**When** `node_index.get(symbol.line)` is called
-**Then** it returns `None` (safe for rules to handle)
-
-**FRs:** FR15, FR31, FR35, FR36, FR38, NFR7
-
-### Story 1.4: Missing Raises Detection and Orchestrator
-
-As a developer,
-I want to detect functions that raise exceptions without documenting them in a `Raises:` section,
-So that I can ensure my docstrings accurately describe error behavior for callers.
-
-**Acceptance Criteria:**
-
-**Given** a function with `raise ValueError` and a docstring with no `Raises:` section
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-raises"`, `category="required"`, and a message naming the function and the exception
-
-**Given** a function with `raise ValueError` and a docstring containing a `Raises:` section
-**When** `check_enrichment` is called
-**Then** it returns zero findings for that function (missing-only, not incomplete)
-
-**Given** a function with no `raise` statements
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-raises` on that function
-
-**Given** a function with `raise` but no docstring at all
-**When** `check_enrichment` is called
-**Then** it returns zero findings (undocumented symbols are skipped)
-
-**Given** `config.require_raises = False`
-**When** `check_enrichment` is called on a function with `raise` and no `Raises:` section
-**Then** it returns zero findings for `missing-raises` (config toggle respected)
-
-**Given** a well-documented file (`tests/fixtures/complete_module.py`)
-**When** `check_enrichment` is called
-**Then** it returns an empty list (zero findings)
-
-**Given** `tests/fixtures/missing_raises.py`
-**When** `check_enrichment` is called
-**Then** it returns exactly the expected `missing-raises` finding
-
-**Given** the `check_enrichment` orchestrator
-**When** called with `source`, `tree`, `config`, `file_path`
-**Then** it returns `list[Finding]` with no I/O and no side effects (pure function)
-
-**FRs:** FR1, FR18, FR19, FR20, FR21, FR24, FR25, FR32, FR37, FR39, FR40, NFR5, NFR6, NFR8, NFR9
-
-### Story 1.5: Missing Yields and Receives Detection
-
-As a developer,
-I want to detect generator functions missing `Yields:` and `Receives:` sections,
-So that consumers of my generators understand what values are yielded and what can be sent in.
-
-**Acceptance Criteria:**
-
-**Given** a generator function with `yield` expressions and a docstring with no `Yields:` section
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-yields"`, `category="required"`
-
-**Given** a generator function with `yield` and a docstring containing a `Yields:` section
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-yields`
-
-**Given** `tests/fixtures/missing_yields.py`
-**When** `check_enrichment` is called
-**Then** it returns exactly the expected `missing-yields` finding
-
-**Given** a generator function using `value = yield` (send pattern) with no `Receives:` section
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-receives"`, `category="required"`
-
-**Given** a generator with `value = yield` and a `Receives:` section present
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-receives`
-
-**Given** `config.require_yields = False`
-**When** `check_enrichment` is called on a generator missing `Yields:`
-**Then** it returns zero findings for `missing-yields`
-
-**Given** `config.require_receives = False`
-**When** `check_enrichment` is called on a generator with send pattern missing `Receives:`
-**Then** it returns zero findings for `missing-receives`
-
-**Given** an async generator function with `yield`
-**When** `check_enrichment` is called
-**Then** it detects the `yield` via `ast.walk` on the `AsyncFunctionDef` body and applies the same rules
-
-**FRs:** FR2, FR3, FR32, NFR5, NFR6
-
-### Story 1.6: Missing Warns and Other Parameters Detection
-
-As a developer,
-I want to detect functions that call `warnings.warn()` without a `Warns:` section and functions with `**kwargs` without an `Other Parameters:` section,
-So that my docstrings fully describe warning behavior and extra keyword arguments.
-
-**Acceptance Criteria:**
-
-**Given** a function calling `warnings.warn()` with no `Warns:` section in its docstring
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-warns"`, `category="required"`
-
-**Given** a function calling `warnings.warn()` with a `Warns:` section present
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-warns`
-
-**Given** `config.require_warns = False`
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-warns`
-
-**Given** a function with `**kwargs` parameter and no `Other Parameters:` section
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-other-parameters"`, `category="recommended"`
-
-**Given** a function with `**kwargs` and an `Other Parameters:` section present
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-other-parameters`
-
-**Given** `config.require_other_parameters = False`
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-other-parameters`
-
-**Given** a function that calls `warnings.warn()` via a qualified path (e.g., `warnings.warn(...)`)
-**When** `check_enrichment` is called
-**Then** it detects the `warn` call via AST `Call` node inspection
-
-**Given** all 5 function-level rules enabled with a function that triggers none of them
-**When** `check_enrichment` is called
-**Then** it returns zero findings for that function
-
-**FRs:** FR4, FR5, FR32, NFR5, NFR10
-
-### Story 1.7: CLI Wiring for Enrichment Check
-
-As a developer,
-I want to run `docvet enrichment` from the command line and see findings in `file:line: rule message` format,
-So that I can integrate enrichment checking into my development workflow and CI pipelines.
-
-**Acceptance Criteria:**
-
-**Given** a codebase with files containing functions missing `Raises:` sections
-**When** `docvet enrichment` is run
-**Then** findings are printed to terminal in `file:line: rule message` format (one per line)
-
-**Given** a codebase with no enrichment issues
-**When** `docvet enrichment` is run
-**Then** it produces no output and exits with code 0
-
-**Given** the existing `_run_enrichment` stub in `cli.py`
-**When** the enrichment check is wired
-**Then** it reads each discovered file, calls `ast.parse()`, and passes `source`, `tree`, `config.enrichment`, and `file_path` to `check_enrichment`
-
-**Given** a file that fails `ast.parse()` with `SyntaxError`
-**When** `docvet enrichment` processes it
-**Then** the file is skipped with a warning (not passed to `check_enrichment`)
-
-**Given** `docvet check` is run (all checks)
-**When** enrichment is in the enabled checks
-**Then** enrichment findings are included alongside findings from other checks
-
-**Given** `docvet enrichment --all` is run on a project
-**When** the run completes
-**Then** all Python files in the project are analyzed (not just git diff files)
-
-**FRs:** FR42, NFR18
+**FRs covered:** FR121, FR122, FR123, FR124
+**NFRs addressed:** NFR57, NFR58
+**Depends on:** Epic 9 (soft — docs can be written in parallel with Epic 10)
 
 ---
 
-**Epic 1 Summary:** 7 stories, covering all 30 FRs assigned to this epic. Each story builds on the previous without forward dependencies.
+## Epic 9: Dogfooding & API Hardening
 
-### Epic 2: Class & Module Enrichment Detection
+Fix all 23 docvet findings on docvet's own codebase, add `__all__` exports to all public modules, bump version to 1.0.0, and configure build exclusions — proving the tool works on itself and locking down the v1 public API surface.
 
-A developer can detect missing `Attributes:` sections across all class-like constructs (plain classes, dataclasses, NamedTuples, TypedDicts) and `__init__.py` modules. The highest-complexity rule with 5 detection branches, first-match-wins deduplication, and dedicated helper functions.
+### Story 9.1: Fix Docvet Findings on Own Codebase
 
-**FRs covered:** FR6, FR7, FR8, FR33, FR34
-
-## Epic 2: Class & Module Enrichment Detection
-
-A developer can detect missing `Attributes:` sections across all class-like constructs (plain classes, dataclasses, NamedTuples, TypedDicts) and `__init__.py` modules. The highest-complexity rule with 5 detection branches, first-match-wins deduplication, and dedicated helper functions.
-
-### Story 2.1: Dataclass, NamedTuple, and TypedDict Attributes Detection
-
-As a developer,
-I want to detect dataclasses, NamedTuples, and TypedDicts that lack an `Attributes:` section,
-So that users of my data structures can see all fields documented in one place.
+As a docvet maintainer,
+I want all 23 docstring findings on docvet's own source code resolved to zero,
+So that the tool credibly dogfoods itself before publication.
 
 **Acceptance Criteria:**
 
-**Given** a class decorated with `@dataclass` and a docstring with no `Attributes:` section
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-attributes"`, `category="required"`, and a message naming the class and its field count
+**Given** the docvet codebase at current state with 23 findings (8 required, 15 recommended)
+**When** findings are resolved (via docstring fixes or config adjustments — e.g., narrowing `require-examples` in `[tool.docvet.enrichment]` for internal enums is a valid approach)
+**Then** `docvet check --all` produces zero findings
+**And** all quality gates pass (`ruff check`, `ruff format --check`, `ty check`, `interrogate`) — fixes do not introduce new violations
+**And** all existing tests continue to pass (`uv run pytest`)
 
-**Given** a class decorated with `@dataclasses.dataclass` (qualified form)
-**When** `check_enrichment` is called
-**Then** it detects the dataclass and applies the same rule
+### Story 9.2: Add `__all__` Exports to All Public Modules
 
-**Given** a class decorated with `@dataclass(frozen=True)` (decorator with arguments)
-**When** `check_enrichment` is called
-**Then** it detects the dataclass via `ast.Call` node inspection
-
-**Given** a class inheriting from `NamedTuple` (e.g., `class Foo(NamedTuple):`)
-**When** `check_enrichment` is called and the docstring has no `Attributes:` section
-**Then** it returns a `Finding` with `rule="missing-attributes"`, `category="required"`
-
-**Given** a class inheriting from `typing.NamedTuple` (qualified base class)
-**When** `check_enrichment` is called
-**Then** it detects the NamedTuple via `ast.Attribute` base class inspection
-
-**Given** a class inheriting from `TypedDict`
-**When** `check_enrichment` is called and the docstring has no `Attributes:` section
-**Then** it returns a `Finding` with `rule="missing-attributes"`, `category="required"`
-
-**Given** a dataclass with a docstring containing an `Attributes:` section
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-attributes` on that class
-
-**Given** `config.require_attributes = False`
-**When** `check_enrichment` is called on any class-like construct missing `Attributes:`
-**Then** it returns zero findings for `missing-attributes`
-
-**Given** a dataclass with no docstring at all
-**When** `check_enrichment` is called
-**Then** it returns zero findings (undocumented symbols skipped)
-
-**Given** the `_is_dataclass`, `_is_namedtuple`, and `_is_typeddict` helper functions
-**When** tested directly with AST nodes
-**Then** each correctly identifies its construct type and returns `False` for non-matching nodes
-
-**FRs:** FR7, FR33, NFR5, NFR10
-
-### Story 2.2: Plain Class and `__init__.py` Module Attributes Detection
-
-As a developer,
-I want to detect plain classes with `__init__` self-assignments and `__init__.py` modules that lack `Attributes:` sections,
-So that all class fields and module exports are documented for consumers.
+As a Python developer importing from docvet,
+I want only intentional public symbols exported from each module,
+So that the v1 API surface is explicit and stable.
 
 **Acceptance Criteria:**
 
-**Given** a plain class with an `__init__` method containing `self.x = value` assignments and a docstring with no `Attributes:` section
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-attributes"`, `category="required"`
+**Given** 11 modules in `src/docvet/` (9 currently lack `__all__`)
+**When** `__all__` is defined in every module
+**Then** each module's `__all__` lists only its intended public symbols per NFR66 (`Finding`, `check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`, and supporting public types)
+**And** `from docvet.checks import *` produces only `Finding` and the check functions — no internal helpers
+**And** `from docvet import *` produces only the intended top-level API
+**And** internal helpers (prefixed with `_`) are not accessible via `*` import from any module (negative assertion)
+**And** modules that already have `__all__` (`checks/__init__.py`, `checks/coverage.py`) are unchanged or verified as correct
+**And** all existing tests continue to pass
 
-**Given** a plain class with `__init__` containing annotated assignments (`self.x: int = 0`)
-**When** `check_enrichment` is called and the docstring has no `Attributes:` section
-**Then** it detects the self-assignments via `ast.AnnAssign` and returns a finding
+### Story 9.3: Version Bump and Build Configuration
 
-**Given** a plain class with `__init__` but no `self.*` assignments
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-attributes` on that class (no fields to document)
+As a package maintainer preparing for v1.0 release,
+I want the version set to 1.0.0 and non-distribution files excluded from the build,
+So that the published package is correctly versioned and contains only production code.
 
-**Given** an `__init__.py` module with a module-level docstring but no `Attributes:` section
-**When** `check_enrichment` is called with `file_path` ending in `__init__.py`
-**Then** it returns a `Finding` with `rule="missing-attributes"`, `category="required"`, applied to the module-level symbol
+**Acceptance Criteria:**
 
-**Given** an `__init__.py` module with an `Attributes:` section in its module docstring
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-attributes`
-
-**Given** a regular Python file (not `__init__.py`) with a module-level docstring
-**When** `check_enrichment` is called
-**Then** it does not apply `__init__.py`-specific rules
-
-**Given** a class that is both a `@dataclass` and has `__init__` self-assignments
-**When** `check_enrichment` is called
-**Then** it produces at most one `missing-attributes` finding (dataclass branch wins per first-match-wins dispatch order)
-
-**Given** the full `_check_missing_attributes` dispatch
-**When** evaluated on any symbol
-**Then** branches are checked in order: dataclass, NamedTuple, TypedDict, plain class, `__init__.py` module — first match wins, no fallthrough
-
-**Given** the `_has_self_assignments` and `_is_init_module` helper functions
-**When** tested directly
-**Then** each correctly identifies its pattern and returns `False` for non-matching inputs
-
-**FRs:** FR6, FR8, FR18, FR33, FR34, NFR5, NFR10
+**Given** `pyproject.toml` with `version = "0.1.0"`, no build exclusions, and no `--version` CLI flag
+**When** the version is bumped, a `--version` flag is added, and sdist build exclusions are configured
+**Then** `pyproject.toml` shows `version = "1.0.0"`
+**And** a `--version` CLI callback is implemented (via `importlib.metadata` or typer's version callback) so that `docvet --version` outputs `1.0.0`
+**And** `[tool.hatch.build.targets.sdist]` excludes non-distribution directories (`tests/`, `_bmad-output/`, `_bmad/`, `.github/`, `docs/`, fixture files) — wheel exclusions are unnecessary as hatchling's `src` layout already scopes the wheel to `src/docvet/`
+**And** `uv build` produces both wheel and sdist, each under 500KB (NFR56)
+**And** the wheel contains only `src/docvet/` package files (verified via `zipfile -l`)
+**And** all existing tests continue to pass
 
 ---
 
-**Epic 2 Summary:** 2 stories, covering all 5 FRs assigned to this epic. Story 2.1 handles structured class variants (dataclass, NamedTuple, TypedDict). Story 2.2 adds plain class and module detection, completing the full 5-branch dispatch.
+## Epic 10: Package, Publish & Integrations
 
-### Epic 3: Format & Recommended Rules
+Ship docvet as a credible PyPI package with LICENSE, classifiers, CHANGELOG, README (comparison table, quickstart, badges), pre-commit hook, GitHub Action, and TestPyPI validation — a developer can discover, install, and integrate docvet into their workflow.
 
-A developer can detect format and style improvements — missing `Examples:` sections (configurable by symbol type), untyped `Attributes:` format, missing cross-references, and doctest-to-fenced-code-block preferences. Enables required vs recommended triage for codebase sweeps.
+### Story 10.1: LICENSE and Package Metadata
 
-**FRs covered:** FR9, FR10, FR11, FR12, FR13, FR14, FR27
-
-## Epic 3: Format & Recommended Rules
-
-A developer can detect format and style improvements — missing `Examples:` sections (configurable by symbol type), untyped `Attributes:` format, missing cross-references, and doctest-to-fenced-code-block preferences. Enables required vs recommended triage for codebase sweeps.
-
-### Story 3.1: Missing Examples Detection
-
-As a developer,
-I want to detect public symbols and `__init__.py` modules that lack an `Examples:` section,
-So that key API surfaces include usage examples for consumers.
+As a Python developer evaluating docvet,
+I want to see a clear license and proper PyPI classifiers,
+So that I can confirm the tool is safe to adopt in my project.
 
 **Acceptance Criteria:**
 
-**Given** a class with a docstring and no `Examples:` section, and `config.require_examples = ["class"]`
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-examples"`, `category="recommended"`
+**Given** `pyproject.toml` has no `license` field or classifiers
+**When** LICENSE file and metadata are added
+**Then** a LICENSE file exists at the repository root (MIT or Apache-2.0)
+**And** `pyproject.toml` includes a `license` field referencing the LICENSE file
+**And** `pyproject.toml` includes classifiers: Development Status (Production/Stable), Environment (Console), Intended Audience (Developers), License, Programming Language (Python :: 3.12, Python :: 3.13), Topic (Software Development :: Quality Assurance)
+**And** `pyproject.toml` includes `keywords` with: `docstring`, `linter`, `mkdocs`, `interrogate`, `pydocstyle`, `darglint`, `documentation`, `quality`
+**And** all existing tests continue to pass (`uv run pytest`)
 
-**Given** a protocol with a docstring and no `Examples:` section, and `config.require_examples = ["protocol"]`
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-examples"`, `category="recommended"`
+### Story 10.2: README with Comparison Table, Quickstart, and Badges
 
-**Given** a class with a docstring and no `Examples:` section, and `config.require_examples = ["dataclass"]` (class not in list)
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-examples` on that class
-
-**Given** `config.require_examples = []` (empty list)
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-examples` on any symbol (rule fully disabled)
-
-**Given** the default config (`require_examples = ["class", "protocol", "dataclass", "enum"]`)
-**When** `check_enrichment` is called on a dataclass with no `Examples:` section
-**Then** it returns a `Finding` for `missing-examples`
-
-**Given** a symbol with a docstring containing an `Examples:` section
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-examples` on that symbol
-
-**Given** an `__init__.py` module with a module-level docstring and no `Examples:` section
-**When** `check_enrichment` is called with `file_path` ending in `__init__.py` and `require_examples` is non-empty
-**Then** it returns a `Finding` with `rule="missing-examples"` for the module-level symbol
-
-**Given** a symbol with no docstring
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-examples` (undocumented symbols skipped)
-
-**FRs:** FR9, FR10, FR27, NFR5, NFR10
-
-### Story 3.2: Format and Cross-Reference Rules
-
-As a developer,
-I want to detect untyped `Attributes:` sections, missing cross-reference syntax in `See Also:` sections, missing `See Also:` on `__init__.py` modules, and `Examples:` using doctest format instead of fenced code blocks,
-So that my docstrings follow best practices for readability and mkdocs rendering.
+As a developer discovering docvet on PyPI or GitHub,
+I want to understand what it does, how it compares to alternatives, and how to start using it in under 2 minutes,
+So that I can make an informed adoption decision quickly.
 
 **Acceptance Criteria:**
 
-**Given** a class with an `Attributes:` section using `name: description` format (no type)
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-typed-attributes"`, `category="recommended"`
+**Given** an empty `README.md`
+**When** the README is written
+**Then** it includes a badge row: PyPI version, CI status, license, Python versions, "docs vetted | docvet"
+**And** it includes a one-line tagline and the six-layer quality model summary
+**And** it includes a comparison table showing layer coverage for ruff, interrogate, pydoclint, and docvet
+**And** it includes a single-command quickstart: `pip install docvet && docvet check --all`
+**And** it includes a 3-line pre-commit configuration YAML snippet
+**And** it includes a copy-paste badge snippet for adopters (`[![docs vetted | docvet]...]`)
+**And** it includes a "Used By" section placeholder
+**And** the README renders correctly as PyPI long description — verified via `twine check dist/*` or `python -m readme_renderer README.md` (no rendering errors, no broken links)
 
-**Given** a class with an `Attributes:` section using `name (type): description` format
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-typed-attributes`
+### Story 10.3: Pre-commit Hook and GitHub Action
 
-**Given** `config.require_typed_attributes = False`
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-typed-attributes`
+As a developer integrating docvet into CI,
+I want a pre-commit hook and GitHub Action available with minimal configuration,
+So that I can automate documentation quality gating in my workflow.
 
-**Given** a symbol with a `See Also:` section that lacks cross-reference syntax
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="missing-cross-references"`, `category="recommended"`
+**Acceptance Criteria:**
 
-**Given** `config.require_cross_references = False`
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `missing-cross-references`
+**Given** no `.pre-commit-hooks.yaml` or `action.yml` exists
+**When** both integration files are created
+**Then** `.pre-commit-hooks.yaml` exists at repo root with `id: docvet`, `language: python`, `types: [python]`, `entry: docvet check`
+**And** the hook is verified via `pre-commit try-repo . docvet --all-files` against the local repo (manual verification — not automatable in CI until published)
+**And** `action.yml` exists at repo root as a composite GitHub Action with inputs: `version` (default: `latest`), `args` (default: `check`), `src` (default: `.`)
+**And** the Action installs docvet, runs `docvet` with the provided args, and propagates the exit code
+**And** the README's pre-commit snippet references the correct repo URL and hook id
 
-**Given** an `__init__.py` module with a module-level docstring and no `See Also:` section
-**When** `check_enrichment` is called with `file_path` ending in `__init__.py`
-**Then** it returns a `Finding` with `rule="missing-cross-references"` for the module-level symbol
+### Story 10.4: CHANGELOG and Publication Pipeline
 
-**Given** a regular Python file (not `__init__.py`) with no `See Also:` section
-**When** `check_enrichment` is called
-**Then** it does not produce a `missing-cross-references` finding for the module-level symbol
+As a package maintainer,
+I want a CHANGELOG documenting v1.0.0 and a validated publish pipeline,
+So that the package is professionally released with an auditable history.
 
-**Given** a symbol with an `Examples:` section using `>>>` doctest format
-**When** `check_enrichment` is called
-**Then** it returns a `Finding` with `rule="prefer-fenced-code-blocks"`, `category="recommended"`
+**Acceptance Criteria:**
 
-**Given** a symbol with an `Examples:` section using fenced code blocks (triple backticks)
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `prefer-fenced-code-blocks`
-
-**Given** `config.prefer_fenced_code_blocks = False`
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `prefer-fenced-code-blocks`
-
-**Given** a symbol with no `Examples:` section at all
-**When** `check_enrichment` is called
-**Then** it returns zero findings for `prefer-fenced-code-blocks` (rule only applies when `Examples:` exists)
-
-**FRs:** FR11, FR12, FR13, FR14, NFR5, NFR10
+**Given** no CHANGELOG exists and the package has never been published
+**When** CHANGELOG and publish pipeline are prepared
+**Then** `CHANGELOG.md` exists with a v1.0.0 entry summarizing: 4 check modules (enrichment, freshness, coverage, griffe), 19 rules, reporting module, CLI with 5 subcommands
+**And** `uv build` produces both wheel and sdist
+**And** the wheel installs cleanly in a fresh virtual environment (`pip install dist/docvet-1.0.0-py3-none-any.whl`)
+**And** `docvet check --help` works after install from wheel
+**And** `import docvet` works after install from wheel
+**And** the package is validated on TestPyPI: upload, install from TestPyPI, verify `docvet --version` outputs `1.0.0` (prerequisite: TestPyPI account and API token configured — infrastructure setup, not a code change)
+**And** all existing tests continue to pass (`uv run pytest`)
 
 ---
 
-**Epic 3 Summary:** 2 stories, covering all 7 FRs assigned to this epic. Story 3.1 handles the list-config `missing-examples` rule. Story 3.2 covers the remaining docstring-only format and cross-reference rules.
+## Epic 11: Documentation Site & Rule Reference
 
-### Epic 4: Freshness Diff Mode Detection
+Build an mkdocs-material documentation site with Getting Started, per-check pages, Configuration, CLI Reference, and 19 dedicated rule reference pages following the What/Why/Example/Fix template — a developer who receives a finding can understand and fix it in 30 seconds.
 
-A developer can run `docvet freshness` and get findings for symbols where code changed but docstrings were not updated — HIGH severity for signature changes (`stale-signature`), MEDIUM for body changes (`stale-body`), LOW for import/formatting changes (`stale-import`). Includes shared infrastructure (`_build_finding`, module constants), all diff-specific edge case handling, unit + integration tests, and CLI wiring for diff mode as the default.
+### Story 11.1: Documentation Site Scaffold and Core Pages
 
-**FRs covered:** FR43, FR44, FR45, FR46, FR47, FR48, FR49, FR54, FR55, FR56, FR57, FR58, FR59, FR60, FR61 (diff), FR62 (diff), FR66 (diff), FR67 (diff wiring), FR68 (diff as default)
-
-### Epic 5: Freshness Drift Mode & CLI Integration
-
-A developer can run `docvet freshness --mode drift` and get findings for docstrings that have drifted from their code (`stale-drift`) or aged past a configurable threshold (`stale-age`). Adds blame parsing, threshold computation, drift configuration consumption, and the `--mode drift` CLI flag.
-
-**FRs covered:** FR50, FR51, FR52, FR53, FR54 (verified), FR61 (drift), FR62 (drift), FR63, FR64, FR65, FR66 (drift), FR67 (drift wiring), FR68 (`--mode drift` flag)
-
-### Epic 6: Coverage Check (Missing `__init__.py` Detection)
-
-A developer can run `docvet coverage` and discover Python files invisible to mkdocstrings because parent directories lack `__init__.py`. The check walks from each file's parent directory up to `src-root`, flags gaps in the package hierarchy with one deduplicated finding per missing directory, and integrates with the existing CLI (`docvet coverage` standalone or `docvet check` combined). Category is always `required` — a missing `__init__.py` is a definitive visibility gap.
-
-**FRs covered:** FR69, FR70, FR71, FR72, FR73, FR74, FR75, FR76, FR77, FR78, FR79, FR80
-
-### Epic 7: Griffe Compatibility Check (Rendering Warning Detection)
-
-A developer can run `docvet griffe` and discover docstrings that will produce warnings during mkdocs build — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered documentation. Uses the griffe library (optional dependency) to parse docstrings at the package level, captures parser warnings via logging, and maps them to findings. Two stories: core function + tests, then CLI wiring.
-
-**FRs covered:** FR81, FR82, FR83, FR84, FR85, FR86, FR87, FR88, FR89, FR90, FR91, FR92, FR93, FR94, FR95, FR96, FR97
-
-## Epic 4: Freshness Diff Mode Detection
-
-A developer can run `docvet freshness` and get findings for symbols where code changed but docstrings were not updated — HIGH severity for signature changes (`stale-signature`), MEDIUM for body changes (`stale-body`), LOW for import/formatting changes (`stale-import`). Includes shared infrastructure (`_build_finding`, module constants), all diff-specific edge case handling, unit + integration tests, and CLI wiring for diff mode as the default.
-
-### Story 4.1: Diff Hunk Parser and Shared Infrastructure
-
-As a developer,
-I want a parser that extracts changed line numbers from git diff output and a shared finding builder,
-So that diff mode has reliable input processing and freshness findings are constructed consistently.
+As a developer who just installed docvet,
+I want a documentation site with Getting Started and CLI Reference pages,
+So that I can learn how to use the tool without reading source code.
 
 **Acceptance Criteria:**
 
-**Given** a git diff output string containing `@@ -10,5 +12,8 @@` hunk headers
-**When** `_parse_diff_hunks(diff_output)` is called
-**Then** it returns a `set[int]` containing the expanded line numbers from the `+start,count` ranges (e.g., `{12, 13, 14, 15, 16, 17, 18, 19}`)
+**Given** no `mkdocs.yml` or documentation site exists
+**When** the docs site is scaffolded
+**Then** `mkdocs.yml` exists with mkdocs-material theme, navigation, and search plugin enabled
+**And** a Getting Started page exists with installation instructions (`pip install docvet`, `pip install docvet[griffe]`), quickstart command, and a brief overview of the four checks
+**And** a CLI Reference page exists documenting all 5 subcommands (`check`, `enrichment`, `freshness`, `coverage`, `griffe`) and all global options (`--format`, `--output`, `--verbose`, `--staged`, `--all`, `--files`)
+**And** `mkdocs serve` builds the site without errors
+**And** client-side search returns results for "enrichment", "freshness", "coverage", "griffe"
 
-**Given** a git diff output with `--- /dev/null` (new file)
-**When** `_parse_diff_hunks(diff_output)` is called
-**Then** it returns an empty set (FR55 — no prior docstring to become stale)
+### Story 11.2: Check Pages and Configuration Reference
 
-**Given** a git diff output containing `Binary files ... differ`
-**When** `_parse_diff_hunks(diff_output)` is called
-**Then** it returns an empty set (FR58 — skip binary files)
-
-**Given** a hunk header with no count (`@@ -1 +1 @@`, missing `,count`)
-**When** `_parse_diff_hunks(diff_output)` is called
-**Then** it treats the missing count as 1 and includes that single line number
-
-**Given** an empty string as `diff_output`
-**When** `_parse_diff_hunks(diff_output)` is called
-**Then** it returns an empty set (no crash, no exception)
-
-**Given** a git diff output with rename headers (`rename from ...` / `rename to ...`) or mode change lines
-**When** `_parse_diff_hunks(diff_output)` is called
-**Then** those lines are silently skipped and only hunk headers are processed
-
-**Given** the `_build_finding` shared helper
-**When** called with `file_path`, `symbol`, `rule`, `message`, `category`
-**Then** it returns a `Finding` with `file=file_path`, `line=symbol.line`, `symbol=symbol.name`, and the provided `rule`, `message`, `category`
-
-**Given** the `_HUNK_PATTERN` module-level constant
-**When** inspected
-**Then** it is a compiled regex matching `^@@ .+\+(\d+)(?:,(\d+))? @@`
-
-**FRs:** FR43, FR55, FR58, FR59 (partial), FR60 (partial), NFR25, NFR29
-
-### Story 4.2: Line Classification and Diff Mode Orchestrator
-
-As a developer,
-I want to classify changed lines per symbol by range (signature, body, docstring) and produce findings at the appropriate severity level,
-So that stale docstrings are detected with correct severity and docstring updates suppress findings.
+As a developer configuring docvet for their team,
+I want dedicated pages for each check type and a configuration reference,
+So that I understand what each check does and how to customize it.
 
 **Acceptance Criteria:**
 
-**Given** a symbol with changed lines in its `signature_range` and no changed lines in its `docstring_range`
-**When** `_classify_changed_lines(changed_lines, symbol)` is called
-**Then** it returns `"signature"` (FR47 — HIGH severity)
+**Given** the docs site scaffold from Story 11.1
+**When** check pages and config reference are added
+**Then** an Enrichment Check page exists explaining the 10 enrichment rules, required vs recommended categories, and `[tool.docvet.enrichment]` config options
+**And** a Freshness Check page exists explaining diff mode vs drift mode, the 5 freshness rules, severity levels, and `[tool.docvet.freshness]` config options
+**And** a Coverage Check page exists explaining `missing-init` detection and `src-root` behavior
+**And** a Griffe Check page exists explaining the 3 griffe rules, optional dependency, and graceful skip behavior
+**And** a Configuration page exists documenting every `[tool.docvet]` key with its type, default value, and an example
+**And** every CLI flag documented in the site matches the actual `docvet --help` output (NFR58)
+**And** `mkdocs serve` builds without errors and all pages are navigable
 
-**Given** a symbol with changed lines in its `body_range` but not in `signature_range`, and no changed lines in its `docstring_range`
-**When** `_classify_changed_lines(changed_lines, symbol)` is called
-**Then** it returns `"body"` (FR48 — MEDIUM severity)
+### Story 11.3: Rule Reference Pages
 
-**Given** a symbol with changed lines only outside its `signature_range`, `docstring_range`, and `body_range`
-**When** `_classify_changed_lines(changed_lines, symbol)` is called
-**Then** it returns `"import"` (FR49 — LOW severity)
-
-**Given** a symbol with changed lines in both `signature_range` and `docstring_range`
-**When** `_classify_changed_lines(changed_lines, symbol)` is called
-**Then** it returns `None` (docstring updated, finding suppressed — FR46, FR62)
-
-**Given** a symbol with changed lines in both `body_range` and `docstring_range`
-**When** `_classify_changed_lines(changed_lines, symbol)` is called
-**Then** it returns `None` (docstring updated alongside body change)
-
-**Given** a class or module symbol with `signature_range is None`
-**When** `_classify_changed_lines(changed_lines, symbol)` is called with body changes
-**Then** it returns `"body"` (MEDIUM), never `"signature"` (signature check skipped for classes/modules — NFR23)
-
-**Given** a file with a function whose signature changed and docstring was not updated
-**When** `check_freshness_diff(file_path, diff_output, tree)` is called
-**Then** it returns a `Finding` with `rule="stale-signature"`, `category="required"`, and a message like `Function 'name' signature changed but docstring not updated`
-
-**Given** a file with a method whose body changed and docstring was not updated
-**When** `check_freshness_diff(file_path, diff_output, tree)` is called
-**Then** it returns a `Finding` with `rule="stale-body"`, `category="recommended"`
-
-**Given** a file where only import lines near a symbol changed
-**When** `check_freshness_diff(file_path, diff_output, tree)` is called
-**Then** it returns a `Finding` with `rule="stale-import"`, `category="recommended"`
-
-**Given** a file where a symbol has both signature and body changes (no docstring change)
-**When** `check_freshness_diff` is called
-**Then** it produces exactly one finding at the highest severity (`stale-signature`, not both — FR61)
-
-**Given** a symbol with no docstring (`docstring_range is None`)
-**When** `check_freshness_diff` is called
-**Then** it returns zero findings for that symbol (FR54 — undocumented symbols skipped)
-
-**Given** a function that was deleted (lines appear in diff's `-` side but not in current AST)
-**When** `check_freshness_diff` is called
-**Then** it produces zero findings for that deleted function (FR56 — not in `map_lines_to_symbols`)
-
-**Given** a function relocated within a file (delete at old location, add at new location)
-**When** `check_freshness_diff` is called
-**Then** it treats the new location as a body change if the docstring wasn't updated (FR57)
-
-**Given** a file where all changed symbols have correspondingly updated docstrings
-**When** `check_freshness_diff` is called
-**Then** it returns an empty list (FR62)
-
-**Given** an empty `diff_output` string
-**When** `check_freshness_diff` is called
-**Then** it returns an empty list immediately (FR66, NFR25)
-
-**Given** identical `diff_output` and identical `tree`
-**When** `check_freshness_diff` is called multiple times
-**Then** it produces identical output every time (NFR24 — deterministic)
-
-**FRs:** FR44, FR45, FR46, FR47, FR48, FR49, FR54, FR56, FR57, FR59, FR60, FR61 (diff), FR62 (diff), FR66 (diff), NFR23, NFR24, NFR25, NFR26, NFR27
-
-### Story 4.3: CLI Wiring for Freshness Diff Mode
-
-As a developer,
-I want to run `docvet freshness` from the command line and see stale docstring findings in the standard output format,
-So that I can integrate freshness checking into my development workflow and CI pipelines.
+As a developer who received a docvet finding,
+I want to look up the rule by its identifier and understand what it means, why it matters, and how to fix it,
+So that I can resolve findings quickly without guessing.
 
 **Acceptance Criteria:**
 
-**Given** a codebase with files containing symbols with stale docstrings
-**When** `docvet freshness` is run
-**Then** findings are printed to terminal in `file:line: rule message` format (one per line)
-
-**Given** a codebase with no stale docstrings
-**When** `docvet freshness` is run
-**Then** it produces no output and exits with code 0
-
-**Given** the existing `_run_freshness` stub in `cli.py`
-**When** the freshness check is wired for diff mode
-**Then** it reads each discovered file, runs `git diff` (or `git diff --cached` for `--staged`), calls `ast.parse()`, and passes `file_path`, `diff_output`, and `tree` to `check_freshness_diff`
-
-**Given** a file that fails `ast.parse()` with `SyntaxError`
-**When** `docvet freshness` processes it
-**Then** the file is skipped with a warning (not passed to `check_freshness_diff`)
-
-**Given** `docvet check` is run (all checks)
-**When** freshness is in the enabled checks
-**Then** freshness diff findings are included alongside findings from other checks
-
-**Given** `docvet freshness` is run with no `--mode` flag
-**When** the command executes
-**Then** it defaults to diff mode (FR68)
-
-**Given** `docvet freshness --all` is run
-**When** the run completes
-**Then** all Python files in the project are analyzed using `git diff HEAD` (not just staged/unstaged)
-
-**FRs:** FR67 (diff wiring), FR68 (diff as default), NFR20, NFR30
-
----
-
-**Epic 4 Summary:** 3 stories, covering all 19 FRs assigned to this epic. Story 4.1 handles git diff parsing and shared infrastructure. Story 4.2 implements the core classification-to-finding pipeline. Story 4.3 wires diff mode into the CLI.
-
-## Epic 5: Freshness Drift Mode & CLI Integration
-
-A developer can run `docvet freshness --mode drift` and get findings for docstrings that have drifted from their code (`stale-drift`) or aged past a configurable threshold (`stale-age`). Adds blame parsing, threshold computation, drift configuration consumption, and the `--mode drift` CLI flag.
-
-### Story 5.1: Blame Timestamp Parser
-
-As a developer,
-I want a parser that extracts per-line modification timestamps from `git blame --line-porcelain` output,
-So that drift mode can determine when each line of code was last modified.
-
-**Acceptance Criteria:**
-
-**Given** a `git blame --line-porcelain` output string with multiple blame entries
-**When** `_parse_blame_timestamps(blame_output)` is called
-**Then** it returns a `dict[int, int]` mapping 1-based line numbers to Unix timestamps extracted from `author-time` fields
-
-**Given** a blame entry with a 40-character SHA line containing the final line number as the 3rd field
-**When** `_parse_blame_timestamps` parses it
-**Then** it extracts the line number via `line.split()` (positional, no regex)
-
-**Given** a blame entry with an `author-time 1707500000` header line
-**When** `_parse_blame_timestamps` parses it
-**Then** it extracts `1707500000` as the Unix timestamp for the current blame block
-
-**Given** a blame entry with header fields like `author`, `author-mail`, `committer`, `summary`, etc.
-**When** `_parse_blame_timestamps` parses it
-**Then** those lines are silently skipped (only SHA and `author-time` are consumed)
-
-**Given** an empty string as `blame_output`
-**When** `_parse_blame_timestamps(blame_output)` is called
-**Then** it returns an empty dict (no crash, no exception — NFR25)
-
-**Given** a blame output from an initial commit (boundary commit)
-**When** `_parse_blame_timestamps` parses it
-**Then** it parses normally — `author-time` is still present on boundary commits
-
-**Given** a blame output with uncommitted changes (zero SHA `0000000...`)
-**When** `_parse_blame_timestamps` parses it
-**Then** it parses normally — `author-time` reflects working copy time
-
-**Given** lines that don't match any expected format (corrupted or truncated blame data)
-**When** `_parse_blame_timestamps` encounters them
-**Then** they are silently skipped (NFR25 — never raises exceptions)
-
-**FRs:** FR50, NFR25, NFR29
-
-### Story 5.2: Drift and Age Detection Orchestrator
-
-As a developer,
-I want to detect symbols where code has drifted ahead of its docstring by a configurable threshold or where the docstring has aged past a configurable limit,
-So that periodic audits surface docstrings that may need review.
-
-**Acceptance Criteria:**
-
-**Given** a symbol where `max(code_timestamps) - max(docstring_timestamps) > drift_threshold * 86400`
-**When** `check_freshness_drift` is called
-**Then** it returns a `Finding` with `rule="stale-drift"`, `category="recommended"`, and a message including both dates and the day count (e.g., `Function 'process_batch' code modified 2025-12-14, docstring last modified 2025-10-02 (73 days drift)`)
-
-**Given** a symbol where `now - max(docstring_timestamps) > age_threshold * 86400`
-**When** `check_freshness_drift` is called
-**Then** it returns a `Finding` with `rule="stale-age"`, `category="recommended"`, and a message including the docstring date and day count (e.g., `Function 'validate_schema' docstring untouched since 2025-09-15 (147 days)`)
-
-**Given** a symbol that triggers both `stale-drift` and `stale-age`
-**When** `check_freshness_drift` is called
-**Then** it returns two findings for that symbol — the rules are independent (FR61 drift — per rule, not per mode)
-
-**Given** a symbol where the drift is exactly at the threshold boundary (`code_max - doc_max == threshold * 86400`)
-**When** `check_freshness_drift` is called
-**Then** it does not emit a `stale-drift` finding (strict greater-than comparison `>`, not `>=`)
-
-**Given** a symbol where the docstring age is exactly at the threshold boundary
-**When** `check_freshness_drift` is called
-**Then** it does not emit a `stale-age` finding (strict greater-than `>`)
-
-**Given** a symbol with no docstring (`docstring_range is None`)
-**When** `check_freshness_drift` is called
-**Then** it produces zero findings for that symbol (FR54 — no docstring timestamps to evaluate)
-
-**Given** a symbol with only a docstring (no code body, e.g., a stub)
-**When** `check_freshness_drift` is called
-**Then** `stale-drift` cannot trigger (no code timestamps) but `stale-age` can still trigger based on docstring age alone
-
-**Given** a symbol where code timestamps and docstring timestamps are within the drift threshold
-**When** `check_freshness_drift` is called
-**Then** it produces zero `stale-drift` findings for that symbol (FR62)
-
-**Given** `config.drift_threshold = 30` and `config.age_threshold = 90` (defaults)
-**When** `check_freshness_drift` is called with no explicit config overrides
-**Then** it applies the default thresholds (FR65)
-
-**Given** `config.drift_threshold = 7` (custom override)
-**When** `check_freshness_drift` is called on a symbol where code is 10 days newer than docstring
-**Then** it emits a `stale-drift` finding (FR63 — configurable threshold)
-
-**Given** `config.age_threshold = 180` (custom override)
-**When** `check_freshness_drift` is called on a symbol whose docstring is 100 days old
-**Then** it does not emit a `stale-age` finding (under the custom threshold — FR64)
-
-**Given** a `now` parameter passed explicitly (Unix timestamp)
-**When** `check_freshness_drift` is called
-**Then** it uses the provided `now` instead of `time.time()` (test determinism)
-
-**Given** no `now` parameter
-**When** `check_freshness_drift` is called
-**Then** it defaults to `time.time()` for the current UTC timestamp
-
-**Given** an empty `blame_output` string
-**When** `check_freshness_drift` is called
-**Then** it returns an empty list immediately (NFR25)
-
-**Given** identical `blame_output`, identical `tree`, and identical `now` timestamp
-**When** `check_freshness_drift` is called multiple times
-**Then** it produces identical output every time (deterministic)
-
-**Given** the `_compute_drift` helper
-**When** called with code timestamps, docstring timestamps, and threshold
-**Then** it returns `True` if drift exceeds threshold, `False` otherwise
-
-**Given** the `_compute_age` helper
-**When** called with docstring timestamps, `now`, and threshold
-**Then** it returns `True` if age exceeds threshold, `False` otherwise
-
-**FRs:** FR51, FR52, FR53, FR54 (verified), FR61 (drift), FR62 (drift), FR63, FR64, FR65, FR66 (drift), NFR21, NFR22, NFR25, NFR26, NFR27, NFR28
-
-### Story 5.3: CLI Wiring for Drift Mode
-
-As a developer,
-I want to run `docvet freshness --mode drift` from the command line and see drift/age findings,
-So that I can perform periodic docstring health audits on my codebase.
-
-**Acceptance Criteria:**
-
-**Given** `docvet freshness --mode drift` is run on a codebase with committed history
-**When** the command executes
-**Then** it runs `git blame --line-porcelain` for each discovered file and passes the output to `check_freshness_drift`
-
-**Given** a codebase with symbols whose docstrings have drifted beyond the default threshold
-**When** `docvet freshness --mode drift` is run
-**Then** findings are printed in `file:line: rule message` format (one per line)
-
-**Given** a codebase with no drift or age threshold violations
-**When** `docvet freshness --mode drift` is run
-**Then** it produces no output and exits with code 0
-
-**Given** `docvet freshness --mode drift` is run
-**When** the command loads config
-**Then** it reads `drift-threshold` and `age-threshold` from `[tool.docvet.freshness]` in `pyproject.toml` and passes `FreshnessConfig` to `check_freshness_drift`
-
-**Given** no `[tool.docvet.freshness]` section in `pyproject.toml`
-**When** `docvet freshness --mode drift` is run
-**Then** it uses default thresholds (drift: 30 days, age: 90 days — FR65)
-
-**Given** a file with no git history (untracked, no blame data)
-**When** `docvet freshness --mode drift` processes it
-**Then** the file is skipped (empty blame output produces empty list)
-
-**Given** `docvet freshness` is run with no `--mode` flag
-**When** the command executes
-**Then** it still defaults to diff mode (FR68 — unchanged from Epic 4)
-
-**Given** `docvet check` is run (all checks)
-**When** freshness drift mode is not explicitly selected
-**Then** freshness runs in diff mode by default alongside other checks
-
-**FRs:** FR67 (drift wiring), FR68 (`--mode drift`), NFR21, NFR29
-
----
-
-**Epic 5 Summary:** 3 stories, covering all 13 FRs assigned to this epic. Story 5.1 handles git blame parsing. Story 5.2 implements drift/age threshold logic and the orchestrator. Story 5.3 wires drift mode into the CLI with the `--mode` flag.
-
----
-
-## Epic 6: Coverage Check (Missing `__init__.py` Detection)
-
-A developer can run `docvet coverage` and discover Python files invisible to mkdocstrings because parent directories lack `__init__.py`. The check walks from each file's parent directory up to `src-root`, flags gaps in the package hierarchy with one deduplicated finding per missing directory, and integrates with the existing CLI (`docvet coverage` standalone or `docvet check` combined). Category is always `required` — a missing `__init__.py` is a definitive visibility gap.
-
-### Story 6.1: Core Coverage Detection Function
-
-As a developer,
-I want a `check_coverage` function that detects missing `__init__.py` in parent directories,
-So that I can identify Python files invisible to mkdocstrings before deploying documentation.
-
-**Acceptance Criteria:**
-
-**Given** a Python file at `src/pkg/sub/module.py` where `src/pkg/sub/` lacks `__init__.py`
-**When** `check_coverage(src_root, files)` is called
-**Then** it returns a `Finding` with `rule="missing-init"`, `category="required"`, `symbol="<module>"`, `line=1`, and a message naming the directory `sub` and the affected file count
-
-**Given** a Python file at `src/pkg/sub/module.py` where all directories have `__init__.py`
-**When** `check_coverage(src_root, files)` is called
-**Then** it returns an empty list (zero findings)
-
-**Given** a Python file directly under `src_root` (e.g., `src/utils.py`)
-**When** `check_coverage(src_root, files)` is called
-**Then** it returns zero findings for that file (top-level modules are not in a package)
-
-**Given** multiple Python files affected by the same missing `__init__.py` directory
-**When** `check_coverage(src_root, files)` is called
-**Then** it returns exactly one finding for that directory, using the lexicographically first affected file as representative
-
-**Given** a directory hierarchy where an intermediate directory (e.g., `src/pkg/deep/nested/`) lacks `__init__.py`
-**When** `check_coverage(src_root, files)` is called
-**Then** it detects the gap by walking from the file's parent up to `src_root`
-
-**Given** a directory with an empty `__init__.py` (zero bytes)
-**When** `check_coverage(src_root, files)` is called
-**Then** it treats the directory as properly packaged (existence check only, not content)
-
-**Given** a file path not under `src_root` (e.g., `tests/test_foo.py` when `src_root` is `src/`)
-**When** `check_coverage(src_root, files)` is called
-**Then** it skips that file and produces zero findings for it
-
-**Given** an empty `files` list
-**When** `check_coverage(src_root, files)` is called
-**Then** it returns an empty list
-
-**Given** multiple missing directories across different package hierarchies
-**When** `check_coverage(src_root, files)` is called
-**Then** findings are sorted by directory path for deterministic output
-
-**FRs:** FR69, FR70, FR71, FR72, FR73, FR74, FR75, FR76, FR77, FR79, FR80, NFR33, NFR34, NFR35, NFR36, NFR37, NFR38
-
-### Story 6.2: CLI Wiring for Coverage Check
-
-As a developer,
-I want to run `docvet coverage` from the command line and see findings for missing `__init__.py` files,
-So that I can integrate coverage checking into my development workflow and CI pipelines.
-
-**Acceptance Criteria:**
-
-**Given** a project with directories missing `__init__.py`
-**When** `docvet coverage` is run
-**Then** findings are printed to terminal in `file:line: rule message` format (one per line)
-
-**Given** a properly packaged project (all `__init__.py` present)
-**When** `docvet coverage` is run
-**Then** it produces no output and exits with code 0
-
-**Given** the existing `_run_coverage` stub in `cli.py`
-**When** the coverage check is wired
-**Then** it resolves `src_root` from `DocvetConfig` (defaulting to project root), passes `src_root` and discovered files to `check_coverage`, and returns findings
-
-**Given** `docvet check` is run (all checks)
-**When** coverage is in the enabled checks
-**Then** coverage findings are included alongside findings from other checks
-
-**Given** `docvet coverage --all` is run
-**When** the run completes
-**Then** all Python files in the project are analyzed (not just git diff files)
-
-**Given** no `src-root` key in `[tool.docvet]` configuration
-**When** `docvet coverage` is run
-**Then** `src_root` defaults to the project root (git root or CWD)
-
-**FRs:** FR78, NFR33
-
----
-
-**Epic 6 Summary:** 2 stories covering all 12 FRs. Story 6.1 delivers the pure detection function with comprehensive `tmp_path` tests and edge case coverage. Story 6.2 wires it into the CLI with `src_root` resolution.
-
----
-
-## Freshness Requirements Inventory
-
-### Freshness Functional Requirements
-
-**Diff Mode Detection (FR43-FR49):**
-
-- FR43: The system can parse git diff output to extract changed hunk line ranges for a given file
-- FR44: The system can map changed line ranges to AST symbols using the existing line-to-symbol mapping from `ast_utils`
-- FR45: The system can classify each changed line within a symbol as belonging to the signature range, docstring range, or body range
-- FR46: The system can detect symbols where code lines (signature or body) changed but docstring lines did not change
-- FR47: The system can assign HIGH severity (category `required`) when a symbol's signature range contains changed lines
-- FR48: The system can assign MEDIUM severity (category `recommended`) when a symbol's body range contains changed lines but its signature range does not
-- FR49: The system can assign LOW severity (category `recommended`) when only lines within a symbol's enclosing line range but outside its signature, docstring, and body ranges changed, and no signature or body lines changed
-
-**Drift Mode Detection (FR50-FR54):**
-
-- FR50: The system can parse `git blame --line-porcelain` output to extract per-line modification timestamps for a given file
-- FR51: The system can group per-line timestamps by symbol using the existing line-to-symbol mapping from `ast_utils`
-- FR52: The system can detect symbols where the most recent code modification exceeds the most recent docstring modification by more than a configurable drift threshold (default: 30 days)
-- FR53: The system can detect symbols where the docstring has not been modified within a configurable age threshold (default: 90 days)
-- FR54: The system can skip symbols with no docstring in both diff and drift modes, producing zero findings for undocumented symbols
-
-**Freshness Edge Cases (FR55-FR58):**
-
-- FR55: The system can produce zero freshness findings for newly created files where all lines appear as additions in the git diff
-- FR56: The system can handle functions that appear in a git diff's deleted lines but no longer exist in the current AST, producing zero findings for those symbols
-- FR57: The system can treat code relocated within a file as a delete-plus-add (body change at the new location, no finding at the old location), without requiring `git diff --find-renames`
-- FR58: The system can skip binary files and non-Python files present in git diff output without producing findings or raising exceptions
-
-**Freshness Finding Production (FR59-FR62):**
-
-- FR59: The system can produce a structured finding for each stale docstring, carrying file path, line number, symbol name, rule identifier, human-readable message, and category
-- FR60: The system can produce freshness findings using the shared `Finding` dataclass without modification to the dataclass fields or behavior
-- FR61: The system can produce at most one finding per symbol per rule, selecting the highest applicable severity when multiple change types affect the same symbol in diff mode
-- FR62: The system can produce zero findings when analyzing code where all changed symbols have correspondingly updated docstrings
-
-**Freshness Configuration (FR63-FR65):**
-
-- FR63: A developer can configure the drift threshold (in days) via `drift-threshold` in `[tool.docvet.freshness]`
-- FR64: A developer can configure the age threshold (in days) via `age-threshold` in `[tool.docvet.freshness]`
-- FR65: The system can apply default thresholds (drift: 30 days, age: 90 days) when no `[tool.docvet.freshness]` section is provided in `pyproject.toml`
-
-**Freshness Integration (FR66-FR68):**
-
-- FR66: The system can accept file path, git output string (diff or blame), and parsed AST as inputs and return a list of findings as output
-- FR67: A developer can run the freshness check standalone via `docvet freshness` or as part of all checks via `docvet check`
-- FR68: A developer can select diff or drift mode via `--mode` CLI option, with diff as the default
-
-### Freshness Non-Functional Requirements
-
-**Freshness Performance (NFR20-NFR22):**
-
-- NFR20: Diff mode can process a single file's git diff and produce findings in under 100ms
-- NFR21: Drift mode performance is dominated by git blame I/O; the freshness pure function itself adds no measurable overhead beyond timestamp parsing and symbol comparison
-- NFR22: Memory usage for freshness scales linearly with file count — each file is processed independently with no cross-file state
-
-**Freshness Correctness (NFR23-NFR26):**
-
-- NFR23: Non-signature code changes never produce HIGH severity findings — body-only changes produce at most MEDIUM severity (category `recommended`)
-- NFR24: Identical git diff input and identical AST produce identical severity assignment for the same symbol, regardless of execution environment or ordering
-- NFR25: Malformed git output (truncated diffs, corrupted blame data, empty strings) results in zero findings for affected files, never exceptions or tracebacks
-- NFR26: Finding messages name the specific symbol, the severity level, and the type of change detected (signature, body, or drift), enabling the developer to locate and fix the stale docstring without additional context
-
-**Freshness Maintainability (NFR27-NFR28):**
-
-- NFR27: Diff mode and drift mode can be tested independently using mocked git output strings with no filesystem or git subprocess calls
-- NFR28: Adding a new severity level or drift rule requires changes to at most 3 files: the freshness module (`freshness.py`), config (`config.py`), and tests (`test_freshness.py`)
-
-**Freshness Compatibility (NFR29-NFR30):**
-
-- NFR29: Freshness functions handle git diff and git blame output from git 2.x without version-specific code paths
-- NFR30: Freshness functions handle both `git diff` (unstaged) and `git diff --cached` (staged) output identically, as both use the same unified diff hunk format
-
-**Freshness Integration (NFR31-NFR32):**
-
-- NFR31: Freshness reuses the shared `Finding` dataclass without modification — no new fields, no subclassing, no changes to the frozen 6-field shape
-- NFR32: Freshness has no cross-imports with enrichment or any other check module — it depends only on `checks.Finding` and `ast_utils`
-
-### Freshness Additional Requirements
-
-**From Architecture (6 decisions, validated):**
-
-- No prerequisite PRs needed — all shared infrastructure already implemented (`Symbol` range fields, `map_lines_to_symbols`, `Finding`, `FreshnessConfig`)
-- Mode-oriented single `freshness.py` file: constants → shared helpers → diff block → `check_freshness_diff` → drift block → `check_freshness_drift`
-- `_parse_diff_hunks(diff_output) -> set[int]` — line-by-line iteration, single pass, handles new files/binary files/rename headers
-- `_parse_blame_timestamps(blame_output) -> dict[int, int]` — state machine, SHA line via split, author-time via startswith
-- `_classify_changed_lines(changed_lines, symbol) -> str | None` — priority-ordered early returns: docstring→None, signature→HIGH, body→MEDIUM, else→LOW
-- `_build_finding` shared helper for all finding construction (unlike enrichment's inline construction)
-- Config asymmetry is intentional design invariant: `check_freshness_diff` has zero config dependency; only `check_freshness_drift` takes `FreshnessConfig`
-- `check_freshness_drift` accepts optional `*, now=None` parameter for test determinism
-- Defensive by design, no try/except — parsers return empty on bad input, public functions return `[]` on empty input
-- CLI wiring (`_run_freshness` stub replacement) is a **separate integration story** — main freshness PR adds only `checks/freshness.py` and tests
-- Integration test fixtures shared in `tests/integration/conftest.py` — diff needs staged/unstaged repo fixtures, drift needs committed history with blame
-- Use `.splitlines()` not `.split("\n")`, set operations for range intersections, string literals for rule IDs
-
-**From Validation Report:**
-
-- FR61 says "per mode" but architecture correctly implements "per rule" — drift can emit 2 findings per symbol (`stale-drift` + `stale-age`). Treat as "per rule" during implementation
-
----
-
-## Coverage Requirements Inventory
-
-### Coverage Functional Requirements
-
-**Coverage Detection (FR69-FR74):**
-
-- FR69: The system can detect Python files whose parent directories lack `__init__.py`, making them invisible to mkdocstrings for API documentation generation
-- FR70: The system can walk the directory hierarchy from each Python file's parent upward to the configured `src-root`, checking each intermediate directory for `__init__.py` existence
-- FR71: The system can stop the upward directory walk at `src-root` — directories at or above `src-root` are not required to have `__init__.py`
-- FR72: The system can skip top-level modules (Python files directly under `src-root`) since they are not in a package and do not require `__init__.py`
-- FR73: The system can treat an empty `__init__.py` file as satisfying the requirement — only existence is checked, not content
-- FR74: The system can produce at most one finding per missing `__init__.py` directory, even when multiple Python files are affected by the same gap
-
-**Coverage Finding Production (FR75-FR76):**
-
-- FR75: The system can produce a structured coverage finding carrying the path of a representative affected file (lexicographically first by path), line 1, `"<module>"` as symbol, `missing-init` as rule identifier, a message naming the directory missing `__init__.py` and the count of affected files, and category `required`
-- FR76: The system can produce zero findings when all parent directories between discovered files and `src-root` contain `__init__.py`
-
-**Coverage Integration (FR77-FR80):**
-
-- FR77: The system can accept a `src-root` path and a list of discovered Python file paths as inputs and return a list of findings as output
-- FR78: A developer can run the coverage check standalone via `docvet coverage` or as part of all checks via `docvet check`
-- FR79: The system can operate as a pure function with no side effects beyond filesystem existence checks, producing deterministic output for a given filesystem state
-- FR80: The system can skip files that are not under `src_root` (e.g., test files outside the source tree), producing zero findings for those files without raising exceptions
-
-### Coverage Non-Functional Requirements
-
-**Coverage Performance (NFR33):**
-
-- NFR33: The coverage check can process a 200-file codebase via `docvet coverage --all` in under 1 second — pure filesystem stat calls with no AST parsing, no git commands, and no subprocess overhead
-
-**Coverage Correctness (NFR34-NFR35):**
-
-- NFR34: The coverage check produces zero findings on a properly packaged project where all parent directories between Python files and `src-root` contain `__init__.py` (deterministic, reproducible)
-- NFR35: The coverage check produces identical output for identical filesystem state regardless of execution environment, time, or file processing order — findings are sorted by directory path, and representative files are selected as the lexicographically first affected file
-
-**Coverage Maintainability (NFR36):**
-
-- NFR36: The coverage check can be tested using `tmp_path` filesystem fixtures with no git repository, no AST parsing, and no external dependencies
-
-**Coverage Compatibility (NFR37):**
-
-- NFR37: The coverage check works on Linux, macOS, and Windows using `pathlib.Path` for all path operations — no platform-specific code paths
-
-**Coverage Integration (NFR38):**
-
-- NFR38: Coverage has no cross-imports with enrichment, freshness, or any other check module — it depends only on `checks.Finding` and `pathlib`
-
-### Coverage Additional Requirements
-
-**From PRD Technical Guidance:**
-
-- Pure filesystem check: `pathlib.Path` only, no AST, no git, no new runtime dependencies
-- All shared infrastructure already exists: `Finding` dataclass, `_run_coverage` CLI stub, discovery pipeline, `coverage` in `_VALID_CHECK_NAMES` and default `warn_on`
-- `src_root` resolution from existing `DocvetConfig` — default is project root (git root or CWD) when `src-root` is not configured
-- Deduplication: one finding per missing directory using lexicographically first affected file for deterministic output
-- Namespace package false positives are a known limitation — workaround is `exclude` patterns in `[tool.docvet]` which the discovery pipeline applies before files reach `check_coverage`
-- Symbol name convention: `"<module>"` for consistency with enrichment and freshness module-level symbol naming
-- No architecture document for coverage — PRD technical guidance is the implementation specification
-- Simplest of the four checks: estimated ~50-100 lines of implementation
-
----
-
-## Griffe Requirements Inventory
-
-### Griffe Functional Requirements
-
-**Griffe Detection (FR81-FR85):**
-
-- FR81: The system can detect docstring parameters that lack type annotations in both the docstring text and the function signature, producing a finding when griffe's parser warns about missing types
-- FR82: The system can detect docstring parameters that do not appear in the function signature, producing a finding when griffe's parser warns about unknown parameters
-- FR83: The system can detect docstring formatting issues (confusing indentation, malformed entries, missing blank lines, skipped sections) that degrade rendered documentation quality
-- FR84: The system can load a Python package via griffe's package loader and capture parser warnings emitted during docstring parsing
-- FR85: The system can filter captured griffe warnings to only those originating from files in the discovered file list, respecting `--staged`, `--all`, and `--files` discovery modes
-
-**Griffe Finding Production (FR86-FR89):**
-
-- FR86: The system can produce a structured griffe finding carrying file path, line number, symbol name, rule identifier (`griffe-missing-type`, `griffe-unknown-param`, or `griffe-format-warning`), griffe's warning message, and category (`required` or `recommended` based on rule)
-- FR87: The system can classify each griffe warning into one of 3 rule identifiers by matching the warning message against known patterns
-- FR88: The system can produce one finding per griffe warning (not deduplicated per symbol), allowing multiple findings for the same symbol when griffe reports multiple individually-fixable issues
-- FR89: The system can produce zero findings when analyzing well-documented code with typed parameters and valid parameter names
-
-**Griffe Edge Cases (FR90-FR93):**
-
-- FR90: The system can return an empty list immediately when griffe is not installed, without raising exceptions or producing error findings
-- FR91: The system can handle griffe package loading failures (syntax errors in user code, missing third-party imports, permission errors) by returning an empty list without crashing
-- FR92: The system can classify griffe warnings from future griffe versions that do not match known patterns as `griffe-format-warning` rather than dropping them
-- FR93: The system can produce zero findings when all discovered files are outside the loaded griffe package
-
-**Griffe Integration (FR94-FR97):**
-
-- FR94: The system can accept a `src-root` path and a list of discovered Python file paths as inputs and return a list of findings as output
-- FR95: A developer can run the griffe check standalone via `docvet griffe` or as part of all checks via `docvet check`
-- FR96: The system can capture griffe parser warnings via a temporary logging handler attached to the griffe logger, removing the handler after loading completes to ensure no permanent modification to global logging state
-- FR97: The CLI can detect griffe availability before invoking the check function and emit a verbose-mode note when griffe is skipped, plus a stderr warning when griffe is in `fail-on` but not installed
-
-### Griffe Non-Functional Requirements
-
-**Griffe Performance (NFR39-NFR40):**
-
-- NFR39: The griffe check can process a 200-file package via `docvet griffe --all` in under 10 seconds — aspirational benchmark; performance is dominated by griffe's package loading I/O
-- NFR40: The griffe check is designed to add negligible overhead beyond griffe's package loading and docstring parsing — design invariant
-
-**Griffe Correctness (NFR41-NFR43):**
-
-- NFR41: The griffe check produces zero findings on well-documented code where all parameters have type annotations and match the function signature
-- NFR42: The griffe check produces zero findings and raises no exceptions when griffe is not installed
-- NFR43: Unrecognized griffe warning messages (from future griffe versions) are classified as `griffe-format-warning` rather than dropped or causing exceptions
-
-**Griffe Maintainability (NFR44-NFR45):**
-
-- NFR44: The griffe check can be tested using mocked griffe logging output with no actual package loading
-- NFR45: Adding a new griffe rule identifier requires changes to at most 2 files: the griffe module (`griffe_compat.py`) and its tests (`test_griffe_compat.py`)
-
-**Griffe Compatibility (NFR46):**
-
-- NFR46: The griffe check works with griffe 1.x releases, using only stable public APIs
-
-**Griffe Integration (NFR47-NFR48):**
-
-- NFR47: Griffe reuses the shared `Finding` dataclass without modification
-- NFR48: Griffe has no cross-imports with enrichment, freshness, coverage, or any other check module
-
-### Griffe Additional Requirements
-
-**From Architecture (6 decisions, validated):**
-
-- No prerequisite PRs needed — all shared infrastructure already implemented (`Finding`, `_run_griffe` stub, griffe CLI command, discovery pipeline, `src-root` resolution, optional `griffe` dependency)
-- Single `griffe_compat.py` file with one public function: `check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]`
-- Conditional import: `try: import griffe except ImportError: griffe = None` with `TYPE_CHECKING` guard for type hints
-- Warning capture via custom `_WarningCollector(logging.Handler)` with per-object attribution via snapshot pattern (`before:after` slice)
-- Package loading: `griffe.load(package_name, search_paths=[str(src_root)], docstring_parser="google", allow_inspection=False)` with lazy parsing
-- Package discovery: walk `src_root` for immediate child directories with `__init__.py`
-- `_walk_objects` recursive generator: skip aliases (`obj.is_alias`), skip no-docstring, filter by `file_set`
-- `_classify_warning` pure function: substring matching with priority order (`griffe-unknown-param` first, then `griffe-missing-type`, catch-all `griffe-format-warning`)
-- `_build_finding_from_record` helper: parse `_WARNING_PATTERN = re.compile(r"^(.+?):(\d+): (.+)$")`, classify, construct Finding
-- Finding field sources: `file=str(obj.filepath)`, `line=parsed from warning`, `symbol=obj.name`, `message=f"{obj.kind.value.capitalize()} '{obj.name}' {message_text}"`
-- Layered exception handling: load-time explicit catch (`LoadingError`, `ModuleNotFoundError`, `OSError`, `SyntaxError`), walk-time alias skip, handler cleanup via try/finally
-- `_resolve_file_set(files)` normalizes paths to absolute via `.resolve()` for set membership comparison
-- Handler attached once wrapping all package loads (not per-package), removed in `finally` block
-- Trust griffe for deduplication — no docvet-level dedup in MVP
-- Two-story pattern: Story 1 = core function + unit tests + integration smoke test; Story 2 = CLI wiring
-- Test fixture: `tests/fixtures/griffe_pkg/` with `__init__.py` + `bad_docstrings.py` containing known-bad docstrings
-- Mock strategy: unit tests use mocked griffe objects (`MagicMock(spec=griffe.Function)`) and log records; integration tests use real `griffe.load()` with `pytest.importorskip("griffe")`
-- Never use runtime `isinstance` checks against griffe types — `from __future__ import annotations` defers annotation evaluation
-- CLI wiring (Story 2): resolve `src_root` from `config.project_root / config.src_root` (same as coverage), validate exists, handle FR97 verbose messaging and stderr warnings
-
----
-
-## Epic 7: Griffe Compatibility Check (Rendering Warning Detection)
-
-A developer can run `docvet griffe` and discover docstrings that will produce warnings during mkdocs build — missing type annotations in Args, parameters documented but absent from the function signature, and formatting issues that degrade rendered documentation. Uses the griffe library (optional dependency) to parse docstrings at the package level, captures parser warnings via logging, and maps them to findings with 3 rule identifiers.
-
-### Story 7.1: Core Griffe Compatibility Check Function
-
-As a developer,
-I want a `check_griffe_compat` function that loads a Python package via griffe, captures parser warnings, and produces findings for rendering compatibility issues,
-So that I can detect docstrings that will render incorrectly in mkdocs-material documentation before deployment.
-
-**Acceptance Criteria:**
-
-**Given** a Python package with a function whose Args parameter lacks a type annotation in both docstring and signature
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it returns a `Finding` with `rule="griffe-missing-type"`, `category="recommended"`, the specific line number from the warning, and a message including the symbol name and griffe's warning text
-
-**Given** a Python package with a function that documents a parameter not in the function signature
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it returns a `Finding` with `rule="griffe-unknown-param"`, `category="required"`, and a message identifying the phantom parameter
-
-**Given** a Python package with a function whose docstring has formatting issues (confusing indentation, malformed entries)
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it returns a `Finding` with `rule="griffe-format-warning"`, `category="recommended"`
-
-**Given** a function with 3 untyped parameters
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it returns 3 separate `griffe-missing-type` findings (one per parameter, not deduplicated per symbol — FR88)
-
-**Given** a well-documented package where all parameters have type annotations and match the function signature
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it returns an empty list (zero findings — FR89, NFR41)
-
-**Given** griffe is not installed (`griffe is None`)
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it returns an empty list immediately without raising exceptions (FR90, NFR42)
-
-**Given** an empty `files` list
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it returns an empty list immediately without invoking griffe package loading
-
-**Given** a package that fails to load via griffe (syntax errors in user code, missing imports)
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it catches the exception (`LoadingError`, `ModuleNotFoundError`, `OSError`, `SyntaxError`) and continues to the next package (FR91)
-
-**Given** `src_root` contains multiple packages (multiple child directories with `__init__.py`)
-**When** `check_griffe_compat(src_root, files)` is called
-**Then** it loads each package in sorted order and produces findings from all loadable packages; a failure in one package does not abort others
-
-**Given** a griffe warning with an unrecognized message format (from a future griffe version)
-**When** `_classify_warning(message)` is called
-**Then** it returns `("griffe-format-warning", "recommended")` as the catch-all classification (FR92, NFR43)
-
-**Given** the `_classify_warning` function receives a message containing `"does not appear in the function signature"`
-**When** called
-**Then** it returns `("griffe-unknown-param", "required")` — checked before `griffe-missing-type` (priority order)
-
-**Given** the `_classify_warning` function receives a message containing `"No type or annotation for"`
-**When** called
-**Then** it returns `("griffe-missing-type", "recommended")`
-
-**Given** the `_WarningCollector` logging handler attached to `logging.getLogger("griffe")`
-**When** griffe emits WARNING-level log records during docstring parsing
-**Then** the handler collects all records in its `records` list
-
-**Given** the `_WarningCollector` handler
-**When** griffe emits DEBUG or INFO level records
-**Then** the handler ignores them (level filter set to WARNING)
-
-**Given** the logging handler lifecycle
-**When** `check_griffe_compat` completes (normally or via exception)
-**Then** the handler is removed from the griffe logger via try/finally (FR96 — no permanent global state modification)
-
-**Given** the `files` parameter contains only files outside the loaded griffe package
-**When** `_walk_objects(package, file_set)` walks the object tree
-**Then** all objects are filtered out and zero findings are produced (FR93)
-
-**Given** the `_walk_objects` generator encounters an alias object (`obj.is_alias`)
-**When** walking the griffe object tree
-**Then** it skips the alias without accessing its attributes (avoids `AliasResolutionError`)
-
-**Given** a griffe object with `obj.docstring is None`
-**When** `_walk_objects` encounters it
-**Then** it skips the object (no docstring to parse, no warnings to produce)
-
-**Given** the `_build_finding_from_record` helper receives a log record whose `getMessage()` matches `_WARNING_PATTERN` (`^(.+?):(\d+): (.+)$`)
-**When** called with the record and griffe object
-**Then** it extracts the line number from the warning (group 2), classifies the message text (group 3), and constructs a `Finding` with `file=str(obj.filepath)`, `line=parsed_line`, `symbol=obj.name`, and the classified rule/category
-
-**Given** a log record whose `getMessage()` does not match `_WARNING_PATTERN`
-**When** `_build_finding_from_record` is called
-**Then** it returns `None` (defensive — unrecognized format skipped)
-
-**Given** the `tests/fixtures/griffe_pkg/` fixture package with known-bad docstrings
-**When** `check_griffe_compat` is called with real griffe loading (integration test, requires `pytest.importorskip("griffe")`)
-**Then** it produces the expected findings for all 3 rule types and zero findings for the well-documented function
-
-**FRs:** FR81, FR82, FR83, FR84, FR85, FR86, FR87, FR88, FR89, FR90, FR91, FR92, FR93, FR94, FR96
-**NFRs:** NFR39, NFR40, NFR41, NFR42, NFR43, NFR44, NFR45, NFR46, NFR47, NFR48
-
-### Story 7.2: CLI Wiring for Griffe Compatibility Check
-
-As a developer,
-I want to run `docvet griffe` from the command line and see rendering compatibility findings in the standard output format,
-So that I can integrate griffe checking into my development workflow and CI pipelines.
-
-**Acceptance Criteria:**
-
-**Given** a codebase with docstrings that produce griffe parser warnings
-**When** `docvet griffe` is run
-**Then** findings are printed to terminal in `file:line: rule message` format (one per line)
-
-**Given** a codebase with well-documented code (no griffe warnings)
-**When** `docvet griffe` is run
-**Then** it produces no output and exits with code 0
-
-**Given** the existing `_run_griffe` stub in `cli.py`
-**When** the griffe check is wired
-**Then** it resolves `src_root` from `config.project_root / config.src_root` (same pattern as `_run_coverage`) and passes `src_root` and discovered files to `check_griffe_compat`
-
-**Given** griffe is not installed
-**When** `docvet griffe` is run
-**Then** the CLI detects griffe unavailability via `importlib.util.find_spec("griffe")` and skips the check silently (exit 0, no error)
-
-**Given** griffe is not installed and verbose mode is enabled
-**When** `docvet griffe` is run
-**Then** the CLI emits a note: `griffe: skipped (griffe not installed)` (FR97)
-
-**Given** griffe is not installed and griffe is in the `fail-on` list
-**When** `docvet check` is run
-**Then** the CLI emits a stderr warning that the griffe check was skipped due to missing dependency (FR97)
-
-**Given** `docvet check` is run (all checks)
-**When** griffe is installed and in the enabled checks
-**Then** griffe findings are included alongside findings from enrichment, freshness, and coverage
-
-**Given** `docvet griffe --all` is run
-**When** the run completes
-**Then** all Python files in the project are analyzed (discovery passes full file list to `check_griffe_compat`)
-
-**Given** `docvet griffe --staged` is run
-**When** the run completes
-**Then** only staged files are passed to `check_griffe_compat` (griffe still loads the full package but findings are filtered to staged files)
-
-**Given** `src_root` cannot be resolved (e.g., configured path does not exist)
-**When** `docvet griffe` is run
-**Then** the CLI handles the error gracefully (same error handling as `_run_coverage`)
-
-**FRs:** FR95, FR97
-**NFRs:** NFR39
-
----
-
-**Epic 7 Summary:** 2 stories covering all 17 FRs (FR81-FR97) and all 10 NFRs (NFR39-NFR48). Story 7.1 delivers the core `check_griffe_compat` function with all 3 rule identifiers, graceful skip when griffe is not installed, exception handling, file filtering, and comprehensive unit + integration tests. Story 7.2 wires it into the CLI with `src_root` resolution, griffe availability detection, and verbose messaging.
-
----
-
-## Epic 8: Reporting & CI Integration
-
-A developer can run any `docvet` command and receive formatted, color-coded findings output with summary statistics, file export capability, and CI-appropriate exit codes — replacing the current inline `typer.echo()` output with a unified reporting pipeline. The reporting module is a cross-cutting output layer with pure formatting functions (`format_terminal`, `format_markdown`, `format_verbose_header`, `write_report`) and exit code logic (`determine_exit_code`), wired through a shared `_output_and_exit` CLI coordinator.
-
-**FRs covered:** FR98, FR99, FR100, FR101, FR101a, FR101b, FR102, FR103, FR104, FR104a, FR105, FR106, FR107, FR108, FR109, FR110
-
-### Story 8.1: CLI Refactor — Return Findings from Check Runners
-
-As a developer,
-I want the CLI check runners to return structured findings instead of printing inline,
-So that findings can be routed to a unified reporting pipeline for formatting and CI exit code logic.
-
-**Acceptance Criteria:**
-
-**Given** `_run_enrichment` processing files with enrichment findings
-**When** `_run_enrichment(files, config)` is called
-**Then** it returns a `list[Finding]` containing all enrichment findings across all files
-**And** no `typer.echo()` calls are made for individual findings
-
-**Given** `_run_freshness` in diff mode processing files with freshness findings
-**When** `_run_freshness(...)` is called in diff mode
-**Then** it returns a `list[Finding]` containing all diff-mode findings
-**And** the early return pattern with two separate branches is preserved
-
-**Given** `_run_freshness` in drift mode processing files with freshness findings
-**When** `_run_freshness(...)` is called in drift mode
-**Then** it returns a `list[Finding]` containing all drift-mode findings
-
-**Given** `_run_coverage` processing files with coverage findings
-**When** `_run_coverage(files, config)` is called
-**Then** it returns a `list[Finding]` containing all coverage findings
-
-**Given** `_run_griffe` processing files with griffe findings
-**When** `_run_griffe(files, config)` is called
-**Then** it returns a `list[Finding]` containing all griffe findings
-**And** all skip paths (`find_spec` check, `src_root.is_dir()`) return `[]` not `None`
-
-**Given** `_run_griffe` when griffe is not installed
-**When** `_run_griffe(files, config)` is called
-**Then** it returns an empty list `[]`
-**And** the existing stderr warning about griffe not installed is preserved
-
-**Given** existing stderr messages in `_run_*` functions (warnings, verbose notes)
-**When** any `_run_*` function is called
-**Then** all existing stderr messages are preserved unchanged (only finding-printing `typer.echo()` calls are removed)
-
-**Given** a `pyproject.toml` with a check name appearing in both `fail-on` and `warn-on`
-**When** the config is loaded
-**Then** a warning is printed to stderr: `docvet: '<check>' appears in both fail-on and warn-on; using fail-on`
-**And** the check name is dropped from `warn_on` (fail_on precedence)
-
-**Given** a shared test fixture `make_finding`
-**When** `tests/conftest.py` is imported
-**Then** a `make_finding` factory fixture is available that creates `Finding` instances with sensible defaults for all 6 fields
-
-**Given** existing CLI tests for `_run_*` functions
-**When** tests are updated
-**Then** they verify the new `list[Finding]` return type
-**And** existing behavior tests (file discovery, config loading) continue to pass
-
-**FRs:** (enabler — no direct FRs; enables FR98-FR110)
-**NFRs:** NFR54
-
-### Story 8.2: Core Reporting Functions
-
-As a developer,
-I want a reporting module with pure formatting functions and exit code logic,
-So that findings can be rendered consistently for terminal, markdown, and CI contexts.
-
-**Acceptance Criteria:**
-
-**Given** a list of findings from multiple files
-**When** `format_terminal(findings)` is called
-**Then** it returns a string with one `file:line: rule message [category]` line per finding, findings sorted by `(file, line)`, blank lines between file groups, and a summary line
-
-**Given** a list of findings all from the same file
-**When** `format_terminal(findings)` is called
-**Then** no blank-line separators appear between findings (blank lines only separate different file groups)
-
-**Given** a list of findings with mixed categories
-**When** `format_terminal(findings, no_color=False)` is called (default)
-**Then** `[required]` tags are colored red and `[recommended]` tags are colored yellow via ANSI codes
-**And** the rest of each line (file, line number, rule, message) is uncolored
-
-**Given** a list of findings
-**When** `format_terminal(findings, no_color=True)` is called
-**Then** the output contains zero ANSI escape sequences (`\033[` not present)
-**And** all content is otherwise identical to the colored version
-
-**Given** an empty list of findings
-**When** `format_terminal([])` is called
-**Then** it returns an empty string (no summary line, no headers, no newlines)
-
-**Given** a list of findings from multiple files
-**When** `format_markdown(findings)` is called
-**Then** it returns a valid GFM markdown table with columns: File, Line, Rule, Symbol, Message, Category
-**And** findings are sorted by `(file, line)`
-**And** a bold summary line is appended: `**N findings** (X required, Y recommended)`
-
-**Given** a finding whose message contains a pipe character `|`
-**When** `format_markdown(findings)` is called
-**Then** the pipe is escaped as `\|` in the table cell to prevent GFM table breakage
-
-**Given** an empty list of findings
-**When** `format_markdown([])` is called
-**Then** it returns an empty string
-
-**Given** `format_markdown` output
-**When** examined for ANSI escape sequences
-**Then** none are present (markdown output is always ANSI-free regardless of any parameter)
-
-**Given** 12 files and checks `["enrichment", "freshness"]`
-**When** `format_verbose_header(12, ["enrichment", "freshness"])` is called
-**Then** it returns `"Checking 12 files [enrichment, freshness]\n"`
-
-**Given** findings and an output path with an existing parent directory
-**When** `write_report(findings, output_path, fmt="markdown")` is called
-**Then** it writes the `format_markdown` output to the file
-
-**Given** findings and `fmt="terminal"`
-**When** `write_report(findings, output_path, fmt="terminal")` is called
-**Then** it writes `format_terminal` output with `no_color=True` (ANSI always stripped for files)
-
-**Given** an output path whose parent directory does not exist
-**When** `write_report(findings, output_path)` is called
-**Then** it raises `FileNotFoundError`
-
-**Given** `findings_by_check = {"enrichment": [finding1], "freshness": []}` and `config.fail_on = ["enrichment"]`
-**When** `determine_exit_code(findings_by_check, config)` is called
-**Then** it returns `1` (enrichment is in fail_on and has findings)
-
-**Given** `findings_by_check = {"enrichment": [finding1]}` and `config.fail_on = []`
-**When** `determine_exit_code(findings_by_check, config)` is called
-**Then** it returns `0` (no checks in fail_on, all findings are advisory)
-
-**Given** `findings_by_check = {"enrichment": [], "freshness": []}` (all empty)
-**When** `determine_exit_code(findings_by_check, config)` is called
-**Then** it returns `0` regardless of `fail_on` contents
-
-**Given** `findings_by_check = {"freshness": [finding1]}` and `config.fail_on = ["enrichment"]`
-**When** `determine_exit_code(findings_by_check, config)` is called
-**Then** it returns `0` (freshness is not in fail_on)
-
-**Given** two findings with the same `(file, line)` but different rules
-**When** either formatter is called
-**Then** they appear in stable order (matching insertion/check execution order)
-
-**Given** a list of findings with count > 0
-**When** either formatter produces a summary line
-**Then** it always shows both category counts: `N findings (X required, Y recommended)` — even when one count is zero
-
-**FRs:** FR98, FR99, FR100, FR101, FR102, FR103, FR104, FR105, FR106, FR107, FR110
-**NFRs:** NFR49, NFR50, NFR51, NFR52, NFR53, NFR54
-
-### Story 8.3: CLI Wiring — Unified Output and Exit Code Pipeline
-
-As a developer,
-I want `docvet check` and each standalone subcommand to produce unified, formatted output with proper exit codes,
-So that I can use docvet in CI pipelines with configurable fail/warn thresholds and export reports.
-
-**Acceptance Criteria:**
-
-**Given** `docvet check` run on a project with findings
-**When** the command completes
-**Then** findings from all enabled checks are aggregated into `dict[str, list[Finding]]` and passed to `_output_and_exit`
-**And** formatted output is printed to stdout with a summary line
-
-**Given** `docvet enrichment` (standalone subcommand) run on a project with findings
-**When** the command completes
-**Then** findings are passed as `{"enrichment": findings}` to `_output_and_exit`
-**And** the same formatting/exit code pipeline is used as `docvet check`
-
-**Given** `docvet freshness`, `docvet coverage`, `docvet griffe` standalone subcommands
-**When** each command completes
-**Then** each produces a single-key `dict[str, list[Finding]]` and calls `_output_and_exit`
-
-**Given** `--format markdown` flag
-**When** any docvet command is run
-**Then** `format_markdown` is used instead of `format_terminal` for stdout output
-
-**Given** `--format terminal` flag (or no `--format` flag)
-**When** any docvet command is run
-**Then** `format_terminal` is used for stdout output (terminal is the default)
-
-**Given** `--output report.md` flag with findings
-**When** any docvet command is run
-**Then** formatted output is written to `report.md` instead of stdout
-**And** when `--format` is not explicitly set, the file format defaults to markdown
-
-**Given** `--format markdown --output report.md` (both flags explicitly set)
-**When** any docvet command is run with findings
-**Then** the user's explicit `--format markdown` is respected and markdown output is written to the file
-
-**Given** `--output report.md` flag with zero findings
-**When** any docvet command is run
-**Then** `write_report` is not called (no file is created)
-**And** if verbose, `"No findings.\n"` is printed to stdout
-
-**Given** `--verbose` flag with findings
-**When** any docvet command is run
-**Then** `format_verbose_header` output is printed to stderr (not stdout)
-**And** findings are printed to stdout
-
-**Given** `--verbose` flag with zero findings
-**When** any docvet command is run
-**Then** `format_verbose_header` output is printed to stderr
-**And** `"No findings.\n"` is printed to stdout
-
-**Given** `config.fail_on = ["enrichment"]` and enrichment has findings
-**When** `docvet check` completes
-**Then** the exit code is 1
-
-**Given** `config.fail_on = ["enrichment"]` and enrichment has zero findings
-**When** `docvet check` completes
-**Then** the exit code is 0 (even if other checks have findings)
-
-**Given** `config.fail_on = []` (default config — all checks advisory)
-**When** `docvet check` completes with findings
-**Then** the exit code is 0
-
-**Given** `NO_COLOR` environment variable is set (any non-empty value)
-**When** terminal format output is produced
-**Then** ANSI codes are suppressed (`no_color=True` passed to `format_terminal`)
-
-**Given** stdout is not a TTY (e.g., piped to a file)
-**When** terminal format output is produced
-**Then** ANSI codes are suppressed
-
-**Given** `--output` flag is set
-**When** terminal format is used for file output
-**Then** ANSI codes are suppressed (forced `no_color=True`)
-
-**Given** `docvet enrichment` with `config.fail_on = ["freshness"]`
-**When** the command completes
-**Then** exit code is 0 (enrichment is not in fail_on; the single-key dict only contains "enrichment")
-
-**FRs:** FR101a, FR101b, FR103, FR104a, FR105, FR106, FR107, FR108, FR109, FR110
-**NFRs:** NFR49, NFR50
-
----
-
-**Epic 8 Summary:** 3 stories, 46 ACs covering all 16 FRs (FR98-FR110) and all 6 NFRs (NFR49-NFR54). Story 8.1 refactors CLI runners to return findings and adds config overlap warning. Story 8.2 creates the core reporting module with 5 pure functions. Story 8.3 wires everything together with `_output_and_exit`.
+**Given** the docs site with check pages from Story 11.2
+**When** 19 rule reference pages are added
+**Then** each of the 19 rule identifiers (`missing-raises`, `missing-yields`, `missing-receives`, `missing-warns`, `missing-other-parameters`, `missing-attributes`, `missing-typed-attributes`, `missing-examples`, `missing-cross-references`, `prefer-fenced-code-blocks`, `stale-signature`, `stale-body`, `stale-import`, `stale-drift`, `stale-age`, `griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`, `missing-init`) has a dedicated page
+**And** each page shows: rule code, check type (enrichment/freshness/coverage/griffe), default category (required/recommended)
+**And** each page follows the What/Why/Example/Fix template: "What it detects" (1-2 sentences), "Why is this a problem?" (consequence explanation), "Example" (Python code showing the violation), "Fix" (Python code showing the corrected version)
+**And** all 19 pages are linked from their parent check page
+**And** navigation includes a "Rules" section listing all 19 rules
+**And** all 19 rule pages are structurally consistent: same H2 headings (`What it detects`, `Why is this a problem?`, `Example`, `Fix`), same code fence language markers (`python`), same metadata fields (rule code, check type, category)
+**And** `mkdocs serve` builds without errors

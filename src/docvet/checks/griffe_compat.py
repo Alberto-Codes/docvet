@@ -29,7 +29,21 @@ _WARNING_PATTERN = re.compile(r"^(.+?):(\d+): (.+)$")
 
 
 class _WarningCollector(logging.Handler):
-    """Collects WARNING-level log records from the griffe logger."""
+    """Collects WARNING-level log records from the griffe logger.
+
+    Attributes:
+        records (list[logging.LogRecord]): Captured warning-level log records.
+
+    Examples:
+        Attach to a logger to capture warnings:
+
+        ```python
+        handler = _WarningCollector()
+        logger.addHandler(handler)
+        # ... trigger warnings ...
+        print(handler.records)
+        ```
+    """
 
     def __init__(self) -> None:
         """Initialize the handler with WARNING level and empty records list."""
