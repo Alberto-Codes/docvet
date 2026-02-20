@@ -13,6 +13,8 @@ from typing import Annotated
 
 import typer
 
+__all__: list[str] = []
+
 from docvet.checks import Finding
 from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
