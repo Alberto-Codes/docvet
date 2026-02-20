@@ -130,7 +130,9 @@ class TestAllEntriesAreResolvable:
     def test_all_entries_are_resolvable(self, module_path):
         mod = importlib.import_module(module_path)
         for name in mod.__all__:
-            assert hasattr(mod, name), f"{module_path}.{name} in __all__ but not resolvable"
+            assert hasattr(mod, name), (
+                f"{module_path}.{name} in __all__ but not resolvable"
+            )
 
 
 @pytest.mark.unit
