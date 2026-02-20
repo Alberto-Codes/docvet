@@ -285,22 +285,21 @@ def test_griffe_when_invoked_with_staged_and_all_fails_with_error():
 # ---------------------------------------------------------------------------
 
 
-def test_check_when_invoked_with_verbose_prints_verbose_enabled():
+def test_check_when_invoked_with_verbose_prints_verbose_header():
     result = runner.invoke(app, ["--verbose", "check"])
     assert result.exit_code == 0
-    assert "verbose: enabled" in result.output
+    assert "Checking" in result.output
+    assert "No findings." in result.output
 
 
-def test_check_when_invoked_with_format_markdown_prints_format():
+def test_check_when_invoked_with_format_markdown_exits_successfully():
     result = runner.invoke(app, ["--format", "markdown", "check"])
     assert result.exit_code == 0
-    assert "format: markdown" in result.output
 
 
-def test_check_when_invoked_with_output_flag_prints_output_path():
+def test_check_when_invoked_with_output_flag_exits_successfully():
     result = runner.invoke(app, ["--output", "report.md", "check"])
     assert result.exit_code == 0
-    assert "output: report.md" in result.output
 
 
 def test_app_when_invoked_with_format_invalid_fails():
@@ -1484,3 +1483,199 @@ def test_run_griffe_direct_no_findings_returns_empty_list(tmp_path, mocker):
     config = DocvetConfig(project_root=tmp_path)
     result = _run_griffe([Path("src/app.py")], config)
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# _output_and_exit unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestOutputAndExit:
+    """Tests for the _output_and_exit helper function."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_reporting(self, mocker):
+        """Mock all reporting functions to isolate _output_and_exit logic."""
+        self.mock_format_terminal = mocker.patch(
+            "docvet.cli.format_terminal", return_value="terminal output\n"
+        )
+        self.mock_format_markdown = mocker.patch(
+            "docvet.cli.format_markdown", return_value="| markdown output |\n"
+        )
+        self.mock_format_verbose_header = mocker.patch(
+            "docvet.cli.format_verbose_header",
+            return_value="Checking 1 files [enrichment]\n",
+        )
+        self.mock_write_report = mocker.patch("docvet.cli.write_report")
+        self.mock_determine_exit_code = mocker.patch(
+            "docvet.cli.determine_exit_code", return_value=0
+        )
+
+    def _make_ctx(self, verbose=False, fmt=None, output=None):
+        """Build a minimal typer.Context-like with obj dict."""
+        ctx = MagicMock()
+        ctx.obj = {
+            "verbose": verbose,
+            "format": fmt,
+            "output": output,
+        }
+        return ctx
+
+    def _call(self, ctx, findings_by_check, config, file_count, checks):
+        """Call _output_and_exit and return the exit code."""
+        from click.exceptions import Exit as ClickExit
+
+        from docvet.cli import _output_and_exit
+
+        with pytest.raises(ClickExit) as exc_info:
+            _output_and_exit(ctx, findings_by_check, config, file_count, checks)
+        return exc_info.value.exit_code
+
+    def test_terminal_format_is_default_when_format_not_set(self, make_finding):
+        finding = make_finding()
+        ctx = self._make_ctx()
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_format_terminal.assert_called_once_with([finding], no_color=ANY)
+        self.mock_format_markdown.assert_not_called()
+
+    def test_format_markdown_selects_format_markdown(self, make_finding):
+        finding = make_finding()
+        ctx = self._make_ctx(fmt="markdown")
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_format_markdown.assert_called_once_with([finding])
+        self.mock_format_terminal.assert_not_called()
+
+    def test_output_writes_file_via_write_report(self, make_finding):
+        finding = make_finding()
+        ctx = self._make_ctx(output="report.md")
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_write_report.assert_called_once_with(
+            [finding], Path("report.md"), fmt="markdown"
+        )
+        self.mock_format_terminal.assert_not_called()
+        self.mock_format_markdown.assert_not_called()
+
+    def test_output_without_format_defaults_to_markdown_for_file(self, make_finding):
+        finding = make_finding()
+        ctx = self._make_ctx(output="report.md")
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_write_report.assert_called_once_with(
+            [finding], Path("report.md"), fmt="markdown"
+        )
+
+    def test_output_with_explicit_format_terminal_writes_terminal_to_file(
+        self, make_finding
+    ):
+        finding = make_finding()
+        ctx = self._make_ctx(fmt="terminal", output="report.md")
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_write_report.assert_called_once_with(
+            [finding], Path("report.md"), fmt="terminal"
+        )
+
+    def test_output_with_zero_findings_skips_write_report(self):
+        ctx = self._make_ctx(output="report.md")
+        self._call(ctx, {"enrichment": []}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_write_report.assert_not_called()
+
+    def test_output_verbose_zero_findings_no_file_header_stderr_no_findings_stdout(
+        self, capsys
+    ):
+        ctx = self._make_ctx(verbose=True, output="report.md")
+        self._call(ctx, {"enrichment": []}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_write_report.assert_not_called()
+        captured = capsys.readouterr()
+        assert "Checking 1 files [enrichment]" in captured.err
+        assert "Checking 1 files [enrichment]" not in captured.out
+        assert "No findings.\n" in captured.out
+
+    def test_verbose_with_findings_prints_header_to_stderr(self, capsys, make_finding):
+        ctx = self._make_ctx(verbose=True)
+        self._call(
+            ctx, {"enrichment": [make_finding()]}, DocvetConfig(), 1, ["enrichment"]
+        )
+        captured = capsys.readouterr()
+        assert "Checking 1 files [enrichment]" in captured.err
+        assert "Checking 1 files [enrichment]" not in captured.out
+        assert "terminal output" in captured.out
+
+    def test_verbose_with_zero_findings_prints_header_stderr_no_findings_stdout(
+        self, capsys
+    ):
+        ctx = self._make_ctx(verbose=True)
+        self._call(ctx, {"enrichment": []}, DocvetConfig(), 1, ["enrichment"])
+        captured = capsys.readouterr()
+        assert "Checking 1 files [enrichment]" in captured.err
+        assert "Checking 1 files [enrichment]" not in captured.out
+        assert "No findings.\n" in captured.out
+
+    def test_exit_code_1_when_fail_on_check_has_findings(self, make_finding):
+        self.mock_determine_exit_code.return_value = 1
+        finding = make_finding()
+        ctx = self._make_ctx()
+        config = DocvetConfig(fail_on=["enrichment"])
+        code = self._call(ctx, {"enrichment": [finding]}, config, 1, ["enrichment"])
+        assert code == 1
+        self.mock_determine_exit_code.assert_called_once_with(
+            {"enrichment": [finding]}, config
+        )
+
+    def test_exit_code_0_when_fail_on_check_has_no_findings(self):
+        self.mock_determine_exit_code.return_value = 0
+        ctx = self._make_ctx()
+        config = DocvetConfig(fail_on=["enrichment"])
+        findings_by_check = {"enrichment": []}
+        code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
+        assert code == 0
+        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
+
+    def test_exit_code_0_when_fail_on_is_empty(self, make_finding):
+        self.mock_determine_exit_code.return_value = 0
+        finding = make_finding()
+        ctx = self._make_ctx()
+        config = DocvetConfig()
+        findings_by_check = {"enrichment": [finding]}
+        code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
+        assert code == 0
+        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
+
+    def test_no_color_env_var_suppresses_ansi(self, monkeypatch, make_finding):
+        monkeypatch.setenv("NO_COLOR", "1")
+        ctx = self._make_ctx()
+        self._call(
+            ctx, {"enrichment": [make_finding()]}, DocvetConfig(), 1, ["enrichment"]
+        )
+        self.mock_format_terminal.assert_called_once()
+        assert self.mock_format_terminal.call_args[1]["no_color"] is True
+
+    def test_non_tty_stdout_suppresses_ansi(self, monkeypatch, make_finding):
+        monkeypatch.delenv("NO_COLOR", raising=False)
+        monkeypatch.setattr("sys.stdout.isatty", lambda: False)
+        ctx = self._make_ctx()
+        self._call(
+            ctx, {"enrichment": [make_finding()]}, DocvetConfig(), 1, ["enrichment"]
+        )
+        self.mock_format_terminal.assert_called_once()
+        assert self.mock_format_terminal.call_args[1]["no_color"] is True
+
+    def test_output_flag_forces_no_color_true(self, make_finding):
+        finding = make_finding()
+        ctx = self._make_ctx(fmt="terminal", output="report.md")
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
+        self.mock_write_report.assert_called_once_with(
+            [finding], Path("report.md"), fmt="terminal"
+        )
+        self.mock_format_terminal.assert_not_called()
+        self.mock_format_markdown.assert_not_called()
+
+    def test_standalone_subcommand_exit_code_when_check_not_in_fail_on(
+        self, make_finding
+    ):
+        self.mock_determine_exit_code.return_value = 0
+        finding = make_finding()
+        ctx = self._make_ctx()
+        config = DocvetConfig(fail_on=["freshness"])
+        findings_by_check = {"enrichment": [finding]}
+        code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
+        assert code == 0
+        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)

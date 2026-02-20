@@ -5,7 +5,9 @@ from __future__ import annotations
 import ast
 import enum
 import importlib.util
+import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -18,6 +20,13 @@ from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
 from docvet.checks.griffe_compat import check_griffe_compat
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode, discover_files
+from docvet.reporting import (
+    determine_exit_code,
+    format_markdown,
+    format_terminal,
+    format_verbose_header,
+    write_report,
+)
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -95,22 +104,6 @@ def _resolve_discovery_mode(
     return DiscoveryMode.DIFF
 
 
-def _print_global_context(ctx: typer.Context) -> None:
-    """Print acknowledged global options when set.
-
-    Args:
-        ctx: Typer context carrying global options in ``ctx.obj``.
-    """
-    if ctx.obj.get("verbose"):
-        typer.echo("verbose: enabled", err=True)
-    fmt = ctx.obj.get("format")
-    if fmt is not None:
-        typer.echo(f"format: {fmt}", err=True)
-    output = ctx.obj.get("output")
-    if output is not None:
-        typer.echo(f"output: {output}", err=True)
-
-
 def _discover_and_handle(
     ctx: typer.Context,
     mode: DiscoveryMode,
@@ -146,6 +139,71 @@ def _discover_and_handle(
         typer.echo(f"Found {len(discovered)} file(s) to check", err=True)
 
     return discovered
+
+
+def _output_and_exit(
+    ctx: typer.Context,
+    findings_by_check: dict[str, list[Finding]],
+    config: DocvetConfig,
+    file_count: int,
+    checks: list[str],
+) -> None:
+    """Format findings, optionally write to file, and exit with proper code.
+
+    Implements the unified output pipeline: resolves no_color, prints
+    verbose header to stderr, selects format, writes file or prints to
+    stdout, and raises ``typer.Exit`` with the appropriate exit code.
+
+    Args:
+        ctx: Typer context carrying global options in ``ctx.obj``.
+        findings_by_check: Findings grouped by check name.
+        config: Loaded docvet configuration.
+        file_count: Number of files that were checked.
+        checks: List of check names that were run.
+    """
+    output_path = ctx.obj.get("output")
+    verbose = ctx.obj.get("verbose", False)
+    fmt_opt = ctx.obj.get("format")
+
+    # 1. Resolve no_color
+    no_color = (
+        os.environ.get("NO_COLOR", "") != ""
+        or not sys.stdout.isatty()
+        or output_path is not None
+    )
+
+    # 2. Flatten findings
+    all_findings: list[Finding] = []
+    for findings in findings_by_check.values():
+        all_findings.extend(findings)
+
+    # 3. Verbose header to stderr
+    if verbose:
+        sys.stderr.write(format_verbose_header(file_count, checks))
+
+    # 4. Resolve format and produce formatted string
+    if fmt_opt is not None:
+        resolved_fmt = fmt_opt
+    elif output_path is not None:
+        resolved_fmt = "markdown"
+    else:
+        resolved_fmt = "terminal"
+
+    # 5-6. Output findings
+    if output_path and all_findings:
+        write_report(all_findings, Path(output_path), fmt=resolved_fmt)
+    elif all_findings:
+        if resolved_fmt == "markdown":
+            sys.stdout.write(format_markdown(all_findings))
+        else:
+            sys.stdout.write(format_terminal(all_findings, no_color=no_color))
+
+    # 7. No findings message
+    if verbose and not all_findings:
+        sys.stdout.write("No findings.\n")
+
+    # 8. Exit
+    raise typer.Exit(determine_exit_code(findings_by_check, config))
 
 
 def _get_git_diff(
@@ -408,7 +466,6 @@ def check(
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
-    _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
     enrichment_findings = _run_enrichment(discovered, config)
@@ -419,10 +476,19 @@ def check(
     griffe_findings = _run_griffe(
         discovered, config, verbose=ctx.obj.get("verbose", False)
     )
-    for f in (
-        enrichment_findings + freshness_findings + coverage_findings + griffe_findings
-    ):
-        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
+    findings_by_check = {
+        "enrichment": enrichment_findings,
+        "freshness": freshness_findings,
+        "coverage": coverage_findings,
+        "griffe": griffe_findings,
+    }
+    _output_and_exit(
+        ctx,
+        findings_by_check,
+        config,
+        len(discovered),
+        ["enrichment", "freshness", "coverage", "griffe"],
+    )
 
 
 @app.command()
@@ -441,12 +507,12 @@ def enrichment(
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
-    _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
     findings = _run_enrichment(discovered, config)
-    for f in findings:
-        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
+    _output_and_exit(
+        ctx, {"enrichment": findings}, config, len(discovered), ["enrichment"]
+    )
 
 
 @app.command()
@@ -469,14 +535,14 @@ def freshness(
         mode: Freshness strategy (diff or drift).
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
-    _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
     findings = _run_freshness(
         discovered, config, freshness_mode=mode, discovery_mode=discovery_mode
     )
-    for f in findings:
-        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
+    _output_and_exit(
+        ctx, {"freshness": findings}, config, len(discovered), ["freshness"]
+    )
 
 
 @app.command()
@@ -495,12 +561,10 @@ def coverage(
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
-    _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
     findings = _run_coverage(discovered, config)
-    for f in findings:
-        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
+    _output_and_exit(ctx, {"coverage": findings}, config, len(discovered), ["coverage"])
 
 
 @app.command()
@@ -519,9 +583,7 @@ def griffe(
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
-    _print_global_context(ctx)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
     findings = _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))
-    for f in findings:
-        typer.echo(f"{f.file}:{f.line}: {f.rule} {f.message}")
+    _output_and_exit(ctx, {"griffe": findings}, config, len(discovered), ["griffe"])
