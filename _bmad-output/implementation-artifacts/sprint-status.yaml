@@ -1,4 +1,4 @@
-# generated: 2026-02-11
+# generated: 2026-02-19
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-11
+generated: 2026-02-19
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -95,3 +95,25 @@ development_status:
   8-2-core-reporting-functions: done
   8-3-cli-wiring-unified-output-and-exit-code-pipeline: done
   epic-8-retrospective: done
+
+  # Epic 9: Dogfooding & API Hardening
+  epic-9: in-progress
+  9-1-fix-docvet-findings-on-own-codebase: ready-for-dev
+  9-2-add-all-exports-to-all-public-modules: backlog
+  9-3-version-bump-and-build-configuration: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: Package, Publish & Integrations
+  epic-10: backlog
+  10-1-license-and-package-metadata: backlog
+  10-2-readme-with-comparison-table-quickstart-and-badges: backlog
+  10-3-pre-commit-hook-and-github-action: backlog
+  10-4-changelog-and-publication-pipeline: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11: Documentation Site & Rule Reference
+  epic-11: backlog
+  11-1-documentation-site-scaffold-and-core-pages: backlog
+  11-2-check-pages-and-configuration-reference: backlog
+  11-3-rule-reference-pages: backlog
+  epic-11-retrospective: optional
