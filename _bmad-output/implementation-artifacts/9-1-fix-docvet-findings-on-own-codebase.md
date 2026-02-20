@@ -1,6 +1,6 @@
 # Story 9.1: Fix Docvet Findings on Own Codebase
 
-Status: review
+Status: done
 
 ## Story
 
@@ -84,6 +84,10 @@ so that the tool credibly dogfoods itself before publication.
 | #3 | All docstring content reviewed: accurate types, genuine examples, proper cross-reference syntax, Google-style format | Pass |
 
 ## Dev Notes
+
+### Branch Scope Note
+
+This branch includes story 8.3 (unified output pipeline) changes that were not yet merged to `develop` when story 9.1 started. The findings inventory (R4, R5) references `_output_and_exit` and `main` Raises sections that only exist because 8.3 introduced them on this branch. The `tests/unit/test_cli.py` changes (renamed tests, `TestOutputAndExit` class) are also 8.3 carry-over. Story 9.1 changes are limited to docstring additions, config suppression, and the `Finding` re-export.
 
 ### Fix Strategy
 
@@ -179,13 +183,14 @@ None — no debugging required. All changes were docstring additions and config.
 - Resolved all 23 findings (8 required + 15 recommended) to 0 enrichment findings
 - Story miscategorized `_WarningCollector` as a dataclass (it's a plain class extending `logging.Handler`). Added `Examples:` section instead of relying on config suppression (added as subtask 2.4).
 - Story referenced `main` function in `__init__.py` but it doesn't exist (entry point is `docvet.cli:app`). Re-exported `Finding` from `docvet.checks` instead for a genuine Attributes section.
-- Used fenced code blocks (not doctest `>>>`) for all Examples sections per `prefer-fenced-code-blocks` rule.
+- Used fenced code blocks for Python Examples sections per `prefer-fenced-code-blocks` rule. Exception: `__init__.py` module docstring uses RST `::` indented blocks for shell command examples (not flagged by the rule).
 - Used backtick cross-reference syntax in See Also sections per `missing-cross-references` rule.
 - 2 transient `stale-body` findings remain in `docvet check --all` due to uncommitted diff; these resolve after commit when `git diff HEAD` returns empty.
 
 ### Change Log
 
 - 2026-02-20: Implemented all 4 tasks — docstring fixes, config suppression, verification
+- 2026-02-20: Code review — fixed 3 MEDIUM issues (File List incomplete, scope bleed undocumented, Completion Notes inaccuracy)
 
 ### File List
 
@@ -196,3 +201,4 @@ None — no debugging required. All changes were docstring additions and config.
 - `src/docvet/cli.py` — added Raises to `_output_and_exit` and `main`
 - `src/docvet/config.py` — added Attributes to `FreshnessConfig`, `EnrichmentConfig`, `DocvetConfig`
 - `pyproject.toml` — added `[tool.docvet.enrichment]` with `require-examples = ["class", "protocol"]`
+- `tests/unit/test_cli.py` — (story 8.3 carry-over) renamed 3 tests for new output pipeline, added `TestOutputAndExit` class
