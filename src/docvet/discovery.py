@@ -11,6 +11,8 @@ from pathlib import Path, PurePosixPath
 
 from docvet.config import DocvetConfig
 
+__all__: list[str] = []
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
