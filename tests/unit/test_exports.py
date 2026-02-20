@@ -55,6 +55,9 @@ class TestChecksPackageReExports:
         assert hasattr(mod, "check_griffe_compat")
         assert callable(mod.check_coverage)
         assert callable(mod.check_enrichment)
+        assert callable(mod.check_freshness_diff)
+        assert callable(mod.check_freshness_drift)
+        assert callable(mod.check_griffe_compat)
 
 
 @pytest.mark.unit
@@ -119,6 +122,15 @@ class TestAllModulesHaveAll:
     def test_module_defines_all(self, module_path):
         mod = importlib.import_module(module_path)
         assert hasattr(mod, "__all__"), f"{module_path} missing __all__"
+
+
+@pytest.mark.unit
+class TestAllEntriesAreResolvable:
+    @pytest.mark.parametrize("module_path", _ALL_DOCVET_MODULES)
+    def test_all_entries_are_resolvable(self, module_path):
+        mod = importlib.import_module(module_path)
+        for name in mod.__all__:
+            assert hasattr(mod, name), f"{module_path}.{name} in __all__ but not resolvable"
 
 
 @pytest.mark.unit
