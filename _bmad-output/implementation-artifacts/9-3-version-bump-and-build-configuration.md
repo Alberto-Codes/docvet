@@ -1,6 +1,6 @@
 # Story 9.3: Version Bump and Build Configuration
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -21,27 +21,27 @@ so that the published package is correctly versioned and contains only productio
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Bump version in `pyproject.toml` (AC: #1)
-  - [ ] 1.1 Change `version = "0.1.0"` to `version = "1.0.0"` in `pyproject.toml`
-- [ ] Task 2: Add `--version` flag to CLI (AC: #2)
-  - [ ] 2.1 Add `importlib.metadata` import to `cli.py`
-  - [ ] 2.2 Add a `_version_callback` function that prints `docvet {version}` and raises `typer.Exit()`
-  - [ ] 2.3 Add `--version` option to the `main` callback using `typer.Option(callback=_version_callback, is_eager=True)`
-  - [ ] 2.4 Update `main` docstring to document the new `version` parameter
-- [ ] Task 3: Configure sdist build exclusions (AC: #3)
-  - [ ] 3.1 Add `[tool.hatch.build.targets.sdist]` section to `pyproject.toml` with `exclude` list
-- [ ] Task 4: Add tests for `--version` flag (AC: #2, #6)
-  - [ ] 4.1 Test `docvet --version` outputs version string and exits with code 0
-  - [ ] 4.2 Test version string matches `importlib.metadata.version("docvet")`
-- [ ] Task 5: Build and verify artifacts (AC: #4, #5)
-  - [ ] 5.1 Run `uv build` — produces both `.whl` and `.tar.gz`
-  - [ ] 5.2 Verify wheel contains only `docvet/` package files (no tests, fixtures, docs)
-  - [ ] 5.3 Verify sdist excludes `tests/`, `_bmad-output/`, `_bmad/`, `.github/`, `docs/`
-  - [ ] 5.4 Verify both artifacts are under 500KB
-- [ ] Task 6: Run all quality gates (AC: #6)
-  - [ ] 6.1 `uv run pytest` — all existing tests pass
-  - [ ] 6.2 `uv run ruff check .` — no lint errors
-  - [ ] 6.3 `uv run ruff format --check .` — no formatting issues
+- [x] Task 1: Bump version in `pyproject.toml` (AC: #1)
+  - [x] 1.1 Change `version = "0.1.0"` to `version = "1.0.0"` in `pyproject.toml`
+- [x] Task 2: Add `--version` flag to CLI (AC: #2)
+  - [x] 2.1 Add `importlib.metadata` import to `cli.py`
+  - [x] 2.2 Add a `_version_callback` function that prints `docvet {version}` and raises `typer.Exit()`
+  - [x] 2.3 Add `--version` option to the `main` callback using `typer.Option(callback=_version_callback, is_eager=True)`
+  - [x] 2.4 Update `main` docstring to document the new `version` parameter
+- [x] Task 3: Configure sdist build exclusions (AC: #3)
+  - [x] 3.1 Add `[tool.hatch.build.targets.sdist]` section to `pyproject.toml` with `exclude` list
+- [x] Task 4: Add tests for `--version` flag (AC: #2, #6)
+  - [x] 4.1 Test `docvet --version` outputs version string and exits with code 0
+  - [x] 4.2 Test version string matches `importlib.metadata.version("docvet")`
+- [x] Task 5: Build and verify artifacts (AC: #4, #5)
+  - [x] 5.1 Run `uv build` — produces both `.whl` and `.tar.gz`
+  - [x] 5.2 Verify wheel contains only `docvet/` package files (no tests, fixtures, docs)
+  - [x] 5.3 Verify sdist excludes `tests/`, `_bmad-output/`, `_bmad/`, `.github/`, `docs/`
+  - [x] 5.4 Verify both artifacts are under 500KB
+- [x] Task 6: Run all quality gates (AC: #6)
+  - [x] 6.1 `uv run pytest` — all existing tests pass
+  - [x] 6.2 `uv run ruff check .` — no lint errors
+  - [x] 6.3 `uv run ruff format --check .` — no formatting issues
 
 ## AC-to-Test Mapping
 
@@ -49,12 +49,12 @@ so that the published package is correctly versioned and contains only productio
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| #1 | Manual: inspect `pyproject.toml` | |
-| #2 | `test_version_flag_outputs_version`, `test_version_flag_exits_zero` | |
-| #3 | Manual: inspect sdist contents after `uv build` | |
-| #4 | Manual: `uv build` + file size check | |
-| #5 | Manual: `python -m zipfile -l dist/*.whl` | |
-| #6 | Full test suite pass | |
+| #1 | Manual: `pyproject.toml` shows `version = "1.0.0"` | PASS |
+| #2 | `test_version_flag_outputs_version_string`, `test_version_flag_includes_version_number`, `test_version_flag_exits_with_code_zero` | PASS |
+| #3 | Manual: `tar tzf dist/*.tar.gz` confirms no `tests/`, `_bmad-output/`, `_bmad/`, `.github/`, `docs/` | PASS |
+| #4 | Manual: `uv build` produces 34K wheel + 43K sdist (both under 500KB) | PASS |
+| #5 | Manual: `python -m zipfile -l dist/*.whl` shows only `docvet/` package files | PASS |
+| #6 | `uv run pytest` — 726 passed, 1 skipped | PASS |
 
 ## Dev Notes
 
@@ -179,10 +179,30 @@ def test_version_flag_outputs_version(runner):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+None — clean implementation with no debugging required.
+
 ### Completion Notes List
 
+- Bumped version from `0.1.0` to `1.0.0` in `pyproject.toml`
+- Added `--version` flag using typer's eager callback pattern with `importlib.metadata.version()`
+- Added `_version_callback` function with proper Google-style docstring
+- Updated `main` callback signature and docstring to include `version` parameter
+- Added `[tool.hatch.build.targets.sdist]` exclusion list for non-distribution directories
+- Added 3 new tests for `--version` flag (output content, version number match, exit code)
+- TDD approach: tests written first (RED), then implementation (GREEN)
+- Build verified: wheel 34K (only `docvet/` files), sdist 43K (excludes tests, BMAD, docs, GitHub)
+- All quality gates pass: 726 tests passed, ruff lint clean, ruff format clean
+
+### Change Log
+
+- 2026-02-20: Implemented version bump, --version CLI flag, and sdist build exclusions for v1.0 release
+
 ### File List
+
+- `pyproject.toml` (modified: version bump 0.1.0 → 1.0.0, added sdist exclusions)
+- `src/docvet/cli.py` (modified: added `importlib.metadata` import, `_version_callback`, `--version` option)
+- `tests/unit/test_cli.py` (modified: added 3 `--version` flag tests)
