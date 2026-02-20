@@ -6,6 +6,8 @@ import ast
 from dataclasses import dataclass
 from typing import Literal
 
+__all__: list[str] = []
+
 _ScopeNode = ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
 
 # ---------------------------------------------------------------------------
