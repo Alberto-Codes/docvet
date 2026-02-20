@@ -32,8 +32,6 @@ from __future__ import annotations
 from dataclasses import dataclass as _dataclass
 from typing import Literal as _Literal
 
-__all__ = ["Finding"]
-
 
 @_dataclass(frozen=True)
 class Finding:
@@ -99,3 +97,24 @@ class Finding:
             raise ValueError(
                 f'category must be "required" or "recommended", got {self.category!r}'
             )
+
+
+# Re-export check functions for convenience imports.
+# These imports MUST come after the Finding class definition to avoid
+# circular imports (each check submodule imports Finding from this package).
+from docvet.checks.coverage import check_coverage
+from docvet.checks.enrichment import check_enrichment
+from docvet.checks.freshness import (
+    check_freshness_diff,
+    check_freshness_drift,
+)
+from docvet.checks.griffe_compat import check_griffe_compat
+
+__all__ = [
+    "Finding",
+    "check_coverage",
+    "check_enrichment",
+    "check_freshness_diff",
+    "check_freshness_drift",
+    "check_griffe_compat",
+]
