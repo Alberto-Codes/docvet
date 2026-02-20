@@ -28,12 +28,21 @@ stepsCompleted:
   - 'reporting-6'
   - 'reporting-7'
   - 'reporting-8'
-lastStep: 'reporting-8'
+  - 'v1-publish-2'
+  - 'v1-publish-3'
+  - 'v1-publish-4a'
+  - 'v1-publish-4'
+  - 'v1-publish-5'
+  - 'v1-publish-6'
+  - 'v1-publish-7'
+  - 'v1-publish-8'
+lastStep: 'v1-publish-8'
 status: 'complete'
 completedAt: '2026-02-11'
 reportingStartedAt: '2026-02-11'
 freshnessStartedAt: '2026-02-09'
 griffeStartedAt: '2026-02-11'
+v1PublishStartedAt: '2026-02-19'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/prd-validation-report.md'
@@ -47,6 +56,7 @@ inputDocuments:
   - 'src/docvet/ast_utils.py'
   - 'src/docvet/config.py'
   - 'src/docvet/checks/__init__.py'
+  - '_bmad-output/planning-artifacts/research/market-python-devtool-presentation-research-2026-02-19.md'
 workflowType: 'architecture'
 project_name: 'docvet'
 user_name: 'Alberto-Codes'
@@ -3129,3 +3139,824 @@ No version conflicts — stdlib and typer only.
   - (f) Exit code driven by `determine_exit_code` — `fail_on` config, not categories
   - (g) Verbose mode: header to stderr when findings exist; "No findings." to stdout when zero findings
   - (h) `no_color` resolved from `NO_COLOR` env var OR non-TTY stdout OR `--output` flag
+
+## v1.0 Polish & Publish — Project Context Analysis
+
+### Requirements Overview
+
+**Functional Requirements:**
+17 FRs (FR111-FR127) across 8 categories. Unlike Epics 1-8 (pure-function AST/git analysis), v1.0 deliverables are packaging, integration, and content artifacts:
+
+- **Packaging (FR111-FR113):** 3 FRs defining PyPI distribution — pure Python wheel, optional `[griffe]` extra, classifiers and adjacent-tool tags for search discoverability
+- **Pre-commit (FR114-FR115):** 2 FRs defining `.pre-commit-hooks.yaml` — hook id `docvet`, `language: python`, `types: [python]`, respects `[tool.docvet]` config
+- **GitHub Action (FR116-FR117):** 2 FRs defining composite action — 3 inputs (`version`, `args`, `src`), exit code pass/fail semantics
+- **README (FR118-FR120):** 3 FRs defining content — comparison table (docvet vs ruff vs interrogate vs pydoclint), single-command quickstart, badge row with adopter snippet
+- **Documentation Site (FR121-FR122):** 2 FRs defining mkdocs-material site — 6+ pages, client-side search, configuration page matching `config.py` schema
+- **Rule Reference (FR123-FR124):** 2 FRs defining 19 rule pages — What/Why/Example/Fix template per rule, severity and category indicators
+- **Dogfooding (FR125-FR126):** 2 FRs defining self-validation — zero findings on own codebase, "docs vetted | docvet" shield badge
+- **API Surface (FR127):** 1 FR defining `__all__` exports on all public modules
+
+**Non-Functional Requirements:**
+12 NFRs (NFR55-NFR66) across 6 categories that define quality gates for the v1.0 deliverables:
+
+- **Packaging Quality (NFR55-NFR56):** Clean install in fresh venv, package size <500KB — enforces exclusion of test data, fixtures, and dev artifacts from distribution
+- **Documentation Quality (NFR57-NFR58):** Site loads <3s, responsive 320px-1920px, CLI docs match `--help` output — enforces docs-to-code consistency
+- **CI Integration Quality (NFR59-NFR60):** Pre-commit <10s for 50 files, GitHub Action <60s for 200 files — aspirational benchmarks, real gate is "not frustrating"
+- **v1.0 Compatibility (NFR61-NFR62):** Pre-commit works with v3.x and v4.x, GitHub Action works on ubuntu/macos/windows runners
+- **Dogfooding (NFR63):** Zero findings from `docvet check --all` as CI gate — pre-publish validates working tree, post-publish validates published package
+- **API Stability (NFR64-NFR66):** `Finding` 6-field shape, check functions, CLI subcommand names all stable for v1.x lifecycle. `__all__` exports on all public modules
+
+**Scale & Complexity:**
+
+- Primary domain: Packaging, CI/CD integration, documentation, and static content generation
+- Complexity level: Medium — low code complexity but high coordination complexity across 8 ecosystem integration contracts (PyPI, pre-commit framework, GitHub Actions, mkdocs-material, shields.io, hatchling, git tags, GitHub Pages)
+- Estimated architectural components: ~8 deliverables (PyPI package, pre-commit hook, GitHub Action, README, docs site, rule reference, dogfooding gate, API audit)
+
+### Technical Constraints & Dependencies
+
+- **Existing infrastructure is complete:** All 5 check modules, reporting pipeline, CLI with 5 subcommands, 678 tests — v1.0 wraps this for distribution
+- **No new runtime dependencies:** Pre-commit hook runs `docvet check` directly. GitHub Action uses `pip install`. Docs site uses mkdocs-material (dev/build dependency only, not runtime)
+- **hatchling build system:** Already configured in `pyproject.toml`. Package metadata, classifiers, and build exclusions are configured here
+- **GitHub Pages or similar hosting:** Docs site needs a deployment target. mkdocs-material `gh-deploy` is the standard pattern
+- **Pre-commit framework contract:** `.pre-commit-hooks.yaml` must follow pre-commit's schema. `language: python` means pre-commit manages its own venv
+- **GitHub Action contract:** `action.yml` with `runs.using: composite`. Steps run in the calling workflow's environment
+- **Version consistency:** Tag-based versioning ties PyPI release, pre-commit `rev:`, and GitHub Action `@v1` together. hatchling with `hatch-vcs` can read version from git tags as the single source of truth
+- **Priority-driven dependency chain:** Deliverables have execution dependencies informed by market research priorities:
+  1. Dogfooding (#49) — must come first; may surface findings requiring code fixes
+  2. PyPI publish (#55) — pre-commit hook and GitHub Action depend on installable package
+  3. Pre-commit (#53) and README (#50) — independent, can parallel after PyPI
+  4. GitHub Action (#54), docs site (#51), rule reference (#52) — can follow
+  5. API audit (#56) — P2, can be last
+
+### Architectural Decisions Needed
+
+Three items identified during party-mode review that require explicit decisions (not just cross-cutting awareness):
+
+1. **Build exclusion strategy:** What goes in the wheel and what doesn't. hatchling's default inclusion behavior, `_bmad-output/`, `tests/fixtures/`, `docs/` source, and dev configs must be explicitly excluded to meet NFR56 (<500KB). This is a `[tool.hatch.build]` configuration decision.
+
+2. **Rule reference generation approach:** 19 rule pages following What/Why/Example/Fix template. Handwritten markdown will drift from code over time. Alternative: define a lightweight structure (YAML or Python dict per rule) and generate docs pages from it. Market research shows ruff and ty both use structured rule pages. Decision needed: handwritten vs generated, and if generated, what schema.
+
+3. **Docs-to-CLI consistency mechanism:** NFR58 requires CLI reference docs to match actual `--help` output. Options: (a) generate CLI reference page from `--help` output during docs build, (b) manually maintain with CI verification check, or (c) use mkdocstrings or typer-cli doc generation. Decision needed: which approach.
+
+### Cross-Cutting Concerns Identified
+
+- **Version strategy:** Pre-commit hook (`rev: v1.0.0`), GitHub Action (`@v1`), PyPI (`docvet==1.0.0`), and docs site version display must all derive from a single source of truth
+- **Rule catalog consistency:** 19 rule pages in the docs site must match the actual rule identifiers in code. Any new rule added in future must update both code and docs
+- **Dogfooding bootstrapping:** Running `docvet check --all` on own codebase may surface findings that need fixing before v1.0 ships. This is a prerequisite for other deliverables (README badge, CI gate)
+- **README dual duty:** `README.md` serves as both the GitHub repository landing page and the PyPI package description (rendered via hatchling). Both renderings must look correct — PyPI has stricter markdown support than GitHub
+
+## v1.0 Existing Infrastructure & Tooling
+
+### Primary Technology Domain
+
+**CLI tool / developer tooling** — Python single-process pipeline. Brownfield project with all foundational technology decisions implemented, tested, and CI-enforced. v1.0 wraps the existing tool for public distribution.
+
+### Established Stack (No Changes)
+
+- **Build system:** hatchling (PEP 517/518), already configured in `pyproject.toml`
+- **Runtime:** typer (only runtime dep), griffe (optional extra) — no new runtime dependencies
+- **Testing:** pytest, pytest-cov, pytest-mock, pytest-randomly — 678 tests passing
+- **Quality:** ruff (lint + format), ty (type checker), interrogate (95% docstring coverage)
+- **CI:** GitHub Actions with lint, format, type-check, test (py3.12 + py3.13), interrogate gates
+
+### New Dev Dependencies for v1.0 (Build/Docs Only)
+
+- **mkdocs-material** (free tier) — docs site framework. Insiders edition not needed: free tier provides navigation tabs, search, admonitions, code highlighting, content tabs, dark/light mode. Explicit decision to avoid Insiders investigation overhead
+- **hatch-vcs** — git-tag-based versioning. `git tag v1.0.0 && python -m build` produces correctly versioned wheel. Single source of truth for PyPI version, pre-commit `rev:`, GitHub Action `@v1`, and docs site display
+- **mkdocs-redirects** (optional) — cheap insurance for URL stability if docs restructure later. Not required for launch
+
+### Deferred Tooling (Not Needed for v1.0)
+
+- **mkdocstrings[python]** — auto-generated API docs. Deferred until public API docs are needed beyond `__all__` exports. Rule reference pages are authored markdown, not generated
+- **mike** — mkdocs version provider for `/v1/` and `/latest/` URL paths. Deferred until v2 exists. Single unversioned docs site for v1.0 launch
+
+### Tooling Decisions Resolved
+
+- **Rule reference pages:** Handwritten markdown with YAML catalog + macros for consistency. Generation tooling deferred until rule count exceeds ~40
+- **Docs deployment:** `actions/deploy-pages@v4` (modern GitHub Actions approach, deployment protection rules, shows in Environments tab)
+- **Build verification:** `uv build && unzip -l dist/*.whl` to verify no test data, fixtures, or `_bmad-output/` leaks into wheel. CI verification step, not a new tool
+- **Navigation:** Explicit `nav:` in `mkdocs.yml` for rule pages grouped by check type. Auto-discovery would produce alphabetical ordering which is wrong for grouped rules
+- **Docs-to-CLI consistency (NFR58):** Not a separate mechanism. mkdocstrings and typer both read the same source docstrings — zero structural drift by construction
+
+## v1.0 Core Architectural Decisions
+
+### Decision Priority Analysis
+
+**Critical Decisions (Block Implementation):**
+1. Build system migration (uv_build) and version strategy (release-please)
+2. Documentation site architecture (mkdocstrings + gepa-adk pattern)
+3. Rule reference page structure (YAML catalog + macros + content tabs)
+
+**Important Decisions (Shape Architecture):**
+4. Pre-commit hook design
+5. GitHub Action design
+6. API surface audit approach
+
+**Deferred Decisions (Post-v1.0):**
+- mkdocs version provider (`mike`) — add when v2 exists
+- Full rule page generation from YAML — revisit when rule count exceeds ~40
+- CLI `--explain` feature consuming rule catalog — growth phase
+
+### Decision 1: Build System & Version Strategy
+
+**Decision:** Migrate from hatchling to `uv_build`. Adopt release-please for version management. Deploy docs via `actions/deploy-pages@v4`.
+
+**Build Backend:** `uv_build >=0.9.22,<0.10.0`
+- Pure Python project — exactly what `uv_build` targets
+- 10-35x faster than hatchling
+- Aligns with Astral ecosystem (ruff, ty, uv)
+- `wheel-exclude` patterns for build exclusion
+- Proven in gepa-adk
+
+**Version Management:** release-please with static version in `pyproject.toml`
+- release-please watches pushes to `develop`, reads conventional commits
+- Opens release PR that bumps `pyproject.toml` version via `extra-files` with `jsonpath: $.project.version`
+- Updates `CHANGELOG.md` automatically
+- On merge, creates GitHub Release with tag (e.g., `v1.0.0`)
+- No dynamic versioning, no `hatch-vcs` — version is always a concrete string
+
+**Publish Pipeline:** Triggered by `release: [published]`
+- `uv build --no-sources` → smoke test wheel + sdist → `uv publish` (OIDC trusted publishing)
+- Publish workflow asserts tag version matches `pyproject.toml` version
+- Prereleases (e.g., `1.0.0a1`) route to TestPyPI by default, safety switch for PyPI
+- Attestations via `astral-sh/attest-action`
+
+**Docs Deployment:** `actions/deploy-pages@v4`
+- Modern GitHub Actions approach (not `mkdocs gh-deploy`)
+- Deployment protection rules, shows in Environments tab
+- Runs alongside publish in the release workflow
+
+**Build Exclusion:** `uv_build` wheel-exclude patterns
+- `packages = ["src/docvet"]` — only package code in wheel
+- `source-exclude` for `_bmad-output/`, `tests/`, `docs/`, `.github/`, `_bmad/`
+- CI verification: `uv build && unzip -l dist/*.whl` to confirm <500KB and no leaks
+
+**Rationale:** Proven pattern from gepa-adk. Eliminates dynamic versioning complexity. Single source of truth: `pyproject.toml` version (bumped by release-please) → git tag → PyPI → pre-commit `rev:` → GitHub Action `@v1`.
+
+**Affects:** All v1.0 deliverables (PyPI, pre-commit, GitHub Action, docs site)
+
+### Decision 2: Documentation Site Architecture
+
+**Decision:** Adopt the gepa-adk mkdocstrings pattern. Auto-generate API reference from source. Author rule reference and guide pages manually. Use ezglossary for domain terms.
+
+**Core Documentation Stack:**
+- `mkdocs-material` (free tier) — Insiders not needed
+- `mkdocstrings[python]` — API reference generation from docstrings
+- `mkdocs-gen-files` — auto-generate reference page stubs at build time
+- `mkdocs-literate-nav` — generated navigation from SUMMARY.md
+- `mkdocs-section-index` — section index pages
+- `mkdocs-macros-plugin` — Jinja macros for rule page templates and YAML data access
+- `mkdocs-ezglossary-plugin` — domain term glossary with inline tooltips
+
+**API Reference (auto-generated):**
+- `scripts/gen_ref_pages.py` (~30 lines) walks `src/docvet/**/*.py`
+- Creates `::: docvet.module` directives for each module
+- mkdocstrings renders full API docs from source docstrings at build time
+- Zero drift by construction — docs ARE the code
+- Covers FR127 (`__all__` exports) and NFR64-66 (API stability documentation)
+
+**NFR58 Resolution (CLI docs matching `--help`):**
+- Not a separate decision. typer generates `--help` from function docstrings and type annotations. mkdocstrings renders docs from those same docstrings. Same source → zero structural drift. Any narrative CLI docs beyond `--help` are editorial, not architectural.
+
+**Glossary (~20 terms):**
+- Define docvet-specific terms once: "Google-style docstring," "symbol," "required/recommended," "six-layer model," "freshness drift," "griffe," check type names
+- `ignore_case: true`, `plurals: en` for automatic matching
+- Tooltips appear on rule pages, getting started, and concepts pages
+- Low cost (~1 markdown file), high value for a tool introducing novel concepts
+
+**Navigation:** Explicit `nav:` in `mkdocs.yml` with rules grouped by check type. Auto-discovery rejected (would produce alphabetical ordering).
+
+**Deferred:**
+- `mike` (version provider) — add when v2 exists
+- `mkdocs-git-revision-date-localized-plugin` — nice-to-have, not blocking
+- `mkdocs-glightbox`, `mkdocs-minify-plugin` — optional polish
+
+**Rationale:** Proven pattern from gepa-adk. mkdocstrings eliminates API reference drift structurally. ezglossary makes rule pages accessible to newcomers. Free tier mkdocs-material covers all PRD requirements (FR121-FR122).
+
+**Affects:** Docs site (#51), rule reference (#52), API audit (#56)
+
+### Decision 3: Rule Reference Page Structure
+
+**Decision:** YAML rule catalog as single source of truth for rule metadata. Jinja macros for consistent page headers and index generation. Content tabs for violation/fix examples. Handwritten narrative for What/Why sections.
+
+**Rule Catalog (`docs/rules.yml`):**
+```yaml
+- id: missing-raises
+  check: enrichment
+  severity: required
+  category: required
+  summary: Function raises exceptions but has no Raises section
+- id: stale-signature
+  check: freshness
+  severity: HIGH
+  category: required
+  summary: Function signature changed but docstring not updated
+# ... 19 entries total
+```
+
+**Page Template (via mkdocs-macros):**
+Each rule page uses a macro-rendered header from YAML metadata (severity badge, check type tag, category indicator) followed by handwritten sections:
+- **What it does** — 1-2 sentences from human author
+- **Why is this bad?** — consequence explanation from human author
+- **Example** — violation and fix shown in content tabs (`pymdownx.tabbed`)
+- **Fix** — corrected code with explanation
+
+**Rules Index Page (auto-generated from YAML):**
+- Table of all 19 rules with columns: Rule ID (linked), Check Type, Severity, Category, Summary
+- Generated by mkdocs-macros reading `rules.yml` at build time
+- Adding a rule = one YAML entry + one markdown file
+
+**Content Tabs for Examples:**
+Uses `pymdownx.tabbed` (bundled with mkdocs-material) to show violation and fix side-by-side in tabs, following the ruff/ty pattern.
+
+**Future Consumers of `rules.yml`:**
+- Rules index page (v1.0)
+- README rules table (v1.0)
+- CLI `--explain <rule-id>` feature (growth phase)
+- Rule documentation URLs in findings (growth phase)
+
+**Rationale:** One source of truth for rule metadata, multiple consumers. Structural consistency across 19 pages without losing editorial freedom. Content tabs follow the ruff/ty pattern. ~100 lines of infrastructure (YAML + macro template + `docs/main.py` hook), then ~30-50 lines of authored markdown per rule page.
+
+**Affects:** Rule reference (#52), docs site (#51), README (#50)
+
+### Decision 4: Pre-commit Hook Design
+
+**Context:** FR118 requires a `.pre-commit-hooks.yaml` for integration with the pre-commit framework. The hook must work with docvet's `--staged` file discovery and optionally support griffe.
+
+**Decision:** Single hook, `pass_filenames: false`, delegating file discovery to docvet.
+
+**Hook Configuration (`.pre-commit-hooks.yaml`):**
+
+```yaml
+- id: docvet
+  name: docvet
+  entry: docvet check --staged
+  language: python
+  types: [python]
+  pass_filenames: false
+  require_serial: true
+```
+
+**Key Design Points:**
+
+- **`pass_filenames: false`** — docvet's `--staged` mode uses `git diff --cached` internally for file discovery. Accepting filenames from pre-commit would bypass this and break the git-aware discovery pipeline.
+- **`require_serial: true`** — prevents parallel invocations that would race on `git diff --cached` state.
+- **`types: [python]`** — ensures pre-commit only triggers on Python file changes (skip early if only markdown/config changed).
+- **Single hook** — one `id: docvet` covers all checks. Users customize via `args:` in their `.pre-commit-config.yaml` (e.g., `args: [enrichment]` to run only enrichment).
+- **Griffe opt-in** — users who want griffe checking add `additional_dependencies: [griffe]` in their `.pre-commit-config.yaml`. The hook itself doesn't declare griffe as a dependency.
+
+**Rationale:** `pass_filenames: false` is the correct pattern when the tool has its own file discovery (same approach as black, isort). Single hook with `args:` customization is simpler than multiple hooks and matches how ruff's pre-commit works. `require_serial` prevents subtle git race conditions.
+
+**Affects:** Pre-commit integration (#53), CI/CD (#54)
+
+### Decision 5: GitHub Action Design
+
+**Context:** FR120 requires a GitHub Action for CI integration. The action should be self-contained, easy to adopt, and follow GitHub Actions best practices.
+
+**Decision:** In-repo composite action with `actions/setup-python`, `shell: bash` on all steps, two inputs.
+
+**Action Configuration (`action.yml`):**
+
+```yaml
+name: 'docvet'
+description: 'Run docvet docstring quality checks'
+inputs:
+  args:
+    description: 'Arguments to pass to docvet (default: check)'
+    required: false
+    default: 'check'
+  version:
+    description: 'docvet version to install (default: latest)'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - shell: bash
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          pip install docvet==${{ inputs.version }}
+        else
+          pip install docvet
+        fi
+    - shell: bash
+      run: docvet ${{ inputs.args }}
+```
+
+**Key Design Points:**
+
+- **Composite action** — no Node.js runtime needed, simpler maintenance than JavaScript actions.
+- **`actions/setup-python@v5`** — ensures Python 3.12+ is available regardless of runner image.
+- **`shell: bash`** on every step — required for composite actions (no default shell inheritance).
+- **Two inputs only** — `args` (what to run) and `version` (which version). Minimal surface area.
+- **`pip install`** — standard Python package install. No uv dependency in the action itself (runners may not have uv).
+- **Floating `v1` tag** — publish workflow updates the `v1` tag on each release so users get `uses: Alberto-Codes/docvet@v1` stability.
+
+**Usage Examples:**
+
+```yaml
+# Basic — run all checks
+- uses: Alberto-Codes/docvet@v1
+
+# Specific check
+- uses: Alberto-Codes/docvet@v1
+  with:
+    args: 'enrichment --all'
+
+# Pinned version
+- uses: Alberto-Codes/docvet@v1
+  with:
+    version: '1.2.0'
+```
+
+**Rationale:** Composite actions are the standard for Python tool actions (ruff, mypy). Self-contained install avoids requiring users to set up Python themselves. Two inputs cover all use cases without over-engineering. Floating major version tag is the GitHub Actions convention.
+
+**Affects:** GitHub Action (#54), CI/CD pipeline, publish workflow
+
+### Decision 6: API Surface Audit
+
+**Context:** NFR61 requires documenting the public API before PyPI publication. Currently only 2 of 9 source modules define `__all__`. The API surface must be explicit for backward compatibility commitments.
+
+**Decision:** Two-tier API surface with explicit `__all__` on all modules.
+
+**Tier 1 — Stable Public API (7 symbols):**
+
+| Symbol | Module | Purpose |
+|--------|--------|---------|
+| `Finding` | `docvet.checks` | Core data class (frozen dataclass, 6 fields) |
+| `check_enrichment` | `docvet.checks.enrichment` | Enrichment check entry point |
+| `check_freshness_diff` | `docvet.checks.freshness` | Freshness diff mode entry point |
+| `check_freshness_drift` | `docvet.checks.freshness` | Freshness drift mode entry point |
+| `check_coverage` | `docvet.checks.coverage` | Coverage check entry point |
+| `check_griffe_compat` | `docvet.checks.griffe_compat` | Griffe compatibility check entry point |
+| `Finding` | `docvet` (re-export) | Top-level convenience import |
+
+**Tier 2 — Internal (empty `__all__`):**
+
+All other modules (`cli`, `config`, `discovery`, `ast_utils`, `reporting`) get `__all__: list[str] = []` to signal "no public API here."
+
+**Implementation Plan:**
+
+1. Add `__all__ = []` to 7 modules that lack it: `cli.py`, `config.py`, `discovery.py`, `ast_utils.py`, `reporting.py`, `checks/enrichment.py`, `checks/freshness.py`
+2. Update `checks/griffe_compat.py` — add `__all__ = ["check_griffe_compat"]`
+3. Update `checks/freshness.py` — add `__all__ = ["check_freshness_diff", "check_freshness_drift"]`
+4. Update `checks/enrichment.py` — add `__all__ = ["check_enrichment"]`
+5. Update `checks/__init__.py` — already has `__all__ = ["Finding"]`, add check function re-exports
+6. Update top-level `__init__.py` — add `from docvet.checks import Finding` and `__all__ = ["Finding"]`
+
+**Rationale:** Explicit `__all__` on every module is the Python packaging standard. Two tiers make the semver commitment clear: Tier 1 changes require a major version bump, Tier 2 can change freely. Re-exporting only `Finding` at the top level keeps the convenience import minimal. No CI enforcement needed — `__all__` is self-documenting and the API surface is small enough for manual review.
+
+**Affects:** API documentation (#55), all source modules, packaging (#49)
+
+### v1.0 Decision Impact Analysis
+
+**Implementation Sequence:**
+
+The 6 decisions have a natural dependency order:
+
+1. **Decision 1 (Build System)** — foundation, no dependencies. Switch to uv_build, configure release-please.
+2. **Decision 6 (API Surface)** — depends on nothing, touch 9 source files. Do early to establish the public contract.
+3. **Decision 2 (Docs Architecture)** — depends on Decision 6 (API surface informs what mkdocstrings documents). Set up mkdocs-material, mkdocstrings, gen-files.
+4. **Decision 3 (Rule Pages)** — depends on Decision 2 (docs infrastructure). Create rules.yml, macros, page template.
+5. **Decision 4 (Pre-commit)** — independent of docs, depends on Decision 1 (package must be installable). Create `.pre-commit-hooks.yaml`.
+6. **Decision 5 (GitHub Action)** — depends on Decision 1 (package must be on PyPI). Create `action.yml`, wire into publish workflow.
+
+**Cross-Component Dependencies:**
+
+- **Publish workflow** touches Decisions 1, 2, and 5: build → publish → deploy docs → update action tag
+- **`pyproject.toml`** touches Decisions 1 and 6: build backend switch + metadata enrichment
+- **Source modules** only touched by Decision 6: `__all__` additions
+- **Docs directory** touched by Decisions 2 and 3: mkdocs config + rule pages + API reference
+
+**Risk Assessment:**
+
+- **Low risk:** Decisions 2-6 are additive (new files, new config). No existing behavior changes.
+- **Medium risk:** Decision 1 (build system switch) changes the build backend. Mitigated by uv_build's hatchling compatibility and the gepa-adk reference implementation.
+- **No risk to existing tests:** All 678 tests are unaffected — decisions add infrastructure, not logic.
+
+## v1.0 Implementation Patterns & Consistency Rules
+
+The existing architecture codifies patterns from Epics 1-8 (test structure, code style, AST patterns, Finding dataclass). The v1.0 phase introduces new surface area — docs, CI, packaging — where agents could diverge. These 6 patterns focus on that new surface.
+
+### Pattern 1: Docs Directory Structure
+
+```
+docs/
+    index.md                          # Landing page (exists)
+    glossary.md                       # Domain terms (ezglossary, ~20 terms)
+    rules/
+        index.md                      # Auto-generated rules index (macros + rules.yml)
+        missing-raises-section.md     # One page per rule (handwritten, kebab-case)
+        missing-yields-section.md
+        stale-docstring-high.md
+        ...                           # 19 pages total, filenames = existing rule names
+    reference/                        # Auto-generated API reference (mkdocstrings + gen-files)
+        SUMMARY.md                    # Auto-generated nav (literate-nav)
+    architecture.md                   # (exists)
+    product-vision.md                 # (exists)
+    development-guide.md              # (exists)
+```
+
+**Rules:** Rule pages use existing kebab-case rule names from the Finding `rule` field as filenames — no numeric ID system. API reference under `reference/` is fully auto-generated by mkdocstrings + gen-files — never hand-edit files there. Glossary is a single top-level file, not buried under API reference.
+
+### Pattern 2: Rule Page Authoring
+
+All 19 rule pages follow this template (validated against ruff's page structure):
+
+```markdown
+# {{ rule.name }}
+
+{{ rule_header(page) }}  {# Python macro in docs/main.py, reads rules.yml #}
+
+## What it does
+
+[1-2 sentences, human-written]
+
+## Why is this bad?
+
+[Consequence explanation, human-written]
+
+## Example
+
+=== "Violation"
+
+    ```python
+    [bad code]
+    ```
+
+=== "Fix"
+
+    ```python
+    [good code]
+    ```
+
+## Options
+
+[Links to relevant config knobs, if any. Optional section.]
+
+## Related
+
+- [Links to related rules or external docs]
+```
+
+**Rules:** Every rule page has exactly these sections in this order. The header macro reads from `rules.yml` — rule metadata is never hardcoded in the markdown. The "Options" section is optional (only include when the rule has relevant config).
+
+**`docs/rules.yml` Schema (single source of truth for 19 rules):**
+
+```yaml
+- id: missing-raises-section
+  name: Missing Raises Section
+  check: enrichment
+  severity: warning
+  category: completeness
+  summary: Function raises exceptions but docstring has no Raises section.
+  since: "1.0.0"
+```
+
+Fields: `id` (kebab-case, matches filename and Finding `rule` field), `name` (human-readable), `check` (enrichment|freshness|coverage|griffe), `severity` (warning|error), `category` (completeness|accuracy|rendering|visibility), `summary` (one sentence), `since` (version introduced).
+
+**Consumers of `rules.yml`:**
+- Rules index page — auto-generated table (v1.0)
+- Rule page headers — macro-rendered metadata badges (v1.0)
+- README rules table (v1.0)
+- CLI `--explain <rule-id>` feature (growth phase)
+
+### Pattern 3: GitHub Actions Workflow Patterns
+
+Consistency across the 3 workflow files (release-please, publish, docs):
+
+```yaml
+# Job naming: lowercase-kebab-case
+jobs:
+  release-please:    # not releasePlease or release_please
+  build-and-publish: # not publish or buildPublish
+  deploy-docs:       # not docs or deployDocs
+
+# Step naming: imperative verb phrase
+- name: Install dependencies    # not "Installing deps"
+- name: Build package           # not "Package build step"
+- name: Run smoke tests         # not "Smoke tests"
+
+# Version pinning: major version tags for actions
+- uses: actions/setup-python@v5  # not @v5.1.0 or @main
+- uses: actions/upload-pages-artifact@v3
+```
+
+**Rules:** Job names are kebab-case nouns/noun phrases. Step names are imperative sentences. Action versions pin to major tag only.
+
+### Pattern 4: `__all__` Declaration
+
+Consistent format across all 9 source modules:
+
+```python
+# For modules with public symbols (Tier 1):
+__all__ = ["Finding", "run_enrichment_check"]
+
+# For internal modules (Tier 2):
+__all__ = []
+```
+
+**Rules:** Both tiers use the untyped list literal form (`__all__ = [...]`). This matches the existing `checks/__init__.py` convention. `__all__` goes immediately after the module docstring and `from __future__ import annotations` import. Re-exports use direct imports (`from docvet.checks import Finding`), never wildcard or aliased imports.
+
+### Pattern 5: `pyproject.toml` Section Ordering
+
+```toml
+[build-system]                   # 1. Build backend (uv_build)
+[project]                        # 2. Core metadata
+[project.optional-dependencies]  # 3. Extras (griffe)
+[project.scripts]                # 4. Entry points
+[tool.docvet]                    # 5. Self-config (dogfooding)
+[tool.pytest.ini_options]        # 6. Test config
+[tool.ruff]                      # 7. Linter config
+[tool.ruff.lint]
+```
+
+**Rules:** Build system first, project metadata second, tools alphabetical after that. No inline comments on section headers.
+
+### Pattern 6: mkdocs.yml Plugin Ordering
+
+Canonical plugin order (derived from gepa-adk's proven configuration):
+
+```yaml
+plugins:
+  - search                    # 1. Always first
+  - ezglossary:               # 2. Glossary (before content generation)
+      sections: [...]
+  - gen-files:                 # 3. Generate API reference pages
+      scripts:
+        - scripts/gen_ref_pages.py
+  - literate-nav:              # 4. Read SUMMARY.md from gen-files output
+      nav_file: SUMMARY.md
+  - section-index              # 5. Section index pages
+  - mkdocstrings:              # 6. Render ::: directives into API docs
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+  - macros:                    # 7. Last — Jinja macros for rule page headers
+      module_name: docs/main
+```
+
+**Rules:** `gen-files` must precede `literate-nav` (generates the nav file it reads). `ezglossary` must precede content plugins. `macros` must be last (needs all pages to exist before template expansion). When adding a new plugin, insert it at the correct position — do not append to the end.
+
+### Enforcement Summary
+
+**All agents MUST:**
+- Follow the docs directory structure exactly — rule filenames match existing Finding `rule` field values
+- Use the rule page template verbatim for all 19 pages — no section additions or reordering
+- Pin `rules.yml` entries to the 7-field schema — no ad-hoc fields
+- Use kebab-case for workflow job names, imperative for step names
+- Place `__all__` immediately after module docstring and future import, using untyped form
+- Follow mkdocs.yml plugin ordering — never append new plugins to the end
+- Follow pyproject.toml section ordering when adding new tool sections
+
+**Carried forward from Epics 1-8 (unchanged):**
+- Google-style docstrings, 88-char formatter / 100-char linter
+- `from __future__ import annotations` on every file
+- snake_case functions, PascalCase classes, CAPS_WITH_UNDER constants
+- Tests in `tests/unit/` and `tests/integration/`, one test file per source module
+- Finding dataclass as the universal check return type
+
+## v1.0 Project Structure & Boundaries
+
+### Complete Project Tree
+
+Files marked with `← NEW` are introduced by v1.0. Everything else exists today.
+
+```
+docvet/
+├── README.md                             (modified: badges, install instructions, rules table)
+├── CHANGELOG.md                          ← NEW (release-please generated)
+├── LICENSE                               ← NEW (MIT)
+├── pyproject.toml                        (modified: uv_build backend, enriched metadata, wheel-exclude)
+├── .pre-commit-hooks.yaml                ← NEW (Decision 4)
+├── action.yml                            ← NEW (Decision 5)
+├── mkdocs.yml                            ← NEW (Decision 2)
+├── release-please-config.json            ← NEW (Decision 1)
+├── .release-please-manifest.json         ← NEW (Decision 1)
+│
+├── .github/
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── config.yml
+│   │   ├── bug_report.md
+│   │   ├── enhancement.md
+│   │   └── feature_request.md
+│   ├── instructions/                     (copilot instructions, existing)
+│   └── workflows/
+│       ├── ci.yml                        (existing, no changes)
+│       ├── release-please.yml            ← NEW (Decision 1)
+│       └── publish.yml                   ← NEW (Decision 1 + 5)
+│
+├── src/docvet/
+│   ├── __init__.py                       (modified: re-export Finding, add __all__)
+│   ├── cli.py                            (modified: add __all__ = [])
+│   ├── config.py                         (modified: add __all__ = [])
+│   ├── discovery.py                      (modified: add __all__ = [])
+│   ├── ast_utils.py                      (modified: add __all__ = [])
+│   ├── reporting.py                      (modified: add __all__ = [])
+│   └── checks/
+│       ├── __init__.py                   (existing __all__, add check re-exports)
+│       ├── enrichment.py                 (modified: add __all__)
+│       ├── freshness.py                  (modified: add __all__)
+│       ├── coverage.py                   (existing __all__, no change)
+│       └── griffe_compat.py              (modified: add __all__)
+│
+├── tests/                                (no changes — 678 tests unaffected)
+│   ├── conftest.py
+│   ├── fixtures/
+│   ├── unit/
+│   └── integration/
+│
+├── docs/
+│   ├── index.md                          (existing, updated for PyPI landing)
+│   ├── glossary.md                       ← NEW (ezglossary, ~20 terms)
+│   ├── main.py                           ← NEW (macros hook: rule_header(), load rules.yml, version)
+│   ├── architecture.md                   (existing)
+│   ├── product-vision.md                 (existing)
+│   ├── development-guide.md              (existing)
+│   ├── project-overview.md               (existing)
+│   ├── source-tree-analysis.md           (existing)
+│   ├── rules/
+│   │   ├── index.md                      ← NEW (auto-generated rules index via macros)
+│   │   ├── rules.yml                     ← NEW (19-rule metadata catalog)
+│   │   ├── missing-raises-section.md     ← NEW (handwritten, 19 pages total)
+│   │   ├── missing-yields-section.md     ← NEW
+│   │   ├── ...                           ← NEW (one per rule, kebab-case filenames)
+│   │   └── stale-docstring-high.md       ← NEW
+│   └── reference/                        ← NEW (auto-generated, never hand-edit)
+│       ├── SUMMARY.md                    ← NEW (literate-nav, auto-generated)
+│       └── docvet/                       ← NEW (mkdocstrings output)
+│
+├── scripts/
+│   └── gen_ref_pages.py                  ← NEW (mkdocstrings + gen-files, ~30 lines)
+│
+└── CLAUDE.md                             (existing, dev-only — excluded from wheel)
+```
+
+### Wheel Exclusions
+
+uv_build with `src` layout only includes `src/docvet/` in the wheel by default. For safety, add explicit `wheel-exclude` in `pyproject.toml`:
+
+```toml
+[tool.uv.build]
+wheel-exclude = ["CLAUDE.md", "_bmad/", "_bmad-output/", "docs/", "tests/", "scripts/"]
+```
+
+This ensures dev-only files never ship in the package regardless of future layout changes.
+
+### Architectural Boundaries
+
+**Boundary 1: Source Code (no v1.0 logic changes)**
+
+The `src/docvet/` tree gets only `__all__` declarations and a `Finding` re-export in `__init__.py`. Zero behavioral changes. All 678 tests remain green without modification.
+
+**Boundary 2: Docs Site (new, self-contained)**
+
+`docs/` + `mkdocs.yml` + `scripts/gen_ref_pages.py` + `docs/main.py` form a self-contained documentation build. Coupling to source code:
+- mkdocstrings reads `src/docvet/` docstrings and `__all__` for API reference
+- `docs/main.py` reads `pyproject.toml` for version number
+- `docs/rules/rules.yml` references rule IDs that match Finding `rule` field values
+- `docs/main.py` defines `rule_header()` macro — no separate Jinja partial template
+
+**Boundary 3: CI/CD Infrastructure (new, self-contained)**
+
+`.github/workflows/` + `release-please-config.json` + `.release-please-manifest.json` form the release pipeline. Coupling:
+- `release-please` reads `pyproject.toml` for version bumping via `extra-files` with jsonpath
+- `publish.yml` runs `uv build` and `uv publish` with OIDC trusted publishing
+- `publish.yml` deploys docs via `actions/deploy-pages@v4`
+- `publish.yml` updates the floating `v1` tag for the GitHub Action
+
+**Boundary 4: Integration Surfaces (pre-commit + action)**
+
+`.pre-commit-hooks.yaml` and `action.yml` are consumer-facing entry points. They depend only on the published `docvet` package — no internal module imports.
+
+### Requirements-to-Structure Mapping
+
+| FR/NFR | Files Touched |
+|--------|--------------|
+| FR111 (PyPI package) | `pyproject.toml`, `release-please-config.json`, `.release-please-manifest.json`, `.github/workflows/publish.yml` |
+| FR112 (uv_build) | `pyproject.toml` |
+| FR113-115 (docs site) | `mkdocs.yml`, `docs/**`, `scripts/gen_ref_pages.py` |
+| FR116-117 (rule reference) | `docs/rules/rules.yml`, `docs/rules/*.md`, `docs/main.py` |
+| FR118 (pre-commit) | `.pre-commit-hooks.yaml` |
+| FR119-120 (GitHub Action) | `action.yml`, `.github/workflows/publish.yml` |
+| FR121 (changelog) | `release-please-config.json`, `CHANGELOG.md` (auto-generated) |
+| FR122-123 (README) | `README.md` (note: badges resolve only after first publish) |
+| FR124-127 (glossary, API docs) | `docs/glossary.md`, `docs/reference/`, `scripts/gen_ref_pages.py` |
+| NFR55-58 (quality) | `mkdocs.yml` (navigation, search, mobile) |
+| NFR59-60 (CI) | `.github/workflows/release-please.yml`, `.github/workflows/publish.yml` |
+| NFR61 (API surface) | `src/docvet/**` (all `__all__` additions) |
+| NFR62-66 (packaging) | `pyproject.toml`, `LICENSE` |
+
+### GitHub Issues Mapping
+
+| Issue | Primary Files |
+|-------|--------------|
+| #49 (packaging) | `pyproject.toml`, `release-please-*`, `.github/workflows/publish.yml`, `LICENSE` |
+| #50 (README) | `README.md` |
+| #51 (docs site) | `mkdocs.yml`, `docs/**`, `scripts/`, `docs/main.py` |
+| #52 (rule reference) | `docs/rules/**` |
+| #53 (pre-commit) | `.pre-commit-hooks.yaml` |
+| #54 (GitHub Action) | `action.yml`, `.github/workflows/publish.yml` |
+| #55 (API docs) | `docs/reference/`, `src/docvet/**` (`__all__`) |
+| #56 (launch checklist) | Cross-cutting — README badges depend on first publish |
+
+## v1.0 Architecture Validation Results
+
+### Coherence Validation — PASS
+
+**Decision Compatibility:** All 6 decisions are compatible. uv_build (D1) outputs what release-please (D1) bumps and publish.yml (D5) publishes. mkdocstrings (D2) reads the `__all__` declarations that Decision 6 establishes. Pre-commit (D4) and GitHub Action (D5) consume the published package from Decision 1. No conflicts.
+
+**Pattern Consistency:** All 6 patterns align with decisions. Rule page template (P2) uses macros plugin (P6 ordering). `__all__` pattern (P4) implements Decision 6. Workflow patterns (P3) govern the workflows from Decisions 1 and 5.
+
+**Structure Alignment:** Project tree maps cleanly to all decisions. Every new file has exactly one owning decision. Boundaries are clear — source code only gets `__all__` changes, docs are self-contained, CI is self-contained.
+
+### Requirements Coverage — PASS
+
+**FR Coverage (FR111-FR127):** All 17 functional requirements have architectural support.
+
+| FR Range | Topic | Covered By |
+|----------|-------|-----------|
+| FR111-FR113 | PyPI packaging | Decision 1 + pyproject.toml |
+| FR114-FR115 | Pre-commit | Decision 4 |
+| FR116-FR117 | GitHub Action | Decision 5 |
+| FR118-FR120 | README | Project structure + badge sequencing note |
+| FR121-FR122 | Docs site | Decision 2 + Pattern 6 |
+| FR123-FR124 | Rule reference | Decision 3 + Pattern 2 |
+| FR125-FR126 | Dogfooding | CI workflow + project structure |
+| FR127 | __all__ exports | Decision 6 |
+
+**NFR Coverage (NFR55-NFR66):** All 12 non-functional requirements have architectural support.
+
+| NFR Range | Topic | Covered By |
+|-----------|-------|-----------|
+| NFR55-56 | Packaging quality | Decision 1 + wheel-exclude |
+| NFR57-58 | Docs quality | Decision 2 (mkdocs-material) |
+| NFR59-60 | CI performance | Decisions 4 + 5 |
+| NFR61-62 | Compatibility | Decisions 4 + 5 |
+| NFR63 | Dogfooding gate | CI workflow |
+| NFR64-66 | API stability | Decision 6 |
+
+### Implementation Readiness — PASS
+
+**Decision Completeness:** All 6 decisions have rationale, concrete config examples, and "Affects" traceability. Versions specified where applicable (setup-python@v5, release-please-action@v4, actions/deploy-pages@v4).
+
+**Structure Completeness:** Full project tree with every new file marked. FR-to-file and issue-to-file mapping tables are comprehensive.
+
+**Pattern Completeness:** 6 patterns cover all new surface area. Existing patterns from Epics 1-8 carry forward unchanged.
+
+### Issues Found and Resolved
+
+**Decision 6 function names (CRITICAL — fixed):** The original Tier 1 table listed incorrect function names (`run_enrichment_check`, etc.) and counted 6 symbols. Corrected to match actual codebase: `check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat` — 7 symbols total (Finding + 5 check functions). Verified against NFR66 in the PRD.
+
+### Architecture Completeness Checklist
+
+**Requirements Analysis:**
+
+- [x] v1.0 project context analyzed (market research + PRD v1.0 section)
+- [x] Scale and complexity assessed (Medium — 8 deliverables, ~30 new files)
+- [x] Technical constraints identified (uv_build pure-Python only, griffe optional)
+- [x] Cross-cutting concerns mapped (publish workflow touches D1, D2, D5)
+
+**Architectural Decisions:**
+
+- [x] 6 decisions documented with rationale and concrete config
+- [x] Technology stack specified (uv_build, release-please, mkdocs-material, mkdocstrings, ezglossary, macros)
+- [x] Integration patterns defined (boundary diagram, coupling points)
+- [x] gepa-adk reference implementation consulted for D1, D2, D3, P6
+
+**Implementation Patterns:**
+
+- [x] 6 patterns covering all new v1.0 surface area
+- [x] Naming conventions established (rule filenames, workflow jobs, `__all__`)
+- [x] Structure patterns defined (docs layout, plugin order, pyproject sections)
+- [x] Existing Epics 1-8 patterns confirmed unchanged
+
+**Project Structure:**
+
+- [x] Complete directory tree with all new files marked
+- [x] 4 architectural boundaries defined
+- [x] FR-to-file and issue-to-file mapping tables
+- [x] Wheel exclusions specified
+
+### Architecture Readiness Assessment
+
+**Overall Status:** READY FOR IMPLEMENTATION
+
+**Confidence Level:** High — brownfield project with proven patterns, reference implementation (gepa-adk) for all infrastructure decisions, and all 678 existing tests unaffected.
+
+**Key Strengths:**
+- Zero behavioral changes to existing code (only `__all__` additions)
+- Every decision validated against a working reference (gepa-adk or ruff)
+- Clear boundary separation: source, docs, CI, and integration surfaces are independent
+- Natural implementation sequence with minimal cross-decision dependencies
+
+**Implementation Sequence:**
+1. Decision 1 (Build System) → Decision 6 (API Surface) — foundation layer
+2. Decision 2 (Docs Architecture) → Decision 3 (Rule Pages) — docs layer
+3. Decision 4 (Pre-commit) + Decision 5 (GitHub Action) — integration layer
