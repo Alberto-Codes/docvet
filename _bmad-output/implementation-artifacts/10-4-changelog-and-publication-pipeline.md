@@ -1,6 +1,6 @@
 # Story 10.4: CHANGELOG and Publication Pipeline
 
-Status: review
+Status: done
 
 ## Story
 
@@ -335,6 +335,7 @@ No debug issues encountered — infrastructure-only story with no source code ch
 ### Change Log
 
 - 2026-02-21: Created CHANGELOG.md and publication pipeline (6 new files)
+- 2026-02-21: Code review — bumped `actions/checkout@v4` → `@v6` in publish workflows; added smoke test to `test-publish.yml`
 
 ### File List
 
