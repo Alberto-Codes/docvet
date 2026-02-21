@@ -1,0 +1,26 @@
+name: 'docvet'
+description: 'Run docvet docstring quality checks'
+inputs:
+  version:
+    description: 'docvet version to install (use "latest" for newest)'
+    required: false
+    default: 'latest'
+  args:
+    description: 'Arguments to pass to docvet (e.g., "check --all")'
+    required: false
+    default: 'check'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          pip install docvet
+        else
+          pip install docvet==${{ inputs.version }}
+        fi
+      shell: bash
+    - run: docvet ${{ inputs.args }}
+      shell: bash
