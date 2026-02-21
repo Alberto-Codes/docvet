@@ -39,6 +39,41 @@ class Symbol:
             the docstring.
         parent (str | None): Immediate enclosing class name, or
             *None*.
+
+    Examples:
+        A Symbol extracted from a top-level function:
+
+        ```python
+        Symbol(
+            name="process",
+            kind="function",
+            line=5,
+            end_line=10,
+            definition_start=4,
+            docstring="Process input data.",
+            docstring_range=(6, 6),
+            signature_range=(5, 5),
+            body_range=(7, 10),
+            parent=None,
+        )
+        ```
+
+        A method nested inside a class has its parent set:
+
+        ```python
+        Symbol(
+            name="run",
+            kind="method",
+            line=12,
+            end_line=15,
+            definition_start=12,
+            docstring=None,
+            docstring_range=None,
+            signature_range=(12, 12),
+            body_range=(13, 15),
+            parent="Worker",
+        )
+        ```
     """
 
     name: str
