@@ -71,7 +71,7 @@ age-threshold = 90
 
 ## Pre-commit
 
-Pre-commit hook support is coming in a future release. Once available, add to your `.pre-commit-config.yaml`:
+Add to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
@@ -79,6 +79,46 @@ repos:
     rev: v1.0.0
     hooks:
       - id: docvet
+```
+
+For griffe rendering checks, add the optional dependency:
+
+```yaml
+repos:
+  - repo: https://github.com/Alberto-Codes/docvet
+    rev: v1.0.0
+    hooks:
+      - id: docvet
+        additional_dependencies: [griffe]
+```
+
+## GitHub Action
+
+Add docvet to your GitHub Actions workflow:
+
+```yaml
+- uses: Alberto-Codes/docvet@v1
+```
+
+With version pinning and custom arguments:
+
+```yaml
+- uses: Alberto-Codes/docvet@v1
+  with:
+    version: '1.0.0'
+    args: 'check --all'
+```
+
+For griffe rendering checks, install griffe before running docvet:
+
+```yaml
+- uses: actions/setup-python@v5
+  with:
+    python-version: '3.12'
+- run: pip install griffe
+- uses: Alberto-Codes/docvet@v1
+  with:
+    args: 'check --all'
 ```
 
 ## Better Docstrings, Better AI
