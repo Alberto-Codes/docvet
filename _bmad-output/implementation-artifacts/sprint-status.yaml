@@ -97,11 +97,11 @@ development_status:
   epic-8-retrospective: done
 
   # Epic 9: Dogfooding & API Hardening
-  epic-9: in-progress
+  epic-9: done
   9-1-fix-docvet-findings-on-own-codebase: done
   9-2-add-all-exports-to-all-public-modules: done
   9-3-version-bump-and-build-configuration: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done
 
   # Epic 10: Package, Publish & Integrations
   epic-10: backlog
