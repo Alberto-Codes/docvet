@@ -10,17 +10,6 @@
 
 Existing tools cover presence and style. docvet delivers the layers they miss:
 
-| Layer | Tool | What It Catches |
-|-------|------|-----------------|
-| 1. Presence | interrogate | "Does a docstring exist?" |
-| 2. Style | ruff D rules | "Is it Google-style formatted?" |
-| **3. Completeness** | **docvet enrichment** | "Does it have all required sections?" |
-| **4. Accuracy** | **docvet freshness** | "Does it match the current code?" |
-| **5. Rendering** | **docvet griffe** | "Will mkdocs render it correctly?" |
-| **6. Visibility** | **docvet coverage** | "Will mkdocs even see the file?" |
-
-## How It Compares
-
 | Layer | Check | ruff | interrogate | pydoclint | **docvet** |
 |-------|-------|------|-------------|-----------|------------|
 | 1. Presence | "Does a docstring exist?" | -- | Yes | -- | -- |
@@ -31,6 +20,18 @@ Existing tools cover presence and style. docvet delivers the layers they miss:
 | 6. Visibility | "Will mkdocs even see the file?" | -- | -- | -- | **Yes** |
 
 **pydoclint** checks Args/Returns/Raises alignment with function signatures (structural completeness). docvet's enrichment covers that plus Yields, Receives, Warns, Attributes, Examples, typed attributes, and cross-references -- 19 rules across 4 checks. docvet also covers freshness (git diff/blame), griffe rendering compatibility, and mkdocs coverage -- territory no other tool touches.
+
+## What It Checks
+
+**Enrichment** (completeness) -- 10 rules:
+`missing-raises` `missing-yields` `missing-receives` `missing-warns` `missing-other-parameters` `missing-attributes` `missing-class-attributes` `missing-module-attributes` `missing-examples` `missing-typed-attributes` `missing-cross-references` `prefer-fenced-code-blocks`
+
+**Freshness** (accuracy) -- 3 rules:
+`stale-signature` `stale-body` `stale-import`
+
+**Griffe** (rendering) -- griffe parser warning capture for mkdocs compatibility
+
+**Coverage** (visibility) -- missing `__init__.py` detection for mkdocs discoverability
 
 ## Quickstart
 
@@ -52,25 +53,9 @@ src/mypackage/models.py:15: stale-signature Function 'process' signature changed
 src/mypackage/api.py:0: missing-init Package directory missing __init__.py (invisible to mkdocs)
 ```
 
-## Better Docstrings, Better AI
-
-AI coding agents rely on docstrings as context when generating and modifying code. Research shows stale or incorrect documentation [degrades LLM task success by 22.6 percentage points](https://arxiv.org/abs/2404.03114), while [comment density improves code generation by 40-54%](https://arxiv.org/abs/2402.13013). Misleading comments [reduce LLM fault localization accuracy to 24.55%](https://arxiv.org/abs/2504.04372), and performance [drops substantially without docstrings](https://arxiv.org/abs/2508.09537). As the [2025 DORA report](https://cloud.google.com/resources/content/2025-dora-ai-assisted-software-development-report) puts it: "AI doesn't fix a team; it amplifies what's already there." The [only signal correlating with AI productivity is code quality](https://stackoverflow.blog/2026/02/04/code-smells-for-ai-agents-q-and-a-with-eno-reyes-of-factory).
-
-docvet's freshness checking catches the accuracy gap that stale docs create, and its enrichment rules ensure the docstring sections that agents use as context are complete. Run `docvet check` in your CI, pre-commit hooks, or agent toolchain.
-
-## Pre-commit
-
-```yaml
-repos:
-  - repo: https://github.com/Alberto-Codes/docvet
-    rev: v1.0.0
-    hooks:
-      - id: docvet
-```
-
 ## Configuration
 
-Configure via `[tool.docvet]` in your `pyproject.toml`:
+Configure via `[tool.docvet]` in your `pyproject.toml`. Checks in `fail-on` return exit code 1; checks in `warn-on` print findings but return exit code 0.
 
 ```toml
 [tool.docvet]
@@ -82,6 +67,31 @@ warn-on = ["freshness", "enrichment"]
 drift-threshold = 30
 age-threshold = 90
 ```
+
+## Pre-commit
+
+Pre-commit hook support is coming in a future release. Once available, add to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/Alberto-Codes/docvet
+    rev: v1.0.0
+    hooks:
+      - id: docvet
+```
+
+## Better Docstrings, Better AI
+
+AI coding agents rely on docstrings as context when generating and modifying code. Research shows stale or incorrect documentation is actively harmful -- worse than no docs at all:
+
+- Incorrect docs [degrade LLM task success by 22.6 percentage points](https://arxiv.org/abs/2404.03114)
+- Comment density [improves code generation by 40-54%](https://arxiv.org/abs/2402.13013)
+- Misleading comments [reduce LLM fault localization accuracy to 24.55%](https://arxiv.org/abs/2504.04372)
+- Performance [drops substantially without docstrings](https://arxiv.org/abs/2508.09537)
+
+As the [2025 DORA report](https://cloud.google.com/resources/content/2025-dora-ai-assisted-software-development-report) puts it: "AI doesn't fix a team; it amplifies what's already there." The [only signal correlating with AI productivity is code quality](https://stackoverflow.blog/2026/02/04/code-smells-for-ai-agents-q-and-a-with-eno-reyes-of-factory).
+
+docvet's freshness checking catches the accuracy gap that stale docs create, and its enrichment rules ensure the docstring sections that agents use as context are complete. Run `docvet check` in your CI, pre-commit hooks, or agent toolchain.
 
 ## Badge
 
