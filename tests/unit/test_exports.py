@@ -105,6 +105,7 @@ _ALL_DOCVET_MODULES = [
     "docvet",
     "docvet.ast_utils",
     "docvet.checks",
+    "docvet.checks._finding",
     "docvet.checks.coverage",
     "docvet.checks.enrichment",
     "docvet.checks.freshness",
