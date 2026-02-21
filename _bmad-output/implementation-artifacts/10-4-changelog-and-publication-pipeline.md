@@ -191,7 +191,7 @@ permissions:
 **Steps:**
 1. Checkout + setup-uv
 2. `uv build --no-sources`
-3. `uv publish --index-url https://test.pypi.org/simple/` with OIDC
+3. `uv publish --publish-url https://test.pypi.org/legacy/` with OIDC
 
 ### CHANGELOG.md Format
 
