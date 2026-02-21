@@ -1,0 +1,100 @@
+[![PyPI](https://img.shields.io/pypi/v/docvet)](https://pypi.org/project/docvet/)
+[![CI](https://img.shields.io/github/actions/workflow/status/Alberto-Codes/docvet/ci.yml?branch=develop)](https://github.com/Alberto-Codes/docvet/actions)
+[![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/develop/LICENSE)
+[![Python](https://img.shields.io/pypi/pyversions/docvet)](https://pypi.org/project/docvet/)
+[![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-blue)](https://github.com/Alberto-Codes/docvet)
+
+# docvet
+
+**ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right.**
+
+Existing tools cover presence and style. docvet delivers the layers they miss:
+
+| Layer | Tool | What It Catches |
+|-------|------|-----------------|
+| 1. Presence | interrogate | "Does a docstring exist?" |
+| 2. Style | ruff D rules | "Is it Google-style formatted?" |
+| **3. Completeness** | **docvet enrichment** | "Does it have all required sections?" |
+| **4. Accuracy** | **docvet freshness** | "Does it match the current code?" |
+| **5. Rendering** | **docvet griffe** | "Will mkdocs render it correctly?" |
+| **6. Visibility** | **docvet coverage** | "Will mkdocs even see the file?" |
+
+## How It Compares
+
+| Layer | Check | ruff | interrogate | pydoclint | **docvet** |
+|-------|-------|------|-------------|-----------|------------|
+| 1. Presence | "Does a docstring exist?" | -- | Yes | -- | -- |
+| 2. Style | "Is it formatted correctly?" | Yes | -- | -- | -- |
+| 3. Completeness | "Does it have all required sections?" | -- | -- | Partial | **Yes** |
+| 4. Accuracy | "Does it match the current code?" | -- | -- | -- | **Yes** |
+| 5. Rendering | "Will mkdocs render it correctly?" | -- | -- | -- | **Yes** |
+| 6. Visibility | "Will mkdocs even see the file?" | -- | -- | -- | **Yes** |
+
+**pydoclint** checks Args/Returns/Raises alignment with function signatures (structural completeness). docvet's enrichment covers that plus Yields, Receives, Warns, Attributes, Examples, typed attributes, and cross-references -- 19 rules across 4 checks. docvet also covers freshness (git diff/blame), griffe rendering compatibility, and mkdocs coverage -- territory no other tool touches.
+
+## Quickstart
+
+```bash
+pip install docvet && docvet check --all
+```
+
+For optional griffe rendering checks:
+
+```bash
+pip install docvet[griffe]
+```
+
+Example output:
+
+```
+src/mypackage/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises section
+src/mypackage/models.py:15: stale-signature Function 'process' signature changed but docstring not updated
+src/mypackage/api.py:0: missing-init Package directory missing __init__.py (invisible to mkdocs)
+```
+
+## Better Docstrings, Better AI
+
+AI coding agents rely on docstrings as context when generating and modifying code. Research shows stale or incorrect documentation [degrades LLM task success by 22.6 percentage points](https://arxiv.org/abs/2404.03114), while [comment density improves code generation by 40-54%](https://arxiv.org/abs/2402.13013). Misleading comments [reduce LLM fault localization accuracy to 24.55%](https://arxiv.org/abs/2504.04372), and performance [drops substantially without docstrings](https://arxiv.org/abs/2508.09537). As the [2025 DORA report](https://cloud.google.com/resources/content/2025-dora-ai-assisted-software-development-report) puts it: "AI doesn't fix a team; it amplifies what's already there." The [only signal correlating with AI productivity is code quality](https://stackoverflow.blog/2026/02/04/code-smells-for-ai-agents-q-and-a-with-eno-reyes-of-factory).
+
+docvet's freshness checking catches the accuracy gap that stale docs create, and its enrichment rules ensure the docstring sections that agents use as context are complete. Run `docvet check` in your CI, pre-commit hooks, or agent toolchain.
+
+## Pre-commit
+
+```yaml
+repos:
+  - repo: https://github.com/Alberto-Codes/docvet
+    rev: v1.0.0
+    hooks:
+      - id: docvet
+```
+
+## Configuration
+
+Configure via `[tool.docvet]` in your `pyproject.toml`:
+
+```toml
+[tool.docvet]
+exclude = ["tests", "scripts"]
+fail-on = ["griffe", "coverage"]
+warn-on = ["freshness", "enrichment"]
+
+[tool.docvet.freshness]
+drift-threshold = 30
+age-threshold = 90
+```
+
+## Badge
+
+Add a badge to your project to show your docs are vetted:
+
+```markdown
+[![docs vetted | docvet](https://img.shields.io/badge/docs%20vetted-docvet-blue)](https://github.com/Alberto-Codes/docvet)
+```
+
+## Used By
+
+Are you using docvet? Open a pull request to add your project here.
+
+## License
+
+MIT -- see [LICENSE](https://github.com/Alberto-Codes/docvet/blob/develop/LICENSE) for details.
