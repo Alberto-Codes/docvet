@@ -3,10 +3,31 @@ name = "docvet"
 version = "1.0.0"
 description = "Comprehensive docstring quality vetting for Python projects"
 readme = "README.md"
+license = {file = "LICENSE"}
 authors = [
     { name = "Alberto-Codes", email = "alberto.codes.dev@gmail.com" }
 ]
 requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
+]
+keywords = [
+    "docstring",
+    "linter",
+    "mkdocs",
+    "interrogate",
+    "pydocstyle",
+    "darglint",
+    "documentation",
+    "quality",
+]
 dependencies = [
     "typer>=0.9",
 ]
@@ -18,6 +39,11 @@ griffe = [
 
 [project.scripts]
 docvet = "docvet.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/Alberto-Codes/docvet"
+Source = "https://github.com/Alberto-Codes/docvet"
+Issues = "https://github.com/Alberto-Codes/docvet/issues"
 
 [build-system]
 requires = ["uv_build>=0.7,<1"]
