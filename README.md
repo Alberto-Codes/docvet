@@ -52,18 +52,17 @@ Example output:
 ```
 src/mypackage/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises section
 src/mypackage/models.py:15: stale-signature Function 'process' signature changed but docstring not updated
-src/mypackage/api.py:0: missing-init Package directory missing __init__.py (invisible to mkdocs)
+src/mypackage/api.py:1: missing-init Package directory missing __init__.py (invisible to mkdocs)
 ```
 
 ## Configuration
 
-Configure via `[tool.docvet]` in your `pyproject.toml`. Checks in `fail-on` return exit code 1; checks in `warn-on` print findings but return exit code 0.
+Configure via `[tool.docvet]` in your `pyproject.toml`. All checks run and print findings. Checks listed in `fail-on` cause a non-zero exit code; unlisted checks are treated as warnings.
 
 ```toml
 [tool.docvet]
 exclude = ["tests", "scripts"]
 fail-on = ["griffe", "coverage"]
-warn-on = ["freshness", "enrichment"]
 
 [tool.docvet.freshness]
 drift-threshold = 30
