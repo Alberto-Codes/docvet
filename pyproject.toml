@@ -122,6 +122,7 @@ dev = [
     "pytest-cov>=7.0",
     "pytest-mock>=3.15",
     "pytest-randomly>=4.0",
+    "readme-renderer[md]>=44.0",
     "ruff>=0.11",
     "ty>=0.0.1a33",
 ]
