@@ -18,4 +18,4 @@ jobs:
         run: uv build --no-sources
 
       - name: Publish to TestPyPI
-        run: uv publish --index-url https://test.pypi.org/simple/
+        run: uv publish --publish-url https://test.pypi.org/legacy/
