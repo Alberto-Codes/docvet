@@ -296,4 +296,3 @@ None — clean implementation with no issues.
 
 - `README.md` — **created** (full README with all required sections)
 - `pyproject.toml` — **modified** (added `readme-renderer[md]` to dev dependencies)
-- `uv.lock` — **modified** (lockfile updated by `uv add`)
