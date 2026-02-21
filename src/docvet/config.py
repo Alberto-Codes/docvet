@@ -23,6 +23,19 @@ class FreshnessConfig:
             before flagging drift. Defaults to 30.
         age_threshold (int): Maximum days since initial docstring creation
             before flagging age. Defaults to 90.
+
+    Examples:
+        Use defaults (30-day drift, 90-day age):
+
+        ```python
+        cfg = FreshnessConfig()
+        ```
+
+        Tighten thresholds for a fast-moving codebase:
+
+        ```python
+        cfg = FreshnessConfig(drift_threshold=14, age_threshold=60)
+        ```
     """
 
     drift_threshold: int = 30
@@ -55,6 +68,19 @@ class EnrichmentConfig:
             over indented blocks. Defaults to ``True``.
         require_attributes (bool): Require ``Attributes:`` sections.
             Defaults to ``True``.
+
+    Examples:
+        Use defaults (all rules enabled):
+
+        ```python
+        cfg = EnrichmentConfig()
+        ```
+
+        Disable yields checking for a project without generators:
+
+        ```python
+        cfg = EnrichmentConfig(require_yields=False)
+        ```
     """
 
     require_examples: list[str] = field(
@@ -89,6 +115,21 @@ class DocvetConfig:
         freshness (FreshnessConfig): Freshness check settings.
         enrichment (EnrichmentConfig): Enrichment check settings.
         project_root (Path): Resolved project root directory.
+
+    Examples:
+        Load from ``pyproject.toml`` (typical usage):
+
+        ```python
+        from docvet.config import load_config
+
+        cfg = load_config()
+        ```
+
+        Construct directly for programmatic use:
+
+        ```python
+        cfg = DocvetConfig(fail_on=["enrichment", "freshness"])
+        ```
     """
 
     src_root: str = "."
