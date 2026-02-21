@@ -1,0 +1,42 @@
+name: Test Publish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    environment: testpypi
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Build package
+        run: uv build --no-sources
+
+      - name: Smoke test wheel
+        run: |
+          WHEEL=$(ls dist/*.whl)
+          SIZE=$(stat --format=%s "$WHEEL")
+          if [ "$SIZE" -gt 512000 ]; then
+            echo "::error::Wheel size ${SIZE} bytes exceeds 500KB limit"
+            exit 1
+          fi
+          echo "Wheel size: ${SIZE} bytes — OK"
+
+          CONTENTS=$(unzip -l "$WHEEL")
+          if echo "$CONTENTS" | grep -q "tests/"; then
+            echo "::error::Wheel contains tests/ directory"
+            exit 1
+          fi
+          if echo "$CONTENTS" | grep -q "_bmad"; then
+            echo "::error::Wheel contains _bmad files"
+            exit 1
+          fi
+          echo "Wheel contents clean — OK"
+
+      - name: Publish to TestPyPI
+        run: uv publish --publish-url https://test.pypi.org/legacy/
