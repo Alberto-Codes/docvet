@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
 ]
 keywords = [
     "docstring",
@@ -38,6 +39,11 @@ griffe = [
 
 [project.scripts]
 docvet = "docvet.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/Alberto-Codes/docvet"
+Source = "https://github.com/Alberto-Codes/docvet"
+Issues = "https://github.com/Alberto-Codes/docvet/issues"
 
 [build-system]
 requires = ["uv_build>=0.7,<1"]
