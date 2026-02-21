@@ -19,7 +19,27 @@ __all__: list[str] = []
 
 
 class DiscoveryMode(enum.Enum):
-    """Internal discovery mode for file selection."""
+    """Internal discovery mode for file selection.
+
+    Examples:
+        Diff mode checks files changed since the last commit:
+
+        ```python
+        mode = DiscoveryMode.DIFF
+        ```
+
+        Staged mode checks files in the git index:
+
+        ```python
+        mode = DiscoveryMode.STAGED
+        ```
+
+        All mode scans the entire codebase:
+
+        ```python
+        mode = DiscoveryMode.ALL
+        ```
+    """
 
     DIFF = enum.auto()
     STAGED = enum.auto()
