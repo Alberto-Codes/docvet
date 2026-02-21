@@ -105,7 +105,7 @@ development_status:
 
   # Epic 10: Package, Publish & Integrations
   epic-10: in-progress
-  10-1-license-and-package-metadata: review
+  10-1-license-and-package-metadata: done
   10-2-readme-with-comparison-table-quickstart-and-badges: backlog
   10-3-pre-commit-hook-and-github-action: backlog
   10-4-changelog-and-publication-pipeline: backlog
