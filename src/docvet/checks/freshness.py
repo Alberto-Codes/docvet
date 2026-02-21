@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from docvet.ast_utils import Symbol, map_lines_to_symbols
-from docvet.checks import Finding
+from docvet.checks._finding import Finding
 from docvet.config import FreshnessConfig
 
 __all__ = ["check_freshness_diff", "check_freshness_drift"]

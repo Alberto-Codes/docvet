@@ -21,7 +21,7 @@ except ImportError:
 if TYPE_CHECKING:
     from griffe import Object as GriffeObject  # ty: ignore[unresolved-import]
 
-from docvet.checks import Finding
+from docvet.checks._finding import Finding
 
 __all__ = ["check_griffe_compat"]
 

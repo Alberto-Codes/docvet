@@ -90,6 +90,7 @@ class TestInternalModulesExportNothing:
         "module_path",
         [
             "docvet.ast_utils",
+            "docvet.checks._finding",
             "docvet.cli",
             "docvet.discovery",
             "docvet.reporting",
@@ -105,6 +106,7 @@ _ALL_DOCVET_MODULES = [
     "docvet",
     "docvet.ast_utils",
     "docvet.checks",
+    "docvet.checks._finding",
     "docvet.checks.coverage",
     "docvet.checks.enrichment",
     "docvet.checks.freshness",

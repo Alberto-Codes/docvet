@@ -11,7 +11,7 @@ import ast
 import re
 
 from docvet.ast_utils import Symbol, get_documented_symbols
-from docvet.checks import Finding
+from docvet.checks._finding import Finding
 from docvet.config import EnrichmentConfig
 
 __all__ = ["check_enrichment"]

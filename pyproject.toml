@@ -24,12 +24,6 @@ requires = ["uv_build>=0.7,<1"]
 build-backend = "uv_build"
 
 # --------------------------------------------------------------------------- #
-# Docvet
-# --------------------------------------------------------------------------- #
-[tool.docvet.enrichment]
-require-examples = ["class", "protocol"]
-
-# --------------------------------------------------------------------------- #
 # Ruff
 # --------------------------------------------------------------------------- #
 [tool.ruff]
@@ -48,8 +42,6 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "D100", "D101", "D102", "D103", "D104"]
-# Re-exports must come after Finding class to break circular imports
-"src/docvet/checks/__init__.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["docvet"]

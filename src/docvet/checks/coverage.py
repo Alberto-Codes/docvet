@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from docvet.checks import Finding
+from docvet.checks._finding import Finding
 
 __all__ = ["check_coverage"]
 
