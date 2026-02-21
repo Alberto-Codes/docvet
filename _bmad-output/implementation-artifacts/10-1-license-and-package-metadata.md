@@ -1,6 +1,6 @@
 # Story 10.1: LICENSE and Package Metadata
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,6 +33,12 @@ so that I can confirm the tool is safe to adopt in my project.
   - [x] 5.2 `uv run ruff check .` — no lint errors
   - [x] 5.3 `uv run ruff format --check .` — no formatting issues
   - [x] 5.4 `uv build` — wheel METADATA verified: license text inlined, all 7 classifiers present, all 8 keywords present
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][MEDIUM] Add `[project.urls]` section with Homepage, Source, Issues links [`pyproject.toml`]
+- [x] [AI-Review][LOW] Add `Typing :: Typed` classifier for PEP 561 signaling [`pyproject.toml:19`]
+- [x] [AI-Review][LOW] Add `py.typed` marker file for downstream type checker discovery [`src/docvet/py.typed`]
 
 ## AC-to-Test Mapping
 
@@ -166,8 +172,10 @@ None — clean implementation with no errors or retries.
 ### Change Log
 
 - 2026-02-21: Implemented story 10.1 — LICENSE file and package metadata (license, classifiers, keywords)
+- 2026-02-21: Code review fixes — added `[project.urls]`, `Typing :: Typed` classifier, and `py.typed` marker
 
 ### File List
 
 - `LICENSE` (new) — MIT license text
-- `pyproject.toml` (modified) — Added `license`, `classifiers`, `keywords` fields to `[project]` section
+- `pyproject.toml` (modified) — Added `license`, `classifiers`, `keywords`, `[project.urls]` fields to `[project]` section
+- `src/docvet/py.typed` (new) — PEP 561 typed package marker
