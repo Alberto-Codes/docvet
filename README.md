@@ -109,6 +109,18 @@ With version pinning and custom arguments:
     args: 'check --all'
 ```
 
+For griffe rendering checks, install griffe before running docvet:
+
+```yaml
+- uses: actions/setup-python@v5
+  with:
+    python-version: '3.12'
+- run: pip install griffe
+- uses: Alberto-Codes/docvet@v1
+  with:
+    args: 'check --all'
+```
+
 ## Better Docstrings, Better AI
 
 AI coding agents rely on docstrings as context when generating and modifying code. Research shows stale or incorrect documentation is actively harmful -- worse than no docs at all:
