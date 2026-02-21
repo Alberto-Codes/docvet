@@ -37,14 +37,42 @@ __all__: list[str] = []
 
 
 class OutputFormat(enum.StrEnum):
-    """Output format for reports."""
+    """Output format for reports.
+
+    Examples:
+        Select terminal output for CI pipelines:
+
+        ```python
+        fmt = OutputFormat.TERMINAL  # "terminal"
+        ```
+
+        Select markdown output for saved reports:
+
+        ```python
+        fmt = OutputFormat.MARKDOWN  # "markdown"
+        ```
+    """
 
     TERMINAL = "terminal"
     MARKDOWN = "markdown"
 
 
 class FreshnessMode(enum.StrEnum):
-    """Freshness check strategy."""
+    """Freshness check strategy.
+
+    Examples:
+        Use diff mode for fast CI checks against recent changes:
+
+        ```python
+        mode = FreshnessMode.DIFF  # "diff"
+        ```
+
+        Use drift mode for periodic sweeps via git blame timestamps:
+
+        ```python
+        mode = FreshnessMode.DRIFT  # "drift"
+        ```
+    """
 
     DIFF = "diff"
     DRIFT = "drift"
