@@ -17,13 +17,17 @@ runs:
       with:
         python-version: '3.12'
     - name: Install docvet
+      env:
+        DOCVET_VERSION: ${{ inputs.version }}
       run: |
-        if [ "${{ inputs.version }}" = "latest" ]; then
+        if [ "$DOCVET_VERSION" = "latest" ]; then
           pip install docvet
         else
-          pip install docvet==${{ inputs.version }}
+          pip install "docvet==$DOCVET_VERSION"
         fi
       shell: bash
     - name: Run docvet
-      run: docvet ${{ inputs.args }}
+      env:
+        DOCVET_ARGS: ${{ inputs.args }}
+      run: docvet $DOCVET_ARGS
       shell: bash
