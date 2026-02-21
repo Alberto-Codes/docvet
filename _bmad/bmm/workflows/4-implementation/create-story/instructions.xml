@@ -305,6 +305,11 @@
 
     <!-- CRITICAL: Set status to ready-for-dev -->
     <action>Set story Status to: "ready-for-dev"</action>
+    <!-- Populate Branch field for dev agent convenience -->
+    <action>Set Branch field: feat/{{scope}}-{{epic_num}}-{{story_num}}-{{description}} where:
+      - {{scope}}: the primary codebase area (e.g., enrichment, freshness, cli, docs) — infer from the story's main module or check name
+      - {{description}}: kebab-case summary of the story title (e.g., "scaffold-site", "rule-reference-pages")
+    </action>
     <action>Add completion note: "Ultimate
     context engine analysis completed - comprehensive developer guide created"</action>
   </step>
