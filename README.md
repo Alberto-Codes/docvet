@@ -24,14 +24,16 @@ Existing tools cover presence and style. docvet delivers the layers they miss:
 ## What It Checks
 
 **Enrichment** (completeness) -- 10 rules:
-`missing-raises` `missing-yields` `missing-receives` `missing-warns` `missing-other-parameters` `missing-attributes` `missing-class-attributes` `missing-module-attributes` `missing-examples` `missing-typed-attributes` `missing-cross-references` `prefer-fenced-code-blocks`
+`missing-raises` `missing-yields` `missing-receives` `missing-warns` `missing-other-parameters` `missing-attributes` `missing-typed-attributes` `missing-examples` `missing-cross-references` `prefer-fenced-code-blocks`
 
-**Freshness** (accuracy) -- 3 rules:
-`stale-signature` `stale-body` `stale-import`
+**Freshness** (accuracy) -- 5 rules:
+`stale-signature` `stale-body` `stale-import` `stale-drift` `stale-age`
 
-**Griffe** (rendering) -- griffe parser warning capture for mkdocs compatibility
+**Griffe** (rendering) -- 3 rules:
+`griffe-unknown-param` `griffe-missing-type` `griffe-format-warning`
 
-**Coverage** (visibility) -- missing `__init__.py` detection for mkdocs discoverability
+**Coverage** (visibility) -- 1 rule:
+`missing-init`
 
 ## Quickstart
 
