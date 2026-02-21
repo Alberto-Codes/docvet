@@ -25,14 +25,14 @@ so that I can confirm the tool is safe to adopt in my project.
 - [x] Task 2: Add `license` field to `pyproject.toml` (AC: #2)
   - [x] 2.1 Add `license = {file = "LICENSE"}` to the `[project]` section
 - [x] Task 3: Add `classifiers` to `pyproject.toml` (AC: #3)
-  - [x] 3.1 Add `classifiers` list with all 7 required classifiers
+  - [x] 3.1 Add `classifiers` list with all 8 classifiers (7 required + 1 review follow-up)
 - [x] Task 4: Add `keywords` to `pyproject.toml` (AC: #4)
   - [x] 4.1 Add `keywords` list with all 8 required keywords
 - [x] Task 5: Run quality gates and verify build (AC: #5)
   - [x] 5.1 `uv run pytest` — all existing tests pass (729 passed, 1 skipped)
   - [x] 5.2 `uv run ruff check .` — no lint errors
   - [x] 5.3 `uv run ruff format --check .` — no formatting issues
-  - [x] 5.4 `uv build` — wheel METADATA verified: license text inlined, all 7 classifiers present, all 8 keywords present
+  - [x] 5.4 `uv build` — wheel METADATA verified: license text inlined, all 8 classifiers present, all 8 keywords present
 
 ### Review Follow-ups (AI)
 
@@ -48,7 +48,7 @@ so that I can confirm the tool is safe to adopt in my project.
 |----|---------|--------|
 | #1 | Manual: `LICENSE` file exists at repo root with MIT text, copyright 2026 Alberto-Codes | Pass |
 | #2 | Manual: `pyproject.toml` contains `license = {file = "LICENSE"}` (line 6) | Pass |
-| #3 | Manual: `pyproject.toml` contains all 7 classifiers (lines 11-18) | Pass |
+| #3 | Manual: `pyproject.toml` contains all 8 classifiers (lines 11-20) | Pass |
 | #4 | Manual: `pyproject.toml` contains all 8 keywords (lines 20-28) | Pass |
 | #5 | `uv run pytest` — 729 passed, 1 skipped, 0 failed | Pass |
 
@@ -162,7 +162,7 @@ None — clean implementation with no errors or retries.
 
 - Created MIT LICENSE file at repo root (copyright 2026 Alberto-Codes)
 - Added `license = {file = "LICENSE"}` to `[project]` section (PEP 621 file-reference form)
-- Added 7 PyPI classifiers covering dev status, environment, audience, license, Python versions, and topic
+- Added 8 PyPI classifiers covering dev status, environment, audience, license, Python versions, topic, and typing
 - Added 8 keywords for PyPI discoverability
 - Field placement follows PEP 621 convention: name → version → description → readme → license → authors → requires-python → classifiers → keywords → dependencies
 - `uv build` verified: wheel METADATA correctly inlines full license text, all classifiers, and all keywords
