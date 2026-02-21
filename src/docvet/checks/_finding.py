@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-__all__ = ["Finding"]
+__all__: list[str] = []
 
 
 @dataclass(frozen=True)
