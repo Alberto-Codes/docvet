@@ -107,7 +107,7 @@ development_status:
   epic-10: in-progress
   10-1-license-and-package-metadata: done
   10-2-readme-with-comparison-table-quickstart-and-badges: review
-  10-3-pre-commit-hook-and-github-action: backlog
+  10-3-pre-commit-hook-and-github-action: review
   10-4-changelog-and-publication-pipeline: backlog
   epic-10-retrospective: optional
 
