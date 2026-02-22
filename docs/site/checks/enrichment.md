@@ -10,16 +10,16 @@ docvet enrichment --all
 
 | Rule ID | Category | Applies To | Description |
 |---------|----------|------------|-------------|
-| `missing-raises` | required | functions, methods | Function raises exceptions but has no `Raises:` section |
-| `missing-yields` | required | functions, methods | Generator yields but has no `Yields:` section |
-| `missing-receives` | required | functions, methods | Generator uses `.send()` pattern but has no `Receives:` section |
-| `missing-warns` | required | functions, methods | Function calls `warnings.warn()` but has no `Warns:` section |
-| `missing-other-parameters` | recommended | functions, methods | Function accepts `**kwargs` but has no `Other Parameters:` section |
-| `missing-attributes` | required | classes, modules | Class or `__init__.py` module has undocumented attributes |
-| `missing-typed-attributes` | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
-| `missing-examples` | recommended | classes, modules | Symbol kind in `require-examples` list lacks `Examples:` section |
-| `missing-cross-references` | recommended | modules | `__init__.py` module missing `See Also:` section |
-| `prefer-fenced-code-blocks` | recommended | any symbol | `Examples:` section uses doctest `>>>` instead of fenced code blocks |
+| [`missing-raises`](../rules/missing-raises.md) | required | functions, methods | Function raises exceptions but has no `Raises:` section |
+| [`missing-yields`](../rules/missing-yields.md) | required | functions, methods | Generator yields but has no `Yields:` section |
+| [`missing-receives`](../rules/missing-receives.md) | required | functions, methods | Generator uses `.send()` pattern but has no `Receives:` section |
+| [`missing-warns`](../rules/missing-warns.md) | required | functions, methods | Function calls `warnings.warn()` but has no `Warns:` section |
+| [`missing-other-parameters`](../rules/missing-other-parameters.md) | recommended | functions, methods | Function accepts `**kwargs` but has no `Other Parameters:` section |
+| [`missing-attributes`](../rules/missing-attributes.md) | required | classes, modules | Class or `__init__.py` module has undocumented attributes |
+| [`missing-typed-attributes`](../rules/missing-typed-attributes.md) | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
+| [`missing-examples`](../rules/missing-examples.md) | recommended | classes, modules | Symbol kind in `require-examples` list lacks `Examples:` section |
+| [`missing-cross-references`](../rules/missing-cross-references.md) | recommended | modules | `__init__.py` module missing `See Also:` section |
+| [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` instead of fenced code blocks |
 
 **Required** rules flag structural gaps where the docstring is objectively incomplete. **Recommended** rules flag best-practice improvements that enhance documentation quality.
 
