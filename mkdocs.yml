@@ -39,6 +39,12 @@ plugins:
 
 nav:
   - Getting Started: index.md
+  - Checks:
+    - Enrichment: checks/enrichment.md
+    - Freshness: checks/freshness.md
+    - Coverage: checks/coverage.md
+    - Griffe: checks/griffe.md
+  - Configuration: configuration.md
   - CLI Reference: cli-reference.md
 
 markdown_extensions:
