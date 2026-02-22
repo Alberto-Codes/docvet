@@ -120,7 +120,7 @@ development_status:
 
   # Epic 12: Housekeeping & Quality Infrastructure
   epic-12: in-progress
-  12-1-enrichment-module-cognitive-complexity-refactoring: review
+  12-1-enrichment-module-cognitive-complexity-refactoring: done
   12-2-non-enrichment-module-cognitive-complexity-refactoring: backlog
   12-3-sonarqube-minor-findings-resolution: backlog
   12-4-process-and-convention-infrastructure: backlog
