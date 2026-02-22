@@ -122,7 +122,7 @@ development_status:
   epic-12: in-progress
   12-1-enrichment-module-cognitive-complexity-refactoring: done
   12-2-non-enrichment-module-cognitive-complexity-refactoring: done
-  12-3-sonarqube-minor-findings-resolution: backlog
+  12-3-sonarqube-minor-findings-resolution: review
   12-4-process-and-convention-infrastructure: backlog
   epic-12-retrospective: optional
 

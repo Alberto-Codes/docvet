@@ -149,6 +149,34 @@ def _build_finding_from_record(
     )
 
 
+def _collect_object_findings(
+    obj: GriffeObject,
+    handler: _WarningCollector,
+) -> list[Finding]:
+    """Collect docstring findings for a single griffe object.
+
+    Triggers docstring parsing on the object, captures any new warning
+    records added during parsing, and converts them to findings.
+
+    Args:
+        obj: A griffe object with a docstring to parse.
+        handler: Attached warning collector for the griffe logger.
+
+    Returns:
+        A list of findings from docstring compatibility warnings for
+        this object.
+    """
+    before = len(handler.records)
+    _ = obj.docstring.parsed
+    after = len(handler.records)
+    findings: list[Finding] = []
+    for record in handler.records[before:after]:
+        finding = _build_finding_from_record(record, obj)
+        if finding is not None:
+            findings.append(finding)
+    return findings
+
+
 def _load_and_check_packages(
     src_root: Path,
     file_set: set[Path],
@@ -191,13 +219,7 @@ def _load_and_check_packages(
             continue
 
         for obj in _walk_objects(package, file_set):
-            before = len(handler.records)
-            _ = obj.docstring.parsed
-            after = len(handler.records)
-            for record in handler.records[before:after]:
-                finding = _build_finding_from_record(record, obj)
-                if finding is not None:
-                    findings.append(finding)
+            findings.extend(_collect_object_findings(obj, handler))
     return findings
 
 
