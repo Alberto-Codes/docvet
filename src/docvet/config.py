@@ -456,31 +456,6 @@ def _read_docvet_toml(pyproject_path: Path) -> dict[str, object]:
     return docvet_section
 
 
-def _extract_config_field(
-    parsed: dict[str, object],
-    key: str,
-    expected_type: type,
-    default: object,
-) -> object:
-    """Extract a typed config value with fallback to *default*.
-
-    Args:
-        parsed: Validated dict from :func:`_parse_docvet_section`.
-        key: Field key to look up (snake_case).
-        expected_type: Expected Python type for the value.
-        default: Value returned when *key* is missing or mistyped.
-
-    Returns:
-        The extracted value, or *default* when absent or wrong type.
-    """
-    raw = parsed.get(key)
-    if not isinstance(raw, expected_type):
-        return default
-    if isinstance(raw, list):
-        return [str(x) for x in raw]
-    return raw
-
-
 def _find_pyproject_path(path: Path | None) -> Path | None:
     """Resolve an explicit or discovered ``pyproject.toml`` path.
 
@@ -538,12 +513,18 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         configured_src if isinstance(configured_src, str) else None,
     )
 
-    fail_on: list[str] = _extract_config_field(
-        parsed, "fail_on", list, list(defaults.fail_on)
-    )  # type: ignore[assignment]
-    warn_on: list[str] = _extract_config_field(
-        parsed, "warn_on", list, list(defaults.warn_on)
-    )  # type: ignore[assignment]
+    raw_fail = parsed.get("fail_on")
+    fail_on: list[str] = (
+        [str(x) for x in raw_fail]
+        if isinstance(raw_fail, list)
+        else list(defaults.fail_on)
+    )
+    raw_warn = parsed.get("warn_on")
+    warn_on: list[str] = (
+        [str(x) for x in raw_warn]
+        if isinstance(raw_warn, list)
+        else list(defaults.warn_on)
+    )
     fail_on_set = set(fail_on)
     for check in warn_on:
         if check in fail_on_set:
@@ -552,17 +533,30 @@ def load_config(path: Path | None = None) -> DocvetConfig:
                 file=sys.stderr,
             )
 
+    raw_pkg = parsed.get("package_name")
+    raw_exclude = parsed.get("exclude")
+    raw_freshness = parsed.get("freshness")
+    raw_enrichment = parsed.get("enrichment")
+
     return DocvetConfig(
         src_root=resolved_src_root,
-        package_name=_extract_config_field(parsed, "package_name", str, None),  # type: ignore[arg-type]
-        exclude=_extract_config_field(parsed, "exclude", list, list(defaults.exclude)),  # type: ignore[arg-type]
+        package_name=raw_pkg if isinstance(raw_pkg, str) else None,
+        exclude=(
+            [str(x) for x in raw_exclude]
+            if isinstance(raw_exclude, list)
+            else list(defaults.exclude)
+        ),
         fail_on=fail_on,
         warn_on=[c for c in warn_on if c not in fail_on_set],
-        freshness=_extract_config_field(
-            parsed, "freshness", FreshnessConfig, FreshnessConfig()
-        ),  # type: ignore[arg-type]
-        enrichment=_extract_config_field(  # type: ignore[arg-type]
-            parsed, "enrichment", EnrichmentConfig, EnrichmentConfig()
+        freshness=(
+            raw_freshness
+            if isinstance(raw_freshness, FreshnessConfig)
+            else FreshnessConfig()
+        ),
+        enrichment=(
+            raw_enrichment
+            if isinstance(raw_enrichment, EnrichmentConfig)
+            else EnrichmentConfig()
         ),
         project_root=project_root,
     )
