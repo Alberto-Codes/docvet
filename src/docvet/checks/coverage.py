@@ -16,6 +16,40 @@ from docvet.checks._finding import Finding
 __all__ = ["check_coverage"]
 
 
+def _find_missing_init_dirs(
+    file: Path,
+    src_root: Path,
+    init_cache: dict[Path, bool],
+) -> set[Path]:
+    """Walk parent directories of *file* and return those missing ``__init__.py``.
+
+    Walks from the file's parent up to (but not including) *src_root*,
+    checking each directory for an ``__init__.py`` using a shared cache.
+
+    Args:
+        file: Python file whose parent chain to inspect.
+        src_root: Root of the source tree (stop directory).
+        init_cache: Shared cache mapping directories to their
+            ``__init__.py`` existence status.
+
+    Returns:
+        Set of directory paths that lack ``__init__.py``.
+    """
+    parent = file.parent
+    if parent == src_root:
+        return set()
+
+    missing: set[Path] = set()
+    current = parent
+    while current != src_root:
+        if current not in init_cache:
+            init_cache[current] = (current / "__init__.py").exists()
+        if not init_cache[current]:
+            missing.add(current)
+        current = current.parent
+    return missing
+
+
 def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
     """Detect missing ``__init__.py`` files in parent directories.
 
@@ -37,19 +71,8 @@ def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
     for file in files:
         if not file.is_relative_to(src_root):
             continue
-
-        parent = file.parent
-        if parent == src_root:
-            continue
-
-        # Walk parent dirs up to (but not including) src_root
-        current = parent
-        while current != src_root:
-            if current not in init_cache:
-                init_cache[current] = (current / "__init__.py").exists()
-            if not init_cache[current]:
-                missing_dirs.setdefault(current, []).append(file)
-            current = current.parent
+        for missing_dir in _find_missing_init_dirs(file, src_root, init_cache):
+            missing_dirs.setdefault(missing_dir, []).append(file)
 
     # Build findings: one per directory, sorted by relative path
     findings: list[Finding] = []
