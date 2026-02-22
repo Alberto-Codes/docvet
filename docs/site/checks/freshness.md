@@ -41,16 +41,16 @@ Two thresholds control sensitivity:
 
 | Rule ID | Category | Severity | Description |
 |---------|----------|----------|-------------|
-| `stale-signature` | required | HIGH | Function signature changed but docstring not updated |
-| `stale-body` | recommended | MEDIUM | Function body changed but docstring not updated |
-| `stale-import` | recommended | LOW | Import changed but docstring not updated |
+| [`stale-signature`](../rules/stale-signature.md) | required | HIGH | Function signature changed but docstring not updated |
+| [`stale-body`](../rules/stale-body.md) | recommended | MEDIUM | Function body changed but docstring not updated |
+| [`stale-import`](../rules/stale-import.md) | recommended | LOW | Import changed but docstring not updated |
 
 **Drift Mode:**
 
 | Rule ID | Category | Description |
 |---------|----------|-------------|
-| `stale-drift` | recommended | Code modified more recently than docstring (exceeds `drift-threshold` days) |
-| `stale-age` | recommended | Docstring untouched beyond `age-threshold` days |
+| [`stale-drift`](../rules/stale-drift.md) | recommended | Code modified more recently than docstring (exceeds `drift-threshold` days) |
+| [`stale-age`](../rules/stale-age.md) | recommended | Docstring untouched beyond `age-threshold` days |
 
 ## Example Output
 
