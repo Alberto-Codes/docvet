@@ -16,6 +16,8 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
 | `--version` | flag | | Show version and exit |
 
+When `--output` is specified without `--format`, the format defaults to `markdown`.
+
 Global options must precede the subcommand:
 
 ```bash
@@ -109,7 +111,7 @@ Loads packages with the griffe parser and captures warnings that would cause bro
 
 ## Configuration
 
-docvet reads configuration from the `[tool.docvet]` section in `pyproject.toml`. If the section is missing, sensible defaults are used.
+docvet reads configuration from the `[tool.docvet]` section in `pyproject.toml`. If the section is missing, sensible defaults are used. See the Configuration guide for available options and their defaults.
 
 Specify a custom config path with:
 
@@ -123,6 +125,7 @@ docvet --config path/to/pyproject.toml check --all
 |------|---------|
 | `0` | No findings (or no findings in `fail_on` checks) |
 | `1` | Findings detected in `fail_on` checks |
+| `2` | Usage error (invalid arguments or options) |
 
 ## Examples
 
