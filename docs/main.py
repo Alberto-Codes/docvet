@@ -18,8 +18,15 @@ def define_env(env):
     rules_by_id = {rule["id"]: rule for rule in rules_data}
 
     @env.macro
-    def rule_header():
-        """Render a metadata table for the current rule page."""
+    def rule_header() -> str:
+        """Render a metadata table for the current rule page.
+
+        Returns:
+            Markdown string containing a metadata table and summary blockquote.
+
+        Raises:
+            ValueError: If the page filename does not match any rule in rules.yml.
+        """
         page_name = env.page.file.name  # e.g. "missing-raises.md"
         rule_id = page_name.removesuffix(".md")
 
