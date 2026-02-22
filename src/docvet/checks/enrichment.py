@@ -21,11 +21,11 @@ __all__ = ["check_enrichment"]
 # Section header constants
 # ---------------------------------------------------------------------------
 
+_SEE_ALSO = "See Also"
+
 # All 10 recognized Google-style section headers.
 # Args and Returns are included for parsing context (FR15) — they are
 # recognized but never checked for absence (layers 1-2 are ruff/interrogate).
-_SEE_ALSO = "See Also"
-
 _SECTION_HEADERS = frozenset(
     {
         "Args",
