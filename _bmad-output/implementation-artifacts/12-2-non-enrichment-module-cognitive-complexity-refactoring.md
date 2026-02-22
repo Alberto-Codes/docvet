@@ -27,8 +27,8 @@ so that every source module passes SonarQube's maintainability threshold.
 - [x] Task 1: Refactor `load_config` in `config.py` — CC 29 → ≤ 15 (AC: 1)
   - [x] 1.1 Extract `_find_pyproject_path(path: Path | None) -> Path | None` — isolate pyproject.toml discovery logic
   - [x] 1.2 Extract `_read_docvet_toml(pyproject_path: Path) -> dict[str, object]` — isolate TOML parsing and section extraction (3-level nesting)
-  - [x] 1.3 Extract `_extract_config_field(parsed: dict, key: str, expected_type: type, default: object) -> object` — table-driven type validation replacing 5 repeated `if isinstance` blocks
-  - [x] 1.4 Simplify `load_config` to: find path → read TOML → parse section → extract fields → construct dataclass
+  - [x] 1.3 ~~Extract `_extract_config_field`~~ — reverted during review; inline `isinstance` checks preserve type safety without `type: ignore` comments
+  - [x] 1.4 Simplify `load_config` to: find path → read TOML → parse section → construct dataclass
   - [x] 1.5 Verify CC ≤ 15 via `analyze_code_snippet` — zero S3776 findings
   - [x] 1.6 Run `uv run pytest tests/unit/test_config.py` — all 64 config tests pass
 - [x] Task 2: Refactor `_walk_all` in `discovery.py` — CC 23 → ≤ 15 (AC: 2)
@@ -226,14 +226,15 @@ None — zero-debug implementation.
 ### Completion Notes List
 
 - All 7 functions refactored below CC 15 using helper extraction pattern from Story 12.1
-- `load_config` (CC 29→≤15): Extracted `_find_pyproject_path`, `_read_docvet_toml`, `_extract_config_field` — 3 helpers
+- `load_config` (CC 29→≤15): Extracted `_find_pyproject_path`, `_read_docvet_toml` — 2 helpers (review removed `_extract_config_field` to preserve type safety)
 - `_walk_all` (CC 23→≤15): Extracted `_collect_python_files` — 1 helper unifying git/rglob branches
 - `discover_files` (CC 20→≤15): Extracted `_discover_explicit_files` — 1 helper for FILES mode
 - `_parse_blame_timestamps` (CC 19→≤15): Extracted `_classify_blame_line` — 1 helper for line classification
 - `check_freshness_drift` (CC 18→≤15): Extracted `_build_drift_finding`, `_build_age_finding`, `_group_timestamps_by_symbol` — 3 helpers (initial pass was CC 16; grouping helper was needed to cross threshold)
 - `check_griffe_compat` (CC 17→≤15): Extracted `_load_and_check_packages` — 1 helper for package loading loop
 - `check_coverage` (CC 16→≤15): Extracted `_find_missing_init_dirs` — 1 helper for parent directory walking
-- Fixed ty `not-iterable` error in `_extract_config_field` by using `isinstance(raw, list)` for type narrowing instead of `expected_type is list`
+- Review finding: `_extract_config_field` introduced 6 `type: ignore` comments where original had zero — reverted to inline `isinstance` checks which give proper type narrowing
+- Fixed pre-existing ty `possibly-missing-attribute` warnings in griffe_compat.py via type-narrowing guard instead of ignore comments
 - Zero test modifications — all 731 tests pass (1 skipped for optional griffe dep)
 - All quality gates green: ruff check 0 violations, ruff format 0 issues, ty check 0 errors
 
@@ -241,7 +242,7 @@ None — zero-debug implementation.
 
 | File | Action |
 |------|--------|
-| `src/docvet/config.py` | Added `_find_pyproject_path`, `_read_docvet_toml`, `_extract_config_field`; simplified `load_config` |
+| `src/docvet/config.py` | Added `_find_pyproject_path`, `_read_docvet_toml`; simplified `load_config` |
 | `src/docvet/discovery.py` | Added `_collect_python_files`, `_discover_explicit_files`; simplified `_walk_all` and `discover_files` |
 | `src/docvet/checks/freshness.py` | Added `_classify_blame_line`, `_group_timestamps_by_symbol`, `_build_drift_finding`, `_build_age_finding`; simplified `_parse_blame_timestamps` and `check_freshness_drift` |
 | `src/docvet/checks/griffe_compat.py` | Added `_load_and_check_packages`; simplified `check_griffe_compat` |
