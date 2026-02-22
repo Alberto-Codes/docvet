@@ -128,7 +128,7 @@ development_status:
 
   # Epic 13: Documentation Publishing & API Reference
   epic-13: in-progress
-  13-1-domain-glossary-with-inline-tooltips: review
+  13-1-domain-glossary-with-inline-tooltips: done
   13-2-auto-generated-api-reference: backlog
   13-3-github-pages-deployment: backlog
   epic-13-retrospective: optional
