@@ -419,6 +419,90 @@ def _parse_docvet_section(
 
 
 # ---------------------------------------------------------------------------
+# Load helpers
+# ---------------------------------------------------------------------------
+
+
+def _read_docvet_toml(pyproject_path: Path) -> dict[str, object]:
+    """Read ``pyproject.toml`` and return the raw ``[tool.docvet]`` dict.
+
+    Args:
+        pyproject_path: Path to the ``pyproject.toml`` file.
+
+    Returns:
+        The raw TOML dict for ``[tool.docvet]``, or an empty dict when
+        the section is absent.
+    """
+    with open(pyproject_path, "rb") as f:
+        toml_data = tomllib.load(f)
+    tool_section = toml_data.get("tool")
+    if tool_section is None:
+        return {}
+    if not isinstance(tool_section, dict):
+        print(
+            "docvet: [tool] in pyproject.toml must be a table",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    docvet_section = tool_section.get("docvet")
+    if docvet_section is None:
+        return {}
+    if not isinstance(docvet_section, dict):
+        print(
+            "docvet: [tool.docvet] in pyproject.toml must be a table",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return docvet_section
+
+
+def _extract_config_field(
+    parsed: dict[str, object],
+    key: str,
+    expected_type: type,
+    default: object,
+) -> object:
+    """Extract a typed config value with fallback to *default*.
+
+    Args:
+        parsed: Validated dict from :func:`_parse_docvet_section`.
+        key: Field key to look up (snake_case).
+        expected_type: Expected Python type for the value.
+        default: Value returned when *key* is missing or mistyped.
+
+    Returns:
+        The extracted value, or *default* when absent or wrong type.
+    """
+    raw = parsed.get(key)
+    if not isinstance(raw, expected_type):
+        return default
+    if isinstance(raw, list):
+        return [str(x) for x in raw]
+    return raw
+
+
+def _find_pyproject_path(path: Path | None) -> Path | None:
+    """Resolve an explicit or discovered ``pyproject.toml`` path.
+
+    Args:
+        path: Explicit path provided by the caller, or *None* for
+            automatic discovery.
+
+    Returns:
+        Resolved path to ``pyproject.toml``, or *None* when discovery
+        finds nothing.
+
+    Raises:
+        FileNotFoundError: If an explicit *path* does not exist.
+    """
+    if path is not None:
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        return path
+    return _find_pyproject()
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -436,44 +520,17 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     Raises:
         FileNotFoundError: If an explicit *path* does not exist.
     """
-    if path is not None:
-        if not path.is_file():
-            raise FileNotFoundError(path)
-        pyproject_path = path
-        project_root = path.parent.resolve()
-    else:
-        pyproject_path = _find_pyproject()
-        if pyproject_path is None:
-            project_root = Path.cwd().resolve()
-            parsed: dict[str, object] = {}
-        else:
-            project_root = pyproject_path.parent.resolve()
-
+    pyproject_path = _find_pyproject_path(path)
     if pyproject_path is not None:
-        with open(pyproject_path, "rb") as f:
-            toml_data = tomllib.load(f)
-        tool_section = toml_data.get("tool")
-        if tool_section is None:
-            data: dict[str, object] = {}
-        elif not isinstance(tool_section, dict):
-            print(
-                "docvet: [tool] in pyproject.toml must be a table",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        else:
-            docvet_section = tool_section.get("docvet")
-            if docvet_section is None:
-                data = {}
-            elif not isinstance(docvet_section, dict):
-                print(
-                    "docvet: [tool.docvet] in pyproject.toml must be a table",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            else:
-                data = docvet_section
-        parsed = _parse_docvet_section(data) if data else {}
+        project_root = pyproject_path.parent.resolve()
+        data = _read_docvet_toml(pyproject_path)
+        parsed: dict[str, object] = _parse_docvet_section(data) if data else {}
+    else:
+        project_root = Path.cwd().resolve()
+        parsed = {}
+
+    # Use dataclass defaults as single source of truth for omitted keys.
+    defaults = DocvetConfig()
 
     configured_src = parsed.get("src_root")
     resolved_src_root = _resolve_src_root(
@@ -481,21 +538,12 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         configured_src if isinstance(configured_src, str) else None,
     )
 
-    # Use dataclass defaults as single source of truth for omitted keys.
-    defaults = DocvetConfig()
-
-    raw_fail = parsed.get("fail_on")
-    fail_on: list[str] = (
-        [str(x) for x in raw_fail]
-        if isinstance(raw_fail, list)
-        else list(defaults.fail_on)
-    )
-    raw_warn = parsed.get("warn_on")
-    warn_on: list[str] = (
-        [str(x) for x in raw_warn]
-        if isinstance(raw_warn, list)
-        else list(defaults.warn_on)
-    )
+    fail_on: list[str] = _extract_config_field(
+        parsed, "fail_on", list, list(defaults.fail_on)
+    )  # type: ignore[assignment]
+    warn_on: list[str] = _extract_config_field(
+        parsed, "warn_on", list, list(defaults.warn_on)
+    )  # type: ignore[assignment]
     fail_on_set = set(fail_on)
     for check in warn_on:
         if check in fail_on_set:
@@ -503,33 +551,18 @@ def load_config(path: Path | None = None) -> DocvetConfig:
                 f"docvet: '{check}' appears in both fail-on and warn-on; using fail-on",
                 file=sys.stderr,
             )
-    final_warn_on: list[str] = [c for c in warn_on if c not in fail_on_set]
-
-    raw_pkg = parsed.get("package_name")
-    raw_exclude = parsed.get("exclude")
-    exclude: list[str] = (
-        [str(x) for x in raw_exclude]
-        if isinstance(raw_exclude, list)
-        else list(defaults.exclude)
-    )
-    raw_freshness = parsed.get("freshness")
-    raw_enrichment = parsed.get("enrichment")
 
     return DocvetConfig(
         src_root=resolved_src_root,
-        package_name=raw_pkg if isinstance(raw_pkg, str) else None,
-        exclude=exclude,
+        package_name=_extract_config_field(parsed, "package_name", str, None),  # type: ignore[arg-type]
+        exclude=_extract_config_field(parsed, "exclude", list, list(defaults.exclude)),  # type: ignore[arg-type]
         fail_on=fail_on,
-        warn_on=final_warn_on,
-        freshness=(
-            raw_freshness
-            if isinstance(raw_freshness, FreshnessConfig)
-            else FreshnessConfig()
-        ),
-        enrichment=(
-            raw_enrichment
-            if isinstance(raw_enrichment, EnrichmentConfig)
-            else EnrichmentConfig()
+        warn_on=[c for c in warn_on if c not in fail_on_set],
+        freshness=_extract_config_field(
+            parsed, "freshness", FreshnessConfig, FreshnessConfig()
+        ),  # type: ignore[arg-type]
+        enrichment=_extract_config_field(  # type: ignore[arg-type]
+            parsed, "enrichment", EnrichmentConfig, EnrichmentConfig()
         ),
         project_root=project_root,
     )
