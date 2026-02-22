@@ -6,7 +6,7 @@ import enum
 import fnmatch
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path, PurePosixPath
 
 from docvet.config import DocvetConfig
@@ -110,6 +110,41 @@ def _is_excluded(rel_path: str, exclude: list[str]) -> bool:
     return False
 
 
+def _collect_python_files(
+    path_iter: Iterable[Path],
+    config: DocvetConfig,
+) -> list[Path]:
+    """Filter and collect Python files from a path source.
+
+    Applies symlink, suffix, and exclusion checks to each candidate
+    path, returning only valid ``.py`` files.
+
+    Args:
+        path_iter: Iterator of candidate file paths (absolute or
+            relative to the project root).
+        config: Configuration providing ``project_root`` and ``exclude``
+            patterns.
+
+    Returns:
+        Sorted list of absolute paths to valid ``.py`` files.
+    """
+    paths: list[Path] = []
+    for raw_path in path_iter:
+        if raw_path.is_symlink():
+            continue
+        abs_path = raw_path.resolve()
+        if abs_path.suffix != ".py":
+            continue
+        try:
+            rel = PurePosixPath(abs_path.relative_to(config.project_root)).as_posix()
+        except ValueError:
+            continue
+        if _is_excluded(rel, config.exclude):
+            continue
+        paths.append(abs_path)
+    return sorted(paths)
+
+
 def _walk_all(config: DocvetConfig) -> list[Path]:
     """Discover all Python files under the configured source root.
 
@@ -138,35 +173,33 @@ def _walk_all(config: DocvetConfig) -> list[Path]:
     )
 
     if lines is not None:
-        paths: list[Path] = []
-        for line in lines:
-            raw_path = root / line
-            if raw_path.is_symlink():
-                continue
-            abs_path = raw_path.resolve()
-            if abs_path.suffix != ".py":
-                continue
-            try:
-                rel = PurePosixPath(
-                    abs_path.relative_to(config.project_root)
-                ).as_posix()
-            except ValueError:
-                continue
-            if _is_excluded(rel, config.exclude):
-                continue
-            paths.append(abs_path)
-        return sorted(paths)
+        return _collect_python_files((root / line for line in lines), config)
 
     # Fallback: non-git directory — walk with rglob.
-    paths = []
-    for path in root.rglob("*.py"):
-        if path.is_symlink():
+    return _collect_python_files(root.rglob("*.py"), config)
+
+
+def _discover_explicit_files(files: Sequence[Path]) -> list[Path]:
+    """Filter explicitly provided file paths.
+
+    Validates that each path exists and has a ``.py`` suffix, printing
+    a warning for missing files.
+
+    Args:
+        files: User-provided file paths to validate.
+
+    Returns:
+        Sorted list of absolute paths to existing ``.py`` files.
+    """
+    paths: list[Path] = []
+    for path in files:
+        if path.suffix != ".py":
             continue
-        try:
-            rel = PurePosixPath(path.relative_to(config.project_root)).as_posix()
-        except ValueError:
-            continue
-        if _is_excluded(rel, config.exclude):
+        if not path.exists():
+            print(
+                f"docvet: file not found: {path}",
+                file=sys.stderr,
+            )
             continue
         paths.append(path.resolve())
     return sorted(paths)
@@ -206,18 +239,7 @@ def discover_files(
         return _walk_all(config)
 
     if mode is DiscoveryMode.FILES:
-        paths: list[Path] = []
-        for path in files:
-            if path.suffix != ".py":
-                continue
-            if not path.exists():
-                print(
-                    f"docvet: file not found: {path}",
-                    file=sys.stderr,
-                )
-                continue
-            paths.append(path.resolve())
-        return sorted(paths)
+        return _discover_explicit_files(files)
 
     if mode is DiscoveryMode.DIFF:
         git_args = ["diff", "--name-only", "--diff-filter=ACMR"]
