@@ -8,6 +8,7 @@ from pathlib import Path
 
 from docvet.checks import Finding
 from docvet.checks.enrichment import (
+    _RULE_DISPATCH,
     _SECTION_HEADERS,
     _build_node_index,
     _check_missing_attributes,
@@ -495,6 +496,33 @@ FOO = 42
     )
 
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _RULE_DISPATCH safety-net tests
+# ---------------------------------------------------------------------------
+
+
+def test_rule_dispatch_attrs_exist_on_enrichment_config():
+    field_names = {f.name for f in dataclasses.fields(EnrichmentConfig)}
+    for attr, _check_fn in _RULE_DISPATCH:
+        assert attr in field_names, (
+            f"_RULE_DISPATCH references '{attr}' "
+            f"which does not exist on EnrichmentConfig"
+        )
+
+
+def test_all_config_toggle_fields_are_in_rule_dispatch():
+    dispatch_attrs = {attr for attr, _ in _RULE_DISPATCH}
+    config_toggle_fields = {
+        f.name
+        for f in dataclasses.fields(EnrichmentConfig)
+        if f.name.startswith(("require_", "prefer_"))
+    }
+    missing = config_toggle_fields - dispatch_attrs
+    assert not missing, (
+        f"EnrichmentConfig fields not wired in _RULE_DISPATCH: {sorted(missing)}"
+    )
 
 
 # ---------------------------------------------------------------------------

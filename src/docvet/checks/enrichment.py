@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Callable
 
 from docvet.ast_utils import Symbol, get_documented_symbols
 from docvet.checks._finding import Finding
@@ -147,6 +148,39 @@ def _build_node_index(tree: ast.Module) -> dict[int, _NodeT]:
 # ---------------------------------------------------------------------------
 
 
+def _extract_exception_name(node: ast.Raise) -> str | None:
+    """Extract the exception class name from a ``raise`` statement.
+
+    Handles four AST patterns:
+
+    - ``raise exc`` where ``exc`` is a bare ``ast.Name``
+    - ``raise Exc(...)`` where the call target is ``ast.Name``
+    - ``raise mod.Exc(...)`` where the call target is ``ast.Attribute``
+    - ``raise mod.Exc`` where ``exc`` is a bare ``ast.Attribute``
+
+    Bare ``raise`` (re-raise) returns ``"(re-raise)"``.
+
+    Args:
+        node: The ``ast.Raise`` node to inspect.
+
+    Returns:
+        The exception class name string, or ``None`` when the pattern
+        is unrecognised.
+    """
+    if node.exc is None:
+        return "(re-raise)"
+    if isinstance(node.exc, ast.Name):
+        return node.exc.id
+    if isinstance(node.exc, ast.Call):
+        if isinstance(node.exc.func, ast.Name):
+            return node.exc.func.id
+        if isinstance(node.exc.func, ast.Attribute):
+            return node.exc.func.attr
+    if isinstance(node.exc, ast.Attribute):
+        return node.exc.attr
+    return None
+
+
 def _check_missing_raises(
     symbol: Symbol,
     sections: set[str],
@@ -193,17 +227,9 @@ def _check_missing_raises(
         if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
         if isinstance(child, ast.Raise):
-            if child.exc is None:
-                names.add("(re-raise)")
-            elif isinstance(child.exc, ast.Name):
-                names.add(child.exc.id)
-            elif isinstance(child.exc, ast.Call):
-                if isinstance(child.exc.func, ast.Name):
-                    names.add(child.exc.func.id)
-                elif isinstance(child.exc.func, ast.Attribute):
-                    names.add(child.exc.func.attr)
-            elif isinstance(child.exc, ast.Attribute):
-                names.add(child.exc.attr)
+            name = _extract_exception_name(child)
+            if name is not None:
+                names.add(name)
         stack.extend(ast.iter_child_nodes(child))
 
     if not names:
@@ -363,6 +389,31 @@ def _check_missing_receives(
     )
 
 
+def _is_warn_call(node: ast.Call) -> bool:
+    """Check whether a call node is a ``warnings.warn()`` invocation.
+
+    Recognises two call patterns:
+
+    - Qualified: ``warnings.warn(...)``
+    - Bare: ``warn(...)`` (after ``from warnings import warn``)
+
+    Args:
+        node: The ``ast.Call`` node to inspect.
+
+    Returns:
+        ``True`` when the call matches a warn pattern.
+    """
+    if isinstance(node.func, ast.Attribute):
+        return (
+            isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "warnings"
+            and node.func.attr == "warn"
+        )
+    if isinstance(node.func, ast.Name):
+        return node.func.id == "warn"
+    return False
+
+
 def _check_missing_warns(
     symbol: Symbol,
     sections: set[str],
@@ -410,20 +461,9 @@ def _check_missing_warns(
         child = stack.pop()
         if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
-        if isinstance(child, ast.Call):
-            # Pattern 1: warnings.warn(...)
-            if (
-                isinstance(child.func, ast.Attribute)
-                and isinstance(child.func.value, ast.Name)
-                and child.func.value.id == "warnings"
-                and child.func.attr == "warn"
-            ):
-                has_warn = True
-                break
-            # Pattern 2: warn(...) after from warnings import warn
-            if isinstance(child.func, ast.Name) and child.func.id == "warn":
-                has_warn = True
-                break
+        if isinstance(child, ast.Call) and _is_warn_call(child):
+            has_warn = True
+            break
         stack.extend(ast.iter_child_nodes(child))
 
     if not has_warn:
@@ -503,10 +543,38 @@ def _check_missing_other_parameters(
 # ---------------------------------------------------------------------------
 
 
+def _decorator_matches(dec: ast.expr, name: str) -> bool:
+    """Check whether a decorator node matches a given name.
+
+    Recognises three decorator forms:
+
+    - Simple: ``@name``
+    - Qualified: ``@<module>.name`` (suffix match)
+    - Call: ``@name(...)`` or ``@<module>.name(...)``
+
+    The qualified forms use suffix-based matching (checks ``attr``
+    without verifying the module name).
+
+    Args:
+        dec: The decorator AST expression to inspect.
+        name: The decorator name to match against.
+
+    Returns:
+        ``True`` when the decorator matches.
+    """
+    if isinstance(dec, ast.Name):
+        return dec.id == name
+    if isinstance(dec, ast.Attribute):
+        return dec.attr == name
+    if isinstance(dec, ast.Call):
+        return _decorator_matches(dec.func, name)
+    return False
+
+
 def _is_dataclass(node: ast.ClassDef) -> bool:
     """Check whether a class is decorated with ``@dataclass``.
 
-    Recognises three decorator forms:
+    Recognises three decorator forms via ``_decorator_matches``:
 
     - Simple: ``@dataclass``
     - Qualified: ``@<module>.dataclass`` (suffix match — typically
@@ -525,20 +593,7 @@ def _is_dataclass(node: ast.ClassDef) -> bool:
     Returns:
         ``True`` when a dataclass decorator is found, ``False`` otherwise.
     """
-    for dec in node.decorator_list:
-        # Pattern 1: @dataclass
-        if isinstance(dec, ast.Name) and dec.id == "dataclass":
-            return True
-        # Pattern 2: @dataclasses.dataclass
-        if isinstance(dec, ast.Attribute) and dec.attr == "dataclass":
-            return True
-        # Pattern 3: @dataclass(...) or @dataclasses.dataclass(...)
-        if isinstance(dec, ast.Call):
-            if isinstance(dec.func, ast.Name) and dec.func.id == "dataclass":
-                return True
-            if isinstance(dec.func, ast.Attribute) and dec.func.attr == "dataclass":
-                return True
-    return False
+    return any(_decorator_matches(dec, "dataclass") for dec in node.decorator_list)
 
 
 def _is_protocol(node: ast.ClassDef) -> bool:
@@ -649,14 +704,68 @@ def _is_typeddict(node: ast.ClassDef) -> bool:
     return False
 
 
+def _find_init_method(
+    node: ast.ClassDef,
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    """Find the ``__init__`` method in a class body.
+
+    Performs a direct iteration over the class body (not ``ast.walk``)
+    and returns the first ``FunctionDef`` or ``AsyncFunctionDef`` node
+    named ``__init__``.
+
+    Args:
+        node: The ``ClassDef`` AST node to inspect.
+
+    Returns:
+        The ``__init__`` method node, or ``None`` if not found.
+    """
+    for item in node.body:
+        if (
+            isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and item.name == "__init__"
+        ):
+            return item
+    return None
+
+
+def _has_self_attribute_target(node: ast.Assign | ast.AnnAssign) -> bool:
+    """Check whether an assignment node targets a ``self.*`` attribute.
+
+    Handles both ``ast.Assign`` (which may have multiple targets) and
+    ``ast.AnnAssign`` (single target). Returns ``True`` when any target
+    is of the form ``self.<name>``.
+
+    Args:
+        node: The AST assignment node to inspect.
+
+    Returns:
+        ``True`` when a ``self.*`` attribute target is found.
+    """
+    if isinstance(node, ast.Assign):
+        return any(
+            isinstance(t, ast.Attribute)
+            and isinstance(t.value, ast.Name)
+            and t.value.id == "self"
+            for t in node.targets
+        )
+    if isinstance(node, ast.AnnAssign):
+        return (
+            isinstance(node.target, ast.Attribute)
+            and isinstance(node.target.value, ast.Name)
+            and node.target.value.id == "self"
+        )
+    return False
+
+
 def _has_self_assignments(node: ast.ClassDef) -> bool:
     """Check whether a class has ``self.*`` assignments in ``__init__``.
 
-    Finds the ``__init__`` method via direct ``.body`` iteration (not
-    ``ast.walk``) and walks its body with a scope-aware iterative walk
-    that stops at nested ``FunctionDef``, ``AsyncFunctionDef``, and
-    ``ClassDef`` boundaries. Detects both ``self.x = value``
-    (``ast.Assign``) and ``self.x: int = value`` (``ast.AnnAssign``).
+    Finds the ``__init__`` method via ``_find_init_method`` and walks
+    its body with a scope-aware iterative walk that stops at nested
+    ``FunctionDef``, ``AsyncFunctionDef``, and ``ClassDef`` boundaries.
+    Detects both ``self.x = value`` (``ast.Assign``) and
+    ``self.x: int = value`` (``ast.AnnAssign``) via
+    ``_has_self_attribute_target``.
 
     Args:
         node: The ``ClassDef`` AST node to inspect.
@@ -665,15 +774,7 @@ def _has_self_assignments(node: ast.ClassDef) -> bool:
         ``True`` when a ``self.*`` assignment is found in ``__init__``,
         ``False`` otherwise.
     """
-    init_node = None
-    for item in node.body:
-        if (
-            isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and item.name == "__init__"
-        ):
-            init_node = item
-            break
-
+    init_node = _find_init_method(node)
     if init_node is None:
         return False
 
@@ -682,21 +783,9 @@ def _has_self_assignments(node: ast.ClassDef) -> bool:
         child = stack.pop()
         if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
-        if isinstance(child, ast.Assign):
-            for target in child.targets:
-                if (
-                    isinstance(target, ast.Attribute)
-                    and isinstance(target.value, ast.Name)
-                    and target.value.id == "self"
-                ):
-                    return True
-        if (
-            isinstance(child, ast.AnnAssign)
-            and isinstance(child.target, ast.Attribute)
-            and isinstance(child.target.value, ast.Name)
-            and child.target.value.id == "self"
-        ):
-            return True
+        if isinstance(child, (ast.Assign, ast.AnnAssign)):
+            if _has_self_attribute_target(child):
+                return True
         stack.extend(ast.iter_child_nodes(child))
 
     return False
@@ -1159,6 +1248,24 @@ def _check_prefer_fenced_code_blocks(
 # Public orchestrator
 # ---------------------------------------------------------------------------
 
+_CheckFn = Callable[
+    [Symbol, set[str], dict[int, _NodeT], EnrichmentConfig, str],
+    Finding | None,
+]
+
+_RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
+    ("require_raises", _check_missing_raises),
+    ("require_yields", _check_missing_yields),
+    ("require_receives", _check_missing_receives),
+    ("require_warns", _check_missing_warns),
+    ("require_other_parameters", _check_missing_other_parameters),
+    ("require_attributes", _check_missing_attributes),
+    ("require_typed_attributes", _check_missing_typed_attributes),
+    ("require_examples", _check_missing_examples),
+    ("require_cross_references", _check_missing_cross_references),
+    ("prefer_fenced_code_blocks", _check_prefer_fenced_code_blocks),
+)
+
 
 def check_enrichment(
     source: str,
@@ -1169,8 +1276,9 @@ def check_enrichment(
     """Run all enrichment rules on a parsed source file.
 
     Iterates over documented symbols, parses their docstring sections,
-    and dispatches to each enabled rule function. Symbols without a
-    docstring are skipped (FR20). Config gating controls which rules run.
+    and dispatches to each enabled rule function via ``_RULE_DISPATCH``.
+    Symbols without a docstring are skipped (FR20). Config gating
+    controls which rules run.
 
     Args:
         source: Raw source text of the file (reserved for future rules).
@@ -1191,55 +1299,9 @@ def check_enrichment(
             continue
         sections = _parse_sections(symbol.docstring)
 
-        if config.require_raises:
-            if f := _check_missing_raises(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_yields:
-            if f := _check_missing_yields(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_receives:
-            if f := _check_missing_receives(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_warns:
-            if f := _check_missing_warns(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_other_parameters:
-            if f := _check_missing_other_parameters(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_attributes:
-            if f := _check_missing_attributes(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_typed_attributes:
-            if f := _check_missing_typed_attributes(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_examples:
-            if f := _check_missing_examples(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.require_cross_references:
-            if f := _check_missing_cross_references(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
-        if config.prefer_fenced_code_blocks:
-            if f := _check_prefer_fenced_code_blocks(
-                symbol, sections, node_index, config, file_path
-            ):
-                findings.append(f)
+        for attr, check_fn in _RULE_DISPATCH:
+            if getattr(config, attr):
+                if f := check_fn(symbol, sections, node_index, config, file_path):
+                    findings.append(f)
 
     return findings
