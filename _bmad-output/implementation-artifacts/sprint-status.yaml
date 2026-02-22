@@ -1,4 +1,4 @@
-# generated: 2026-02-19
+# generated: 2026-02-21
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-19
+generated: 2026-02-21
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -112,8 +112,16 @@ development_status:
   epic-10-retrospective: done
 
   # Epic 11: Documentation Site & Rule Reference
-  epic-11: backlog
-  11-1-documentation-site-scaffold-and-core-pages: backlog
+  epic-11: in-progress
+  11-1-documentation-site-scaffold-and-core-pages: review
   11-2-check-pages-and-configuration-reference: backlog
   11-3-rule-reference-pages: backlog
   epic-11-retrospective: optional
+
+  # Epic 12: Housekeeping & Quality Infrastructure
+  epic-12: backlog
+  12-1-enrichment-module-cognitive-complexity-refactoring: backlog
+  12-2-non-enrichment-module-cognitive-complexity-refactoring: backlog
+  12-3-sonarqube-minor-findings-resolution: backlog
+  12-4-process-and-convention-infrastructure: backlog
+  epic-12-retrospective: optional
