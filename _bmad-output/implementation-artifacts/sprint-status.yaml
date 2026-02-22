@@ -115,7 +115,7 @@ development_status:
   epic-11: in-progress
   11-1-documentation-site-scaffold-and-core-pages: done
   11-2-check-pages-and-configuration-reference: done
-  11-3-rule-reference-pages: backlog
+  11-3-rule-reference-pages: review
   epic-11-retrospective: optional
 
   # Epic 12: Housekeeping & Quality Infrastructure
