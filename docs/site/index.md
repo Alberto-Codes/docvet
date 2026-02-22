@@ -28,7 +28,7 @@ Run docvet against your entire codebase:
 docvet check --all
 ```
 
-Or check only files with uncommitted changes (the default):
+Or check only files with unstaged changes (the default):
 
 ```bash
 docvet check
@@ -44,7 +44,7 @@ Here's what the output looks like:
 
 ```
 src/myapp/utils.py:42: missing-raises Function 'parse_config' raises ValueError but Raises section is missing [required]
-src/myapp/utils.py:87: stale-diff-sig Function 'validate_input' signature changed without docstring update [required]
+src/myapp/utils.py:87: stale-signature Function 'validate_input' signature changed without docstring update [required]
 src/myapp/models.py:15: missing-attributes Class 'User' has 3 undocumented attributes [required]
 
 3 findings (3 required, 0 recommended)

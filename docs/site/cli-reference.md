@@ -111,7 +111,7 @@ Loads packages with the griffe parser and captures warnings that would cause bro
 
 ## Configuration
 
-docvet reads configuration from the `[tool.docvet]` section in `pyproject.toml`. If the section is missing, sensible defaults are used. See the Configuration guide for available options and their defaults.
+docvet reads configuration from the `[tool.docvet]` section in `pyproject.toml`. If the section is missing, sensible defaults are used.
 
 Specify a custom config path with:
 
