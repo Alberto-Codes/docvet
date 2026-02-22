@@ -39,6 +39,7 @@ griffe = [
 docs = [
     "mkdocs>=1.6,<2",
     "mkdocs-material>=9.6",
+    "mkdocs-macros-plugin>=1.0",
 ]
 
 [project.scripts]
