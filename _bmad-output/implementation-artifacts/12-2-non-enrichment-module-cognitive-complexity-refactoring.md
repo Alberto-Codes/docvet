@@ -1,6 +1,6 @@
 # Story 12.2: Non-Enrichment Module Cognitive Complexity Refactoring
 
-Status: review
+Status: done
 Branch: `feat/refactor-12-2-non-enrichment-cc`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -247,9 +247,45 @@ None — zero-debug implementation.
 | `src/docvet/checks/freshness.py` | Added `_classify_blame_line`, `_group_timestamps_by_symbol`, `_build_drift_finding`, `_build_age_finding`; simplified `_parse_blame_timestamps` and `check_freshness_drift` |
 | `src/docvet/checks/griffe_compat.py` | Added `_load_and_check_packages`; simplified `check_griffe_compat` |
 | `src/docvet/checks/coverage.py` | Added `_find_missing_init_dirs`; simplified `check_coverage` |
+| `sonar-project.properties` | Added `sonar.branch.name=develop` (infrastructure — not related to CC refactoring) |
 
 ### Change Log
 
 | Commit | Description |
 |--------|-------------|
-| (pending) | refactor: reduce cognitive complexity of 7 functions across 5 non-enrichment modules below SonarQube threshold |
+| `d3079eb` | refactor(config): extract helpers to reduce load_config cognitive complexity |
+| `99ee8f1` | refactor(discovery): extract helpers to reduce _walk_all and discover_files complexity |
+| `e22cd07` | refactor(freshness): extract helpers to reduce blame parsing and drift complexity |
+| `d6a2e14` | refactor(griffe): extract helper and fix ty warnings for griffe_compat |
+| `a82470c` | refactor(coverage): extract helper to reduce check_coverage complexity |
+| `89438bf` | chore: update sprint status for story 12.2 to review |
+| `6555e6e` | chore: add story 12.2 implementation artifact |
+| `442316b` | refactor(config): remove _extract_config_field, restore inline isinstance checks |
+| `15377b4` | chore: update story 12.2 for review findings |
+| `bd2aca3` | chore: add sonar.branch.name property to sonar-project.properties |
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Code Review Workflow (2026-02-22)
+**Outcome:** Approved
+
+### Findings Summary
+
+| ID | Severity | Description | Resolution |
+|----|----------|-------------|------------|
+| M1 | MEDIUM | `sonar-project.properties` changed but not in File List | Fixed — added to File List with infrastructure note |
+| M2 | MEDIUM | Change Log had "(pending)" instead of actual commits | Fixed — populated with all 10 branch commits |
+| L1 | LOW | `_classify_blame_line` uses magic strings without `Literal` type | Deferred to Story 12.3 (out of scope for refactoring story) |
+| L2 | LOW | `_load_and_check_packages` redundant griffe guard | Accepted — defensive coding, harmless |
+| L3 | LOW | `_find_pyproject_path` naming similarity with `_find_pyproject` | Accepted — names are accurate, renaming is scope creep |
+| L4 | LOW | `_collect_python_files` docstring says "absolute or relative" | Accepted — documents capability, not just current usage |
+
+### Verification
+
+- 731 tests passed, 1 skipped (griffe optional dep)
+- `ruff check .` — zero violations
+- `ruff format --check .` — zero format issues
+- `ty check` — zero errors
+- SonarQube `analyze_code_snippet` — zero S3776 on spot-checked `load_config` and `check_freshness_drift`
+- All 8 ACs verified as IMPLEMENTED
+- All 29 subtasks verified against code evidence
