@@ -10,7 +10,7 @@ docvet coverage --all
 
 | Rule ID | Category | Description |
 |---------|----------|-------------|
-| `missing-init` | required | Directory in source tree lacks `__init__.py`, making its Python files invisible to documentation generators |
+| [`missing-init`](../rules/missing-init.md) | required | Directory in source tree lacks `__init__.py`, making its Python files invisible to documentation generators |
 
 The check walks from each discovered file's parent directory up to the source root, looking for missing `__init__.py` files at each level. Findings are deduplicated per directory and include the count of affected files.
 
