@@ -186,6 +186,8 @@ _VALID_CHECK_NAMES: frozenset[str] = frozenset(
     {"enrichment", "freshness", "coverage", "griffe"}
 )
 
+_TOOL_SECTION = "[tool.docvet]"
+
 
 # ---------------------------------------------------------------------------
 # Private helpers
@@ -380,7 +382,7 @@ def _parse_docvet_section(
     Returns:
         Processed dict ready for :class:`DocvetConfig` construction.
     """
-    _validate_keys(data, _VALID_TOP_KEYS, "[tool.docvet]")
+    _validate_keys(data, _VALID_TOP_KEYS, _TOOL_SECTION)
 
     converted: dict[str, object] = {_kebab_to_snake(k): v for k, v in data.items()}
 
@@ -388,14 +390,14 @@ def _parse_docvet_section(
     enrichment_data = converted.pop("enrichment", None)
 
     if freshness_data is not None:
-        _validate_type(freshness_data, dict, "freshness", "[tool.docvet]")
+        _validate_type(freshness_data, dict, "freshness", _TOOL_SECTION)
         converted["freshness"] = _parse_freshness(freshness_data)  # type: ignore[arg-type]
 
     if enrichment_data is not None:
-        _validate_type(enrichment_data, dict, "enrichment", "[tool.docvet]")
+        _validate_type(enrichment_data, dict, "enrichment", _TOOL_SECTION)
         converted["enrichment"] = _parse_enrichment(enrichment_data)  # type: ignore[arg-type]
 
-    section = "[tool.docvet]"
+    section = _TOOL_SECTION
     if "src_root" in converted:
         _validate_type(converted["src_root"], str, "src-root", section)
     if "package_name" in converted:
