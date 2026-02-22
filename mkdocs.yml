@@ -9,36 +9,53 @@ docs_dir: docs/site
 theme:
   name: material
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: teal
-      accent: teal
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: teal
-      accent: teal
+    - scheme: slate
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   font:
     text: Roboto
     code: Roboto Mono
+  favicon: assets/favicon.svg
+  logo: assets/logo.svg
+  icon:
+    annotation: material/chevron-right-circle
   features:
     - navigation.tabs
     - navigation.sections
     - navigation.top
+    - navigation.instant
+    - navigation.footer
     - search.highlight
     - search.suggest
     - content.code.copy
+    - content.code.annotate
+
+extra_css:
+  - stylesheets/theme.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Alberto-Codes/docvet
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/docvet/
 
 plugins:
   - search
 
 nav:
   - Getting Started: index.md
+  - Checks:
+    - checks/enrichment.md
+    - checks/freshness.md
+    - checks/coverage.md
+    - checks/griffe.md
+  - Configuration: configuration.md
   - CLI Reference: cli-reference.md
 
 markdown_extensions:
@@ -50,5 +67,10 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.tabbed:
       alternate_style: true
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - toc:
       permalink: true

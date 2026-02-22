@@ -114,7 +114,7 @@ development_status:
   # Epic 11: Documentation Site & Rule Reference
   epic-11: in-progress
   11-1-documentation-site-scaffold-and-core-pages: done
-  11-2-check-pages-and-configuration-reference: backlog
+  11-2-check-pages-and-configuration-reference: review
   11-3-rule-reference-pages: backlog
   epic-11-retrospective: optional
 
