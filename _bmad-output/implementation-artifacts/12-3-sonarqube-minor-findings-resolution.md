@@ -22,8 +22,8 @@ so that the project achieves zero open issues on the SonarQube dashboard.
 ## Tasks / Subtasks
 
 - [x] Task 1: Extract `"See Also"` constant in `enrichment.py` (AC: 1)
-  - [x] 1.1 Add module-level constant `_SEE_ALSO = "See Also"` near existing `_KNOWN_SECTIONS` (line ~28)
-  - [x] 1.2 Replace `"See Also"` at line 38 (in `_KNOWN_SECTIONS` frozenset) with `_SEE_ALSO`
+  - [x] 1.1 Add module-level constant `_SEE_ALSO = "See Also"` near existing `_SECTION_HEADERS` (line ~28)
+  - [x] 1.2 Replace `"See Also"` at line 38 (in `_SECTION_HEADERS` frozenset) with `_SEE_ALSO`
   - [x] 1.3 Replace `"See Also"` at line 1139 (`if "See Also" not in sections:`) with `_SEE_ALSO`
   - [x] 1.4 Replace `"See Also"` at line 1153 (`if "See Also" not in sections:`) with `_SEE_ALSO`
   - [x] 1.5 Replace `"See Also"` at line 1159 (`_extract_section_content(symbol.docstring, "See Also")`) with `_SEE_ALSO`
@@ -81,14 +81,14 @@ Stories 12.1 and 12.2 established the proven playbook:
 **S1192 — `"See Also"` in `enrichment.py`:**
 
 The literal `"See Also"` appears in 4 code locations:
-- Line 38: In `_KNOWN_SECTIONS` frozenset definition
+- Line 38: In `_SECTION_HEADERS` frozenset definition
 - Line 1139: Conditional check in `_check_missing_cross_references` (Branch A)
 - Line 1153: Conditional check in `_check_missing_cross_references` (Branch B)
 - Line 1159: Argument to `_extract_section_content`
 
 Line 45 (`_SECTION_PATTERN` regex) contains `See Also` inside a regex alternation string — this is NOT a standalone string literal and must NOT be changed. The regex must keep the raw text for pattern matching.
 
-**Constant name:** `_SEE_ALSO = "See Also"` — place near `_KNOWN_SECTIONS` (line ~28 area) since they are semantically related.
+**Constant name:** `_SEE_ALSO = "See Also"` — place near `_SECTION_HEADERS` (line ~28 area) since they are semantically related.
 
 **S1192 — `"[tool.docvet]"` in `config.py`:**
 
