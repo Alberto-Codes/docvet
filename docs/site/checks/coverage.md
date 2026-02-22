@@ -14,6 +14,9 @@ docvet coverage --all
 
 The check walks from each discovered file's parent directory up to the source root, looking for missing `__init__.py` files at each level. Findings are deduplicated per directory and include the count of affected files.
 
+!!! tip "When this matters"
+    If you use mkdocs + mkdocstrings (or any tool that discovers packages via `__init__.py`), a missing init file means that entire directory is invisible to your docs site — even if the code is importable at runtime.
+
 ## Example Output
 
 ```

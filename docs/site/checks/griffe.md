@@ -6,8 +6,8 @@ The griffe check implements **Layer 5 (Rendering)** of docvet's quality model. I
 docvet griffe --all
 ```
 
-!!! info "Optional Dependency"
-    The griffe check requires the optional `griffe` extra. Install it with:
+!!! warning "Optional Dependency"
+    The griffe check requires the optional `griffe` extra:
 
     ```bash
     pip install docvet[griffe]
@@ -22,6 +22,9 @@ docvet griffe --all
 | `griffe-unknown-param` | required | Docstring documents a parameter not in the function signature |
 | `griffe-missing-type` | recommended | Parameter or return value lacks a type annotation in the docstring |
 | `griffe-format-warning` | recommended | Docstring format issue that would break mkdocs rendering |
+
+!!! tip "Catch these early"
+    `griffe-unknown-param` is the most impactful rule — it catches renamed or removed parameters that still appear in the docstring. These cause visible rendering errors on your docs site.
 
 ## Example Output
 

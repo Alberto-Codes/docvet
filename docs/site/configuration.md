@@ -28,14 +28,8 @@ When `src-root` is not set in your config:
 
 If a check name appears in **both** `fail-on` and `warn-on`, docvet prints a warning to stderr and `fail-on` wins — the check is removed from `warn-on`.
 
-For example, adding `enrichment` to `fail-on` with the default `warn-on` list:
-
-```toml
-[tool.docvet]
-fail-on = ["enrichment"]
-```
-
-Results in `enrichment` being silently removed from `warn-on`. This is graceful deduplication, not an error.
+!!! warning "Graceful deduplication"
+    Adding `enrichment` to `fail-on` with the default `warn-on` list silently removes `enrichment` from `warn-on`. This is intentional — `fail-on` always takes priority.
 
 ### Example
 
@@ -98,14 +92,14 @@ Here is a full `pyproject.toml` configuration showing all sections together:
 
     ```toml
     [tool.docvet]
-    src-root = "src"
+    src-root = "src" # (1)!
     package-name = "myapp"
-    exclude = ["tests", "scripts", "migrations"]
-    fail-on = ["enrichment", "freshness"]
+    exclude = ["tests", "scripts", "migrations"] # (2)!
+    fail-on = ["enrichment", "freshness"] # (3)!
     warn-on = ["griffe", "coverage"]
 
     [tool.docvet.freshness]
-    drift-threshold = 14
+    drift-threshold = 14 # (4)!
     age-threshold = 60
 
     [tool.docvet.enrichment]
@@ -118,8 +112,14 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     require-typed-attributes = true
     require-cross-references = true
     prefer-fenced-code-blocks = true
-    require-examples = ["class", "dataclass"]
+    require-examples = ["class", "dataclass"] # (5)!
     ```
+
+    1. Auto-detected if you have a `src/` directory — only set this if your layout is non-standard.
+    2. These directories are excluded from all checks. Add `migrations` for Django projects.
+    3. Checks in `fail-on` cause exit code 1 — ideal for CI gates.
+    4. Flag drift after just 2 weeks instead of the default 30 days.
+    5. Only require `Examples:` on classes and dataclasses, not protocols or enums.
 
 === "Minimal Configuration"
 

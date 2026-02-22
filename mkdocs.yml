@@ -20,16 +20,28 @@ theme:
   font:
     text: Roboto
     code: Roboto Mono
+  icon:
+    annotation: material/chevron-right-circle
   features:
     - navigation.tabs
     - navigation.sections
     - navigation.top
+    - navigation.instant
+    - navigation.footer
     - search.highlight
     - search.suggest
     - content.code.copy
+    - content.code.annotate
 
 extra_css:
   - stylesheets/theme.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Alberto-Codes/docvet
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/docvet/
 
 plugins:
   - search
@@ -37,10 +49,10 @@ plugins:
 nav:
   - Getting Started: index.md
   - Checks:
-    - Enrichment: checks/enrichment.md
-    - Freshness: checks/freshness.md
-    - Coverage: checks/coverage.md
-    - Griffe: checks/griffe.md
+    - checks/enrichment.md
+    - checks/freshness.md
+    - checks/coverage.md
+    - checks/griffe.md
   - Configuration: configuration.md
   - CLI Reference: cli-reference.md
 
@@ -53,5 +65,10 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.tabbed:
       alternate_style: true
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - toc:
       permalink: true

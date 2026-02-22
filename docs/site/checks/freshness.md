@@ -20,6 +20,9 @@ Changes are classified by severity based on *what* changed:
 
 If the docstring *was* updated in the same diff, the finding is suppressed entirely.
 
+!!! tip "Pre-commit integration"
+    Diff mode with `--staged` is ideal for pre-commit hooks — it only checks files you're about to commit and runs in under a second.
+
 ### Drift Mode
 
 Drift mode uses `git blame --line-porcelain` to extract per-line timestamps, then compares when code was last modified versus when the docstring was last touched. It finds docstrings that have gradually fallen behind over time.
@@ -28,6 +31,9 @@ Two thresholds control sensitivity:
 
 - **`drift-threshold`**: Maximum days the code can be ahead of its docstring before flagging `stale-drift`
 - **`age-threshold`**: Maximum days a docstring can go without *any* update before flagging `stale-age`
+
+!!! warning "Performance"
+    Drift mode runs `git blame` on every file — it's thorough but slower than diff mode. Best suited for scheduled CI runs or periodic sweeps, not pre-commit hooks.
 
 ## Rules
 
