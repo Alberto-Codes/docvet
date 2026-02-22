@@ -19,9 +19,9 @@ docvet griffe --all
 
 | Rule ID | Category | Description |
 |---------|----------|-------------|
-| `griffe-unknown-param` | required | Docstring documents a parameter not in the function signature |
-| `griffe-missing-type` | recommended | Parameter or return value lacks a type annotation in the docstring |
-| `griffe-format-warning` | recommended | Docstring format issue that would break mkdocs rendering |
+| [`griffe-unknown-param`](../rules/griffe-unknown-param.md) | required | Docstring documents a parameter not in the function signature |
+| [`griffe-missing-type`](../rules/griffe-missing-type.md) | recommended | Parameter or return value lacks a type annotation in the docstring |
+| [`griffe-format-warning`](../rules/griffe-format-warning.md) | recommended | Docstring format issue that would break mkdocs rendering |
 
 !!! tip "Catch these early"
     `griffe-unknown-param` is the most impactful rule — it catches renamed or removed parameters that still appear in the docstring. These cause visible rendering errors on your docs site.
