@@ -1,6 +1,6 @@
 # Story 11.2: Check Pages and Configuration Reference
 
-Status: review
+Status: done
 Branch: `feat/docs-11-2-check-pages-config-ref`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
