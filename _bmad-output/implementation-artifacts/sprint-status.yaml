@@ -124,7 +124,7 @@ development_status:
   12-2-non-enrichment-module-cognitive-complexity-refactoring: done
   12-3-sonarqube-minor-findings-resolution: done
   12-4-process-and-convention-infrastructure: done
-  epic-12-retrospective: optional
+  epic-12-retrospective: done
 
   # Epic 13: Documentation Publishing & API Reference
   epic-13: backlog
