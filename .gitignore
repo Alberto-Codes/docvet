@@ -33,6 +33,9 @@ coverage.xml
 *.swp
 *.swo
 
+# mkdocs build output
+/site/
+
 # OS
 .DS_Store
 Thumbs.db
