@@ -1,6 +1,6 @@
 # Story 12.1: Enrichment Module Cognitive Complexity Refactoring
 
-Status: review
+Status: done
 Branch: `feat/enrichment-12-1-cc-refactoring`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -185,12 +185,15 @@ Claude Opus 4.6
 - Added 1 new safety-net test: `test_rule_dispatch_attrs_exist_on_enrichment_config`
 - All 208 existing enrichment tests pass unmodified — zero behavioral changes
 - Full suite: 730 passed, 1 skipped; ruff 0 violations; ruff format 0 issues; ty 0 errors
+- Code review: narrowed `_has_self_attribute_target` type hint from `ast.AST` to `ast.Assign | ast.AnnAssign`; added bidirectional dispatch test `test_all_config_toggle_fields_are_in_rule_dispatch`
+- Post-review suite: 731 passed, 1 skipped
 
 ### Change Log
 
 - 2026-02-22: Refactored 5 high-CC functions in enrichment.py with 6 new private helpers; added dispatch table safety-net test
+- 2026-02-22: Code review fixes — narrowed type hint, added bidirectional dispatch safety-net test
 
 ### File List
 
-- `src/docvet/checks/enrichment.py` — Refactored 5 functions, added 6 helpers (`_extract_exception_name`, `_find_init_method`, `_has_self_attribute_target`, `_is_warn_call`, `_decorator_matches`, `_RULE_DISPATCH`), added `Callable` import
-- `tests/unit/checks/test_enrichment.py` — Added `_RULE_DISPATCH` import and `test_rule_dispatch_attrs_exist_on_enrichment_config` test
+- `src/docvet/checks/enrichment.py` — Refactored 5 functions, added 6 helpers (`_extract_exception_name`, `_find_init_method`, `_has_self_attribute_target`, `_is_warn_call`, `_decorator_matches`, `_RULE_DISPATCH`), added `Callable` import; narrowed `_has_self_attribute_target` type hint
+- `tests/unit/checks/test_enrichment.py` — Added `_RULE_DISPATCH` import, `test_rule_dispatch_attrs_exist_on_enrichment_config`, and `test_all_config_toggle_fields_are_in_rule_dispatch` tests
