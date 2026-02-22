@@ -47,6 +47,8 @@ extra:
 
 plugins:
   - search
+  - macros:
+      module_name: docs/main
 
 nav:
   - Getting Started: index.md
@@ -55,6 +57,30 @@ nav:
     - checks/freshness.md
     - checks/coverage.md
     - checks/griffe.md
+  - Rules:
+    - Enrichment:
+      - missing-raises: rules/missing-raises.md
+      - missing-yields: rules/missing-yields.md
+      - missing-receives: rules/missing-receives.md
+      - missing-warns: rules/missing-warns.md
+      - missing-other-parameters: rules/missing-other-parameters.md
+      - missing-attributes: rules/missing-attributes.md
+      - missing-typed-attributes: rules/missing-typed-attributes.md
+      - missing-examples: rules/missing-examples.md
+      - missing-cross-references: rules/missing-cross-references.md
+      - prefer-fenced-code-blocks: rules/prefer-fenced-code-blocks.md
+    - Freshness:
+      - stale-signature: rules/stale-signature.md
+      - stale-body: rules/stale-body.md
+      - stale-import: rules/stale-import.md
+      - stale-drift: rules/stale-drift.md
+      - stale-age: rules/stale-age.md
+    - Coverage:
+      - missing-init: rules/missing-init.md
+    - Griffe:
+      - griffe-unknown-param: rules/griffe-unknown-param.md
+      - griffe-missing-type: rules/griffe-missing-type.md
+      - griffe-format-warning: rules/griffe-format-warning.md
   - Configuration: configuration.md
   - CLI Reference: cli-reference.md
 
