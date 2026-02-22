@@ -24,6 +24,8 @@ __all__ = ["check_enrichment"]
 # All 10 recognized Google-style section headers.
 # Args and Returns are included for parsing context (FR15) — they are
 # recognized but never checked for absence (layers 1-2 are ruff/interrogate).
+_SEE_ALSO = "See Also"
+
 _SECTION_HEADERS = frozenset(
     {
         "Args",
@@ -35,7 +37,7 @@ _SECTION_HEADERS = frozenset(
         "Other Parameters",
         "Attributes",
         "Examples",
-        "See Also",
+        _SEE_ALSO,
     }
 )
 
@@ -1136,7 +1138,7 @@ def _check_missing_cross_references(
 
     # Branch A: __init__.py module missing See Also: entirely
     if symbol.kind == "module" and _is_init_module(file_path):
-        if "See Also" not in sections:
+        if _SEE_ALSO not in sections:
             return Finding(
                 file=file_path,
                 line=symbol.line,
@@ -1150,13 +1152,13 @@ def _check_missing_cross_references(
             )
 
     # Branch B: See Also: exists but lacks cross-reference syntax
-    if "See Also" not in sections:
+    if _SEE_ALSO not in sections:
         return None
 
     if not symbol.docstring:
         return None
 
-    content = _extract_section_content(symbol.docstring, "See Also")
+    content = _extract_section_content(symbol.docstring, _SEE_ALSO)
     if content is None:
         return None
 
