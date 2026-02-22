@@ -44,6 +44,17 @@ so that {{benefit}}.
 
 - Cite all technical details with source paths and sections, e.g. [Source: docs/<file>.md#Section]
 
+## Quality Gates
+
+<!-- Dev agent MUST run all gates before marking story done. All gates are mandatory — no exceptions. -->
+
+- [ ] `uv run ruff check .` — zero lint violations
+- [ ] `uv run ruff format --check .` — zero format issues
+- [ ] `uv run ty check` — zero type errors
+- [ ] `uv run pytest` — all tests pass, no regressions
+- [ ] `uv run docvet check --all` — zero docvet findings (full-strength dogfooding)
+- [ ] `uv run interrogate -v` — docstring coverage ≥ 95%
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -54,4 +65,25 @@ so that {{benefit}}.
 
 ### Completion Notes List
 
+### Change Log
+
 ### File List
+
+## Code Review
+
+<!-- MANDATORY: This section must be filled before marking the story done. Code review is required on every story — no exceptions (Epic 8 retro). -->
+
+### Reviewer
+
+### Outcome
+
+### Findings Summary
+
+| ID | Severity | Description | Resolution |
+|----|----------|-------------|------------|
+
+### Verification
+
+- [ ] All acceptance criteria verified
+- [ ] All quality gates pass
+- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
