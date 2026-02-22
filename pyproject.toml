@@ -36,6 +36,10 @@ dependencies = [
 griffe = [
     "griffe>=1.0",
 ]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.6",
+]
 
 [project.scripts]
 docvet = "docvet.cli:app"
