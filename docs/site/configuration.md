@@ -29,7 +29,7 @@ When `src-root` is not set in your config:
 If a check name appears in **both** `fail-on` and `warn-on`, docvet prints a warning to stderr and `fail-on` wins — the check is removed from `warn-on`.
 
 !!! warning "Graceful deduplication"
-    Adding `enrichment` to `fail-on` with the default `warn-on` list silently removes `enrichment` from `warn-on`. This is intentional — `fail-on` always takes priority.
+    Adding `enrichment` to `fail-on` with the default `warn-on` list prints a warning to stderr and removes `enrichment` from `warn-on`. This is intentional — `fail-on` always takes priority.
 
 ### Example
 
