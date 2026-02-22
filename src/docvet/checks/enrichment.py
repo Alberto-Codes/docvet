@@ -728,7 +728,7 @@ def _find_init_method(
     return None
 
 
-def _has_self_attribute_target(node: ast.AST) -> bool:
+def _has_self_attribute_target(node: ast.Assign | ast.AnnAssign) -> bool:
     """Check whether an assignment node targets a ``self.*`` attribute.
 
     Handles both ``ast.Assign`` (which may have multiple targets) and
