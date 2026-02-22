@@ -397,24 +397,23 @@ def _parse_docvet_section(
         _validate_type(enrichment_data, dict, "enrichment", _TOOL_SECTION)
         converted["enrichment"] = _parse_enrichment(enrichment_data)  # type: ignore[arg-type]
 
-    section = _TOOL_SECTION
     if "src_root" in converted:
-        _validate_type(converted["src_root"], str, "src-root", section)
+        _validate_type(converted["src_root"], str, "src-root", _TOOL_SECTION)
     if "package_name" in converted:
-        _validate_type(converted["package_name"], str, "package-name", section)
+        _validate_type(converted["package_name"], str, "package-name", _TOOL_SECTION)
     if "exclude" in converted:
-        _validate_type(converted["exclude"], list, "exclude", section)
+        _validate_type(converted["exclude"], list, "exclude", _TOOL_SECTION)
         for entry in converted["exclude"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "exclude", section)
+            _validate_type(entry, str, "exclude", _TOOL_SECTION)
     if "fail_on" in converted:
-        _validate_type(converted["fail_on"], list, "fail-on", section)
+        _validate_type(converted["fail_on"], list, "fail-on", _TOOL_SECTION)
         for entry in converted["fail_on"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "fail-on", section)
+            _validate_type(entry, str, "fail-on", _TOOL_SECTION)
         _validate_check_names(converted["fail_on"], "fail-on")  # type: ignore[arg-type]
     if "warn_on" in converted:
-        _validate_type(converted["warn_on"], list, "warn-on", section)
+        _validate_type(converted["warn_on"], list, "warn-on", _TOOL_SECTION)
         for entry in converted["warn_on"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "warn-on", section)
+            _validate_type(entry, str, "warn-on", _TOOL_SECTION)
         _validate_check_names(converted["warn_on"], "warn-on")  # type: ignore[arg-type]
 
     return converted
