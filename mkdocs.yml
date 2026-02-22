@@ -9,20 +9,14 @@ docs_dir: docs/site
 theme:
   name: material
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: teal
-      accent: teal
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: teal
-      accent: teal
+    - scheme: slate
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   font:
     text: Roboto
     code: Roboto Mono
@@ -33,6 +27,9 @@ theme:
     - search.highlight
     - search.suggest
     - content.code.copy
+
+extra_css:
+  - stylesheets/theme.css
 
 plugins:
   - search
