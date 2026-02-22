@@ -1,6 +1,6 @@
 # Story 12.4: Process & Convention Infrastructure
 
-Status: review
+Status: done
 Branch: `feat/conventions-12-4-process-infrastructure`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -212,15 +212,24 @@ None — zero-debug story (template/rules only, no source code changes).
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow) — 2026-02-22
+
 ### Outcome
+
+Approved with changes (2 fixes applied)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | Template missing `### Change Log` in Dev Agent Record | Fixed — added subsection between Completion Notes List and File List |
+| M2 | MEDIUM | Work committed directly to develop, bypassing feature branch | Acknowledged — branch created for review fixes |
+| L1 | LOW | Quality gates `docvet`/`interrogate` marked N/A instead of PASS | Skipped — accepted as-is |
+| L2 | LOW | Verification checklist missing Change Log in completeness check | Fixed — added Change Log to verification line |
+| L3 | LOW | Conventions file missing retro document path | Rejected — file is self-contained by design |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
