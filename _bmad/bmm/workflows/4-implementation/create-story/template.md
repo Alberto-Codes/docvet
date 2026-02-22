@@ -65,6 +65,8 @@ so that {{benefit}}.
 
 ### Completion Notes List
 
+### Change Log
+
 ### File List
 
 ## Code Review
@@ -84,4 +86,4 @@ so that {{benefit}}.
 
 - [ ] All acceptance criteria verified
 - [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, File List all filled)
+- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
