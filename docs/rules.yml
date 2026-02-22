@@ -54,7 +54,7 @@
   check: enrichment
   category: recommended
   applies_to: classes
-  summary: Attributes section entries lack typed format name (type) description
+  summary: "Attributes: entries lack `name (type): description` format"
   since: "1.0.0"
 
 - id: missing-examples
@@ -62,7 +62,7 @@
   check: enrichment
   category: recommended
   applies_to: classes, modules
-  summary: Symbol kind in require-examples list lacks Examples section
+  summary: Class or type that requires examples has no Examples section
   since: "1.0.0"
 
 - id: missing-cross-references
