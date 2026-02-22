@@ -1,0 +1,154 @@
+# Rule metadata catalog — single source of truth for all 19 docvet rules.
+# Used by docs/main.py macros hook to render consistent rule page headers.
+
+- id: missing-raises
+  name: Missing Raises Section
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Function raises exceptions but has no Raises section
+  since: "1.0.0"
+
+- id: missing-yields
+  name: Missing Yields Section
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Generator yields values but has no Yields section
+  since: "1.0.0"
+
+- id: missing-receives
+  name: Missing Receives Section
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Generator uses send pattern but has no Receives section
+  since: "1.0.0"
+
+- id: missing-warns
+  name: Missing Warns Section
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Function calls warnings.warn() but has no Warns section
+  since: "1.0.0"
+
+- id: missing-other-parameters
+  name: Missing Other Parameters Section
+  check: enrichment
+  category: recommended
+  applies_to: functions, methods
+  summary: Function accepts **kwargs but has no Other Parameters section
+  since: "1.0.0"
+
+- id: missing-attributes
+  name: Missing Attributes Section
+  check: enrichment
+  category: required
+  applies_to: classes, modules
+  summary: Class or module has undocumented attributes
+  since: "1.0.0"
+
+- id: missing-typed-attributes
+  name: Missing Typed Attributes
+  check: enrichment
+  category: recommended
+  applies_to: classes
+  summary: Attributes section entries lack typed format name (type) description
+  since: "1.0.0"
+
+- id: missing-examples
+  name: Missing Examples Section
+  check: enrichment
+  category: recommended
+  applies_to: classes, modules
+  summary: Symbol kind in require-examples list lacks Examples section
+  since: "1.0.0"
+
+- id: missing-cross-references
+  name: Missing Cross-References
+  check: enrichment
+  category: recommended
+  applies_to: modules
+  summary: __init__.py module missing See Also section with cross-references
+  since: "1.0.0"
+
+- id: prefer-fenced-code-blocks
+  name: Prefer Fenced Code Blocks
+  check: enrichment
+  category: recommended
+  applies_to: any symbol
+  summary: Examples section uses doctest format instead of fenced code blocks
+  since: "1.0.0"
+
+- id: stale-signature
+  name: Stale Signature
+  check: freshness
+  category: required
+  applies_to: functions, methods
+  summary: Function signature changed but docstring not updated
+  since: "1.0.0"
+
+- id: stale-body
+  name: Stale Body
+  check: freshness
+  category: recommended
+  applies_to: functions, methods
+  summary: Function body changed but docstring not updated
+  since: "1.0.0"
+
+- id: stale-import
+  name: Stale Import
+  check: freshness
+  category: recommended
+  applies_to: functions, methods
+  summary: Import or formatting changed but docstring not updated
+  since: "1.0.0"
+
+- id: stale-drift
+  name: Stale Drift
+  check: freshness
+  category: recommended
+  applies_to: functions, methods, classes
+  summary: Code modified more recently than docstring beyond drift threshold
+  since: "1.0.0"
+
+- id: stale-age
+  name: Stale Age
+  check: freshness
+  category: recommended
+  applies_to: functions, methods, classes
+  summary: Docstring untouched beyond age threshold
+  since: "1.0.0"
+
+- id: missing-init
+  name: Missing __init__.py
+  check: coverage
+  category: required
+  applies_to: directories
+  summary: Directory in source tree lacks __init__.py file
+  since: "1.0.0"
+
+- id: griffe-unknown-param
+  name: Griffe Unknown Parameter
+  check: griffe
+  category: required
+  applies_to: functions, methods
+  summary: Docstring documents a parameter not in the function signature
+  since: "1.0.0"
+
+- id: griffe-missing-type
+  name: Griffe Missing Type
+  check: griffe
+  category: recommended
+  applies_to: functions, methods
+  summary: Parameter or return value lacks type annotation in docstring
+  since: "1.0.0"
+
+- id: griffe-format-warning
+  name: Griffe Format Warning
+  check: griffe
+  category: recommended
+  applies_to: any symbol
+  summary: Docstring format issue that would break mkdocs rendering
+  since: "1.0.0"
