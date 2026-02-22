@@ -30,10 +30,10 @@ Very old docstrings may describe obsolete behavior, outdated APIs, or deprecated
     ```python hl_lines="3 4 5 6 7"
     # Reviewed and updated (resets the age counter):
     def get_connection() -> Connection:
-        """Get a database connection from the pool.
+        """Get a database connection from the connection pool.
 
         Returns:
-            Active database connection.
+            Active database connection ready for queries.
         """
         return pool.acquire()
     ```
