@@ -1,6 +1,6 @@
 # Story 11.1: Documentation Site Scaffold and Core Pages
 
-Status: review
+Status: done
 Branch: `feat/docs-11-1-scaffold-core-pages`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -49,6 +49,7 @@ so that I can learn how to use the tool without reading source code.
 ## AC-to-Test Mapping
 
 <!-- Dev agent MUST fill this table before marking story done. Every AC needs at least one test. -->
+<!-- All verifications are manual (docs-only story — no automated tests). -->
 
 | AC | Test(s) | Status |
 |----|---------|--------|
@@ -226,3 +227,4 @@ No debug issues encountered — zero-debug implementation.
 ### Change Log
 
 - 2026-02-21: Scaffolded documentation site with mkdocs-material theme, Getting Started page, and CLI Reference page (Story 11.1)
+- 2026-02-21: Code review fixes — pinned mkdocs<2, added --format auto-markdown note, exit code 2, Configuration section wording, AC-to-Test manual verification note
