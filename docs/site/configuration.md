@@ -90,7 +90,7 @@ Here is a full `pyproject.toml` configuration showing all sections together:
 
 === "Full Configuration"
 
-    ```toml
+    ```toml linenums="1"
     [tool.docvet]
     src-root = "src" # (1)!
     package-name = "myapp"

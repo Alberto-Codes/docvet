@@ -19,7 +19,7 @@ The check walks from each discovered file's parent directory up to the source ro
 
 ## Example Output
 
-```
+``` linenums="1"
 src/myapp/helpers/utils.py:1: missing-init Directory 'myapp/helpers' lacks __init__.py (3 files affected) [required]
 src/myapp/plugins/auth.py:1: missing-init Directory 'myapp/plugins' lacks __init__.py (2 files affected) [required]
 

@@ -28,7 +28,7 @@ docvet enrichment --all
 
 ## Example Output
 
-```
+``` linenums="1"
 src/myapp/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises: section [required]
 src/myapp/models.py:15: missing-attributes Dataclass 'UserProfile' has no Attributes: section [required]
 src/myapp/generators.py:28: missing-yields Function 'stream_results' yields but has no Yields: section [required]

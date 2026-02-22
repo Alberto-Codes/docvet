@@ -20,6 +20,8 @@ theme:
   font:
     text: Roboto
     code: Roboto Mono
+  favicon: assets/favicon.svg
+  logo: assets/logo.svg
   icon:
     annotation: material/chevron-right-circle
   features:

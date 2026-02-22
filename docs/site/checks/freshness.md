@@ -56,7 +56,7 @@ Two thresholds control sensitivity:
 
 **Diff mode finding:**
 
-```
+``` linenums="1"
 src/myapp/utils.py:42: stale-signature Function 'parse_config' signature changed but docstring not updated [required]
 src/myapp/utils.py:87: stale-body Function 'validate_input' body changed but docstring not updated [recommended]
 
@@ -65,7 +65,7 @@ src/myapp/utils.py:87: stale-body Function 'validate_input' body changed but doc
 
 **Drift mode finding:**
 
-```
+``` linenums="1"
 src/myapp/utils.py:42: stale-drift Function 'parse_config' code modified 2026-01-15, docstring last modified 2025-11-02 (74 days drift) [recommended]
 src/myapp/models.py:10: stale-age Class 'User' docstring untouched since 2025-08-20 (185 days) [recommended]
 

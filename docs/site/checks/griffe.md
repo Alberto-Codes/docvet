@@ -28,7 +28,7 @@ docvet griffe --all
 
 ## Example Output
 
-```
+``` linenums="1"
 src/myapp/utils.py:42: griffe-unknown-param Function 'parse_config' 'timeout' does not appear in the function signature [required]
 src/myapp/utils.py:42: griffe-missing-type Function 'parse_config' No type or annotation for parameter 'retries' [recommended]
 src/myapp/models.py:15: griffe-format-warning Class 'User' Possible name/annotation mix-up in parameter 'name' [recommended]
