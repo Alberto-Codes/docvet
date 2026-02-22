@@ -1,12 +1,11 @@
 # SonarQube Integration
 
-This project has a local SonarQube instance connected via MCP server.
+This project has a SonarQube instance connected via the official `mcp/sonarqube` MCP server (global config).
 
 ## Project Details
 
 - **Project key**: `docvet`
-- **Server**: `http://localhost:9000` (Podman container, community edition)
-- **MCP server**: `mcp/sonarqube` Docker image with `--network host`
+- **MCP server**: Official SonarSource `mcp/sonarqube` image, configured globally in `~/.claude.json`
 
 ## When to Use
 
@@ -22,5 +21,5 @@ This project has a local SonarQube instance connected via MCP server.
 ## Important Notes
 
 - SonarQube results lag behind local changes — don't verify fixes via the API immediately after editing
-- The server runs in a Podman container; it may not be running in every session
+- The server may not be running in every session
 - SonarLint config (`.sonarlint/`) and `sonar-project.properties` are local-only, not committed to `develop` unless intentional
