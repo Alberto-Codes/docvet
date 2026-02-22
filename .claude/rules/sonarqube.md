@@ -5,7 +5,7 @@ This project has a SonarQube Community Edition instance on the local LAN, connec
 ## Project Details
 
 - **Project key**: `docvet`
-- **Server**: SonarQube Community Edition at `http://192.168.87.58:9000` (LAN only)
+- **Server**: SonarQube Community Edition on the local LAN (URL varies by machine)
 - **MCP server**: Official SonarSource `mcp/sonarqube` image, configured globally in `~/.claude.json`
 
 ## Network & Environment
@@ -14,6 +14,7 @@ This project has a SonarQube Community Edition instance on the local LAN, connec
 - If MCP tools return connection errors, the server is likely unreachable — don't retry, just note it and move on
 - When running on the machine that hosts the SonarQube server itself, the URL may be `localhost:9000` instead of the LAN IP
 - The MCP server token and URL are in `~/.claude.json` — check there for the current configuration
+- The env var `$SONARQUBE_URL` provides the server URL for scanner commands (set in user's shell profile)
 
 ## Scanning (Manual)
 
@@ -25,14 +26,14 @@ Community Edition has no branch analysis and no automatic scan triggers. Scans m
 # Optional: generate coverage report first
 uv run pytest --cov=docvet --cov-report=xml
 
-# Run scanner
+# Run scanner ($SONARQUBE_URL and $SONARQUBE_TOKEN set in shell profile)
 podman run --rm \
-  -v /var/home/Alberto-Codes/Projects/docvet:/usr/src:z \
+  -v "$(pwd):/usr/src:z" \
   --userns=keep-id \
   --network host \
   docker.io/sonarsource/sonar-scanner-cli:latest \
-  -Dsonar.host.url=http://192.168.87.58:9000 \
-  -Dsonar.token=<token from ~/.claude.json>
+  -Dsonar.host.url="$SONARQUBE_URL" \
+  -Dsonar.token="$SONARQUBE_TOKEN"
 ```
 
 The scanner reads `sonar-project.properties` from the project root. **Do NOT add `sonar.branch.name`** to that file — Community Edition doesn't support it and the scan will fail.
