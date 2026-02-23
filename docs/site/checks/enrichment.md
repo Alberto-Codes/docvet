@@ -18,7 +18,7 @@ docvet enrichment --all
 | [`missing-attributes`](../rules/missing-attributes.md) | required | classes, modules | Class or `__init__.py` module has undocumented attributes |
 | [`missing-typed-attributes`](../rules/missing-typed-attributes.md) | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
 | [`missing-examples`](../rules/missing-examples.md) | recommended | classes, modules | Symbol kind in `require-examples` list lacks `Examples:` section |
-| [`missing-cross-references`](../rules/missing-cross-references.md) | recommended | modules | `__init__.py` module missing `See Also:` section |
+| [`missing-cross-references`](../rules/missing-cross-references.md) | recommended | modules | Module missing `See Also:` section |
 | [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` instead of fenced code blocks |
 
 **Required** rules flag structural gaps where the docstring is objectively incomplete. **Recommended** rules flag best-practice improvements that enhance documentation quality.
@@ -50,7 +50,7 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `require-other-parameters` | `bool` | `true` | Require `Other Parameters:` for `**kwargs` |
 | `require-attributes` | `bool` | `true` | Require `Attributes:` sections on classes and modules |
 | `require-typed-attributes` | `bool` | `true` | Require typed format in `Attributes:` entries |
-| `require-cross-references` | `bool` | `true` | Require `See Also:` in `__init__.py` modules |
+| `require-cross-references` | `bool` | `true` | Require `See Also:` in module docstrings |
 | `prefer-fenced-code-blocks` | `bool` | `true` | Prefer fenced code blocks over doctest `>>>` format |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
