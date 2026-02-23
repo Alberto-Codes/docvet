@@ -3,6 +3,17 @@
 Captures warnings from griffe's Google-style docstring parser to detect
 parameter/type mismatches and formatting issues that would cause rendering
 problems in mkdocs-material + mkdocstrings documentation.
+
+Examples:
+    Run the griffe compatibility check on a list of files::
+
+        from docvet.checks import check_griffe_compat
+
+        findings = check_griffe_compat(file_paths)
+
+See Also:
+    `docvet.checks`: Package-level re-exports.
+    `docvet.config`: Configuration dataclasses for check modules.
 """
 
 from __future__ import annotations
