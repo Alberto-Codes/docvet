@@ -3,6 +3,19 @@
 Detects missing docstring sections (Raises, Yields, Attributes, etc.) by
 combining AST analysis with section header parsing. Implements Layer 3 of
 the docstring quality model.
+
+Examples:
+    Run the enrichment check on a source file::
+
+        from docvet.checks import check_enrichment
+        from docvet.config import EnrichmentConfig
+
+        findings = check_enrichment(source, tree, EnrichmentConfig(), "app.py")
+
+See Also:
+    `docvet.config`: ``EnrichmentConfig`` dataclass for rule toggles.
+    `docvet.ast_utils`: Symbol extraction consumed by enrichment rules.
+    `docvet.checks`: Package-level re-exports.
 """
 
 from __future__ import annotations
@@ -793,6 +806,8 @@ def _has_self_assignments(node: ast.ClassDef) -> bool:
     return False
 
 
+# Used only by _check_missing_attributes (module Attributes: is __init__.py-only
+# by design).
 def _is_init_module(file_path: str) -> bool:
     """Check whether a file path points to an ``__init__.py`` module.
 
@@ -1019,8 +1034,8 @@ def _check_missing_examples(
     toggle: the classified type name must appear in
     ``config.require_examples`` for a finding to be emitted.
 
-    Modules in ``__init__.py`` files trigger when ``require_examples`` is
-    non-empty (any non-empty list enables module-level checking).
+    Modules trigger when ``require_examples`` is non-empty (any non-empty
+    list enables module-level checking).
 
     Args:
         symbol: The documented symbol to inspect.
@@ -1039,11 +1054,9 @@ def _check_missing_examples(
     if not config.require_examples:
         return None
 
-    # Module branch: __init__.py modules trigger when require_examples
-    # is non-empty (any type in the list enables module checking).
+    # Module branch: modules trigger when require_examples is non-empty
+    # (any type in the list enables module checking).
     if symbol.kind == "module":
-        if not _is_init_module(file_path):
-            return None
         return Finding(
             file=file_path,
             line=symbol.line,
@@ -1116,8 +1129,8 @@ def _check_missing_cross_references(
 
     Two detection branches:
 
-    - **Branch A:** ``__init__.py`` module with no ``See Also:`` section
-      at all — the module should cross-reference related submodules.
+    - **Branch A:** Any module with no ``See Also:`` section at all — the
+      module should cross-reference related modules.
     - **Branch B:** Any symbol with a ``See Also:`` section whose content
       lacks cross-reference syntax (backtick identifiers, Markdown
       reference links, or Sphinx roles).
@@ -1136,18 +1149,15 @@ def _check_missing_cross_references(
     """
     kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
 
-    # Branch A: __init__.py module missing See Also: entirely
-    if symbol.kind == "module" and _is_init_module(file_path):
+    # Branch A: module missing See Also: entirely
+    if symbol.kind == "module":
         if _SEE_ALSO not in sections:
             return Finding(
                 file=file_path,
                 line=symbol.line,
                 symbol=symbol.name,
                 rule="missing-cross-references",
-                message=(
-                    f"Module '{symbol.name}' is an __init__.py "
-                    f"but has no See Also: section"
-                ),
+                message=(f"Module '{symbol.name}' has no See Also: section"),
                 category="recommended",
             )
 
