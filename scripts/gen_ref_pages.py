@@ -12,7 +12,10 @@ src = root / "src"
 
 def _has_empty_all(source_path):
     """Check if a module explicitly defines an empty ``__all__``."""
-    tree = ast.parse(source_path.read_text())
+    try:
+        tree = ast.parse(source_path.read_text())
+    except (SyntaxError, UnicodeDecodeError):
+        return False
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.Assign):
             targets = node.targets
