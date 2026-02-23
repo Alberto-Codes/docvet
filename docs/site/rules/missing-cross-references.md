@@ -4,7 +4,7 @@
 
 ## What it detects
 
-This rule flags module docstrings that are missing a `See Also:` section, or where the `See Also:` section lacks cross-reference syntax (backtick-quoted identifiers or Markdown links).
+This rule flags module docstrings that are missing a `See Also:` section, or where the `See Also:` section lacks cross-reference syntax (backtick-quoted identifiers, Sphinx roles, or Markdown links including reference-style links).
 
 ## Why is this a problem?
 
