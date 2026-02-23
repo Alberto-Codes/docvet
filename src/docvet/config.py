@@ -186,6 +186,8 @@ _VALID_CHECK_NAMES: frozenset[str] = frozenset(
     {"enrichment", "freshness", "coverage", "griffe"}
 )
 
+_TOOL_SECTION = "[tool.docvet]"
+
 
 # ---------------------------------------------------------------------------
 # Private helpers
@@ -380,7 +382,7 @@ def _parse_docvet_section(
     Returns:
         Processed dict ready for :class:`DocvetConfig` construction.
     """
-    _validate_keys(data, _VALID_TOP_KEYS, "[tool.docvet]")
+    _validate_keys(data, _VALID_TOP_KEYS, _TOOL_SECTION)
 
     converted: dict[str, object] = {_kebab_to_snake(k): v for k, v in data.items()}
 
@@ -388,34 +390,92 @@ def _parse_docvet_section(
     enrichment_data = converted.pop("enrichment", None)
 
     if freshness_data is not None:
-        _validate_type(freshness_data, dict, "freshness", "[tool.docvet]")
+        _validate_type(freshness_data, dict, "freshness", _TOOL_SECTION)
         converted["freshness"] = _parse_freshness(freshness_data)  # type: ignore[arg-type]
 
     if enrichment_data is not None:
-        _validate_type(enrichment_data, dict, "enrichment", "[tool.docvet]")
+        _validate_type(enrichment_data, dict, "enrichment", _TOOL_SECTION)
         converted["enrichment"] = _parse_enrichment(enrichment_data)  # type: ignore[arg-type]
 
-    section = "[tool.docvet]"
     if "src_root" in converted:
-        _validate_type(converted["src_root"], str, "src-root", section)
+        _validate_type(converted["src_root"], str, "src-root", _TOOL_SECTION)
     if "package_name" in converted:
-        _validate_type(converted["package_name"], str, "package-name", section)
+        _validate_type(converted["package_name"], str, "package-name", _TOOL_SECTION)
     if "exclude" in converted:
-        _validate_type(converted["exclude"], list, "exclude", section)
+        _validate_type(converted["exclude"], list, "exclude", _TOOL_SECTION)
         for entry in converted["exclude"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "exclude", section)
+            _validate_type(entry, str, "exclude", _TOOL_SECTION)
     if "fail_on" in converted:
-        _validate_type(converted["fail_on"], list, "fail-on", section)
+        _validate_type(converted["fail_on"], list, "fail-on", _TOOL_SECTION)
         for entry in converted["fail_on"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "fail-on", section)
+            _validate_type(entry, str, "fail-on", _TOOL_SECTION)
         _validate_check_names(converted["fail_on"], "fail-on")  # type: ignore[arg-type]
     if "warn_on" in converted:
-        _validate_type(converted["warn_on"], list, "warn-on", section)
+        _validate_type(converted["warn_on"], list, "warn-on", _TOOL_SECTION)
         for entry in converted["warn_on"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "warn-on", section)
+            _validate_type(entry, str, "warn-on", _TOOL_SECTION)
         _validate_check_names(converted["warn_on"], "warn-on")  # type: ignore[arg-type]
 
     return converted
+
+
+# ---------------------------------------------------------------------------
+# Load helpers
+# ---------------------------------------------------------------------------
+
+
+def _read_docvet_toml(pyproject_path: Path) -> dict[str, object]:
+    """Read ``pyproject.toml`` and return the raw ``[tool.docvet]`` dict.
+
+    Args:
+        pyproject_path: Path to the ``pyproject.toml`` file.
+
+    Returns:
+        The raw TOML dict for ``[tool.docvet]``, or an empty dict when
+        the section is absent.
+    """
+    with open(pyproject_path, "rb") as f:
+        toml_data = tomllib.load(f)
+    tool_section = toml_data.get("tool")
+    if tool_section is None:
+        return {}
+    if not isinstance(tool_section, dict):
+        print(
+            "docvet: [tool] in pyproject.toml must be a table",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    docvet_section = tool_section.get("docvet")
+    if docvet_section is None:
+        return {}
+    if not isinstance(docvet_section, dict):
+        print(
+            "docvet: [tool.docvet] in pyproject.toml must be a table",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return docvet_section
+
+
+def _find_pyproject_path(path: Path | None) -> Path | None:
+    """Resolve an explicit or discovered ``pyproject.toml`` path.
+
+    Args:
+        path: Explicit path provided by the caller, or *None* for
+            automatic discovery.
+
+    Returns:
+        Resolved path to ``pyproject.toml``, or *None* when discovery
+        finds nothing.
+
+    Raises:
+        FileNotFoundError: If an explicit *path* does not exist.
+    """
+    if path is not None:
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        return path
+    return _find_pyproject()
 
 
 # ---------------------------------------------------------------------------
@@ -436,53 +496,23 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     Raises:
         FileNotFoundError: If an explicit *path* does not exist.
     """
-    if path is not None:
-        if not path.is_file():
-            raise FileNotFoundError(path)
-        pyproject_path = path
-        project_root = path.parent.resolve()
-    else:
-        pyproject_path = _find_pyproject()
-        if pyproject_path is None:
-            project_root = Path.cwd().resolve()
-            parsed: dict[str, object] = {}
-        else:
-            project_root = pyproject_path.parent.resolve()
-
+    pyproject_path = _find_pyproject_path(path)
     if pyproject_path is not None:
-        with open(pyproject_path, "rb") as f:
-            toml_data = tomllib.load(f)
-        tool_section = toml_data.get("tool")
-        if tool_section is None:
-            data: dict[str, object] = {}
-        elif not isinstance(tool_section, dict):
-            print(
-                "docvet: [tool] in pyproject.toml must be a table",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        else:
-            docvet_section = tool_section.get("docvet")
-            if docvet_section is None:
-                data = {}
-            elif not isinstance(docvet_section, dict):
-                print(
-                    "docvet: [tool.docvet] in pyproject.toml must be a table",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            else:
-                data = docvet_section
-        parsed = _parse_docvet_section(data) if data else {}
+        project_root = pyproject_path.parent.resolve()
+        data = _read_docvet_toml(pyproject_path)
+        parsed: dict[str, object] = _parse_docvet_section(data) if data else {}
+    else:
+        project_root = Path.cwd().resolve()
+        parsed = {}
+
+    # Use dataclass defaults as single source of truth for omitted keys.
+    defaults = DocvetConfig()
 
     configured_src = parsed.get("src_root")
     resolved_src_root = _resolve_src_root(
         project_root,
         configured_src if isinstance(configured_src, str) else None,
     )
-
-    # Use dataclass defaults as single source of truth for omitted keys.
-    defaults = DocvetConfig()
 
     raw_fail = parsed.get("fail_on")
     fail_on: list[str] = (
@@ -503,24 +533,22 @@ def load_config(path: Path | None = None) -> DocvetConfig:
                 f"docvet: '{check}' appears in both fail-on and warn-on; using fail-on",
                 file=sys.stderr,
             )
-    final_warn_on: list[str] = [c for c in warn_on if c not in fail_on_set]
 
     raw_pkg = parsed.get("package_name")
     raw_exclude = parsed.get("exclude")
-    exclude: list[str] = (
-        [str(x) for x in raw_exclude]
-        if isinstance(raw_exclude, list)
-        else list(defaults.exclude)
-    )
     raw_freshness = parsed.get("freshness")
     raw_enrichment = parsed.get("enrichment")
 
     return DocvetConfig(
         src_root=resolved_src_root,
         package_name=raw_pkg if isinstance(raw_pkg, str) else None,
-        exclude=exclude,
+        exclude=(
+            [str(x) for x in raw_exclude]
+            if isinstance(raw_exclude, list)
+            else list(defaults.exclude)
+        ),
         fail_on=fail_on,
-        warn_on=final_warn_on,
+        warn_on=[c for c in warn_on if c not in fail_on_set],
         freshness=(
             raw_freshness
             if isinstance(raw_freshness, FreshnessConfig)

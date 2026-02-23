@@ -1,6 +1,6 @@
 # Story 10.3: Pre-commit Hook and GitHub Action
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

@@ -208,6 +208,40 @@ def check_freshness_diff(
 # ---------------------------------------------------------------------------
 
 
+def _classify_blame_line(line: str) -> tuple[str, int | None]:
+    """Classify a single git blame porcelain line.
+
+    Identifies whether a line is a SHA header, an ``author-time``
+    field, a tab-prefixed content line, or other metadata.
+
+    Args:
+        line: A single line from ``git blame --line-porcelain`` output.
+
+    Returns:
+        A ``(kind, value)`` pair.  *kind* is ``"sha"`` (value = line
+        number or *None* if malformed), ``"timestamp"`` (value = Unix
+        timestamp or *None*), ``"content"`` (value = *None*, signals
+        end of blame block), or ``"other"`` (value = *None*).
+    """
+    parts = line.split()
+    if len(parts) >= 3 and len(parts[0]) == 40:
+        try:
+            return "sha", int(parts[2])
+        except ValueError:
+            return "sha", None
+
+    if line.startswith("author-time "):
+        try:
+            return "timestamp", int(parts[1])
+        except (ValueError, IndexError):
+            return "timestamp", None
+
+    if line.startswith("\t"):
+        return "content", None
+
+    return "other", None
+
+
 def _parse_blame_timestamps(blame_output: str) -> dict[int, int]:
     """Extract per-line modification timestamps from git blame porcelain output.
 
@@ -234,33 +268,17 @@ def _parse_blame_timestamps(blame_output: str) -> dict[int, int]:
     current_timestamp: int | None = None
 
     for line in blame_output.splitlines():
-        # SHA line: 40-hex-chars orig_line final_line [count]
-        parts = line.split()
-        if len(parts) >= 3 and len(parts[0]) == 40:
-            try:
-                current_line = int(parts[2])
-            except ValueError:
-                current_line = None
+        kind, value = _classify_blame_line(line)
+        if kind == "sha":
+            current_line = value
             current_timestamp = None
-            continue
-
-        # author-time line
-        if line.startswith("author-time "):
-            try:
-                current_timestamp = int(line.split()[1])
-            except (ValueError, IndexError):
-                pass
-            continue
-
-        # Tab-prefixed content line — end of blame block
-        if line.startswith("\t"):
+        elif kind == "timestamp" and value is not None:
+            current_timestamp = value
+        elif kind == "content":
             if current_line is not None and current_timestamp is not None:
                 timestamps[current_line] = current_timestamp
             current_line = None
             current_timestamp = None
-            continue
-
-        # All other lines (author, committer, summary, filename, etc.) — skip
 
     return timestamps
 
@@ -316,6 +334,93 @@ def _compute_age(
     return now - max(doc_timestamps) > threshold * 86400
 
 
+def _group_timestamps_by_symbol(
+    timestamps: dict[int, int],
+    line_map: dict[int, Symbol],
+) -> tuple[dict[Symbol, list[int]], dict[Symbol, list[int]]]:
+    """Group per-line timestamps into code vs docstring buckets per symbol.
+
+    For each line with a timestamp, looks up the owning symbol and
+    classifies the line as docstring or code based on the symbol's
+    ``docstring_range``.
+
+    Args:
+        timestamps: Mapping of 1-based line numbers to Unix timestamps.
+        line_map: Mapping of line numbers to their owning symbols.
+
+    Returns:
+        A ``(code_ts, doc_ts)`` pair of dicts, each mapping symbols to
+        their respective timestamp lists.
+    """
+    code_ts: dict[Symbol, list[int]] = {}
+    doc_ts: dict[Symbol, list[int]] = {}
+    for line_num, ts in timestamps.items():
+        sym = line_map.get(line_num)
+        if sym is None or sym.docstring_range is None:
+            continue
+        ds, de = sym.docstring_range
+        if ds <= line_num <= de:
+            doc_ts.setdefault(sym, []).append(ts)
+        else:
+            code_ts.setdefault(sym, []).append(ts)
+    return code_ts, doc_ts
+
+
+def _build_drift_finding(
+    sym: Symbol,
+    code_ts: list[int],
+    doc_ts: list[int],
+    file_path: str,
+) -> Finding:
+    """Construct a drift finding for a symbol whose code outpaced its docstring.
+
+    Args:
+        sym: The symbol with stale docstring.
+        code_ts: Unix timestamps for the symbol's code lines.
+        doc_ts: Unix timestamps for the symbol's docstring lines.
+        file_path: Source file path for finding attribution.
+
+    Returns:
+        A drift finding with date details and day count.
+    """
+    code_max = max(code_ts)
+    doc_max = max(doc_ts)
+    code_date = datetime.fromtimestamp(code_max, tz=timezone.utc).date().isoformat()
+    doc_date = datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
+    days = (code_max - doc_max) // 86400
+    kind = sym.kind.capitalize()
+    message = (
+        f"{kind} '{sym.name}' code modified {code_date}, "
+        f"docstring last modified {doc_date} ({days} days drift)"
+    )
+    return _build_finding(file_path, sym, "stale-drift", message, "recommended")
+
+
+def _build_age_finding(
+    sym: Symbol,
+    doc_ts: list[int],
+    effective_now: int,
+    file_path: str,
+) -> Finding:
+    """Construct an age finding for a symbol with an untouched docstring.
+
+    Args:
+        sym: The symbol with aged docstring.
+        doc_ts: Unix timestamps for the symbol's docstring lines.
+        effective_now: Current time as a Unix timestamp.
+        file_path: Source file path for finding attribution.
+
+    Returns:
+        An age finding with the last-modified date and day count.
+    """
+    doc_max = max(doc_ts)
+    doc_date = datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
+    days = (effective_now - doc_max) // 86400
+    kind = sym.kind.capitalize()
+    message = f"{kind} '{sym.name}' docstring untouched since {doc_date} ({days} days)"
+    return _build_finding(file_path, sym, "stale-age", message, "recommended")
+
+
 def check_freshness_drift(
     file_path: str,
     blame_output: str,
@@ -351,23 +456,7 @@ def check_freshness_drift(
         return []
 
     line_map = map_lines_to_symbols(tree)
-
-    # Group timestamps by symbol into code vs docstring buckets.
-    symbol_code_ts: dict[Symbol, list[int]] = {}
-    symbol_doc_ts: dict[Symbol, list[int]] = {}
-
-    for line_num, ts in timestamps.items():
-        sym = line_map.get(line_num)
-        if sym is None:
-            continue
-        if sym.docstring_range is None:
-            continue
-
-        ds, de = sym.docstring_range
-        if ds <= line_num <= de:
-            symbol_doc_ts.setdefault(sym, []).append(ts)
-        else:
-            symbol_code_ts.setdefault(sym, []).append(ts)
+    symbol_code_ts, symbol_doc_ts = _group_timestamps_by_symbol(timestamps, line_map)
 
     effective_now = now if now is not None else int(time.time())
 
@@ -377,38 +466,12 @@ def check_freshness_drift(
     for sym in all_symbols:
         code_ts = symbol_code_ts.get(sym, [])
         doc_ts = symbol_doc_ts.get(sym, [])
-        kind = sym.kind.capitalize()
-        doc_max = max(doc_ts) if doc_ts else 0
 
         if _compute_drift(code_ts, doc_ts, config.drift_threshold):
-            code_max = max(code_ts)
-            code_date = (
-                datetime.fromtimestamp(code_max, tz=timezone.utc).date().isoformat()
-            )
-            doc_date = (
-                datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
-            )
-            days = (code_max - doc_max) // 86400
-            message = (
-                f"{kind} '{sym.name}' code modified {code_date}, "
-                f"docstring last modified {doc_date} ({days} days drift)"
-            )
-            findings.append(
-                _build_finding(file_path, sym, "stale-drift", message, "recommended")
-            )
+            findings.append(_build_drift_finding(sym, code_ts, doc_ts, file_path))
 
         if _compute_age(doc_ts, effective_now, config.age_threshold):
-            doc_date = (
-                datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
-            )
-            days = (effective_now - doc_max) // 86400
-            message = (
-                f"{kind} '{sym.name}' docstring untouched "
-                f"since {doc_date} ({days} days)"
-            )
-            findings.append(
-                _build_finding(file_path, sym, "stale-age", message, "recommended")
-            )
+            findings.append(_build_age_finding(sym, doc_ts, effective_now, file_path))
 
     findings.sort(key=lambda f: f.line)
     return findings

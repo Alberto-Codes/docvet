@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Development
 
-Build system: **hatchling** (PEP 517/518). Entry point: `docvet = "docvet:main"` in `src/docvet/__init__.py`.
+Build system: **uv_build** (PEP 517/518). Entry point: `docvet = "docvet:main"` in `src/docvet/__init__.py`. Published to PyPI as `docvet` v1.0.0.
 
 ```bash
 # Install in development mode
@@ -127,6 +127,24 @@ Core: `typer` (CLI)
 Optional: `griffe` (rendering check — `pip install docvet[griffe]`)
 
 Dev: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-randomly`, `ruff`, `ty`
+
+## Branching & Release
+
+- **`develop`**: Integration branch — all feature PRs merge here (squash merge)
+- **`main`**: Release branch — release-please watches here, publishes trigger from here
+- **develop → main**: Use merge commit (not squash) to preserve individual conventional commits for release-please changelog generation
+- **release-please**: `googleapis/release-please-action@v4` on push to `main`. Config in `release-please-config.json`. Manifest in `.release-please-manifest.json`.
+- **Publishing**: OIDC trusted publishing to PyPI (no API tokens). Triggered by `release: [published]` event.
+- **Floating tag**: `v1` tag updated on each release for GitHub Action consumers.
+
+## CI/CD Pipeline Lessons
+
+Hard-won lessons from the v1.0.0 launch — reference these when modifying workflows:
+
+- **OIDC token exchange**: Use `uv publish --index testpypi`, NOT `--publish-url`. The `--publish-url` flag only sets the upload endpoint but mints the OIDC token against PyPI (wrong audience for TestPyPI), causing 503 errors.
+- **TestPyPI index config**: `uv publish --index` requires the index to be defined in `pyproject.toml` with `publish-url`. Without it, uv doesn't know where to upload.
+- **Explicit permissions**: When declaring `permissions:` in a workflow, all unmentioned permissions default to `none`. Always include `contents: read` alongside `id-token: write` or checkout will fail.
+- **attest-action version**: `astral-sh/attest-action@v1` does not exist. Pin to a specific version (currently `@v0.0.4`).
 
 ## Conventional Commits
 

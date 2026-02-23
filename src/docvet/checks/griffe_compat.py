@@ -9,19 +9,21 @@ from __future__ import annotations
 
 import logging
 import re
+import types
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-try:
-    import griffe  # ty: ignore[unresolved-import]
-except ImportError:
-    griffe = None
-
 if TYPE_CHECKING:
-    from griffe import Object as GriffeObject  # ty: ignore[unresolved-import]
+    from griffe import Alias as GriffeAlias
+    from griffe import Object as GriffeObject
 
 from docvet.checks._finding import Finding
+
+try:
+    import griffe
+except ImportError:
+    griffe: types.ModuleType | None = None
 
 __all__ = ["check_griffe_compat"]
 
@@ -93,7 +95,9 @@ def _resolve_file_set(files: Sequence[Path]) -> set[Path]:
     return {f.resolve() for f in files}
 
 
-def _walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObject]:
+def _walk_objects(
+    obj: GriffeObject | GriffeAlias, file_set: set[Path]
+) -> Iterator[GriffeObject]:
     """Walk a griffe object tree yielding objects whose files are in file_set.
 
     Skips alias objects (avoids AliasResolutionError), objects without
@@ -107,7 +111,7 @@ def _walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObje
     Yields:
         Griffe objects that have docstrings and belong to files in file_set.
     """
-    stack: list[GriffeObject] = [obj]
+    stack: list[GriffeObject | GriffeAlias] = [obj]
     while stack:
         current = stack.pop()
         if current.is_alias:
@@ -149,6 +153,81 @@ def _build_finding_from_record(
     )
 
 
+def _collect_object_findings(
+    obj: GriffeObject,
+    handler: _WarningCollector,
+) -> list[Finding]:
+    """Collect docstring findings for a single griffe object.
+
+    Triggers docstring parsing on the object, captures any new warning
+    records added during parsing, and converts them to findings.
+
+    Args:
+        obj: A griffe object with a docstring to parse.
+        handler: Attached warning collector for the griffe logger.
+
+    Returns:
+        A list of findings from docstring compatibility warnings for
+        this object.
+    """
+    before = len(handler.records)
+    assert obj.docstring is not None  # guaranteed by _walk_objects filter
+    _ = obj.docstring.parsed
+    after = len(handler.records)
+    findings: list[Finding] = []
+    for record in handler.records[before:after]:
+        finding = _build_finding_from_record(record, obj)
+        if finding is not None:
+            findings.append(finding)
+    return findings
+
+
+def _load_and_check_packages(
+    src_root: Path,
+    file_set: set[Path],
+    handler: _WarningCollector,
+) -> list[Finding]:
+    """Load griffe packages under *src_root* and collect docstring findings.
+
+    Iterates directories that look like Python packages, loads them via
+    griffe, triggers docstring parsing to capture warnings, and converts
+    captured records to findings.
+
+    Args:
+        src_root: Root source directory containing Python packages.
+        file_set: Resolved absolute paths to filter griffe objects.
+        handler: Attached warning collector for the griffe logger.
+
+    Returns:
+        A list of findings from docstring compatibility warnings.
+    """
+    if griffe is None:
+        return []
+
+    findings: list[Finding] = []
+    for child in sorted(src_root.iterdir()):
+        if not child.is_dir() or not (child / "__init__.py").exists():
+            continue
+        try:
+            package = griffe.load(
+                child.name,
+                search_paths=[str(src_root)],
+                docstring_parser="google",
+                allow_inspection=False,
+            )
+        except (
+            griffe.LoadingError,
+            ModuleNotFoundError,
+            OSError,
+            SyntaxError,
+        ):
+            continue
+
+        for obj in _walk_objects(package, file_set):
+            findings.extend(_collect_object_findings(obj, handler))
+    return findings
+
+
 def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
     """Check Python packages for griffe docstring compatibility issues.
 
@@ -169,38 +248,11 @@ def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
         return []
 
     file_set = _resolve_file_set(files)
-    findings: list[Finding] = []
-
     griffe_logger = logging.getLogger("griffe")
     handler = _WarningCollector()
     griffe_logger.addHandler(handler)
     try:
-        for child in sorted(src_root.iterdir()):
-            if not child.is_dir() or not (child / "__init__.py").exists():
-                continue
-            try:
-                package = griffe.load(
-                    child.name,
-                    search_paths=[str(src_root)],
-                    docstring_parser="google",
-                    allow_inspection=False,
-                )
-            except (
-                griffe.LoadingError,
-                ModuleNotFoundError,
-                OSError,
-                SyntaxError,
-            ):
-                continue
-
-            for obj in _walk_objects(package, file_set):
-                before = len(handler.records)
-                _ = obj.docstring.parsed
-                after = len(handler.records)
-                for record in handler.records[before:after]:
-                    finding = _build_finding_from_record(record, obj)
-                    if finding is not None:
-                        findings.append(finding)
+        findings = _load_and_check_packages(src_root, file_set, handler)
     finally:
         griffe_logger.removeHandler(handler)
 

@@ -1,6 +1,6 @@
 # Story 10.2: README with Comparison Table, Quickstart, and Badges
 
-Status: review
+Status: done
 
 ## Story
 
