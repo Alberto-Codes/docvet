@@ -51,8 +51,10 @@ docvet = "docvet.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/Alberto-Codes/docvet"
+Documentation = "https://alberto-codes.github.io/docvet/"
 Source = "https://github.com/Alberto-Codes/docvet"
 Issues = "https://github.com/Alberto-Codes/docvet/issues"
+Changelog = "https://github.com/Alberto-Codes/docvet/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["uv_build>=0.7,<1"]

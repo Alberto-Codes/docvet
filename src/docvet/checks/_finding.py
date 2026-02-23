@@ -4,6 +4,14 @@ This module exists to break the circular import between ``checks/__init__.py``
 (which re-exports check functions) and the check submodules (which produce
 Finding instances).  External consumers should import Finding from
 ``docvet.checks``, not from this module.
+
+Examples:
+    Import ``Finding`` through the public API::
+
+        from docvet.checks import Finding
+
+See Also:
+    `docvet.checks`: Public re-export surface for ``Finding``.
 """
 
 from __future__ import annotations

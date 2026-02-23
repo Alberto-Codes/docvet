@@ -1,4 +1,13 @@
-"""Fixture: fully complete docstrings — no findings expected."""
+"""Fixture: fully complete docstrings — no findings expected.
+
+Examples:
+    Used by the test suite to verify zero-finding output::
+
+        source = Path("tests/fixtures/complete_module.py").read_text()
+
+See Also:
+    `tests.fixtures`: Other test fixture modules.
+"""
 
 from __future__ import annotations
 

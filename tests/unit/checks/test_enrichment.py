@@ -2839,7 +2839,7 @@ FOO = 42
     assert result is None
 
 
-def test_missing_examples_when_non_init_module_returns_none():
+def test_missing_examples_when_non_init_module_returns_finding():
     source = '''\
 """Regular module docstring."""
 
@@ -2867,7 +2867,13 @@ FOO = 42
         module_symbol, sections, node_index, config, "regular.py"
     )
 
-    assert result is None
+    assert result is not None
+    assert result.file == "regular.py"
+    assert result.line == 1
+    assert result.symbol == "<module>"
+    assert result.rule == "missing-examples"
+    assert result.message == "Module '<module>' has no Examples: section"
+    assert result.category == "recommended"
 
 
 def test_missing_examples_when_node_index_missing_returns_none():
@@ -3045,7 +3051,7 @@ FOO = 42
     assert missing_examples == []
 
 
-def test_missing_examples_when_non_init_module_no_finding():
+def test_missing_examples_when_non_init_module_has_finding():
     source = '''\
 """Regular module docstring."""
 
@@ -3057,7 +3063,33 @@ FOO = 42
     findings = check_enrichment(source, tree, config, "regular.py")
 
     missing_examples = [f for f in findings if f.rule == "missing-examples"]
-    assert missing_examples == []
+    assert len(missing_examples) == 1
+    assert missing_examples[0].file == "regular.py"
+    assert missing_examples[0].line == 1
+    assert missing_examples[0].symbol == "<module>"
+    assert missing_examples[0].rule == "missing-examples"
+    assert missing_examples[0].message == "Module '<module>' has no Examples: section"
+    assert missing_examples[0].category == "recommended"
+
+
+def test_non_init_module_missing_both_examples_and_cross_refs_returns_both():
+    source = '''\
+"""Regular module docstring."""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_examples=["class"], require_cross_references=True)
+
+    findings = check_enrichment(source, tree, config, "regular.py")
+
+    rules = {f.rule for f in findings}
+    assert "missing-examples" in rules
+    assert "missing-cross-references" in rules
+    examples_findings = [f for f in findings if f.rule == "missing-examples"]
+    xref_findings = [f for f in findings if f.rule == "missing-cross-references"]
+    assert len(examples_findings) == 1
+    assert len(xref_findings) == 1
 
 
 def test_missing_examples_when_namedtuple_does_not_trigger():
@@ -3202,11 +3234,10 @@ FOO = 42
     assert isinstance(result, Finding)
     assert result.rule == "missing-cross-references"
     assert result.category == "recommended"
-    assert "__init__.py" in result.message
-    assert "See Also" in result.message
+    assert result.message == "Module '<module>' has no See Also: section"
 
 
-def test_cross_refs_when_non_init_module_no_see_also_returns_none():
+def test_cross_refs_when_non_init_module_no_see_also_returns_finding():
     source = '''\
 """Regular module docstring."""
 
@@ -3226,7 +3257,141 @@ FOO = 42
         module_symbol, sections, node_index, config, "regular.py"
     )
 
+    assert result is not None
+    assert result.file == "regular.py"
+    assert result.line == 1
+    assert result.symbol == "<module>"
+    assert result.rule == "missing-cross-references"
+    assert result.message == "Module '<module>' has no See Also: section"
+    assert result.category == "recommended"
+
+
+def test_missing_examples_when_non_init_module_with_examples_returns_none():
+    source = '''\
+"""Regular module docstring.
+
+Examples:
+    Basic usage::
+
+        $ docvet check --all
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_examples(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
     assert result is None
+
+
+def test_cross_refs_when_non_init_module_with_see_also_returns_none():
+    source = '''\
+"""Regular module docstring.
+
+See Also:
+    `docvet.checks`: Public API re-exports.
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
+    assert result is None
+
+
+def test_missing_examples_when_require_examples_empty_non_init_module_returns_none():
+    source = '''\
+"""Regular module docstring."""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig(require_examples=[])
+
+    result = _check_missing_examples(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_non_init_module_require_cross_refs_false_returns_none():
+    source = '''\
+"""Regular module docstring."""
+
+FOO = 42
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(require_cross_references=False)
+
+    findings = check_enrichment(source, tree, config, "regular.py")
+
+    xref_findings = [f for f in findings if f.rule == "missing-cross-references"]
+    assert xref_findings == []
+
+
+def test_cross_refs_when_non_init_module_see_also_without_xrefs_returns_finding():
+    source = '''\
+"""Regular module docstring.
+
+See Also:
+    some_module
+    another_module
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
+    assert result is not None
+    assert result.file == "regular.py"
+    assert result.line == 1
+    assert result.symbol == "<module>"
+    assert result.rule == "missing-cross-references"
+    assert "lacks cross-reference syntax" in result.message
+    assert result.category == "recommended"
 
 
 def test_cross_refs_when_see_also_without_xrefs_returns_finding():
@@ -3344,7 +3509,7 @@ FOO = 42
 
     xref_findings = [f for f in findings if f.rule == "missing-cross-references"]
     assert len(xref_findings) == 1
-    assert "__init__.py" in xref_findings[0].message
+    assert xref_findings[0].message == "Module '<module>' has no See Also: section"
 
 
 def test_cross_refs_when_init_module_has_see_also_with_xrefs_returns_none():

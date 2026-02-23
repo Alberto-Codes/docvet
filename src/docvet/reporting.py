@@ -1,4 +1,22 @@
-"""Markdown and terminal report generation for docstring findings."""
+"""Markdown and terminal report generation for docstring findings.
+
+Renders check findings as terminal output (default) or markdown reports.
+Groups findings by file, calculates summary statistics, and determines
+the CLI exit code based on finding severity.
+
+Examples:
+    Generate a terminal report via the CLI::
+
+        $ docvet check --all
+
+    Write a markdown report to a file::
+
+        $ docvet check --all --format markdown --output report.md
+
+See Also:
+    `docvet.cli`: Subcommands that invoke report rendering.
+    `docvet.checks`: Check functions that produce findings.
+"""
 
 from __future__ import annotations
 

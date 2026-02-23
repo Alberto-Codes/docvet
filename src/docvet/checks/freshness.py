@@ -1,4 +1,20 @@
-"""Freshness check for stale docstrings via git diff and git blame."""
+"""Freshness check for stale docstrings via git diff and git blame.
+
+Detects code changes that may have made docstrings stale. Diff mode maps
+git diff hunks to AST symbols; drift mode uses git blame age comparison.
+Implements Layer 4 of the docstring quality model.
+
+Examples:
+    Run the freshness diff check on a file::
+
+        from docvet.checks import check_freshness_diff
+
+        findings = check_freshness_diff(path, diff_text, source, tree)
+
+See Also:
+    `docvet.config`: ``FreshnessConfig`` dataclass for drift thresholds.
+    `docvet.checks`: Package-level re-exports.
+"""
 
 from __future__ import annotations
 

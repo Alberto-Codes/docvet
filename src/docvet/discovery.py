@@ -1,4 +1,23 @@
-"""File discovery module for locating Python files to analyze."""
+"""File discovery module for locating Python files to analyze.
+
+Resolves which Python files to check based on the selected discovery
+mode: git diff (default), staged files, explicit file list, or full
+codebase scan. All modes return a sorted ``list[Path]`` of absolute
+file paths.
+
+Examples:
+    Discover staged files via the CLI::
+
+        $ docvet check --staged
+
+    Discover the full codebase::
+
+        $ docvet check --all
+
+See Also:
+    `docvet.cli`: Subcommands that invoke discovery.
+    `docvet.checks`: Check functions that consume discovered files.
+"""
 
 from __future__ import annotations
 
