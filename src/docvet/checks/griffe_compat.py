@@ -9,19 +9,21 @@ from __future__ import annotations
 
 import logging
 import re
+import types
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-try:
-    import griffe  # ty: ignore[unresolved-import]
-except ImportError:
-    griffe = None
-
 if TYPE_CHECKING:
-    from griffe import Object as GriffeObject  # ty: ignore[unresolved-import]
+    from griffe import Alias as GriffeAlias
+    from griffe import Object as GriffeObject
 
 from docvet.checks._finding import Finding
+
+try:
+    import griffe
+except ImportError:
+    griffe: types.ModuleType | None = None
 
 __all__ = ["check_griffe_compat"]
 
@@ -93,7 +95,9 @@ def _resolve_file_set(files: Sequence[Path]) -> set[Path]:
     return {f.resolve() for f in files}
 
 
-def _walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObject]:
+def _walk_objects(
+    obj: GriffeObject | GriffeAlias, file_set: set[Path]
+) -> Iterator[GriffeObject]:
     """Walk a griffe object tree yielding objects whose files are in file_set.
 
     Skips alias objects (avoids AliasResolutionError), objects without
@@ -107,7 +111,7 @@ def _walk_objects(obj: GriffeObject, file_set: set[Path]) -> Iterator[GriffeObje
     Yields:
         Griffe objects that have docstrings and belong to files in file_set.
     """
-    stack: list[GriffeObject] = [obj]
+    stack: list[GriffeObject | GriffeAlias] = [obj]
     while stack:
         current = stack.pop()
         if current.is_alias:
@@ -167,6 +171,7 @@ def _collect_object_findings(
         this object.
     """
     before = len(handler.records)
+    assert obj.docstring is not None  # guaranteed by _walk_objects filter
     _ = obj.docstring.parsed
     after = len(handler.records)
     findings: list[Finding] = []
