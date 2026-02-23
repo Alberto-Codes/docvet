@@ -72,7 +72,8 @@ AST-based detection of missing docstring sections based on code structure analys
 - **Dataclasses/NamedTuples/TypedDicts with fields** -> require `Attributes:` with types
 - **Protocols** -> recommend `Examples:` showing implementation
 - **Enums** -> recommend `Examples:` showing value access
-- **`__init__.py` modules** -> require `Attributes:` (exports), `Examples:`, `See Also:`
+- **`__init__.py` modules** -> require `Attributes:` (exports)
+- **All modules** -> recommend `Examples:`, `See Also:`
 - **`Attributes:` sections** -> should include types in parentheses: `name (type): desc`
 - **`See Also:` sections** -> should use cross-reference syntax: `` [`name`][ref] ``
 - **`Examples:` sections** -> should use fenced code blocks, not `>>>` doctest format
