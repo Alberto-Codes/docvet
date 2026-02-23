@@ -143,7 +143,7 @@ jobs:
         with:
           path: site
 
-  deploy:
+  deploy-docs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
@@ -158,7 +158,7 @@ jobs:
 ```
 
 **Key design decisions:**
-- **Two jobs, not one:** Separating `build` from `deploy` follows GitHub's recommended pattern and allows the deploy job to have minimal permissions (`pages: write`, `id-token: write`) while the build job only needs `contents: read` (inherited from top-level)
+- **Two jobs, not one:** Separating `build` from `deploy-docs` follows GitHub's recommended pattern and allows the deploy job to have minimal permissions (`pages: write`, `id-token: write`) while the build job only needs `contents: read` (inherited from top-level)
 - **Top-level `permissions: contents: read`:** All unmentioned permissions default to `none`. The deploy job overrides with its own `pages: write` and `id-token: write`
 - **`environment: github-pages`:** Enables deployment protection rules and makes the deployment visible in the repository's Environments tab
 - **`concurrency: group: pages`:** Prevents parallel deployments from conflicting. `cancel-in-progress: false` ensures a running deployment completes rather than being cancelled by a newer push
