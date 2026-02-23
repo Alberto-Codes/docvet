@@ -16,18 +16,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-      - run: uv python install 3.12
-      - run: uv sync --extra docs
-      - run: uv run mkdocs build --strict
-      - uses: actions/upload-pages-artifact@v4
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Install documentation dependencies
+        run: uv sync --extra docs
+      - name: Build documentation site
+        run: uv run mkdocs build --strict
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site
+      - name: Prune uv cache
+        run: uv cache prune --ci
+        if: always()
+        continue-on-error: true
 
-  deploy:
+  deploy-docs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
@@ -37,5 +47,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
         id: deployment
