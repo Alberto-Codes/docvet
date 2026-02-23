@@ -1,5 +1,50 @@
 # Changelog
 
+## [1.1.0](https://github.com/Alberto-Codes/docvet/compare/v1.0.2...v1.1.0) (2026-02-23)
+
+
+### Features
+
+* **enrichment:** extend missing-examples and missing-cross-references to all modules ([89f2846](https://github.com/Alberto-Codes/docvet/commit/89f28465c87533065688bff5c2d70904d2cb6908)), closes [#80](https://github.com/Alberto-Codes/docvet/issues/80)
+* **enrichment:** extend missing-examples and missing-cross-references to all modules ([#89](https://github.com/Alberto-Codes/docvet/issues/89)) ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca)), closes [#80](https://github.com/Alberto-Codes/docvet/issues/80)
+
+
+### Bug Fixes
+
+* **sprint-status:** update epic-13 status to done ([9cdc38e](https://github.com/Alberto-Codes/docvet/commit/9cdc38e3bbb36fbbcd446e2fe542fa11562f95c5))
+
+
+### Documentation
+
+* add Documentation and Changelog URLs to PyPI project links ([f1ccb0e](https://github.com/Alberto-Codes/docvet/commit/f1ccb0eed9d80a2f36b125032b3ca2839a51437e))
+* **ast:** enrich module docstring with Examples and See Also ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **ast:** enrich module docstring with Examples and See Also ([e9041b8](https://github.com/Alberto-Codes/docvet/commit/e9041b894879c65e29f6f8a18ce27847c64cb7db))
+* **cli:** enrich module docstring with Examples and See Also ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **cli:** enrich module docstring with Examples and See Also ([d180ce4](https://github.com/Alberto-Codes/docvet/commit/d180ce4157b42ec96d61a23a1572538da06039ca))
+* **config:** update configuration page for all-modules scope ([33af252](https://github.com/Alberto-Codes/docvet/commit/33af2529ce3cb878a1dc3046abe6e27253fb577b))
+* **config:** update require_cross_references docstring scope ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **config:** update require_cross_references docstring scope ([788bdda](https://github.com/Alberto-Codes/docvet/commit/788bdda8a850034c86455488094dd2572df3428b))
+* **coverage:** enrich module docstring with Examples and See Also ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **coverage:** enrich module docstring with Examples and See Also ([b67b43e](https://github.com/Alberto-Codes/docvet/commit/b67b43e34e07cc0983e5e14e6816b410f0f43406))
+* **discovery:** enrich module docstring with Examples and See Also ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **discovery:** enrich module docstring with Examples and See Also ([ba1e93f](https://github.com/Alberto-Codes/docvet/commit/ba1e93feac19fd07b3544d9769f37abd78cb14d6))
+* **enrichment:** clarify class vs module gating in _check_missing_examples docstring ([24cd30e](https://github.com/Alberto-Codes/docvet/commit/24cd30e9a67329df7cc88ce1c5714d1668b50406))
+* **enrichment:** enrich _finding module docstring with Examples and See Also ([3f14843](https://github.com/Alberto-Codes/docvet/commit/3f14843868bd184173afbcb722c47d33b6fefe24))
+* **enrichment:** list all accepted cross-reference syntaxes in rule page ([ea44e1c](https://github.com/Alberto-Codes/docvet/commit/ea44e1c695b0bf98dfa012e59e9dc3a3ec881788))
+* **enrichment:** update documentation site for all-modules scope ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **enrichment:** update enrichment check page for all-modules scope ([a83f427](https://github.com/Alberto-Codes/docvet/commit/a83f427d83798e82549bb4d3a52ef4ef03c542c2))
+* **enrichment:** update missing-cross-references rule page for all-modules scope ([6ee8581](https://github.com/Alberto-Codes/docvet/commit/6ee85819509672b82cc9853f0ba809317e3bc420))
+* **enrichment:** update product vision for all-modules scope ([68f6c2a](https://github.com/Alberto-Codes/docvet/commit/68f6c2a99693c68e789b07f22c96397afd48e553))
+* **enrichment:** update rule table to cover both detection branches ([729b200](https://github.com/Alberto-Codes/docvet/commit/729b200a7769fec94d9085ae310f75e9f7f0a754))
+* **enrichment:** update rules.yml summary for all-modules scope ([41b07b0](https://github.com/Alberto-Codes/docvet/commit/41b07b0a2a285cc5ad9a40d790bd5366ae0a486b))
+* **enrichment:** update rules.yml summary for both detection branches ([bd08e8c](https://github.com/Alberto-Codes/docvet/commit/bd08e8c812b270ab38a04233037721ae4da6f61e))
+* **freshness:** enrich module docstring with Examples and See Also ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **freshness:** enrich module docstring with Examples and See Also ([1a953e3](https://github.com/Alberto-Codes/docvet/commit/1a953e3b561997d4c7bc3ad820e3f6162e73beff))
+* **griffe:** enrich module docstring with Examples and See Also ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **griffe:** enrich module docstring with Examples and See Also ([6fd0ec2](https://github.com/Alberto-Codes/docvet/commit/6fd0ec2815e91dd79f0fd79a887220bd7a17cd81))
+* **reporting:** enrich module docstring with Examples and See Also ([26290f3](https://github.com/Alberto-Codes/docvet/commit/26290f350c05be0366ba830e32e55861aacbdaca))
+* **reporting:** enrich module docstring with Examples and See Also ([d196eea](https://github.com/Alberto-Codes/docvet/commit/d196eea27e5c411573fb15bbbfe628098948260f))
+
 ## [1.0.2](https://github.com/Alberto-Codes/docvet/compare/v1.0.1...v1.0.2) (2026-02-23)
 
 
