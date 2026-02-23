@@ -10,7 +10,7 @@ root = Path(__file__).parent.parent
 src = root / "src"
 
 
-def _has_empty_all(source_path):
+def _has_empty_all(source_path: Path) -> bool:
     """Check if a module explicitly defines an empty ``__all__``."""
     try:
         tree = ast.parse(source_path.read_text())
@@ -27,6 +27,7 @@ def _has_empty_all(source_path):
             if (
                 isinstance(target, ast.Name)
                 and target.id == "__all__"
+                and node.value is not None
                 and isinstance(node.value, (ast.List, ast.Tuple))
                 and len(node.value.elts) == 0
             ):
