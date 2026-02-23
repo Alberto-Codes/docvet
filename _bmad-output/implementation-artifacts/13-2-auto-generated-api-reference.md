@@ -1,6 +1,6 @@
 # Story 13.2: Auto-generated API Reference
 
-Status: review
+Status: done
 Branch: `feat/docs-13-2-auto-generated-api-reference`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -351,7 +351,7 @@ Codebase is clean. No pending changes. Last commit was 13.1's merge.
 
 - [x] `uv run ruff check .` -- zero lint violations (includes `scripts/gen_ref_pages.py`)
 - [x] `uv run ruff format --check .` -- zero format issues (includes `scripts/gen_ref_pages.py`)
-- [x] `uv run ty check` -- pre-existing diagnostics in griffe_compat.py only (not introduced by this story)
+- [x] `uv run ty check` -- griffe_compat.py diagnostics resolved by adding griffe/griffelib to dev dependencies and removing ty: ignore comments
 - [x] `uv run pytest` -- 737 tests pass, zero regressions
 - [x] `uv run docvet check --all` -- N/A (no runtime source code changes)
 - [x] `uv run interrogate -v` -- N/A (no runtime source code changes; `scripts/` already excluded from interrogate)
@@ -385,9 +385,10 @@ Claude Opus 4.6 (claude-opus-4-6)
 
 ### File List
 
-- `pyproject.toml` -- modified: added 4 packages to `[project.optional-dependencies] docs`
+- `pyproject.toml` -- modified: added 4 packages to `[project.optional-dependencies] docs`; added `griffe>=1.0` and `griffelib>=2.0` to `[dependency-groups] dev` for ty import resolution
 - `mkdocs.yml` -- modified: added 4 plugins (gen-files, literate-nav, section-index, mkdocstrings) and Reference nav entry
 - `scripts/gen_ref_pages.py` -- new: build-time script generating API reference pages and navigation
+- `src/docvet/checks/griffe_compat.py` -- modified: added `GriffeAlias` type union for correct griffe object tree typing, removed `# ty: ignore` suppressions, added docstring assertion safety check
 
 ## Code Review
 
@@ -395,15 +396,26 @@ Claude Opus 4.6 (claude-opus-4-6)
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approve with fixes applied
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | MEDIUM | `griffe_compat.py` modified but not in File List (scope violation) | Updated File List to document changes |
+| H2 | MEDIUM | Dev deps `griffe`/`griffelib` added but undocumented | Updated File List pyproject.toml entry |
+| M1 | MEDIUM | ty check quality gate statement misleading ("pre-existing only") | Rewrote gate statement to reflect actual changes |
+| M2 | MEDIUM | `_has_empty_all` lacks error handling for SyntaxError/encoding | Added try/except with graceful fallback |
+| L1 | LOW | Script ~60 lines vs ~30 in architecture spec | Acknowledged, deviation already documented |
+| L2 | LOW | `_has_empty_all` lacks type annotations | Accepted as design choice per story constraints |
+| L3 | LOW | Two out-of-scope commits add PR noise | Accepted, hidden by squash merge |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
