@@ -19,8 +19,8 @@
 *[Enrichment check]: Docvet's layer 3 check that uses AST analysis to detect missing docstring sections such as Raises, Yields, Attributes, and Examples.
 *[freshness check]: Docvet's layer 4 check that detects stale docstrings — code that has changed without a corresponding docstring update.
 *[Freshness check]: Docvet's layer 4 check that detects stale docstrings — code that has changed without a corresponding docstring update.
-*[coverage check]: Docvet's layer 6 check that detects missing __init__.py files that prevent mkdocs from discovering Python packages.
-*[Coverage check]: Docvet's layer 6 check that detects missing __init__.py files that prevent mkdocs from discovering Python packages.
+*[coverage check]: Docvet's layer 6 check that detects missing __init__.py files that prevent mkdocstrings from discovering Python packages.
+*[Coverage check]: Docvet's layer 6 check that detects missing __init__.py files that prevent mkdocstrings from discovering Python packages.
 *[griffe compatibility check]: Docvet's layer 5 check that captures griffe parser warnings to ensure docstrings render correctly with mkdocstrings.
 *[Griffe compatibility check]: Docvet's layer 5 check that captures griffe parser warnings to ensure docstrings render correctly with mkdocstrings.
 *[diff mode]: A freshness check strategy that maps git diff hunks to AST symbols, flagging code changes that lack corresponding docstring updates.

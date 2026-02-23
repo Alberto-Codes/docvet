@@ -41,8 +41,8 @@ highlighted terms on any page to see their tooltip definitions.
 
 **Coverage check**
 :   Docvet's layer 6 check that detects missing `__init__.py` files in Python
-    packages, which prevents mkdocs from discovering and documenting those
-    packages.
+    packages, which prevents mkdocstrings from discovering and documenting
+    those packages.
 
 **Griffe compatibility check**
 :   Docvet's layer 5 check that captures griffe parser warnings to ensure
