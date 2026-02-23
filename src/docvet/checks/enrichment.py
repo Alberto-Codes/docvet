@@ -1030,12 +1030,11 @@ def _check_missing_examples(
     """Detect a construct missing an ``Examples:`` section.
 
     This is the only ``_check_*`` function that reads ``config`` internally.
-    The gating is symbol-type-specific (list-based), not a simple boolean
-    toggle: the classified type name must appear in
-    ``config.require_examples`` for a finding to be emitted.
-
-    Modules trigger when ``require_examples`` is non-empty (any non-empty
-    list enables module-level checking).
+    Classes are gated by list membership — the classified type name
+    (``"class"``, ``"dataclass"``, ``"protocol"``, ``"enum"``) must appear
+    in ``config.require_examples`` for a finding to be emitted.  Modules
+    trigger whenever ``require_examples`` is non-empty (any non-empty list
+    enables module-level checking).
 
     Args:
         symbol: The documented symbol to inspect.
