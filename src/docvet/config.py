@@ -1,4 +1,21 @@
-"""Configuration reader for ``[tool.docvet]`` in pyproject.toml."""
+"""Configuration reader for ``[tool.docvet]`` in pyproject.toml.
+
+Loads and validates the ``[tool.docvet]`` configuration table from
+``pyproject.toml``. Exposes ``EnrichmentConfig`` and ``FreshnessConfig``
+dataclasses with sensible defaults for all check modules.
+
+Examples:
+    Load configuration from the project root::
+
+        from docvet.config import load_config
+
+        config = load_config()
+        enrichment = config.enrichment
+
+See Also:
+    `docvet.cli`: CLI entry point that loads config on startup.
+    `docvet.checks`: Check functions that consume config objects.
+"""
 
 from __future__ import annotations
 
@@ -63,7 +80,7 @@ class EnrichmentConfig:
         require_typed_attributes (bool): Require typed attribute format.
             Defaults to ``True``.
         require_cross_references (bool): Require ``See Also:`` in
-            ``__init__.py`` modules. Defaults to ``True``.
+            module docstrings. Defaults to ``True``.
         prefer_fenced_code_blocks (bool): Prefer fenced code blocks
             over indented blocks. Defaults to ``True``.
         require_attributes (bool): Require ``Attributes:`` sections.

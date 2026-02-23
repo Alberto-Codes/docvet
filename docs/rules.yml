@@ -70,7 +70,7 @@
   check: enrichment
   category: recommended
   applies_to: modules
-  summary: __init__.py module missing See Also section with cross-references
+  summary: Module See Also section missing or lacking properly formatted cross-references
   since: "1.0.0"
 
 - id: prefer-fenced-code-blocks

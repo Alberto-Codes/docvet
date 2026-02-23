@@ -1,4 +1,24 @@
-"""Typer CLI application for docvet."""
+"""Typer CLI application for docvet.
+
+Defines the ``typer.Typer`` app with subcommands for each check layer
+(``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
+combined ``check`` entry point. Handles config loading, file discovery
+dispatch, and report rendering.
+
+Examples:
+    Run all checks on changed files::
+
+        $ docvet check
+
+    Run the enrichment check on the entire codebase::
+
+        $ docvet enrichment --all
+
+See Also:
+    `docvet.checks`: Public API re-exports for check functions.
+    `docvet.config`: Configuration dataclasses loaded by the CLI.
+    `docvet.discovery`: File discovery invoked by each subcommand.
+"""
 
 from __future__ import annotations
 

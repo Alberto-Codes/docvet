@@ -4,6 +4,17 @@ Detects directories in the source tree that lack ``__init__.py``,
 making their Python files invisible to mkdocstrings documentation
 generation.  Uses pure filesystem checks via ``pathlib`` — no AST,
 no git, no external dependencies.
+
+Examples:
+    Run the coverage check on a list of files::
+
+        from docvet.checks import check_coverage
+
+        findings = check_coverage(file_paths, src_root=Path("src"))
+
+See Also:
+    `docvet.checks`: Package-level re-exports.
+    `docvet.config`: ``DocvetConfig`` for source root resolution.
 """
 
 from __future__ import annotations
