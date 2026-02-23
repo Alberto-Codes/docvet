@@ -1,4 +1,22 @@
-"""Shared AST helpers for docstring range extraction and symbol mapping."""
+"""Shared AST helpers for docstring range extraction and symbol mapping.
+
+Provides the ``Symbol`` dataclass and utilities for walking an AST tree
+to extract documented symbols, their line ranges, and docstring content.
+Used by the enrichment and freshness check modules to map source
+locations to semantic symbols.
+
+Examples:
+    Extract documented symbols from a source file::
+
+        from docvet.ast_utils import get_documented_symbols
+
+        tree = ast.parse(source)
+        symbols = get_documented_symbols(tree)
+
+See Also:
+    `docvet.checks.enrichment`: Enrichment rules that consume symbols.
+    `docvet.checks.freshness`: Freshness checks that map lines to symbols.
+"""
 
 from __future__ import annotations
 
