@@ -135,6 +135,8 @@ addopts = [
 # --------------------------------------------------------------------------- #
 [dependency-groups]
 dev = [
+    "griffe>=1.0",
+    "griffelib>=2.0",
     "interrogate>=1.5",
     "pytest>=9.0",
     "pytest-cov>=7.0",
