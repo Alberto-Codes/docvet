@@ -21,6 +21,8 @@ Existing tools cover presence and style. docvet delivers the layers they miss:
 
 **pydoclint** checks Args/Returns/Raises alignment with function signatures (structural completeness). docvet's enrichment covers that plus Yields, Receives, Warns, Attributes, Examples, typed attributes, and cross-references -- 19 rules across 4 checks. docvet also covers freshness (git diff/blame), griffe rendering compatibility, and mkdocs coverage -- territory no other tool touches.
 
+**[Quickstart](#quickstart)** | **[GitHub Action](#github-action)** | **[Pre-commit](#pre-commit)** | **[Configuration](#configuration)** | **[Docs](https://alberto-codes.github.io/docvet/)**
+
 ## What It Checks
 
 **Enrichment** (completeness) -- 10 rules:

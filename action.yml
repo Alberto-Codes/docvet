@@ -1,5 +1,8 @@
 name: 'docvet'
-description: 'Run docvet docstring quality checks'
+description: 'Comprehensive docstring quality checks — completeness, freshness, rendering, and coverage for Python projects'
+branding:
+  icon: 'shield'
+  color: 'purple'
 inputs:
   version:
     description: 'docvet version to install (use "latest" for newest)'
