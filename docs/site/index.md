@@ -120,5 +120,6 @@ Each finding shows the file, line number, rule name, a human-readable message, a
 
 ## What's Next
 
+- Set up [CI Integration](ci-integration.md) with GitHub Actions or pre-commit hooks.
 - See the [CLI Reference](cli-reference.md) for full command and option documentation.
 - Browse [Configuration](configuration.md) for all `pyproject.toml` options.
