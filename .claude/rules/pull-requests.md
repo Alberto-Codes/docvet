@@ -52,3 +52,19 @@ Ensure the branch is pushed to remote with `-u` before creating the PR:
 ```bash
 git push -u origin <branch-name>
 ```
+
+## Squash and Merge
+
+When squash-merging a PR via `gh pr merge --squash`:
+
+- Always use `--subject` and `--body` to control the commit message
+- `--subject`: The PR title (conventional commit format)
+- `--body`: Only the content above the `---` separator (why paragraph + what-changed bullets)
+- Never include the PR Review section (checklist, review focus, related) in the commit message
+- Always use `--delete-branch` to clean up the feature branch
+
+```bash
+gh pr merge <NUMBER> --squash --delete-branch \
+  --subject "<PR title>" \
+  --body "<description + bullets only>"
+```
