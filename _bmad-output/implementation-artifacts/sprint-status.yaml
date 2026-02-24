@@ -1,4 +1,4 @@
-# generated: 2026-02-22
+# generated: 2026-02-24
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-22
+generated: 2026-02-24
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -132,3 +132,12 @@ development_status:
   13-2-auto-generated-api-reference: done
   13-3-github-pages-deployment: done
   epic-13-retrospective: done
+
+  # Epic 14: Adoption & Integration
+  epic-14: in-progress
+  14-1-release-pipeline-cleanup: done
+  14-2-marketplace-publishing-and-readme: backlog
+  14-3-dogfood-ci: backlog
+  14-4-ci-and-pre-commit-integration-docs: backlog
+  14-5-docvet-badge: backlog
+  epic-14-retrospective: optional
