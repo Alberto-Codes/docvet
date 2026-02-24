@@ -127,6 +127,6 @@ warn-on = ["griffe", "coverage"]       # findings here → reported only
 Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet always exits 0 regardless of findings. To use docvet as a CI gate, you must add at least one check to `fail-on`.
 
 !!! warning "Default `warn-on` overlap"
-    The default `warn-on` list includes all four checks. If you add a check to `fail-on` that is also in the default `warn-on`, docvet prints an informational message and uses `fail-on` — no findings are lost.
+    The default `warn-on` list includes all four checks. If you add a check to `fail-on` that is also in the default `warn-on`, docvet prints a warning to stderr and uses `fail-on` — no findings are lost.
 
 See [Configuration](configuration.md) for the full list of options including freshness thresholds, enrichment toggles, and exclusion patterns.
