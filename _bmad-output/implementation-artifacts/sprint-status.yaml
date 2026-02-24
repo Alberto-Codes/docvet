@@ -136,7 +136,7 @@ development_status:
   # Epic 14: Adoption & Integration
   epic-14: in-progress
   14-1-release-pipeline-cleanup: done
-  14-2-marketplace-publishing-and-readme: backlog
+  14-2-marketplace-publishing-and-readme: review
   14-3-dogfood-ci: backlog
   14-4-ci-and-pre-commit-integration-docs: backlog
   14-5-docvet-badge: backlog
