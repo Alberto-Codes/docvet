@@ -8,6 +8,7 @@ title: Getting Started
 [![Python versions](https://img.shields.io/pypi/pyversions/docvet)](https://pypi.org/project/docvet/)
 [![CI](https://img.shields.io/github/actions/workflow/status/Alberto-Codes/docvet/ci.yml?branch=develop&label=CI)](https://github.com/Alberto-Codes/docvet/actions)
 [![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE)
+[![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
 
 docvet vets your Python docstrings for **completeness**, **accuracy**, and **rendering compatibility** — the layers beyond style and presence that tools like ruff and interrogate don't cover.
 
