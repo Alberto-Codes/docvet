@@ -75,3 +75,20 @@ jobs:
       - run: uv cache prune --ci
         if: always()
         continue-on-error: true
+
+  docvet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --dev
+      - run: uv run docvet check --all
+      - run: uv cache prune --ci
+        if: always()
+        continue-on-error: true
