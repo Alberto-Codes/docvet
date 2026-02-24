@@ -139,5 +139,5 @@ development_status:
   14-2-marketplace-publishing-and-readme: done
   14-3-dogfood-ci: done
   14-4-ci-and-pre-commit-integration-docs: done
-  14-5-docvet-badge: review
+  14-5-docvet-badge: done
   epic-14-retrospective: optional
