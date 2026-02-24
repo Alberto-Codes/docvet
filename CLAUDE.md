@@ -132,7 +132,7 @@ Dev: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-randomly`, `ruff`, `ty`
 
 - **`develop`**: Integration branch — all feature PRs merge here (squash merge)
 - **`main`**: Release branch — release-please watches here, publishes trigger from here
-- **develop → main**: Use merge commit (not squash) to preserve individual conventional commits for release-please changelog generation
+- **develop → main**: Use **rebase and merge** (not merge commit, not squash) to preserve individual conventional commits for release-please changelog generation while maintaining linear history on main. Merge commits caused duplicate changelog entries (see [release-please#2476](https://github.com/googleapis/release-please/issues/2476)); squash merge loses individual commit granularity.
 - **release-please**: `googleapis/release-please-action@v4` on push to `main`. Config in `release-please-config.json`. Manifest in `.release-please-manifest.json`.
 - **Publishing**: OIDC trusted publishing to PyPI (no API tokens). Triggered by `release: [published]` event.
 - **Floating tag**: `v1` tag updated on each release for GitHub Action consumers.
