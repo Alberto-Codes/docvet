@@ -1,6 +1,6 @@
 # Story 14.5: Docvet Badge
 
-Status: review
+Status: done
 Branch: `feat/docs-14-5-docvet-badge`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -178,15 +178,22 @@ Claude Opus 4.6
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approve (no fixes needed)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| L1 | LOW | README badge row alt text (`docs vetted`) differs from Badge section snippet (`docs vetted \| docvet`) | Rejected: intentional — badge row is project display, snippet is for adopters; different contexts |
+| L2 | LOW | Badge links to repo root, not marketplace URL | Rejected: marketplace URL is a future chore once listing is confirmed live |
+| L3 | LOW | Pre-commit snippet versions in README still show `v1.0.0` vs docs site `v1.0.2` | Rejected: out of scope — README versions are from Story 10.2 |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
