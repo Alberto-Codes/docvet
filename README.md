@@ -2,7 +2,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/Alberto-Codes/docvet/ci.yml?branch=develop)](https://github.com/Alberto-Codes/docvet/actions)
 [![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/develop/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/docvet)](https://pypi.org/project/docvet/)
-[![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-blue)](https://github.com/Alberto-Codes/docvet)
+[![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
 
 # docvet
 
@@ -141,7 +141,7 @@ docvet's freshness checking catches the accuracy gap that stale docs create, and
 Add a badge to your project to show your docs are vetted:
 
 ```markdown
-[![docs vetted | docvet](https://img.shields.io/badge/docs%20vetted-docvet-blue)](https://github.com/Alberto-Codes/docvet)
+[![docs vetted | docvet](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
 ```
 
 ## Used By
