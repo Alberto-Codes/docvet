@@ -30,15 +30,15 @@ Read `.github/PULL_REQUEST_TEMPLATE.md` before composing the PR body. The body M
 
 ## Base Branch
 
-- PRs target `develop` unless explicitly told otherwise
-- Always run `git diff develop..HEAD` and `git log --oneline develop..HEAD` to understand the full scope before writing the PR body
+- PRs target `main` unless explicitly told otherwise
+- Always run `git diff main..HEAD` and `git log --oneline main..HEAD` to understand the full scope before writing the PR body
 
 ## Diff Before PR
 
 Before creating a PR, always:
 
-1. `git diff --stat develop..HEAD` — understand file scope
-2. `git log --oneline develop..HEAD` — understand commit history
+1. `git diff --stat main..HEAD` — understand file scope
+2. `git log --oneline main..HEAD` — understand commit history
 3. Read ALL commits (not just the latest) to write an accurate description
 
 ## No Co-Authored-By
