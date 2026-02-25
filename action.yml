@@ -1,4 +1,4 @@
-name: 'docvet'
+name: 'Docvet Check'
 description: 'Comprehensive docstring quality checks — completeness, freshness, rendering, and coverage for Python projects'
 branding:
   icon: 'shield'
