@@ -55,7 +55,7 @@ jobs:
         run: uv publish
 
       - name: Attest build provenance
-        uses: astral-sh/attest-action@v0.0.4
+        uses: astral-sh/attest-action@v0.0.5
         with:
           files: dist/*
 
