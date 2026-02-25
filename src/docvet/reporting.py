@@ -14,8 +14,8 @@ Examples:
         $ docvet check --all --format markdown --output report.md
 
 See Also:
-    `docvet.cli`: Subcommands that invoke report rendering.
-    `docvet.checks`: Check functions that produce findings.
+    [`docvet.cli`][]: Subcommands that invoke report rendering.
+    [`docvet.checks`][]: Check functions that produce findings.
 """
 
 from __future__ import annotations
