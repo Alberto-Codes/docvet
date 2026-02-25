@@ -11,7 +11,7 @@ Examples:
         from docvet.checks import Finding
 
 See Also:
-    `docvet.checks`: Public re-export surface for ``Finding``.
+    [`docvet.checks`][]: Public re-export surface for ``Finding``.
 """
 
 from __future__ import annotations
