@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/Alberto-Codes/docvet/compare/v1.2.1...v1.3.0) (2026-02-25)
+
+
+### Features
+
+* **config:** add extend-exclude configuration key ([#131](https://github.com/Alberto-Codes/docvet/issues/131)) ([15aa4ff](https://github.com/Alberto-Codes/docvet/commit/15aa4ffd99ea7b4efeb0ab2c98f657b40952cbdf)), closes [#18](https://github.com/Alberto-Codes/docvet/issues/18)
+
+
+### Documentation
+
+* **config:** add extend-exclude to configuration reference ([6711525](https://github.com/Alberto-Codes/docvet/commit/67115259c47e57ffdf8815df21a0fcac8644b5ee))
+
 ## [1.2.1](https://github.com/Alberto-Codes/docvet/compare/v1.2.0...v1.2.1) (2026-02-25)
 
 
