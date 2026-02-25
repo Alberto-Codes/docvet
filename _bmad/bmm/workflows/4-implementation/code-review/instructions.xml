@@ -94,6 +94,15 @@
       5. **Test Quality**: Are tests real assertions or placeholders?
     </action>
 
+    <!-- SonarQube Analysis (if MCP server available) -->
+    <action>For EACH modified src/ file in the comprehensive review list:
+      1. Read the file content
+      2. Run analyze_code_snippet MCP tool with projectKey "docvet" and language "py"
+      3. Report any HIGH or BLOCKER severity findings as review issues
+      4. Note cognitive complexity warnings (threshold: 15) as MEDIUM findings
+      5. If SonarQube server is unreachable (off-LAN), skip gracefully and note in review
+    </action>
+
     <check if="total_issues_found lt 3">
       <critical>NOT LOOKING HARD ENOUGH - Find more problems!</critical>
       <action>Re-examine code for:
