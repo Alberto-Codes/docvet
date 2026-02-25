@@ -15,8 +15,8 @@ Examples:
         $ docvet check --all
 
 See Also:
-    `docvet.cli`: Subcommands that invoke discovery.
-    `docvet.checks`: Check functions that consume discovered files.
+    [`docvet.cli`][]: Subcommands that invoke discovery.
+    [`docvet.checks`][]: Check functions that consume discovered files.
 """
 
 from __future__ import annotations
