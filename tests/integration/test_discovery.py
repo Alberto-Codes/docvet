@@ -255,3 +255,131 @@ def test_staged_mode_when_empty_repo_with_staged_file_returns_file(git_repo):
     result = discover_files(config, DiscoveryMode.STAGED)
     assert len(result) == 1
     assert result[0].name == "new.py"
+
+
+# ---------------------------------------------------------------------------
+# extend-exclude integration (merged into config.exclude by load_config)
+# ---------------------------------------------------------------------------
+
+
+def test_diff_mode_excludes_extend_exclude_vendor_dir(git_repo):
+    """DIFF mode excludes vendor/ when extend-exclude adds 'vendor' to exclude."""
+    vendor_dir = git_repo / "vendor"
+    vendor_dir.mkdir()
+    f = vendor_dir / "lib.py"
+    f.write_text("# v1")
+    _git(["add", "vendor/lib.py"], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+    f.write_text("# v2")
+
+    # Simulates extend-exclude = ["vendor"] merged into exclude
+    config = _make_config(git_repo, exclude=["tests", "scripts", "vendor"])
+    result = discover_files(config, DiscoveryMode.DIFF)
+    assert result == []
+
+
+def test_diff_mode_discovers_non_excluded_alongside_extend_exclude(git_repo):
+    """Non-excluded file discovered even when extend-exclude filters vendor/."""
+    vendor_dir = git_repo / "vendor"
+    vendor_dir.mkdir()
+    (vendor_dir / "lib.py").write_text("# v1")
+    (git_repo / "app.py").write_text("# v1")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+    (vendor_dir / "lib.py").write_text("# v2")
+    (git_repo / "app.py").write_text("# v2")
+
+    config = _make_config(git_repo, exclude=["tests", "scripts", "vendor"])
+    result = discover_files(config, DiscoveryMode.DIFF)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "lib.py" not in names
+    assert len(result) == 1
+
+
+def test_all_mode_excludes_extend_exclude_vendor_dir(git_repo):
+    """ALL mode excludes vendor/ when extend-exclude adds 'vendor' to exclude."""
+    vendor_dir = git_repo / "vendor"
+    vendor_dir.mkdir()
+    (vendor_dir / "lib.py").write_text("# vendored")
+    (git_repo / "app.py").write_text("# app")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["tests", "scripts", "vendor"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "lib.py" not in names
+
+
+def test_all_mode_discovers_non_excluded_with_extend_exclude(git_repo):
+    """Non-excluded files still discovered in ALL mode with extend-exclude."""
+    vendor_dir = git_repo / "vendor"
+    vendor_dir.mkdir()
+    (vendor_dir / "lib.py").write_text("# vendored")
+    (git_repo / "core.py").write_text("# core")
+    (git_repo / "utils.py").write_text("# utils")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["tests", "scripts", "vendor"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "core.py" in names
+    assert "utils.py" in names
+    assert len(result) == 2
+
+
+def test_staged_mode_excludes_extend_exclude_vendor_dir(git_repo):
+    """STAGED mode excludes vendor/ when extend-exclude adds 'vendor' to exclude."""
+    vendor_dir = git_repo / "vendor"
+    vendor_dir.mkdir()
+    f = vendor_dir / "lib.py"
+    f.write_text("# v1")
+    _git(["add", "vendor/lib.py"], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+    f.write_text("# v2")
+    _git(["add", "vendor/lib.py"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["tests", "scripts", "vendor"])
+    result = discover_files(config, DiscoveryMode.STAGED)
+    assert result == []
+
+
+def test_all_mode_excludes_component_level_pattern(git_repo):
+    """Component-level pattern *.generated excludes matching directory names."""
+    gen_dir = git_repo / "api.generated"
+    gen_dir.mkdir()
+    (gen_dir / "client.py").write_text("# generated")
+    (git_repo / "app.py").write_text("# app")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["tests", "scripts", "*.generated"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "client.py" not in names
+
+
+def test_all_mode_excludes_path_level_pattern(git_repo):
+    """Path-level pattern vendor/legacy/*.py excludes only matching full paths."""
+    legacy_dir = git_repo / "vendor" / "legacy"
+    legacy_dir.mkdir(parents=True)
+    (legacy_dir / "old.py").write_text("# legacy")
+
+    modern_dir = git_repo / "vendor" / "modern"
+    modern_dir.mkdir(parents=True)
+    (modern_dir / "new.py").write_text("# modern")
+
+    (git_repo / "app.py").write_text("# app")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["tests", "scripts", "vendor/legacy/*.py"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "new.py" in names
+    assert "old.py" not in names
