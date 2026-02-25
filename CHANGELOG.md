@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/Alberto-Codes/docvet/compare/v1.1.1...v1.1.2) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ci:** rename action to Docvet Check for marketplace publishing ([6ea3fbb](https://github.com/Alberto-Codes/docvet/commit/6ea3fbbd50aa3f77bafd73a478d5e4c37fec37cf))
+
 ## [1.1.1](https://github.com/Alberto-Codes/docvet/compare/v1.1.0...v1.1.1) (2026-02-24)
 
 
