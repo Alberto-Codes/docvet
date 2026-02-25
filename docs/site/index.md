@@ -2,7 +2,7 @@
 title: Getting Started
 ---
 
-# The docstring checks that linters miss.
+# Better docstrings, better AI.
 
 [![PyPI version](https://img.shields.io/pypi/v/docvet)](https://pypi.org/project/docvet/)
 [![Python versions](https://img.shields.io/pypi/pyversions/docvet)](https://pypi.org/project/docvet/)

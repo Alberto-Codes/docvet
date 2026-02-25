@@ -36,6 +36,9 @@ coverage.xml
 # mkdocs build output
 /site/
 
+# Generated assets
+social-preview.png
+
 # OS
 .DS_Store
 Thumbs.db
