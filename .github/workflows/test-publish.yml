@@ -40,4 +40,17 @@ jobs:
           echo "Wheel contents clean — OK"
 
       - name: Publish to TestPyPI
-        run: uv publish --index testpypi
+        run: |
+          for attempt in 1 2 3; do
+            echo "Attempt ${attempt} of 3..."
+            if uv publish --index testpypi --check-url https://test.pypi.org/simple/; then
+              echo "Published successfully on attempt ${attempt}"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Upload failed, retrying in 15s..."
+              sleep 15
+            fi
+          done
+          echo "::error::All 3 publish attempts failed"
+          exit 1
