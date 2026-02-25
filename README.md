@@ -1,5 +1,6 @@
 [![PyPI](https://img.shields.io/pypi/v/docvet)](https://pypi.org/project/docvet/)
 [![CI](https://img.shields.io/github/actions/workflow/status/Alberto-Codes/docvet/ci.yml?branch=main)](https://github.com/Alberto-Codes/docvet/actions)
+[![Coverage](https://codecov.io/gh/Alberto-Codes/docvet/graph/badge.svg)](https://codecov.io/gh/Alberto-Codes/docvet)
 [![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/docvet)](https://pypi.org/project/docvet/)
 [![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
