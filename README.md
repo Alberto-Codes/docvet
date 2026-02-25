@@ -7,9 +7,9 @@
 
 # docvet
 
-**ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right.**
+**Better docstrings, better AI.**
 
-Existing tools cover presence and style. docvet delivers the layers they miss:
+ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right. Existing tools cover presence and style — docvet delivers the layers they miss:
 
 | Layer | Check | ruff | interrogate | pydoclint | **docvet** |
 |-------|-------|------|-------------|-----------|------------|
