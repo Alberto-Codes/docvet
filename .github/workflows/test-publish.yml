@@ -40,8 +40,6 @@ jobs:
           echo "Wheel contents clean — OK"
 
       - name: Publish to TestPyPI
-        env:
-          UV_PUBLISH_CHECK_URL: https://test.pypi.org/simple/
         run: |
           for attempt in 1 2 3; do
             echo "Attempt ${attempt} of 3..."
