@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.1](https://github.com/Alberto-Codes/docvet/compare/v1.2.0...v1.2.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ci:** add retry logic to TestPyPI publish workflow ([08bff6f](https://github.com/Alberto-Codes/docvet/commit/08bff6f731449a6ad1454f17e25f43a615e0a8d9))
+* **ci:** drop check-url that conflicts with --index in uv publish ([799237b](https://github.com/Alberto-Codes/docvet/commit/799237b9aad0d9277ad4fc0709ab86764c0110c3))
+* **ci:** make test-publish resilient to TestPyPI 503s ([cc51369](https://github.com/Alberto-Codes/docvet/commit/cc513697e74789b7cd1895f4d1f2fa23edcd8280))
+* **ci:** use env var for check-url to avoid flag conflict ([3b6d114](https://github.com/Alberto-Codes/docvet/commit/3b6d11428a683a982f1eca18bc2b8357e3562094))
+
+
+### Documentation
+
+* add social preview and update tagline ([#129](https://github.com/Alberto-Codes/docvet/issues/129)) ([b88f441](https://github.com/Alberto-Codes/docvet/commit/b88f4413c816dd750b2389f6052180c2de50a325))
+* fix stale branch refs and version numbers across documentation ([#118](https://github.com/Alberto-Codes/docvet/issues/118)) ([36912ff](https://github.com/Alberto-Codes/docvet/commit/36912ff9fe1c7bae137aed4147a3e788315023cc))
+* **site:** bump version examples to v1.2.0 in CI integration page ([36912ff](https://github.com/Alberto-Codes/docvet/commit/36912ff9fe1c7bae137aed4147a3e788315023cc))
+* **site:** update CI badge to target main branch ([36912ff](https://github.com/Alberto-Codes/docvet/commit/36912ff9fe1c7bae137aed4147a3e788315023cc))
+* update development guide for single-branch workflow ([36912ff](https://github.com/Alberto-Codes/docvet/commit/36912ff9fe1c7bae137aed4147a3e788315023cc))
+
 ## [1.2.0](https://github.com/Alberto-Codes/docvet/compare/v1.1.2...v1.2.0) (2026-02-25)
 
 

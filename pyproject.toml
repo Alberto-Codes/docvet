@@ -1,6 +1,6 @@
 [project]
 name = "docvet"
-version = "1.2.0"
+version = "1.2.1"
 description = "Comprehensive docstring quality vetting for Python projects"
 readme = "README.md"
 license = {file = "LICENSE"}
