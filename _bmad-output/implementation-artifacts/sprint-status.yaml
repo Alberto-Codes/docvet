@@ -146,5 +146,5 @@ development_status:
   epic-15: in-progress
   15-1-mkdocstrings-configuration-overhaul: done
   15-2-fix-own-cross-reference-syntax: done
-  15-3-tighten-cross-reference-rule-to-require-linkable-syntax: review
+  15-3-tighten-cross-reference-rule-to-require-linkable-syntax: done
   epic-15-retrospective: optional
