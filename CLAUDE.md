@@ -136,6 +136,7 @@ Dev: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-randomly`, `ruff`, `ty`
 - **release-please**: `googleapis/release-please-action@v4` on push to `main`. Config in `release-please-config.json`. Manifest in `.release-please-manifest.json`.
 - **Publishing**: OIDC trusted publishing to PyPI (no API tokens). Triggered by `release: [published]` event.
 - **Floating tag**: `v1` tag updated on each release for GitHub Action consumers.
+- **Syncing develop after release**: After merging a release-please PR to main, sync develop using **rebase** (not merge): `git checkout develop && git rebase origin/main && git push origin develop --force-with-lease`. Merge commits in develop's history block future rebase-merge PRs to main. If develop accumulates merge commits, hard-reset to main: `git reset --hard origin/main` then cherry-pick any develop-only commits.
 
 ## CI/CD Pipeline Lessons
 
