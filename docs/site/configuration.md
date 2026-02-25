@@ -11,7 +11,7 @@ These keys go directly under `[tool.docvet]`:
 | `src-root` | `str` | `"."` (auto-detects `src/`) | Source directory relative to project root |
 | `package-name` | `str` | auto-detected | Explicit package name override |
 | `exclude` | `list[str]` | `["tests", "scripts"]` | Directory names to exclude from checks |
-| `extend-exclude` | `list[str]` | `[]` | Additional patterns to append to `exclude` (defaults preserved) |
+| `extend-exclude` | `list[str]` | `[]` | Additional patterns appended to `exclude` |
 | `fail-on` | `list[str]` | `[]` | Check names that cause exit code 1 |
 | `warn-on` | `list[str]` | `["freshness", "enrichment", "griffe", "coverage"]` | Check names reported without failing |
 
@@ -41,7 +41,7 @@ Use `extend-exclude` to add patterns without replacing the defaults. This is use
 extend-exclude = ["vendor", "generated"]
 ```
 
-The final exclude list becomes `["tests", "scripts", "vendor", "generated"]`. Patterns follow the same matching rules as `exclude` — patterns without `/` match against individual path components, patterns with `/` match the full relative path.
+The final exclude list becomes `["tests", "scripts", "vendor", "generated"]`. If you also set `exclude`, `extend-exclude` patterns are appended to your custom list instead of the defaults. Patterns follow the same matching rules as `exclude` — patterns without `/` match against individual path components, patterns with `/` match the full relative path.
 
 ### Example
 
@@ -130,7 +130,7 @@ Here is a full `pyproject.toml` configuration showing all sections together:
 
     1. Auto-detected if you have a `src/` directory — only set this if your layout is non-standard.
     2. These directories are excluded from all checks. Add `migrations` for Django projects.
-    3. Additional patterns appended to the `exclude` list — defaults are preserved.
+    3. Appended to the `exclude` list above — useful when you want to keep defaults and add more.
     4. Checks in `fail-on` cause exit code 1 — ideal for CI gates.
     5. Flag drift after just 2 weeks instead of the default 30 days.
     6. Only require `Examples:` on classes and dataclasses, not protocols or enums.
