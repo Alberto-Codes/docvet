@@ -1132,7 +1132,7 @@ def _check_missing_cross_references(
       module should cross-reference related modules.
     - **Branch B:** Any symbol with a ``See Also:`` section whose content
       lacks linkable cross-reference syntax (Markdown bracket references
-      or Sphinx roles).  Plain backtick identifiers do not satisfy the
+      or Sphinx roles). Plain backtick identifiers do not satisfy the
       rule because they render as inline code without a hyperlink.
 
     Args:
