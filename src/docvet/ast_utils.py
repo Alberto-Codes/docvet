@@ -14,8 +14,8 @@ Examples:
         symbols = get_documented_symbols(tree)
 
 See Also:
-    `docvet.checks.enrichment`: Enrichment rules that consume symbols.
-    `docvet.checks.freshness`: Freshness checks that map lines to symbols.
+    [`docvet.checks.enrichment`][]: Enrichment rules that consume symbols.
+    [`docvet.checks.freshness`][]: Freshness checks that map lines to symbols.
 """
 
 from __future__ import annotations

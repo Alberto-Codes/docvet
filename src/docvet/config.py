@@ -13,8 +13,8 @@ Examples:
         enrichment = config.enrichment
 
 See Also:
-    `docvet.cli`: CLI entry point that loads config on startup.
-    `docvet.checks`: Check functions that consume config objects.
+    [`docvet.cli`][]: CLI entry point that loads config on startup.
+    [`docvet.checks`][]: Check functions that consume config objects.
 """
 
 from __future__ import annotations

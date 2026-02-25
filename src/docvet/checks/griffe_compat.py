@@ -12,8 +12,8 @@ Examples:
         findings = check_griffe_compat(file_paths)
 
 See Also:
-    `docvet.checks`: Package-level re-exports.
-    `docvet.config`: Configuration dataclasses for check modules.
+    [`docvet.checks`][]: Package-level re-exports.
+    [`docvet.config`][]: Configuration dataclasses for check modules.
 """
 
 from __future__ import annotations

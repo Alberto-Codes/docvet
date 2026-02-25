@@ -13,9 +13,9 @@ Examples:
         findings = check_enrichment(source, tree, EnrichmentConfig(), "app.py")
 
 See Also:
-    `docvet.config`: ``EnrichmentConfig`` dataclass for rule toggles.
-    `docvet.ast_utils`: Symbol extraction consumed by enrichment rules.
-    `docvet.checks`: Package-level re-exports.
+    [`docvet.config`][]: ``EnrichmentConfig`` dataclass for rule toggles.
+    [`docvet.ast_utils`][]: Symbol extraction consumed by enrichment rules.
+    [`docvet.checks`][]: Package-level re-exports.
 """
 
 from __future__ import annotations

@@ -17,8 +17,8 @@ Examples:
         $ docvet check --all
 
 See Also:
-    `docvet.checks`: Check modules and the Finding dataclass.
-    `docvet.cli`: CLI entry point and subcommands.
+    [`docvet.checks`][]: Check modules and the Finding dataclass.
+    [`docvet.cli`][]: CLI entry point and subcommands.
 """
 
 from __future__ import annotations

@@ -12,8 +12,8 @@ Examples:
         findings = check_freshness_diff(path, diff_text, source, tree)
 
 See Also:
-    `docvet.config`: ``FreshnessConfig`` dataclass for drift thresholds.
-    `docvet.checks`: Package-level re-exports.
+    [`docvet.config`][]: ``FreshnessConfig`` dataclass for drift thresholds.
+    [`docvet.checks`][]: Package-level re-exports.
 """
 
 from __future__ import annotations
