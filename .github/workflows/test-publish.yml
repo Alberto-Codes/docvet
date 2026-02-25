@@ -40,10 +40,12 @@ jobs:
           echo "Wheel contents clean — OK"
 
       - name: Publish to TestPyPI
+        env:
+          UV_PUBLISH_CHECK_URL: https://test.pypi.org/simple/
         run: |
           for attempt in 1 2 3; do
             echo "Attempt ${attempt} of 3..."
-            if uv publish --index testpypi --check-url https://test.pypi.org/simple/; then
+            if uv publish --index testpypi; then
               echo "Published successfully on attempt ${attempt}"
               exit 0
             fi
