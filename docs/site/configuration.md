@@ -11,6 +11,7 @@ These keys go directly under `[tool.docvet]`:
 | `src-root` | `str` | `"."` (auto-detects `src/`) | Source directory relative to project root |
 | `package-name` | `str` | auto-detected | Explicit package name override |
 | `exclude` | `list[str]` | `["tests", "scripts"]` | Directory names to exclude from checks |
+| `extend-exclude` | `list[str]` | `[]` | Additional patterns to append to `exclude` (defaults preserved) |
 | `fail-on` | `list[str]` | `[]` | Check names that cause exit code 1 |
 | `warn-on` | `list[str]` | `["freshness", "enrichment", "griffe", "coverage"]` | Check names reported without failing |
 
@@ -30,6 +31,17 @@ If a check name appears in **both** `fail-on` and `warn-on`, docvet prints a war
 
 !!! warning "Graceful deduplication"
     Adding `enrichment` to `fail-on` with the default `warn-on` list prints a warning to stderr and removes `enrichment` from `warn-on`. This is intentional — `fail-on` always takes priority.
+
+### `extend-exclude`
+
+Use `extend-exclude` to add patterns without replacing the defaults. This is useful when you want to keep the built-in `["tests", "scripts"]` exclusions and add project-specific ones:
+
+```toml
+[tool.docvet]
+extend-exclude = ["vendor", "generated"]
+```
+
+The final exclude list becomes `["tests", "scripts", "vendor", "generated"]`. Patterns follow the same matching rules as `exclude` — patterns without `/` match against individual path components, patterns with `/` match the full relative path.
 
 ### Example
 
@@ -95,11 +107,12 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     src-root = "src" # (1)!
     package-name = "myapp"
     exclude = ["tests", "scripts", "migrations"] # (2)!
-    fail-on = ["enrichment", "freshness"] # (3)!
+    extend-exclude = ["vendor", "*.generated"] # (3)!
+    fail-on = ["enrichment", "freshness"] # (4)!
     warn-on = ["griffe", "coverage"]
 
     [tool.docvet.freshness]
-    drift-threshold = 14 # (4)!
+    drift-threshold = 14 # (5)!
     age-threshold = 60
 
     [tool.docvet.enrichment]
@@ -112,14 +125,15 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     require-typed-attributes = true
     require-cross-references = true
     prefer-fenced-code-blocks = true
-    require-examples = ["class", "dataclass"] # (5)!
+    require-examples = ["class", "dataclass"] # (6)!
     ```
 
     1. Auto-detected if you have a `src/` directory — only set this if your layout is non-standard.
     2. These directories are excluded from all checks. Add `migrations` for Django projects.
-    3. Checks in `fail-on` cause exit code 1 — ideal for CI gates.
-    4. Flag drift after just 2 weeks instead of the default 30 days.
-    5. Only require `Examples:` on classes and dataclasses, not protocols or enums.
+    3. Additional patterns appended to the `exclude` list — defaults are preserved.
+    4. Checks in `fail-on` cause exit code 1 — ideal for CI gates.
+    5. Flag drift after just 2 weeks instead of the default 30 days.
+    6. Only require `Examples:` on classes and dataclasses, not protocols or enums.
 
 === "Minimal Configuration"
 
