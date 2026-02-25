@@ -41,16 +41,24 @@ jobs:
 
       - name: Publish to TestPyPI
         run: |
-          for attempt in 1 2 3; do
-            echo "Attempt ${attempt} of 3..."
-            if uv publish --index testpypi; then
+          LAST_OUTPUT=""
+          for attempt in 1 2 3 4 5; do
+            echo "Attempt ${attempt} of 5..."
+            LAST_OUTPUT=$(uv publish --index testpypi 2>&1) && {
+              echo "$LAST_OUTPUT"
               echo "Published successfully on attempt ${attempt}"
               exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "Upload failed, retrying in 15s..."
-              sleep 15
+            }
+            echo "$LAST_OUTPUT"
+            if [ "$attempt" -lt 5 ]; then
+              echo "Upload failed, retrying in 30s..."
+              sleep 30
             fi
           done
-          echo "::error::All 3 publish attempts failed"
+          # All attempts failed — distinguish transient 503s from real errors
+          if echo "$LAST_OUTPUT" | grep -q "503"; then
+            echo "::warning::TestPyPI returned 503 on all 5 attempts — infrastructure issue, not a pipeline problem"
+            exit 0
+          fi
+          echo "::error::All 5 publish attempts failed"
           exit 1
