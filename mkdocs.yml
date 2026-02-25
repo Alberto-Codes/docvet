@@ -58,10 +58,29 @@ plugins:
       handlers:
         python:
           paths: [src]
+          inventories:
+            - https://docs.python.org/3/objects.inv
           options:
             docstring_style: google
             show_root_heading: true
             show_root_full_path: false
+            # Signatures
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            modernize_annotations: true
+            line_length: 88
+            # Headings
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            # Members
+            members_order: source
+            show_category_heading: true
+            # Docstrings
+            merge_init_into_class: true
+            docstring_section_style: table
+            docstring_options:
+              ignore_init_summary: true
   - macros:
       module_name: docs/main
 
