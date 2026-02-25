@@ -156,8 +156,8 @@ development_status:
   epic-16-retrospective: optional
 
   # Epic 17: Publish Reliability
-  epic-17: in-progress
-  17-1-post-publish-pypi-smoke-test: review
+  epic-17: done
+  17-1-post-publish-pypi-smoke-test: done
   epic-17-retrospective: optional
 
   # Epic 18: Documentation Site Navigation
