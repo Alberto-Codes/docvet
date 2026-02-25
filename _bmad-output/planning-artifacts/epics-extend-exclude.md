@@ -53,7 +53,7 @@ NFR5: Config validation shall reject unknown keys — `extend-exclude` must be a
 ### Additional Requirements
 
 - From architecture: Config parsing follows the established pattern in `_parse_docvet_section` with `_validate_type` calls for each field. The `load_config` function is the single merge point.
-- From architecture: The `DocvetConfig` dataclass uses `field(default_factory=...)` for list defaults. `extend_exclude` should follow the same pattern.
+- From architecture: The `DocvetConfig` dataclass continues to use `field(default_factory=...)` for list defaults such as `exclude`. The `extend-exclude` key is validated and merged into `exclude` at config load time, and does not have its own field on `DocvetConfig`.
 - From peer research: ruff, black, and flake8 all use the same merge formula. isort uses `extend_skip` (underscore naming) but same semantics. mypy and pylint lack this feature and force users to repeat defaults — docvet should not follow that pattern.
 - From peer research: No tool applies `force-exclude` semantics — `extend-exclude` only affects recursive discovery, not explicitly-passed files. docvet's `--files` mode already bypasses exclude patterns, which is consistent.
 - Duplicate warning (originally FR7) dropped per team consensus — peer tools do not warn on duplicates and it adds complexity for zero user value.
