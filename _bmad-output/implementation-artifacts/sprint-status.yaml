@@ -1,4 +1,4 @@
-# generated: 2026-02-24 (refreshed)
+# generated: 2026-02-24
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -143,7 +143,7 @@ development_status:
   epic-14-retrospective: optional
 
   # Epic 15: Documentation Quality & Cross-Reference Linking
-  epic-15: in-progress
+  epic-15: done
   15-1-mkdocstrings-configuration-overhaul: done
   15-2-fix-own-cross-reference-syntax: done
   15-3-tighten-cross-reference-rule-to-require-linkable-syntax: done
