@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/Alberto-Codes/docvet/compare/v1.1.2...v1.2.0) (2026-02-25)
+
+
+### Features
+
+* **enrichment:** tighten cross-reference rule to require linkable syntax ([9520248](https://github.com/Alberto-Codes/docvet/commit/9520248b23a40bacc55c9dc4b2905674c304d50a))
+
+
+### Documentation
+
+* add develop-main sync strategy to CLAUDE.md ([ca0ad3f](https://github.com/Alberto-Codes/docvet/commit/ca0ad3fe7ac9f9b50a561c059d5b476411f200cc))
+* **config:** mkdocstrings configuration overhaul ([bb736eb](https://github.com/Alberto-Codes/docvet/commit/bb736ebafabce3ce578b2c0a60b903b53f2ea0b0))
+* **enrichment:** convert See Also entries to clickable cross-reference links ([f2ba236](https://github.com/Alberto-Codes/docvet/commit/f2ba236c108a319a93a6b5b94b584f1503aebc35))
+* **enrichment:** update cross-reference rule page for bracket syntax ([9520248](https://github.com/Alberto-Codes/docvet/commit/9520248b23a40bacc55c9dc4b2905674c304d50a))
+
 ## [1.1.2](https://github.com/Alberto-Codes/docvet/compare/v1.1.1...v1.1.2) (2026-02-25)
 
 
