@@ -291,8 +291,10 @@ def test_diff_mode_discovers_non_excluded_alongside_extend_exclude(git_repo):
 
     config = _make_config(git_repo, exclude=["tests", "scripts", "vendor"])
     result = discover_files(config, DiscoveryMode.DIFF)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "lib.py" not in names
     assert len(result) == 1
-    assert result[0].name == "app.py"
 
 
 def test_all_mode_excludes_extend_exclude_vendor_dir(git_repo):
