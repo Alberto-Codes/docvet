@@ -1,8 +1,10 @@
 """Configuration reader for ``[tool.docvet]`` in pyproject.toml.
 
 Loads and validates the ``[tool.docvet]`` configuration table from
-``pyproject.toml``. Exposes ``EnrichmentConfig`` and ``FreshnessConfig``
-dataclasses with sensible defaults for all check modules.
+``pyproject.toml``. Supports ``extend-exclude`` for additive pattern
+merging on top of defaults or an explicit ``exclude`` list. Exposes
+``EnrichmentConfig`` and ``FreshnessConfig`` dataclasses with sensible
+defaults for all check modules.
 
 Examples:
     Load configuration from the project root::
@@ -175,6 +177,7 @@ _VALID_TOP_KEYS: frozenset[str] = frozenset(
         "src-root",
         "package-name",
         "exclude",
+        "extend-exclude",
         "fail-on",
         "warn-on",
         "freshness",
@@ -393,6 +396,10 @@ def _parse_docvet_section(
 ) -> dict[str, object]:
     """Validate and parse a non-empty ``[tool.docvet]`` dict.
 
+    Converts kebab-case keys to snake_case, validates types for all
+    top-level keys including ``extend-exclude``, and delegates nested
+    sections to their respective parsers.
+
     Args:
         data: Mutable copy of the raw TOML ``[tool.docvet]`` section.
 
@@ -422,6 +429,12 @@ def _parse_docvet_section(
         _validate_type(converted["exclude"], list, "exclude", _TOOL_SECTION)
         for entry in converted["exclude"]:  # type: ignore[union-attr]
             _validate_type(entry, str, "exclude", _TOOL_SECTION)
+    if "extend_exclude" in converted:
+        _validate_type(
+            converted["extend_exclude"], list, "extend-exclude", _TOOL_SECTION
+        )
+        for entry in converted["extend_exclude"]:  # type: ignore[union-attr]
+            _validate_type(entry, str, "extend-exclude", _TOOL_SECTION)
     if "fail_on" in converted:
         _validate_type(converted["fail_on"], list, "fail-on", _TOOL_SECTION)
         for entry in converted["fail_on"]:  # type: ignore[union-attr]
@@ -503,6 +516,10 @@ def _find_pyproject_path(path: Path | None) -> Path | None:
 def load_config(path: Path | None = None) -> DocvetConfig:
     """Load docvet configuration from ``pyproject.toml``.
 
+    Merges ``extend-exclude`` patterns on top of the resolved base
+    exclude list (explicit ``exclude`` or defaults) before constructing
+    the final :class:`DocvetConfig`.
+
     Args:
         path: Explicit path to a ``pyproject.toml``. When *None*,
             discovery walks up from CWD.
@@ -553,17 +570,22 @@ def load_config(path: Path | None = None) -> DocvetConfig:
 
     raw_pkg = parsed.get("package_name")
     raw_exclude = parsed.get("exclude")
+    raw_extend_exclude = parsed.get("extend_exclude")
     raw_freshness = parsed.get("freshness")
     raw_enrichment = parsed.get("enrichment")
+
+    base_exclude: list[str] = (
+        [str(x) for x in raw_exclude]
+        if isinstance(raw_exclude, list)
+        else list(defaults.exclude)
+    )
+    if isinstance(raw_extend_exclude, list):
+        base_exclude = base_exclude + [str(x) for x in raw_extend_exclude]
 
     return DocvetConfig(
         src_root=resolved_src_root,
         package_name=raw_pkg if isinstance(raw_pkg, str) else None,
-        exclude=(
-            [str(x) for x in raw_exclude]
-            if isinstance(raw_exclude, list)
-            else list(defaults.exclude)
-        ),
+        exclude=base_exclude,
         fail_on=fail_on,
         warn_on=[c for c in warn_on if c not in fail_on_set],
         freshness=(
