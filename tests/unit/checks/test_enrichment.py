@@ -3323,6 +3323,7 @@ FOO = 42
     assert result.rule == "missing-cross-references"
     assert result.symbol == "<module>"
     assert result.category == "recommended"
+    assert "lacks cross-reference syntax" in result.message
 
 
 def test_missing_examples_when_require_examples_empty_non_init_module_returns_none():
