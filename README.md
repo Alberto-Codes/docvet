@@ -1,6 +1,6 @@
 [![PyPI](https://img.shields.io/pypi/v/docvet)](https://pypi.org/project/docvet/)
-[![CI](https://img.shields.io/github/actions/workflow/status/Alberto-Codes/docvet/ci.yml?branch=develop)](https://github.com/Alberto-Codes/docvet/actions)
-[![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/develop/LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/Alberto-Codes/docvet/ci.yml?branch=main)](https://github.com/Alberto-Codes/docvet/actions)
+[![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/docvet)](https://pypi.org/project/docvet/)
 [![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
 
@@ -78,7 +78,7 @@ Add to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/Alberto-Codes/docvet
-    rev: v1.0.0
+    rev: v1.2.0
     hooks:
       - id: docvet
 ```
@@ -88,7 +88,7 @@ For griffe rendering checks, add the optional dependency:
 ```yaml
 repos:
   - repo: https://github.com/Alberto-Codes/docvet
-    rev: v1.0.0
+    rev: v1.2.0
     hooks:
       - id: docvet
         additional_dependencies: [griffe]
@@ -107,7 +107,7 @@ With version pinning and custom arguments:
 ```yaml
 - uses: Alberto-Codes/docvet@v1
   with:
-    version: '1.0.0'
+    version: '1.2.0'
     args: 'check --all'
 ```
 
@@ -150,4 +150,4 @@ Are you using docvet? Open a pull request to add your project here.
 
 ## License
 
-MIT -- see [LICENSE](https://github.com/Alberto-Codes/docvet/blob/develop/LICENSE) for details.
+MIT -- see [LICENSE](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE) for details.

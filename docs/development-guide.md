@@ -195,14 +195,14 @@ Conventional commits: `type(scope): description`
 ### Pull Requests
 
 - Always create as **draft** (`--draft`)
-- Target `develop` branch (never `main`)
+- Target `main` branch
 - Title follows conventional commits
-- Run `git diff develop..HEAD` and `git log --oneline develop..HEAD` before writing PR body
+- Run `git diff main..HEAD` and `git log --oneline main..HEAD` before writing PR body
 - Push with `git push -u origin <branch>` before creating PR
 
 ## CI Pipeline
 
-GitHub Actions runs on PRs and pushes to develop/main:
+GitHub Actions runs on PRs and pushes to main:
 
 | Job | What It Does |
 |-----|-------------|
@@ -218,4 +218,4 @@ GitHub Actions runs on PRs and pushes to develop/main:
 - **Never use relative imports** — full package paths only
 - **Never mock AST nodes** — use source strings with `ast.parse()`
 - **Never put integration fixtures in root conftest**
-- **Never target `main` for PRs** — always `develop`
+- **Always target `main` for PRs** — single-branch workflow

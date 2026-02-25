@@ -42,7 +42,7 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step.
           - uses: actions/checkout@v6
           - uses: Alberto-Codes/docvet@v1
             with:
-              version: '1.0.2'
+              version: '1.2.0'
               args: 'check --all'
     ```
 
@@ -83,7 +83,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks staged fil
     ```yaml
     repos:
       - repo: https://github.com/Alberto-Codes/docvet
-        rev: v1.0.2
+        rev: v1.2.0
         hooks:
           - id: docvet
     ```
@@ -93,7 +93,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks staged fil
     ```yaml
     repos:
       - repo: https://github.com/Alberto-Codes/docvet
-        rev: v1.0.2
+        rev: v1.2.0
         hooks:
           - id: docvet
             additional_dependencies: [griffe]
@@ -102,7 +102,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks staged fil
 The hook runs `docvet check --staged`, which checks only the files you are about to commit. It runs on Python files only and discovers files through git — no filenames are passed by pre-commit.
 
 !!! info "Pin `rev` to a release tag"
-    Replace `v1.0.2` with the [latest release tag](https://github.com/Alberto-Codes/docvet/releases). Pre-commit caches the hook environment per `rev`, so pinning to a tag avoids unnecessary reinstalls.
+    Replace `v1.2.0` with the [latest release tag](https://github.com/Alberto-Codes/docvet/releases). Pre-commit caches the hook environment per `rev`, so pinning to a tag avoids unnecessary reinstalls.
 
 ## Exit Codes and CI Behavior
 
