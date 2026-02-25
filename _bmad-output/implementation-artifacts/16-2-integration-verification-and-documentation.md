@@ -1,6 +1,6 @@
 # Story 16.2: Integration Verification and Documentation
 
-Status: review
+Status: done
 Branch: `feat/config-16-2-extend-exclude-integration`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
