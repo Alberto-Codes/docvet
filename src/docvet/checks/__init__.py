@@ -21,10 +21,10 @@ Examples:
     ```
 
 See Also:
-    `docvet.checks.enrichment`: Missing docstring section detection.
-    `docvet.checks.freshness`: Stale docstring detection via git.
-    `docvet.checks.coverage`: Missing ``__init__.py`` detection.
-    `docvet.checks.griffe_compat`: Griffe rendering compatibility.
+    [`docvet.checks.enrichment`][]: Missing docstring section detection.
+    [`docvet.checks.freshness`][]: Stale docstring detection via git.
+    [`docvet.checks.coverage`][]: Missing ``__init__.py`` detection.
+    [`docvet.checks.griffe_compat`][]: Griffe rendering compatibility.
 """
 
 from __future__ import annotations
