@@ -7,3 +7,4 @@ rules:
 ignore:
   - .venv/
   - _bmad/
+  - _bmad-output/
