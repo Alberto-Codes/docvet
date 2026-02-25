@@ -6,7 +6,7 @@ Examples:
         source = Path("tests/fixtures/missing_raises.py").read_text()
 
 See Also:
-    `tests.fixtures`: Other test fixture modules.
+    [`tests.fixtures`][]: Other test fixture modules.
 """
 
 from __future__ import annotations

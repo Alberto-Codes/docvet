@@ -3295,7 +3295,7 @@ FOO = 42
     assert result is None
 
 
-def test_cross_refs_when_non_init_module_with_see_also_returns_none():
+def test_cross_refs_when_non_init_module_with_backtick_see_also_returns_finding():
     source = '''\
 """Regular module docstring.
 
@@ -3319,7 +3319,10 @@ FOO = 42
         module_symbol, sections, node_index, config, "regular.py"
     )
 
-    assert result is None
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert result.symbol == "<module>"
+    assert result.category == "recommended"
 
 
 def test_missing_examples_when_require_examples_empty_non_init_module_returns_none():
@@ -3418,7 +3421,7 @@ class Foo:
     assert "lacks cross-reference syntax" in result.message
 
 
-def test_cross_refs_when_see_also_with_backtick_xrefs_returns_none():
+def test_cross_refs_when_see_also_with_backtick_xrefs_returns_finding():
     source = '''\
 class Foo:
     """A class.
@@ -3434,6 +3437,85 @@ class Foo:
 
     result = _check_missing_cross_references(
         symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert result.symbol == "Foo"
+    assert result.category == "recommended"
+    assert "lacks cross-reference syntax" in result.message
+
+
+def test_cross_refs_when_see_also_with_code_bracket_xrefs_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    See Also:
+        [`some.module`][]
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_non_init_module_with_bracket_see_also_returns_none():
+    source = '''\
+"""Regular module docstring.
+
+See Also:
+    [`docvet.checks`][]: Public API re-exports.
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "regular.py"
+    )
+
+    assert result is None
+
+
+def test_cross_refs_when_init_module_has_bracket_see_also_returns_none():
+    source = '''\
+"""Package docstring.
+
+See Also:
+    [`some.module`][]
+"""
+
+FOO = 42
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    assert module_symbol.docstring is not None
+    sections = _parse_sections(module_symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_cross_references(
+        module_symbol, sections, node_index, config, "__init__.py"
     )
 
     assert result is None
@@ -3512,7 +3594,7 @@ FOO = 42
     assert xref_findings[0].message == "Module '<module>' has no See Also: section"
 
 
-def test_cross_refs_when_init_module_has_see_also_with_xrefs_returns_none():
+def test_cross_refs_when_init_module_has_backtick_see_also_returns_finding():
     source = '''\
 """Package docstring.
 
@@ -3536,7 +3618,11 @@ FOO = 42
         module_symbol, sections, node_index, config, "__init__.py"
     )
 
-    assert result is None
+    assert result is not None
+    assert result.rule == "missing-cross-references"
+    assert result.symbol == "<module>"
+    assert result.category == "recommended"
+    assert "lacks cross-reference syntax" in result.message
 
 
 def test_cross_refs_when_init_module_has_see_also_without_xrefs_returns_finding():

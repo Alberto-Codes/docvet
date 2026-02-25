@@ -1,8 +1,9 @@
 """Enrichment check for docstring completeness.
 
-Detects missing docstring sections (Raises, Yields, Attributes, etc.) by
-combining AST analysis with section header parsing. Implements Layer 3 of
-the docstring quality model.
+Detects missing docstring sections (Raises, Yields, Attributes, etc.) and
+validates cross-reference syntax in See Also sections by combining AST
+analysis with section header parsing. Implements Layer 3 of the docstring
+quality model.
 
 Examples:
     Run the enrichment check on a source file::
@@ -62,8 +63,7 @@ _SECTION_PATTERN = re.compile(
     re.MULTILINE,
 )
 
-# Cross-reference detection patterns for See Also: sections (FR12)
-_XREF_BACKTICK = re.compile(r"`[^`]+`")
+# Cross-reference detection patterns for See Also: sections (FR12, FR-Q12)
 _XREF_MD_LINK = re.compile(r"\[[^\]]+\]\[")
 _XREF_SPHINX = re.compile(r":\w+:`[^`]+`")
 
@@ -1131,8 +1131,9 @@ def _check_missing_cross_references(
     - **Branch A:** Any module with no ``See Also:`` section at all — the
       module should cross-reference related modules.
     - **Branch B:** Any symbol with a ``See Also:`` section whose content
-      lacks cross-reference syntax (backtick identifiers, Markdown
-      reference links, or Sphinx roles).
+      lacks linkable cross-reference syntax (Markdown bracket references
+      or Sphinx roles).  Plain backtick identifiers do not satisfy the
+      rule because they render as inline code without a hyperlink.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -1174,11 +1175,7 @@ def _check_missing_cross_references(
     for line in content.splitlines():
         if not line.strip():
             continue
-        if (
-            _XREF_BACKTICK.search(line)
-            or _XREF_MD_LINK.search(line)
-            or _XREF_SPHINX.search(line)
-        ):
+        if _XREF_MD_LINK.search(line) or _XREF_SPHINX.search(line):
             return None
 
     return Finding(
