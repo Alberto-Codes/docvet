@@ -1,6 +1,6 @@
 # Story 17.1: Post-Publish PyPI Smoke Test
 
-Status: review
+Status: done
 Branch: `feat/ci-17-1-post-publish-smoke-test`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -39,12 +39,12 @@ so that I can trust published releases are functional without manual verificatio
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| AC1 | Workflow YAML: `sleep 60` step present in smoke-test job (line 71) | PASS |
-| AC2 | Workflow YAML: `pip install --no-cache-dir docvet==$VERSION` with version extraction (lines 66-68, 74) | PASS |
-| AC3 | Workflow YAML: `docvet --version` step present (line 77) | PASS |
-| AC4 | Workflow YAML: `docvet check --help` step present (line 80) | PASS |
+| AC1 | Workflow YAML: `sleep 60` step present in smoke-test job (line 72) | PASS |
+| AC2 | Workflow YAML: `pip install --no-cache-dir docvet==$VERSION` with version extraction (lines 67-69, 75) | PASS |
+| AC3 | Workflow YAML: `docvet --version` step present (line 78) | PASS |
+| AC4 | Workflow YAML: `docvet check --help` step present (line 81) | PASS |
 | AC5 | Workflow YAML: `needs: [build-and-publish]` on smoke-test job (line 64) | PASS |
-| AC6 | Workflow YAML: `update-tags` still has `needs: [build-and-publish]` only (line 84) | PASS |
+| AC6 | Workflow YAML: `update-tags` still has `needs: build-and-publish` only (line 85) | PASS |
 
 ## Dev Notes
 
@@ -150,15 +150,23 @@ None — clean implementation with no debug issues.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review)
+
 ### Outcome
+
+Approved with minor fix
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | AC-to-Test Mapping line numbers stale after `timeout-minutes` commit shifted lines by 1 | Fixed — updated 5 line references in AC-to-Test table |
+| L1 | LOW | Inconsistent `needs:` syntax (array vs scalar) between smoke-test and update-tags | Rejected — update-tags predates this story; changing it violates AC6 scope |
+| L2 | LOW | `pip install` instead of `python -m pip install` | Rejected — Dev Notes explicitly justify `pip` to match end-user experience |
+| L3 | LOW | `timeout-minutes` addition not traced to a task | Rejected — documented in Completion Notes; proportionate traceability for a 1-line safeguard |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
