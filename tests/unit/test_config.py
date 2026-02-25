@@ -647,3 +647,109 @@ def test_load_config_overlap_default_warn_on_emits_warning(
         "docvet: 'freshness' appears in both fail-on and warn-on; using fail-on" in err
     )
     assert "freshness" not in cfg.warn_on
+
+
+# ---------------------------------------------------------------------------
+# extend-exclude (Story 16.1)
+# ---------------------------------------------------------------------------
+
+
+def test_load_config_extend_exclude_appends_to_defaults(
+    tmp_path, monkeypatch, write_pyproject
+):
+    """AC1: extend-exclude alone appends to defaults."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nextend-exclude = ["vendor"]\n')
+    cfg = load_config()
+    assert cfg.exclude == ["tests", "scripts", "vendor"]
+
+
+def test_load_config_extend_exclude_multiple_values_appended(
+    tmp_path, monkeypatch, write_pyproject
+):
+    """AC1 multi-value: all extend-exclude entries appended."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nextend-exclude = ["vendor", "generated", "build"]\n'
+    )
+    cfg = load_config()
+    assert cfg.exclude == ["tests", "scripts", "vendor", "generated", "build"]
+
+
+def test_load_config_extend_exclude_empty_list_is_noop(
+    tmp_path, monkeypatch, write_pyproject
+):
+    """Empty extend-exclude leaves defaults unchanged."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\nextend-exclude = []\n")
+    cfg = load_config()
+    assert cfg.exclude == ["tests", "scripts"]
+
+
+def test_load_config_exclude_only_replaces_defaults(
+    tmp_path, monkeypatch, write_pyproject
+):
+    """AC2: exclude alone replaces defaults (unchanged behavior)."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nexclude = ["vendor"]\n')
+    cfg = load_config()
+    assert cfg.exclude == ["vendor"]
+
+
+def test_load_config_exclude_and_extend_exclude_compose(
+    tmp_path, monkeypatch, write_pyproject
+):
+    """AC3: both keys compose."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nexclude = ["vendor"]\nextend-exclude = ["generated"]\n'
+    )
+    cfg = load_config()
+    assert cfg.exclude == ["vendor", "generated"]
+
+
+def test_load_config_neither_exclude_uses_defaults(
+    tmp_path, monkeypatch, write_pyproject
+):
+    """AC4: neither key uses defaults."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\n")
+    cfg = load_config()
+    assert cfg.exclude == ["tests", "scripts"]
+
+
+def test_load_config_wrong_type_extend_exclude_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    """AC5: non-list type rejected."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nextend-exclude = "not-a-list"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    err = capsys.readouterr().err
+    assert "extend-exclude" in err
+    assert "list" in err
+
+
+def test_load_config_non_string_extend_exclude_entry_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    """AC6: non-string entry rejected."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\nextend-exclude = [123]\n")
+    with pytest.raises(SystemExit):
+        load_config()
+    err = capsys.readouterr().err
+    assert "extend-exclude" in err
+    assert "str" in err
+
+
+def test_load_config_unknown_key_extend_excludes_typo_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    """AC7: unknown key rejected (typo guard)."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nextend-excludes = ["vendor"]\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "extend-excludes" in capsys.readouterr().err

@@ -1,4 +1,4 @@
-# generated: 2026-02-24
+# generated: 2026-02-25
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-24
+generated: 2026-02-25
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -148,3 +148,9 @@ development_status:
   15-2-fix-own-cross-reference-syntax: done
   15-3-tighten-cross-reference-rule-to-require-linkable-syntax: done
   epic-15-retrospective: optional
+
+  # Epic 16: Additive Exclude Configuration
+  epic-16: in-progress
+  16-1-config-parsing-and-merge-logic: done
+  16-2-integration-verification-and-documentation: backlog
+  epic-16-retrospective: optional
