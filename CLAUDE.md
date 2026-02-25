@@ -130,13 +130,11 @@ Dev: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-randomly`, `ruff`, `ty`
 
 ## Branching & Release
 
-- **`develop`**: Integration branch — all feature PRs merge here (squash merge)
-- **`main`**: Release branch — release-please watches here, publishes trigger from here
-- **develop → main**: Use **rebase and merge** (not merge commit, not squash) to preserve per-PR commits on develop for release-please changelog generation while maintaining linear history on main. Merge commits caused duplicate changelog entries (see [release-please#2476](https://github.com/googleapis/release-please/issues/2476)); squash merge loses per-PR granularity.
+- **`main`**: Single default branch — all feature PRs squash-merge here
+- **Feature branches**: `feat/<scope>-<description>`, squash-merged to main via PR
 - **release-please**: `googleapis/release-please-action@v4` on push to `main`. Config in `release-please-config.json`. Manifest in `.release-please-manifest.json`.
 - **Publishing**: OIDC trusted publishing to PyPI (no API tokens). Triggered by `release: [published]` event.
 - **Floating tag**: `v1` tag updated on each release for GitHub Action consumers.
-- **Syncing develop after release**: After merging a release-please PR to main, sync develop using **rebase** (not merge): `git checkout develop && git rebase origin/main && git push origin develop --force-with-lease`. Merge commits in develop's history block future rebase-merge PRs to main. If develop accumulates merge commits, hard-reset to main: `git reset --hard origin/main` then cherry-pick any develop-only commits.
 
 ## CI/CD Pipeline Lessons
 
