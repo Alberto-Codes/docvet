@@ -6,7 +6,7 @@ Examples:
         source = Path("tests/fixtures/complete_module.py").read_text()
 
 See Also:
-    `tests.fixtures`: Other test fixture modules.
+    [`tests.fixtures`][]: Other test fixture modules.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def process(value: str) -> int:
         ```
 
     See Also:
-        `generate_numbers`
+        [`generate_numbers`][]
     """
     if not value:
         raise ValueError("Value cannot be empty")
@@ -56,7 +56,7 @@ class ValidationResult:
         ```
 
     See Also:
-        `Connection`
+        [`Connection`][]
     """
 
     is_valid: bool
@@ -77,7 +77,7 @@ class Connection:
         ```
 
     See Also:
-        `ValidationResult`
+        [`ValidationResult`][]
     """
 
     def __init__(self, host: str, port: int = 5432):
@@ -106,7 +106,7 @@ def generate_numbers(n: int) -> Generator[int, None, None]:
         ```
 
     See Also:
-        `process`
+        [`process`][]
     """
     for i in range(n):
         yield i

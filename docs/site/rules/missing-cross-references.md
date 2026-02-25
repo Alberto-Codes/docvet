@@ -4,7 +4,7 @@
 
 ## What it detects
 
-This rule flags module docstrings that are missing a `See Also:` section, or where the `See Also:` section lacks cross-reference syntax (backtick-quoted identifiers, Sphinx roles, or Markdown links including reference-style links).
+This rule flags module docstrings that are missing a `See Also:` section, or where the `See Also:` section lacks linkable cross-reference syntax (bracket references or Sphinx roles). Plain backtick identifiers (`` `module.name` ``) do not satisfy this rule because they render as inline code without a clickable hyperlink in mkdocstrings.
 
 ## Why is this a problem?
 
@@ -26,7 +26,7 @@ Modules serve as navigation entry points in documentation. Without cross-referen
     """Utility functions for the myapp package.
 
     See Also:
-        `myapp.utils.parsing`: String and data parsing helpers.
-        `myapp.utils.validation`: Input validation utilities.
+        [`myapp.utils.parsing`][]: String and data parsing helpers.
+        [`myapp.utils.validation`][]: Input validation utilities.
     """
     ```
