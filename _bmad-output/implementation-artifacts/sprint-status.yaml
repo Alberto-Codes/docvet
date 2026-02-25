@@ -134,7 +134,7 @@ development_status:
   epic-13-retrospective: done
 
   # Epic 14: Adoption & Integration
-  epic-14: in-progress
+  epic-14: done
   14-1-release-pipeline-cleanup: done
   14-2-marketplace-publishing-and-readme: done
   14-3-dogfood-ci: done
