@@ -151,6 +151,6 @@ development_status:
 
   # Epic 16: Additive Exclude Configuration
   epic-16: in-progress
-  16-1-config-parsing-and-merge-logic: review
+  16-1-config-parsing-and-merge-logic: done
   16-2-integration-verification-and-documentation: backlog
   epic-16-retrospective: optional

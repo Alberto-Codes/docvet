@@ -1,6 +1,6 @@
 # Story 16.1: Config Parsing and Merge Logic
 
-Status: review
+Status: done
 Branch: `feat/config-16-1-extend-exclude`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -193,15 +193,17 @@ No debug issues encountered. Zero-debug implementation.
 - Replaced inline exclude ternary in `load_config` with explicit `base_exclude` variable and `extend_exclude` merge (lines 562-570)
 - Wrote 7 new unit tests covering all 7 ACs — AC2 and AC4 also have pre-existing coverage from existing tests
 - All quality gates pass: ruff, ty, pytest (753 passed), docvet, interrogate (100%)
+- Code review: added 2 edge-case tests (multi-value extend, empty extend-exclude) per review findings
 
 ### Change Log
 
 - 2026-02-25: Implemented extend-exclude config parsing, validation, and merge logic (Tasks 1-5)
+- 2026-02-25: Code review — added 2 tests for multi-value and empty extend-exclude edge cases
 
 ### File List
 
-- `src/docvet/config.py` — modified (3 touch points: valid keys, validation, merge)
-- `tests/unit/test_config.py` — modified (7 new tests)
+- `src/docvet/config.py` — modified (3 touch points: valid keys, validation, merge; 3 docstrings updated)
+- `tests/unit/test_config.py` — modified (9 new tests: 7 AC + 2 edge cases)
 
 ## Code Review
 
@@ -209,15 +211,22 @@ No debug issues encountered. Zero-debug implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approve (with 2 findings fixed)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| 1 | MEDIUM | Missing multi-value extend-exclude test — AC1 only tests single value | Fixed: added `test_load_config_extend_exclude_multiple_values_appended` |
+| 2 | LOW | Missing empty extend-exclude test — `[]` edge case not covered | Fixed: added `test_load_config_extend_exclude_empty_list_is_noop` |
+| 3 | LOW | DocvetConfig.exclude docstring doesn't mention merge behavior | Dropped: merge semantics belong in `load_config` docstring (already there), not the dataclass. Story 16.2 covers config reference docs. |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
