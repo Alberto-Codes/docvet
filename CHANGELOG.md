@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.1](https://github.com/Alberto-Codes/docvet/compare/v1.1.0...v1.1.1) (2026-02-24)
+
+
+### Bug Fixes
+
+* **ci:** clean up duplicate changelog entries and phantom v1.0.1 section ([99ca054](https://github.com/Alberto-Codes/docvet/commit/99ca0545987f746f93a12359da1f858faf197a41))
+* **ci:** resolve release-please changelog duplication ([#93](https://github.com/Alberto-Codes/docvet/issues/93)) ([99ca054](https://github.com/Alberto-Codes/docvet/commit/99ca0545987f746f93a12359da1f858faf197a41))
+* **ci:** update release-please manifest version from 1.0.2 to 1.1.0 ([99ca054](https://github.com/Alberto-Codes/docvet/commit/99ca0545987f746f93a12359da1f858faf197a41))
+
+
+### Documentation
+
+* add CI Integration page with GitHub Action and pre-commit snippets ([#96](https://github.com/Alberto-Codes/docvet/issues/96)) ([af9b92d](https://github.com/Alberto-Codes/docvet/commit/af9b92d9bde8def8b88aab8d73490e71406ab9ee))
+* add navigation links row to README for marketplace visitors ([1889d8a](https://github.com/Alberto-Codes/docvet/commit/1889d8afc38fff76c1d2290c269da5c1b15c5472))
+* update docvet badge to purple branding ([4e29e04](https://github.com/Alberto-Codes/docvet/commit/4e29e0422148bf19d562377f01ed7111d5a8d65e))
+
 ## [1.0.2](https://github.com/Alberto-Codes/docvet/compare/v1.0.0...v1.0.2) (2026-02-23)
 
 
