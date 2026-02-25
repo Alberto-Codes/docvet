@@ -13,8 +13,8 @@ Examples:
         findings = check_coverage(file_paths, src_root=Path("src"))
 
 See Also:
-    `docvet.checks`: Package-level re-exports.
-    `docvet.config`: ``DocvetConfig`` for source root resolution.
+    [`docvet.checks`][]: Package-level re-exports.
+    [`docvet.config`][]: ``DocvetConfig`` for source root resolution.
 """
 
 from __future__ import annotations
