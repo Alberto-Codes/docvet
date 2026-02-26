@@ -2,8 +2,15 @@
 
 Resolves which Python files to check based on the selected discovery
 mode: git diff (default), staged files, explicit file list, or full
-codebase scan. All modes return a sorted ``list[Path]`` of absolute
+codebase scan.  All modes return a sorted ``list[Path]`` of absolute
 file paths.
+
+Exclude patterns support four dispatch branches following ``.gitignore``
+semantics, each handled by a dedicated matcher: trailing-slash directory
+patterns (``build/``) via :func:`_matches_trailing_slash`, double-star
+recursive globs (``**/test_*.py``) via :func:`_matches_double_star`,
+path-level ``fnmatch`` patterns (``scripts/gen_*.py``), and
+component-level patterns (``tests``).
 
 Examples:
     Discover staged files via the CLI::
@@ -72,7 +79,7 @@ class DiscoveryMode(enum.Enum):
 
 
 def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | None:
-    """Run a git command and return stdout lines.
+    """Run a git command and return stripped, non-empty stdout lines.
 
     Args:
         args: Git subcommand and arguments (e.g. ``["diff", "--name-only"]``).
@@ -84,6 +91,14 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | No
         List of stripped, non-empty stdout lines on success, or *None*
         on failure. An empty list means git succeeded but produced no
         output.
+
+    Examples:
+        List changed files:
+
+        ```python
+        _run_git(["diff", "--name-only"], cwd=Path("/repo"))
+        # ['src/foo.py', 'src/bar.py']
+        ```
     """
     result = subprocess.run(
         ["git", *args],
@@ -103,11 +118,86 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | No
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
+def _matches_trailing_slash(
+    normalized: str, parts: tuple[str, ...], pattern: str
+) -> bool:
+    """Match a path against a trailing-slash directory pattern.
+
+    Simple patterns (``build/``) match at any depth — the directory name
+    can appear anywhere in the path.  Path patterns (``vendor/legacy/``)
+    are root-anchored — the prefix must appear at the start of the path.
+
+    Note:
+        Patterns combining trailing slash with double-star (e.g.
+        ``build/**/``) are not supported and will not match; use
+        ``build/`` instead for recursive directory exclusion.
+
+    Args:
+        normalized: Forward-slash-normalized relative path.
+        parts: Path components from ``PurePosixPath.parts``.
+        pattern: Exclude pattern ending with ``/``.
+
+    Returns:
+        *True* if the path matches the trailing-slash pattern.
+    """
+    dirname = pattern.rstrip("/")
+    if "/" in dirname:
+        return normalized.startswith(dirname + "/")
+    return dirname in parts[:-1]
+
+
+def _matches_double_star(normalized: str, pattern: str) -> bool:
+    """Match a path against a pattern containing ``**``.
+
+    ``fnmatch.fnmatch`` treats ``**`` as ``*`` (matches any characters
+    including ``/``), which handles the 1+ directory-segment case.  This
+    helper adds zero-segment fallbacks so that leading ``**/`` also
+    matches root-level files and middle ``/**/`` also matches adjacent
+    directories.
+
+    Note:
+        Only the first ``/**/`` occurrence is collapsed for the
+        zero-segment fallback.  Patterns with multiple ``**`` where
+        all match zero segments (e.g. ``**/src/**/test.py`` matching
+        ``src/test.py``) are not supported.
+
+    Args:
+        normalized: Forward-slash-normalized relative path.
+        pattern: Glob pattern containing ``**``.
+
+    Returns:
+        *True* if the path matches the pattern.
+    """
+    if fnmatch.fnmatch(normalized, pattern):
+        return True
+    if pattern.startswith("**/") and fnmatch.fnmatch(normalized, pattern[3:]):
+        return True
+    if "/**/" in pattern and fnmatch.fnmatch(
+        normalized, pattern.replace("/**/", "/", 1)
+    ):
+        return True
+    return False
+
+
 def _is_excluded(rel_path: str, exclude: list[str]) -> bool:
     """Check whether a relative path matches any exclude pattern.
 
-    Follows ``.gitignore`` semantics: patterns without ``/`` match against
-    every path component; patterns with ``/`` match the full relative path.
+    Follows ``.gitignore`` semantics with four pattern dispatch branches:
+
+    1. **Trailing-slash** (``build/``): match directory components only.
+       Simple names match at any depth; paths with ``/`` are root-anchored.
+    2. **Double-star** (``**/test_*.py``): delegate to
+       :func:`_matches_double_star` for recursive glob matching.
+    3. **Path-level** (``scripts/gen_*.py``): ``fnmatch`` against the full
+       relative path.
+    4. **Component-level** (``tests``): ``fnmatch`` against each individual
+       path component.
+
+    Note:
+        Dispatch order matters: trailing-slash is checked before
+        double-star.  Patterns combining both (e.g. ``build/**/``)
+        route to the trailing-slash branch and will not match; use
+        ``build/`` for recursive directory exclusion.
 
     Args:
         rel_path: File path relative to the project root (forward slashes).
@@ -119,13 +209,16 @@ def _is_excluded(rel_path: str, exclude: list[str]) -> bool:
     normalized = rel_path.replace("\\", "/")
     parts = PurePosixPath(normalized).parts
     for pattern in exclude:
-        if "/" in pattern:
-            if fnmatch.fnmatch(normalized, pattern):
-                return True
-        else:
-            for component in parts:
-                if fnmatch.fnmatch(component, pattern):
-                    return True
+        if (
+            (
+                pattern.endswith("/")
+                and _matches_trailing_slash(normalized, parts, pattern)
+            )
+            or ("**" in pattern and _matches_double_star(normalized, pattern))
+            or ("/" in pattern and fnmatch.fnmatch(normalized, pattern))
+            or any(fnmatch.fnmatch(c, pattern) for c in parts)
+        ):
+            return True
     return False
 
 
