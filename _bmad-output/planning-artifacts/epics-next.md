@@ -48,7 +48,7 @@ FR9: The CLI shall show total execution time in the summary output.
 
 NFR1: The smoke test shall wait for PyPI propagation (~60s) before attempting install.
 
-NFR2: The smoke test job shall use `needs: [publish]` to depend on successful publication.
+NFR2: The smoke test job shall use `needs: [build-and-publish]` to depend on successful publication.
 
 NFR3: Back-links shall be implemented in the `rule_header()` macro, not as manual per-page content.
 
