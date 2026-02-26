@@ -555,6 +555,20 @@ def test_is_excluded_mixed_patterns_all_types():
     assert _is_excluded("src/docvet/cli.py", exclude) is False
 
 
+def test_is_excluded_bare_double_star_matches_everything():
+    """Pattern ** matches any path (degenerate case)."""
+    assert _is_excluded("src/docvet/cli.py", ["**"]) is True
+    assert _is_excluded("foo.py", ["**"]) is True
+
+
+def test_is_excluded_trailing_slash_with_double_star_does_not_match():
+    """Patterns combining trailing-slash and ** route to trailing-slash branch."""
+    # build/**/ checks if "build/**" is a directory component — always False
+    assert _is_excluded("build/out.py", ["build/**/"]) is False
+    # **/ checks if "**" is a directory component — always False
+    assert _is_excluded("src/foo.py", ["**/"]) is False
+
+
 def test_is_excluded_mixed_simple_and_advanced_from_extend_exclude():
     """Patterns from both exclude and extend-exclude evaluate correctly."""
     # Simulates merged list from config (exclude + extend-exclude)
