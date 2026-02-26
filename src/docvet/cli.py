@@ -605,12 +605,12 @@ def check(
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
-    discovered = _discover_and_handle(ctx, discovery_mode, files)
-    config = ctx.obj["docvet_config"]
     verbose = verbose or ctx.obj.get("verbose", False)
     quiet = quiet or ctx.obj.get("quiet", False)
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
+    discovered = _discover_and_handle(ctx, discovery_mode, files)
+    config = ctx.obj["docvet_config"]
     show_progress = sys.stderr.isatty()
     file_count = len(discovered)
 

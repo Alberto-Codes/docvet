@@ -1,6 +1,6 @@
 # Story 21.3: Verbose & Quiet Flag Redesign
 
-Status: review
+Status: done
 Branch: `feat/cli-21-3-verbose-quiet-flags`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -248,15 +248,23 @@ Claude Opus 4.6
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review) on 2026-02-26
+
 ### Outcome
+
+Changes Requested → Fixed → Approved
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | Order-of-operations bug: `_discover_and_handle` called before verbose/quiet dual-resolution in `check()`. Subcommand-level `--verbose` didn't show file count; subcommand-level `-q` didn't suppress it. Empirically verified. Violates AC 1, 3, 4. | Fixed: moved dual-resolution (lines 610-613) before `_discover_and_handle` call. All three bug scenarios verified passing. |
+| M1 | MEDIUM | Weak assertions in AC1/AC2 verbose tests — only checked `"Checking"` in output, not per-check timing or file count as AC1 requires. | Fixed: added `"Found"` and `"files in"` assertions to both tests. |
+| M2 | MEDIUM | AC5 test mapping incomplete — only verified file count, not timing or summary. | Skipped: resolved by M1 fix. Strengthened verbose tests now cover all three elements. |
+| L1 | LOW | `griffe` subcommand at `cli.py:802` doesn't pass `quiet` to `_run_griffe`. | Skipped: out of scope, Story 21.4 handles individual subcommands. |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (860 tests, zero lint, zero format)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

@@ -1791,6 +1791,8 @@ def test_check_when_verbose_on_subcommand_produces_verbose_output():
     result = runner.invoke(app, ["check", "--all", "--verbose"])
     assert result.exit_code == 0
     assert "Checking" in result.output
+    assert "Found" in result.output
+    assert "files in" in result.output
 
 
 # --- Task 2.7: both positions verbose ---
@@ -1800,6 +1802,8 @@ def test_check_when_verbose_on_both_positions_produces_verbose_output():
     result = runner.invoke(app, ["--verbose", "check", "--all", "--verbose"])
     assert result.exit_code == 0
     assert "Checking" in result.output
+    assert "Found" in result.output
+    assert "files in" in result.output
 
 
 # --- Task 2.8: quiet suppresses summary and timing ---
