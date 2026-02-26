@@ -1,6 +1,6 @@
 # CLI Reference
 
-docvet provides five subcommands. Global options are placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
+docvet provides five subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
 
 ```
 docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
