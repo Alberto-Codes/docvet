@@ -161,8 +161,8 @@ development_status:
   epic-17-retrospective: optional
 
   # Epic 18: Documentation Site Navigation
-  epic-18: backlog
-  18-1-rule-page-breadcrumb-back-links: backlog
+  epic-18: in-progress
+  18-1-rule-page-breadcrumb-back-links: done
   epic-18-retrospective: optional
 
   # Epic 19: Advanced Exclude Patterns
