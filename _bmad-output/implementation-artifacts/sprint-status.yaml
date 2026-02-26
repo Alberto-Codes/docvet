@@ -172,7 +172,7 @@ development_status:
   epic-19-retrospective: optional
 
   # Epic 20: CLI Progress & Timing
-  epic-20: backlog
-  20-1-progress-bar-for-file-processing: backlog
+  epic-20: in-progress
+  20-1-progress-bar-for-file-processing: review
   20-2-per-check-timing-and-total-execution-time: backlog
   epic-20-retrospective: optional
