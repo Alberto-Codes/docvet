@@ -563,9 +563,9 @@ def test_is_excluded_bare_double_star_matches_everything():
 
 def test_is_excluded_trailing_slash_with_double_star_does_not_match():
     """Patterns combining trailing-slash and ** route to trailing-slash branch."""
-    # build/**/ checks if "build/**" is a directory component — always False
+    # build/**/ → dirname "build/**" contains "/" → rooted prefix check → no match
     assert _is_excluded("build/out.py", ["build/**/"]) is False
-    # **/ checks if "**" is a directory component — always False
+    # **/ → dirname "**" has no "/" → component check → no path segment equals "**"
     assert _is_excluded("src/foo.py", ["**/"]) is False
 
 
