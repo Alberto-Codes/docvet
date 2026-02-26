@@ -6,9 +6,11 @@ codebase scan.  All modes return a sorted ``list[Path]`` of absolute
 file paths.
 
 Exclude patterns support four dispatch branches following ``.gitignore``
-semantics: trailing-slash directory patterns (``build/``), double-star
-recursive globs (``**/test_*.py``), path-level ``fnmatch`` patterns
-(``scripts/gen_*.py``), and component-level patterns (``tests``).
+semantics, each handled by a dedicated matcher: trailing-slash directory
+patterns (``build/``) via :func:`_matches_trailing_slash`, double-star
+recursive globs (``**/test_*.py``) via :func:`_matches_double_star`,
+path-level ``fnmatch`` patterns (``scripts/gen_*.py``), and
+component-level patterns (``tests``).
 
 Examples:
     Discover staged files via the CLI::
@@ -77,7 +79,7 @@ class DiscoveryMode(enum.Enum):
 
 
 def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | None:
-    """Run a git command and return stdout lines.
+    """Run a git command and return stripped, non-empty stdout lines.
 
     Args:
         args: Git subcommand and arguments (e.g. ``["diff", "--name-only"]``).
@@ -116,6 +118,34 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | No
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
+def _matches_trailing_slash(
+    normalized: str, parts: tuple[str, ...], pattern: str
+) -> bool:
+    """Match a path against a trailing-slash directory pattern.
+
+    Simple patterns (``build/``) match at any depth — the directory name
+    can appear anywhere in the path.  Path patterns (``vendor/legacy/``)
+    are root-anchored — the prefix must appear at the start of the path.
+
+    Note:
+        Patterns combining trailing slash with double-star (e.g.
+        ``build/**/``) are not supported and will not match; use
+        ``build/`` instead for recursive directory exclusion.
+
+    Args:
+        normalized: Forward-slash-normalized relative path.
+        parts: Path components from ``PurePosixPath.parts``.
+        pattern: Exclude pattern ending with ``/``.
+
+    Returns:
+        *True* if the path matches the trailing-slash pattern.
+    """
+    dirname = pattern.rstrip("/")
+    if "/" in dirname:
+        return normalized.startswith(dirname + "/")
+    return dirname in parts[:-1]
+
+
 def _matches_double_star(normalized: str, pattern: str) -> bool:
     """Match a path against a pattern containing ``**``.
 
@@ -124,6 +154,12 @@ def _matches_double_star(normalized: str, pattern: str) -> bool:
     helper adds zero-segment fallbacks so that leading ``**/`` also
     matches root-level files and middle ``/**/`` also matches adjacent
     directories.
+
+    Note:
+        Only the first ``/**/`` occurrence is collapsed for the
+        zero-segment fallback.  Patterns with multiple ``**`` where
+        all match zero segments (e.g. ``**/src/**/test.py`` matching
+        ``src/test.py``) are not supported.
 
     Args:
         normalized: Forward-slash-normalized relative path.
@@ -157,6 +193,12 @@ def _is_excluded(rel_path: str, exclude: list[str]) -> bool:
     4. **Component-level** (``tests``): ``fnmatch`` against each individual
        path component.
 
+    Note:
+        Dispatch order matters: trailing-slash is checked before
+        double-star.  Patterns combining both (e.g. ``build/**/``)
+        route to the trailing-slash branch and will not match; use
+        ``build/`` for recursive directory exclusion.
+
     Args:
         rel_path: File path relative to the project root (forward slashes).
         exclude: List of exclude patterns from configuration.
@@ -167,23 +209,16 @@ def _is_excluded(rel_path: str, exclude: list[str]) -> bool:
     normalized = rel_path.replace("\\", "/")
     parts = PurePosixPath(normalized).parts
     for pattern in exclude:
-        if pattern.endswith("/"):
-            dirname = pattern.rstrip("/")
-            if "/" in dirname:
-                if normalized.startswith(dirname + "/"):
-                    return True
-            elif dirname in parts[:-1]:
-                return True
-        elif "**" in pattern:
-            if _matches_double_star(normalized, pattern):
-                return True
-        elif "/" in pattern:
-            if fnmatch.fnmatch(normalized, pattern):
-                return True
-        else:
-            for component in parts:
-                if fnmatch.fnmatch(component, pattern):
-                    return True
+        if (
+            (
+                pattern.endswith("/")
+                and _matches_trailing_slash(normalized, parts, pattern)
+            )
+            or ("**" in pattern and _matches_double_star(normalized, pattern))
+            or ("/" in pattern and fnmatch.fnmatch(normalized, pattern))
+            or any(fnmatch.fnmatch(c, pattern) for c in parts)
+        ):
+            return True
     return False
 
 
