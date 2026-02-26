@@ -108,17 +108,20 @@ Or check only staged files, ideal for pre-commit hooks:
 docvet check --staged
 ```
 
-Here's what the output looks like:
+Here's what the output looks like when findings exist:
 
-``` linenums="1"
+```
 src/myapp/utils.py:42: missing-raises Function 'parse_config' raises ValueError but Raises section is missing [required]
 src/myapp/utils.py:87: stale-signature Function 'validate_input' signature changed without docstring update [required]
 src/myapp/models.py:15: missing-attributes Class 'User' has 3 undocumented attributes [required]
-
-3 findings (3 required, 0 recommended)
+Vetted 12 files [enrichment, freshness, coverage] — 3 findings (3 required, 0 recommended). (0.2s)
 ```
 
-Each finding shows the file, line number, rule name, a human-readable message, and severity.
+Each finding shows the file, line number, rule name, a human-readable message, and severity. The summary line confirms what was checked and how long it took. When all docstrings are clean, you see:
+
+```
+Vetted 12 files [enrichment, freshness, coverage] — no findings. (0.1s)
+```
 
 ## What's Next
 

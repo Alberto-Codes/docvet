@@ -322,3 +322,45 @@ class TestSummaryAlwaysOnStderr:
         assert "Vetted" not in result.stdout
         matches = SUMMARY_LINE_RE.findall(result.stderr)
         assert len(matches) == 1
+
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_enrichment_summary_on_stderr_with_format_markdown(self, cli_runner):
+        """Enrichment subcommand: summary on stderr, not in markdown stdout."""
+        result = cli_runner.invoke(app, ["--format", "markdown", "enrichment", "--all"])
+
+        assert "Vetted" not in result.stdout
+        matches = SUMMARY_LINE_RE.findall(result.stderr)
+        assert len(matches) == 1
+        assert "[enrichment]" in result.stderr
+
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_griffe_summary_on_stderr_with_format_markdown(self, cli_runner):
+        """Griffe subcommand: summary on stderr, not in markdown stdout."""
+        result = cli_runner.invoke(app, ["--format", "markdown", "griffe", "--all"])
+
+        assert "Vetted" not in result.stdout
+        matches = SUMMARY_LINE_RE.findall(result.stderr)
+        assert len(matches) == 1
+        assert "[griffe]" in result.stderr
+
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_enrichment_summary_on_stderr_with_output_flag(self, cli_runner, tmp_path):
+        """Enrichment subcommand: summary on stderr when --output writes to file."""
+        out = tmp_path / "report.md"
+        result = cli_runner.invoke(app, ["--output", str(out), "enrichment", "--all"])
+
+        assert "Vetted" not in result.stdout
+        matches = SUMMARY_LINE_RE.findall(result.stderr)
+        assert len(matches) == 1
+        assert "[enrichment]" in result.stderr
+
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_griffe_summary_on_stderr_with_output_flag(self, cli_runner, tmp_path):
+        """Griffe subcommand: summary on stderr when --output writes to file."""
+        out = tmp_path / "report.md"
+        result = cli_runner.invoke(app, ["--output", str(out), "griffe", "--all"])
+
+        assert "Vetted" not in result.stdout
+        matches = SUMMARY_LINE_RE.findall(result.stderr)
+        assert len(matches) == 1
+        assert "[griffe]" in result.stderr

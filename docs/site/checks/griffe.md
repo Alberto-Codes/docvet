@@ -69,6 +69,13 @@ Check specific files:
 docvet griffe --files src/myapp/utils.py --files src/myapp/models.py
 ```
 
+Add `--verbose` for file count and timing, or `-q` to suppress the summary line:
+
+```bash
+docvet griffe --all --verbose
+docvet griffe --all -q
+```
+
 Or run griffe as part of all checks (skipped automatically if griffe is not installed):
 
 ```bash

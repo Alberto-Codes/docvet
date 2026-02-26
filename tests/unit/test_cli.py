@@ -2123,3 +2123,32 @@ def test_griffe_subcommand_quiet_passes_quiet_to_run_griffe(mocker):
     mock_run = mocker.patch("docvet.cli._run_griffe", return_value=[])
     runner.invoke(app, ["griffe", "--all", "-q"])
     mock_run.assert_called_once_with(ANY, ANY, verbose=False, quiet=True)
+
+
+# ---------------------------------------------------------------------------
+# Story 21.5, Task 4: Edge-case tests for subcommand quiet and staged
+# ---------------------------------------------------------------------------
+
+
+def test_freshness_subcommand_quiet_suppresses_summary():
+    """Freshness -q suppresses Vetted summary."""
+    result = runner.invoke(app, ["freshness", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+
+
+def test_griffe_subcommand_quiet_suppresses_summary(mocker):
+    """Griffe -q suppresses Vetted summary."""
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["griffe", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+
+
+def test_check_staged_zero_files_exits_cleanly(mocker):
+    """Check --staged with zero files exits 0 with no-files message."""
+    mocker.patch("docvet.cli.discover_files", return_value=[])
+    result = runner.invoke(app, ["check", "--staged"])
+    assert result.exit_code == 0
+    assert "No Python files to check." in result.output
+    assert "Vetted" not in result.output

@@ -121,6 +121,13 @@ Check specific files in drift mode:
 docvet freshness --files src/myapp/utils.py --mode drift
 ```
 
+Add `--verbose` for file count and timing, or `-q` to suppress the summary line:
+
+```bash
+docvet freshness --all --verbose
+docvet freshness --all -q
+```
+
 Or run freshness as part of all checks (diff mode only):
 
 ```bash
