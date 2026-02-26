@@ -4,7 +4,7 @@ Defines the ``typer.Typer`` app with subcommands for each check layer
 (``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
 combined ``check`` entry point. Handles config loading, file discovery
 dispatch, progress bar rendering, per-check timing, summary line output,
-and report formatting.
+report formatting, and three-tier verbosity control (quiet/default/verbose).
 
 Examples:
     Run all checks on changed files::
@@ -168,10 +168,12 @@ def _discover_and_handle(
     Pulls config from ``ctx.obj["docvet_config"]``, converts the raw
     ``--files`` strings to :class:`~pathlib.Path` objects, calls
     :func:`discover_files`, and handles the empty-list case with a
-    user-friendly message.
+    user-friendly message. Prints file count to stderr when verbose
+    is enabled and quiet is not.
 
     Args:
-        ctx: Typer context carrying ``docvet_config`` and ``verbose``.
+        ctx: Typer context carrying ``docvet_config``, ``verbose``,
+            and ``quiet``.
         mode: The resolved discovery mode.
         files: Raw file paths from ``--files``, or *None*.
 
@@ -189,7 +191,7 @@ def _discover_and_handle(
         typer.echo("No Python files to check.", err=True)
         raise typer.Exit(0)
 
-    if ctx.obj.get("verbose"):
+    if ctx.obj.get("verbose") and not ctx.obj.get("quiet"):
         typer.echo(f"Found {len(discovered)} file(s) to check", err=True)
 
     return discovered
@@ -221,6 +223,7 @@ def _output_and_exit(
     """
     output_path = ctx.obj.get("output")
     verbose = ctx.obj.get("verbose", False)
+    quiet = ctx.obj.get("quiet", False)
     fmt_opt = ctx.obj.get("format")
 
     # 1. Resolve no_color
@@ -236,7 +239,7 @@ def _output_and_exit(
         all_findings.extend(findings)
 
     # 3. Verbose header to stderr
-    if verbose:
+    if verbose and not quiet:
         sys.stderr.write(format_verbose_header(file_count, checks))
 
     # 4. Resolve format and produce formatted string
@@ -445,7 +448,11 @@ def _run_coverage(files: list[Path], config: DocvetConfig) -> list[Finding]:
 
 
 def _run_griffe(
-    files: list[Path], config: DocvetConfig, *, verbose: bool = False
+    files: list[Path],
+    config: DocvetConfig,
+    *,
+    verbose: bool = False,
+    quiet: bool = False,
 ) -> list[Finding]:
     """Run the griffe compatibility check on discovered files.
 
@@ -456,6 +463,7 @@ def _run_griffe(
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         verbose: Whether verbose mode is enabled.
+        quiet: Whether quiet mode is enabled.
 
     Returns:
         All griffe compatibility findings.
@@ -463,7 +471,7 @@ def _run_griffe(
     if importlib.util.find_spec("griffe") is None:
         if "griffe" in config.fail_on:
             typer.echo("warning: griffe check skipped (griffe not installed)", err=True)
-        elif verbose:
+        elif verbose and not quiet:
             typer.echo("griffe: skipped (griffe not installed)", err=True)
         return []
     src_root = config.project_root / config.src_root
@@ -498,6 +506,15 @@ def main(
     verbose: Annotated[
         bool, typer.Option("--verbose", help="Enable verbose output.")
     ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "-q",
+            "--quiet",
+            help="Suppress non-finding output (summary, timing, verbose details)."
+            " Config warnings are always shown.",
+        ),
+    ] = False,
     fmt: Annotated[
         OutputFormat | None,
         typer.Option("--format", help="Output format."),
@@ -521,6 +538,7 @@ def main(
     Args:
         ctx: Typer invocation context.
         verbose: Enable verbose output.
+        quiet: Suppress non-finding output on stderr.
         fmt: Output format (terminal or markdown).
         output: Optional file path for report output.
         config: Explicit path to a ``pyproject.toml``.
@@ -534,6 +552,7 @@ def main(
         return
 
     ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
     ctx.obj["format"] = fmt.value if fmt is not None else None
     ctx.obj["output"] = str(output) if output is not None else None
 
@@ -555,6 +574,18 @@ def main(
 @app.command()
 def check(
     ctx: typer.Context,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", help="Enable verbose output.")
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "-q",
+            "--quiet",
+            help="Suppress non-finding output (summary, timing, verbose details)."
+            " Config warnings are always shown.",
+        ),
+    ] = False,
     staged: StagedOption = False,
     all_files: AllOption = False,
     files: FilesOption = None,
@@ -562,19 +593,25 @@ def check(
     """Run all enabled checks.
 
     Displays a progress bar on stderr when connected to a TTY.
-    Prints per-check timing to stderr when ``--verbose`` is set,
-    and a summary line when files are found.
+    Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
+    stderr output, default shows the summary line, ``--verbose`` adds
+    per-check timing and file discovery count.
 
     Args:
         ctx: Typer invocation context.
+        verbose: Enable verbose output (subcommand-level).
+        quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
+    verbose = verbose or ctx.obj.get("verbose", False)
+    quiet = quiet or ctx.obj.get("quiet", False)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    verbose = ctx.obj.get("verbose", False)
     show_progress = sys.stderr.isatty()
     file_count = len(discovered)
 
@@ -585,7 +622,7 @@ def check(
         discovered, config, show_progress=show_progress
     )
     elapsed = time.perf_counter() - start
-    if verbose:
+    if verbose and not quiet:
         sys.stderr.write(f"enrichment: {file_count} files in {elapsed:.1f}s\n")
 
     start = time.perf_counter()
@@ -593,20 +630,20 @@ def check(
         discovered, config, discovery_mode=discovery_mode, show_progress=show_progress
     )
     elapsed = time.perf_counter() - start
-    if verbose:
+    if verbose and not quiet:
         sys.stderr.write(f"freshness: {file_count} files in {elapsed:.1f}s\n")
 
     start = time.perf_counter()
     coverage_findings = _run_coverage(discovered, config)
     elapsed = time.perf_counter() - start
-    if verbose:
+    if verbose and not quiet:
         sys.stderr.write(f"coverage: {file_count} files in {elapsed:.1f}s\n")
 
     griffe_installed = importlib.util.find_spec("griffe") is not None
     start = time.perf_counter()
-    griffe_findings = _run_griffe(discovered, config, verbose=verbose)
+    griffe_findings = _run_griffe(discovered, config, verbose=verbose, quiet=quiet)
     elapsed = time.perf_counter() - start
-    if verbose and griffe_installed:
+    if verbose and not quiet and griffe_installed:
         sys.stderr.write(f"griffe: {file_count} files in {elapsed:.1f}s\n")
 
     total_elapsed = time.perf_counter() - total_start
@@ -618,9 +655,10 @@ def check(
     all_findings_flat = (
         enrichment_findings + freshness_findings + coverage_findings + griffe_findings
     )
-    sys.stderr.write(
-        format_summary(file_count, checks, all_findings_flat, total_elapsed)
-    )
+    if not quiet:
+        sys.stderr.write(
+            format_summary(file_count, checks, all_findings_flat, total_elapsed)
+        )
 
     findings_by_check = {
         "enrichment": enrichment_findings,

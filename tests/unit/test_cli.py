@@ -482,7 +482,9 @@ def test_check_when_invoked_passes_config_to_run_stubs(mocker):
         fake_files, fake_config, discovery_mode=DiscoveryMode.DIFF, show_progress=False
     )
     mock_coverage.assert_called_once_with(fake_files, fake_config)
-    mock_griffe.assert_called_once_with(fake_files, fake_config, verbose=False)
+    mock_griffe.assert_called_once_with(
+        fake_files, fake_config, verbose=False, quiet=False
+    )
 
 
 def test_check_when_discovery_returns_empty_does_not_call_stubs(mocker):
@@ -1272,7 +1274,7 @@ def test_check_command_includes_griffe_findings(tmp_path, mocker):
 def test_check_passes_verbose_to_run_griffe(mocker):
     mock_griffe = mocker.patch("docvet.cli._run_griffe", return_value=[])
     runner.invoke(app, ["--verbose", "check"])
-    mock_griffe.assert_called_once_with(ANY, ANY, verbose=True)
+    mock_griffe.assert_called_once_with(ANY, ANY, verbose=True, quiet=False)
 
 
 def test_griffe_when_invoked_with_all_calls_discover_with_all_mode(mocker):
@@ -1754,3 +1756,242 @@ class TestOutputAndExit:
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
         self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
+
+
+# ---------------------------------------------------------------------------
+# Story 21.3: Verbose & Quiet Flag Redesign
+# ---------------------------------------------------------------------------
+
+
+# --- Task 1.3: quiet flag sets ctx.obj ---
+
+
+def test_check_when_invoked_with_quiet_flag_sets_ctx_obj_quiet(mocker):
+    captured = {}
+    original_discover = mocker.patch(
+        "docvet.cli._discover_and_handle",
+        return_value=[Path("/fake/file.py")],
+    )
+
+    def _capture_ctx(ctx, *a, **kw):
+        captured["quiet"] = ctx.obj.get("quiet")
+        return original_discover.return_value
+
+    original_discover.side_effect = _capture_ctx
+    mocker.patch("docvet.cli._output_and_exit")
+    result = runner.invoke(app, ["-q", "check", "--all"])
+    assert result.exit_code == 0
+    assert captured["quiet"] is True
+
+
+# --- Task 2.6: subcommand-level verbose ---
+
+
+def test_check_when_verbose_on_subcommand_produces_verbose_output():
+    result = runner.invoke(app, ["check", "--all", "--verbose"])
+    assert result.exit_code == 0
+    assert "Checking" in result.output
+    assert "Found" in result.output
+    assert "files in" in result.output
+
+
+# --- Task 2.7: both positions verbose ---
+
+
+def test_check_when_verbose_on_both_positions_produces_verbose_output():
+    result = runner.invoke(app, ["--verbose", "check", "--all", "--verbose"])
+    assert result.exit_code == 0
+    assert "Checking" in result.output
+    assert "Found" in result.output
+    assert "files in" in result.output
+
+
+# --- Task 2.8: quiet suppresses summary and timing ---
+
+
+def test_check_when_quiet_suppresses_summary_on_stderr(mocker):
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
+    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["check", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+
+
+def test_check_when_quiet_suppresses_timing_on_stderr(mocker):
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
+    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["--verbose", "check", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "files in" not in result.output
+
+
+# --- Task 2.9: quiet wins over verbose ---
+
+
+def test_check_when_quiet_and_verbose_quiet_wins(mocker):
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
+    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["check", "--all", "-q", "--verbose"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+    assert "Checking" not in result.output
+    assert "files in" not in result.output
+
+
+# --- Task 3.5: file discovery count gating ---
+
+
+def test_check_when_quiet_suppresses_file_count(mocker):
+    mocker.patch(
+        "docvet.cli.discover_files",
+        return_value=[Path("/a.py"), Path("/b.py"), Path("/c.py")],
+    )
+    result = runner.invoke(app, ["--verbose", "-q", "check"])
+    assert result.exit_code == 0
+    assert "Found" not in result.output
+
+
+def test_check_when_verbose_and_not_quiet_shows_file_count(mocker):
+    mocker.patch(
+        "docvet.cli.discover_files",
+        return_value=[Path("/a.py"), Path("/b.py"), Path("/c.py")],
+    )
+    result = runner.invoke(app, ["--verbose", "check"])
+    assert result.exit_code == 0
+    assert "Found 3 file(s) to check" in result.output
+
+
+# --- Task 4.1: --help includes --verbose and --quiet ---
+
+
+def test_check_help_shows_verbose_and_quiet_flags():
+    result = runner.invoke(app, ["check", "--help"])
+    output = _strip_ansi(result.output)
+    assert "--verbose" in output
+    assert "--quiet" in output
+    assert "-q" in output
+
+
+# --- Task 4.2: app --help includes --verbose and --quiet ---
+
+
+def test_app_help_shows_verbose_and_quiet_flags():
+    result = runner.invoke(app, ["--help"])
+    output = _strip_ansi(result.output)
+    assert "--verbose" in output
+    assert "--quiet" in output
+    assert "-q" in output
+
+
+# --- Task 5.1: quiet mode with findings ---
+
+
+def test_check_when_quiet_with_findings_shows_findings_on_stdout(mocker):
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=10,
+            symbol="f",
+            rule="missing-raises",
+            message="Missing Raises: ValueError",
+            category="required",
+        )
+    ]
+    mocker.patch("docvet.cli._run_enrichment", return_value=findings)
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["check", "--all", "-q"])
+    assert "missing-raises" in result.output
+    assert "Vetted" not in result.output
+
+
+# --- Task 5.2: quiet with --format markdown ---
+
+
+def test_check_when_quiet_with_format_markdown_shows_output_no_stderr(mocker):
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=10,
+            symbol="f",
+            rule="missing-raises",
+            message="Missing Raises: ValueError",
+            category="required",
+        )
+    ]
+    mocker.patch("docvet.cli._run_enrichment", return_value=findings)
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["--format", "markdown", "check", "--all", "-q"])
+    assert "missing-raises" in result.stdout
+    assert "Vetted" not in result.stderr
+
+
+# --- Task 5.3: quiet with --output ---
+
+
+def test_check_when_quiet_with_output_flag_writes_file_no_stderr(mocker, tmp_path):
+    from docvet.checks import Finding
+
+    out = tmp_path / "report.md"
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=10,
+            symbol="f",
+            rule="missing-raises",
+            message="Missing Raises: ValueError",
+            category="required",
+        )
+    ]
+    mocker.patch("docvet.cli._run_enrichment", return_value=findings)
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["--output", str(out), "check", "--all", "-q"])
+    assert out.exists()
+    assert "Vetted" not in result.stderr
+
+
+# --- Task 5.4: app-level quiet + subcommand-level verbose ---
+
+
+def test_check_when_app_quiet_and_subcommand_verbose_quiet_wins(mocker):
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
+    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["-q", "check", "--all", "--verbose"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+    assert "Checking" not in result.output
+    assert "files in" not in result.output
+
+
+# --- Task 5.5: exit code in quiet mode with findings ---
+
+
+def test_check_when_quiet_with_findings_exits_nonzero(mocker):
+    from docvet.checks import Finding
+
+    findings = [
+        Finding(
+            file="src/app.py",
+            line=10,
+            symbol="f",
+            rule="missing-raises",
+            message="Missing Raises: ValueError",
+            category="required",
+        )
+    ]
+    mocker.patch("docvet.cli._run_enrichment", return_value=findings)
+    mocker.patch(
+        "docvet.cli.load_config", return_value=DocvetConfig(fail_on=["enrichment"])
+    )
+    result = runner.invoke(app, ["check", "--all", "-q"])
+    assert result.exit_code == 1
