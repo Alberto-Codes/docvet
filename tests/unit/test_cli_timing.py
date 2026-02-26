@@ -20,7 +20,10 @@ pytestmark = pytest.mark.unit
 TIMING_LINE_RE = re.compile(
     r"^(enrichment|freshness|coverage|griffe): \d+ files in \d+\.\d+s$", re.MULTILINE
 )
-TOTAL_LINE_RE = re.compile(r"^Completed in \d+\.\d+s$", re.MULTILINE)
+SUMMARY_LINE_RE = re.compile(
+    r"^Vetted \d+ files \[.+\] \u2014 .+\. \(\d+\.\d+s\)$", re.MULTILINE
+)
+SUBCOMMAND_TOTAL_RE = re.compile(r"^Completed in \d+\.\d+s$", re.MULTILINE)
 
 
 # ---------------------------------------------------------------------------
@@ -113,19 +116,19 @@ class TestCheckNonVerboseNoPerCheckTiming:
 # ---------------------------------------------------------------------------
 
 
-class TestCheckTotalTime:
+class TestCheckSummaryLine:
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
-    def test_total_time_present_without_verbose(self, cli_runner):
+    def test_summary_present_without_verbose(self, cli_runner):
         result = cli_runner.invoke(app, ["check", "--all"])
 
-        matches = TOTAL_LINE_RE.findall(result.output)
+        matches = SUMMARY_LINE_RE.findall(result.output)
         assert len(matches) == 1
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
-    def test_total_time_present_with_verbose(self, cli_runner):
+    def test_summary_present_with_verbose(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
 
-        matches = TOTAL_LINE_RE.findall(result.output)
+        matches = SUMMARY_LINE_RE.findall(result.output)
         assert len(matches) == 1
 
 
@@ -139,28 +142,28 @@ class TestIndividualSubcommandTiming:
     def test_enrichment_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "enrichment", "--all"])
 
-        assert len(TOTAL_LINE_RE.findall(result.output)) == 1
+        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_freshness_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "freshness", "--all"])
 
-        assert len(TOTAL_LINE_RE.findall(result.output)) == 1
+        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_coverage_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "coverage", "--all"])
 
-        assert len(TOTAL_LINE_RE.findall(result.output)) == 1
+        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_griffe_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "griffe", "--all"])
 
-        assert len(TOTAL_LINE_RE.findall(result.output)) == 1
+        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
 
@@ -193,14 +196,14 @@ class TestTimingFormat:
         assert "enrichment: 1 files in 0.5s" in result.output
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
-    def test_total_format_is_completed_in_seconds(self, cli_runner):
+    def test_total_format_is_vetted_summary_line(self, cli_runner):
         result = cli_runner.invoke(app, ["check", "--all"])
 
-        completed = [
-            line for line in result.output.splitlines() if line.startswith("Completed")
+        vetted = [
+            line for line in result.output.splitlines() if line.startswith("Vetted")
         ]
-        assert len(completed) == 1
-        assert TOTAL_LINE_RE.match(completed[0]), f"Bad format: {completed[0]!r}"
+        assert len(vetted) == 1
+        assert SUMMARY_LINE_RE.match(vetted[0]), f"Bad format: {vetted[0]!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -243,3 +246,55 @@ class TestGriffeTimingSuppressed:
 
         matches = TIMING_LINE_RE.findall(result.output)
         assert len(matches) == 3
+
+
+# ---------------------------------------------------------------------------
+# Story 21.1, Task 3: Conditional griffe in summary check list
+# ---------------------------------------------------------------------------
+
+
+class TestSummaryConditionalGriffe:
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_summary_includes_griffe_when_installed(self, cli_runner, mocker):
+        mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+
+        result = cli_runner.invoke(app, ["check", "--all"])
+        summary = [
+            line for line in result.output.splitlines() if line.startswith("Vetted")
+        ]
+        assert len(summary) == 1
+        assert "griffe" in summary[0]
+
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_summary_omits_griffe_when_not_installed(self, cli_runner, mocker):
+        mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+
+        result = cli_runner.invoke(app, ["check", "--all"])
+        summary = [
+            line for line in result.output.splitlines() if line.startswith("Vetted")
+        ]
+        assert len(summary) == 1
+        assert "griffe" not in summary[0]
+        assert "[enrichment, freshness, coverage]" in summary[0]
+
+
+# ---------------------------------------------------------------------------
+# Story 21.1, Task 4: Summary on stderr regardless of output format
+# ---------------------------------------------------------------------------
+
+
+class TestSummaryAlwaysOnStderr:
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_summary_present_with_format_markdown(self, cli_runner):
+        result = cli_runner.invoke(app, ["--format", "markdown", "check", "--all"])
+
+        matches = SUMMARY_LINE_RE.findall(result.output)
+        assert len(matches) == 1
+
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_summary_present_with_output_flag(self, cli_runner, tmp_path):
+        out = tmp_path / "report.md"
+        result = cli_runner.invoke(app, ["--output", str(out), "check", "--all"])
+
+        matches = SUMMARY_LINE_RE.findall(result.output)
+        assert len(matches) == 1
