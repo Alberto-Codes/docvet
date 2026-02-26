@@ -31,6 +31,11 @@ def _strip_ansi(text: str) -> str:
     return _ANSI_RE.sub("", text)
 
 
+def _non_timing_lines(output: str) -> list[str]:
+    """Return output lines excluding timing lines (``Completed in ...``)."""
+    return [line for line in output.splitlines() if not line.startswith("Completed in")]
+
+
 # ---------------------------------------------------------------------------
 # Autouse fixture — mock config loading and file discovery for all tests
 # ---------------------------------------------------------------------------
@@ -606,7 +611,7 @@ def test_run_enrichment_when_no_findings_produces_no_output(mocker):
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
-    assert result.output == ""
+    assert _non_timing_lines(result.output) == []
 
 
 def test_run_enrichment_when_syntax_error_skips_file_with_warning(mocker):
@@ -687,7 +692,7 @@ def test_run_freshness_when_no_findings_produces_no_output(mocker):
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
     result = runner.invoke(app, ["freshness"])
     assert result.exit_code == 0
-    assert result.output == ""
+    assert _non_timing_lines(result.output) == []
 
 
 def test_run_freshness_when_syntax_error_skips_file_with_warning(mocker):
@@ -783,7 +788,7 @@ def test_run_freshness_drift_no_findings_produces_no_output(mocker):
     mocker.patch.object(Path, "read_text", return_value="x = 1\n")
     result = runner.invoke(app, ["freshness", "--mode", "drift"])
     assert result.exit_code == 0
-    assert result.output == ""
+    assert _non_timing_lines(result.output) == []
 
 
 def test_run_freshness_drift_passes_config_freshness_to_check(mocker):
@@ -1052,7 +1057,7 @@ def test_run_coverage_when_no_findings_produces_no_output(mocker):
     mocker.patch("docvet.cli.check_coverage", return_value=[])
     result = runner.invoke(app, ["coverage"])
     assert result.exit_code == 0
-    assert result.output == ""
+    assert _non_timing_lines(result.output) == []
 
 
 def test_run_coverage_passes_correct_src_root_path(mocker):
@@ -1150,7 +1155,7 @@ def test_run_griffe_when_no_findings_produces_no_output(tmp_path, mocker):
     mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["griffe"])
     assert result.exit_code == 0
-    assert result.output == ""
+    assert _non_timing_lines(result.output) == []
 
 
 def test_run_griffe_passes_correct_src_root_path(tmp_path, mocker):
@@ -1198,7 +1203,7 @@ def test_run_griffe_when_griffe_not_installed_skips_silently(mocker):
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["griffe"])
     assert result.exit_code == 0
-    assert result.output == ""
+    assert _non_timing_lines(result.output) == []
     mock_check.assert_not_called()
 
 
@@ -1233,7 +1238,7 @@ def test_run_griffe_when_src_root_not_exists_returns_silently(mocker):
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake.py")])
     result = runner.invoke(app, ["griffe"])
     assert result.exit_code == 0
-    assert result.output == ""
+    assert _non_timing_lines(result.output) == []
     mock_check.assert_not_called()
 
 

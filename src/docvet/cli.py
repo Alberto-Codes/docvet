@@ -3,7 +3,8 @@
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
 combined ``check`` entry point. Handles config loading, file discovery
-dispatch, progress bar rendering, and report output.
+dispatch, progress bar rendering, per-check and total timing, and report
+output.
 
 Examples:
     Run all checks on changed files::
@@ -29,6 +30,7 @@ import importlib.util
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Annotated
 
@@ -562,6 +564,8 @@ def check(
     """Run all enabled checks.
 
     Displays a progress bar on stderr when connected to a TTY.
+    Prints per-check timing to stderr when ``--verbose`` is set,
+    and total execution time unconditionally.
 
     Args:
         ctx: Typer invocation context.
@@ -572,17 +576,44 @@ def check(
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
+    verbose = ctx.obj.get("verbose", False)
     show_progress = sys.stderr.isatty()
+    file_count = len(discovered)
+
+    total_start = time.perf_counter()
+
+    start = time.perf_counter()
     enrichment_findings = _run_enrichment(
         discovered, config, show_progress=show_progress
     )
+    elapsed = time.perf_counter() - start
+    if verbose:
+        sys.stderr.write(f"enrichment: {file_count} files in {elapsed:.1f}s\n")
+
+    start = time.perf_counter()
     freshness_findings = _run_freshness(
         discovered, config, discovery_mode=discovery_mode, show_progress=show_progress
     )
+    elapsed = time.perf_counter() - start
+    if verbose:
+        sys.stderr.write(f"freshness: {file_count} files in {elapsed:.1f}s\n")
+
+    start = time.perf_counter()
     coverage_findings = _run_coverage(discovered, config)
-    griffe_findings = _run_griffe(
-        discovered, config, verbose=ctx.obj.get("verbose", False)
-    )
+    elapsed = time.perf_counter() - start
+    if verbose:
+        sys.stderr.write(f"coverage: {file_count} files in {elapsed:.1f}s\n")
+
+    griffe_installed = importlib.util.find_spec("griffe") is not None
+    start = time.perf_counter()
+    griffe_findings = _run_griffe(discovered, config, verbose=verbose)
+    elapsed = time.perf_counter() - start
+    if verbose and griffe_installed:
+        sys.stderr.write(f"griffe: {file_count} files in {elapsed:.1f}s\n")
+
+    total_elapsed = time.perf_counter() - total_start
+    sys.stderr.write(f"Completed in {total_elapsed:.1f}s\n")
+
     findings_by_check = {
         "enrichment": enrichment_findings,
         "freshness": freshness_findings,
@@ -593,7 +624,7 @@ def check(
         ctx,
         findings_by_check,
         config,
-        len(discovered),
+        file_count,
         ["enrichment", "freshness", "coverage", "griffe"],
     )
 
@@ -607,7 +638,8 @@ def enrichment(
 ) -> None:
     """Check for missing docstring sections.
 
-    Displays a progress bar on stderr when connected to a TTY.
+    Displays a progress bar on stderr when connected to a TTY
+    and total execution time on completion.
 
     Args:
         ctx: Typer invocation context.
@@ -618,7 +650,12 @@ def enrichment(
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
+
+    start = time.perf_counter()
     findings = _run_enrichment(discovered, config, show_progress=sys.stderr.isatty())
+    elapsed = time.perf_counter() - start
+    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+
     _output_and_exit(
         ctx, {"enrichment": findings}, config, len(discovered), ["enrichment"]
     )
@@ -636,7 +673,8 @@ def freshness(
 ) -> None:
     """Detect stale docstrings.
 
-    Displays a progress bar on stderr when connected to a TTY.
+    Displays a progress bar on stderr when connected to a TTY
+    and total execution time on completion.
 
     Args:
         ctx: Typer invocation context.
@@ -648,6 +686,8 @@ def freshness(
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
+
+    start = time.perf_counter()
     findings = _run_freshness(
         discovered,
         config,
@@ -655,6 +695,9 @@ def freshness(
         discovery_mode=discovery_mode,
         show_progress=sys.stderr.isatty(),
     )
+    elapsed = time.perf_counter() - start
+    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+
     _output_and_exit(
         ctx, {"freshness": findings}, config, len(discovered), ["freshness"]
     )
@@ -669,6 +712,8 @@ def coverage(
 ) -> None:
     """Find files invisible to mkdocs.
 
+    Prints total execution time to stderr on completion.
+
     Args:
         ctx: Typer invocation context.
         staged: Run on staged files.
@@ -678,7 +723,12 @@ def coverage(
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
+
+    start = time.perf_counter()
     findings = _run_coverage(discovered, config)
+    elapsed = time.perf_counter() - start
+    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+
     _output_and_exit(ctx, {"coverage": findings}, config, len(discovered), ["coverage"])
 
 
@@ -691,6 +741,8 @@ def griffe(
 ) -> None:
     """Check mkdocs rendering compatibility.
 
+    Prints total execution time to stderr on completion.
+
     Args:
         ctx: Typer invocation context.
         staged: Run on staged files.
@@ -700,5 +752,10 @@ def griffe(
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
+
+    start = time.perf_counter()
     findings = _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))
+    elapsed = time.perf_counter() - start
+    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+
     _output_and_exit(ctx, {"griffe": findings}, config, len(discovered), ["griffe"])
