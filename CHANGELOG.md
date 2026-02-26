@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.4.0](https://github.com/Alberto-Codes/docvet/compare/v1.3.0...v1.4.0) (2026-02-26)
+
+
+### Features
+
+* **ci:** add post-publish PyPI smoke test ([#134](https://github.com/Alberto-Codes/docvet/issues/134)) ([5b89f3d](https://github.com/Alberto-Codes/docvet/commit/5b89f3dfd5ba520e9d5c47a3a71d382471e0a33a))
+* **cli:** add per-check timing and total execution time ([#140](https://github.com/Alberto-Codes/docvet/issues/140)) ([56c6c62](https://github.com/Alberto-Codes/docvet/commit/56c6c62712c3ef333725fa742c1df3787ca7fde1)), closes [#24](https://github.com/Alberto-Codes/docvet/issues/24)
+* **cli:** add progress bar for file processing ([#139](https://github.com/Alberto-Codes/docvet/issues/139)) ([0f5e5dd](https://github.com/Alberto-Codes/docvet/commit/0f5e5dd596c5940c97f21fd37e3c2e45a2d7da75)), closes [#24](https://github.com/Alberto-Codes/docvet/issues/24)
+* **discovery:** add trailing-slash and double-star pattern support ([3696e6a](https://github.com/Alberto-Codes/docvet/commit/3696e6a2f36c516578db43de1a07646280ee3a5a))
+* **discovery:** add trailing-slash and double-star pattern support ([#137](https://github.com/Alberto-Codes/docvet/issues/137)) ([3696e6a](https://github.com/Alberto-Codes/docvet/commit/3696e6a2f36c516578db43de1a07646280ee3a5a))
+* **docs:** add breadcrumb back-links to rule pages ([#136](https://github.com/Alberto-Codes/docvet/issues/136)) ([17e985b](https://github.com/Alberto-Codes/docvet/commit/17e985bf0581071c680bc617451ca35b842a41e1))
+
+
+### Bug Fixes
+
+* **docs:** remove redundant f-string in rule_header macro ([17e985b](https://github.com/Alberto-Codes/docvet/commit/17e985bf0581071c680bc617451ca35b842a41e1))
+
+
+### Documentation
+
+* **cli:** add story 20.2 implementation record ([56c6c62](https://github.com/Alberto-Codes/docvet/commit/56c6c62712c3ef333725fa742c1df3787ca7fde1))
+
 ## [1.3.0](https://github.com/Alberto-Codes/docvet/compare/v1.2.1...v1.3.0) (2026-02-25)
 
 
