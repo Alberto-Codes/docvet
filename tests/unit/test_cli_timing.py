@@ -38,7 +38,11 @@ def cli_runner():
 
 @pytest.fixture
 def _mock_check_internals(mocker):
-    """Mock discovery, config, _run_* functions, and _output_and_exit."""
+    """Mock discovery, config, _run_* functions, and _output_and_exit.
+
+    Also mocks ``importlib.util.find_spec`` to report griffe as installed,
+    ensuring tests are hermetic regardless of the test environment.
+    """
     fake_files = [Path("/fake/file.py")]
     fake_config = DocvetConfig(project_root=Path("/fake"))
 
@@ -50,6 +54,7 @@ def _mock_check_internals(mocker):
     mocker.patch("docvet.cli._run_griffe", return_value=[])
     mocker.patch("docvet.cli._output_and_exit")
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
 
     return fake_files
 
@@ -90,16 +95,18 @@ class TestCheckVerbosePerCheckTiming:
         result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
         output = result.output
 
-        assert "enrichment:" in output and "files in" in output
+        assert "enrichment:" in output
         assert "freshness:" in output
         assert "coverage:" in output
+        assert "griffe:" in output
+        assert "files in" in output
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_per_check_timing_format_matches_pattern(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
 
         matches = TIMING_LINE_RE.findall(result.output)
-        assert len(matches) >= 3
+        assert len(matches) == 4
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +192,20 @@ class TestTimingFormat:
         for line in result.output.splitlines():
             if "files in" in line:
                 assert TIMING_LINE_RE.match(line), f"Bad format: {line!r}"
+
+    @pytest.mark.usefixtures("_mock_check_internals")
+    def test_per_check_elapsed_value_reflects_mock_gap(self, cli_runner, mocker):
+        """Verify the subtraction is correct, not just the format."""
+        # Two calls per check: start (100.0) and end (100.5) → 0.5s
+        # Then remaining calls for subsequent checks and total.
+        mocker.patch(
+            "docvet.cli.time.perf_counter",
+            side_effect=[100.0, 100.0, 100.5] + [200.0] * 50,
+        )
+
+        result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
+
+        assert "enrichment: 1 files in 0.5s" in result.output
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_total_format_is_completed_in_seconds(self, cli_runner):

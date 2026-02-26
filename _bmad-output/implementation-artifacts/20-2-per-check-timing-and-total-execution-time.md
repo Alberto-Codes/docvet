@@ -1,6 +1,6 @@
 # Story 20.2: Per-check Timing and Total Execution Time
 
-Status: review
+Status: done
 Branch: `feat/cli-20-2-per-check-timing`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -265,7 +265,7 @@ Individual subcommands also do not currently have a `verbose` local variable. Ad
 - [x] `uv run ruff check .` — zero lint violations
 - [x] `uv run ruff format --check .` — zero format issues
 - [x] `uv run ty check` — zero type errors
-- [x] `uv run pytest` — 826 passed, no regressions
+- [x] `uv run pytest` — 827 passed, no regressions
 - [x] `uv run docvet check --all` — zero docvet findings
 - [x] `uv run interrogate -v` — 100.0% docstring coverage
 
@@ -287,18 +287,20 @@ None — clean implementation, no debugging needed.
 - Added total execution time (`Completed in X.Xs`) to `check()` (unconditional) and all 4 individual subcommands
 - Extracted `verbose` as local variable in `check()` for cleaner timing conditionals
 - Updated docstrings for `check()`, `enrichment()`, `freshness()`, `coverage()`, `griffe()`, and module docstring to mention timing
-- Created `tests/unit/test_cli_timing.py` with 14 tests covering all ACs
+- Created `tests/unit/test_cli_timing.py` with 15 tests covering all ACs
 - Updated 7 existing tests in `test_cli.py` that expected empty output (now include timing line)
+- Added `_non_timing_lines()` helper to `test_cli.py` to reduce filter duplication
 
 ### Change Log
 
 - 2026-02-26: Implemented per-check timing (verbose), total execution time (always), and griffe skip guard
+- 2026-02-26: Code review fixes — hermetic `find_spec` mock, exact count assertions, timing value verification test, split compound assert, `_non_timing_lines()` helper
 
 ### File List
 
 - `src/docvet/cli.py` — modified (timing instrumentation + docstring updates)
-- `tests/unit/test_cli_timing.py` — new (14 timing tests)
-- `tests/unit/test_cli.py` — modified (7 tests updated for timing line in output)
+- `tests/unit/test_cli_timing.py` — new (15 timing tests, hermetic mocking)
+- `tests/unit/test_cli.py` — modified (7 tests updated for timing line, `_non_timing_lines()` helper)
 
 ## Code Review
 
@@ -306,15 +308,24 @@ None — clean implementation, no debugging needed.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review)
+
 ### Outcome
+
+Approved (all findings fixed)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | `test_per_check_timing_format_matches_pattern` uses `>= 3` — environment-dependent on griffe install | Mocked `find_spec` in `_mock_check_internals` fixture, assert `== 4` |
+| M2 | MEDIUM | `test_per_check_timing_lines_present_when_verbose` missing griffe assertion, non-hermetic | Added `"griffe:"` assertion, same `find_spec` fixture fix as M1 |
+| M3 | MEDIUM | No test verifies computed timing values — only format regex | Added `test_per_check_elapsed_value_reflects_mock_gap` with controlled 0.5s gap |
+| L1 | LOW | Compound `and` in single assert gives ambiguous failure message | Split into separate `assert` statements |
+| L2 | LOW | `non_timing` filter pattern repeated 7 times in `test_cli.py` | Extracted `_non_timing_lines()` helper, replaced all 7 occurrences |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (827 tests, ruff, format clean)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
