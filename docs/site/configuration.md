@@ -53,7 +53,7 @@ docvet supports four pattern types in `exclude` and `extend-exclude`. Patterns a
 | **Path-level** | `scripts/gen_*.py` | `scripts/gen_schema.py` | `tools/gen_schema.py` |
 | **Trailing-slash** | `build/` | `build/output.py`, `build/sub/mod.py` | `rebuild/main.py` |
 | **Root-anchored trailing-slash** | `vendor/legacy/` | `vendor/legacy/old.py` | `src/vendor/legacy/old.py` |
-| **Double-star** | `**/test_*.py` | `test_foo.py`, `src/tests/test_bar.py` | `test_utils.py` (no `test_` prefix) |
+| **Double-star** | `**/test_*.py` | `test_foo.py`, `src/tests/test_bar.py` | `utils_test.py` (wrong prefix position) |
 | **Middle double-star** | `src/**/generated.py` | `src/generated.py`, `src/api/v2/generated.py` | `generated.py` (no `src/` prefix) |
 
 **Simple globs** (no `/` in the pattern) match against individual path components. A pattern like `tests` excludes any file whose path contains a `tests` directory.
