@@ -686,6 +686,7 @@ def test_load_config_both_explicit_overlap_warns_for_overlapping_only(
         "docvet: 'enrichment' appears in both fail-on and warn-on; using fail-on" in err
     )
     assert err.count("appears in both") == 1
+    assert cfg.fail_on == ["enrichment"]
     assert "enrichment" not in cfg.warn_on
     assert "freshness" in cfg.warn_on
 

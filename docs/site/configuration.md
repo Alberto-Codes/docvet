@@ -27,10 +27,10 @@ When `src-root` is not set in your config:
 
 ### `fail-on` / `warn-on` precedence
 
-If a check name appears in **both** `fail-on` and `warn-on`, docvet prints a warning to stderr and `fail-on` wins — the check is removed from `warn-on`.
+If a check name appears in **both** `fail-on` and an explicitly set `warn-on`, docvet prints a warning to stderr and `fail-on` wins — the check is removed from `warn-on`.
 
-!!! warning "Graceful deduplication"
-    Adding `enrichment` to `fail-on` with the default `warn-on` list prints a warning to stderr and removes `enrichment` from `warn-on`. This is intentional — `fail-on` always takes priority.
+!!! tip "Seamless deduplication"
+    Adding checks to `fail-on` without setting `warn-on` resolves silently — overlapping defaults are removed from `warn-on` with no stderr output. Warnings only appear when you explicitly set both keys and they overlap.
 
 ### `extend-exclude`
 

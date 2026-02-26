@@ -1,6 +1,6 @@
 # Story 21.2: Config Warning Cleanup
 
-Status: review
+Status: done
 Branch: `feat/config-21-2-config-warning-cleanup`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -164,8 +164,8 @@ load_config():
 
 ### Documentation Impact
 
-- Pages: None
-- Nature of update: N/A — this is purely internal behavior change (warning suppression). No user-facing documentation describes the overlap warning behavior. The config reference documents `fail-on` and `warn-on` keys but not the warning mechanics.
+- Pages: `docs/site/configuration.md`, `docs/site/ci-integration.md`
+- Nature of update: Updated overlap warning documentation to reflect silent resolution of default overlaps. Changed admonition type from "warning" to "tip" in both pages.
 
 ## Quality Gates
 
@@ -203,11 +203,14 @@ None — clean implementation, no debugging required.
 ### Change Log
 
 - 2026-02-26: Implemented config warning cleanup — overlap warnings gated on explicit `warn-on` key presence
+- 2026-02-26: Code review fixes — updated 2 doc pages for documentation drift, added `fail_on` assertion to AC3 test
 
 ### File List
 
 - `src/docvet/config.py` — modified (added `warn_on_explicit` detection and warning gate)
-- `tests/unit/test_config.py` — modified (renamed 1 test, added 4 new tests, augmented 1 existing test)
+- `tests/unit/test_config.py` — modified (renamed 1 test, added 4 new tests, augmented 1 existing test, added `fail_on` assertion to AC3 test)
+- `docs/site/configuration.md` — modified (updated overlap warning docs for silent default resolution)
+- `docs/site/ci-integration.md` — modified (updated overlap warning admonition for silent default resolution)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — modified (story status)
 - `_bmad-output/implementation-artifacts/21-2-config-warning-cleanup.md` — modified (story file)
 
@@ -217,15 +220,22 @@ None — clean implementation, no debugging required.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Changes Requested → Fixed
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | Documentation drift — `docs/site/configuration.md:30-33` and `docs/site/ci-integration.md:129-130` describe old warning behavior where default overlaps print stderr warnings | Fixed — updated both pages to describe silent default resolution; changed admonition type from "warning" to "tip" |
+| M1 | MEDIUM | Near-duplicate test fixtures between `test_load_config_overlap_auto_subtracts_from_warn_on` (line 541) and `test_load_config_overlap_default_warn_on_no_warning` (line 639) | Dismissed — separate concerns (config result vs warning behavior); single-responsibility testing pattern |
+| L1 | LOW | AC3 test `test_load_config_both_explicit_overlap_warns_for_overlapping_only` missing `cfg.fail_on` assertion | Fixed — added `assert cfg.fail_on == ["enrichment"]` |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
