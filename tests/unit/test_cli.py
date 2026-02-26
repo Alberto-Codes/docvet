@@ -556,7 +556,9 @@ def test_griffe_when_invoked_calls_discover_and_run_griffe(mocker):
     mock_run = mocker.patch("docvet.cli._run_griffe", return_value=[])
     runner.invoke(app, ["griffe"])
     mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
-    mock_run.assert_called_once_with([Path("/fake/file.py")], ANY, verbose=False)
+    mock_run.assert_called_once_with(
+        [Path("/fake/file.py")], ANY, verbose=False, quiet=False
+    )
 
 
 def test_enrichment_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
@@ -1995,3 +1997,95 @@ def test_check_when_quiet_with_findings_exits_nonzero(mocker):
     )
     result = runner.invoke(app, ["check", "--all", "-q"])
     assert result.exit_code == 1
+
+
+# ---------------------------------------------------------------------------
+# Story 21.4, Task 5: Summary line on each subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_enrichment_subcommand_shows_vetted_summary_on_stderr():
+    result = runner.invoke(app, ["enrichment", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[enrichment]" in result.output
+
+
+def test_freshness_subcommand_shows_vetted_summary_on_stderr():
+    result = runner.invoke(app, ["freshness", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[freshness]" in result.output
+
+
+def test_coverage_subcommand_shows_vetted_summary_on_stderr():
+    result = runner.invoke(app, ["coverage", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[coverage]" in result.output
+
+
+def test_griffe_subcommand_shows_vetted_summary_on_stderr(mocker):
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["griffe", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[griffe]" in result.output
+
+
+def test_freshness_subcommand_with_findings_shows_findings_and_summary(
+    mocker, make_finding
+):
+    findings = [make_finding(rule="stale-signature", category="required")]
+    mocker.patch("docvet.cli._run_freshness", return_value=findings)
+    result = runner.invoke(app, ["freshness", "--all"])
+    summary = [line for line in result.output.splitlines() if line.startswith("Vetted")]
+    assert len(summary) == 1
+    assert "1 finding" in summary[0]
+    assert "[freshness]" in summary[0]
+
+
+# ---------------------------------------------------------------------------
+# Story 21.4, Task 6: Verbose/quiet on subcommands
+# ---------------------------------------------------------------------------
+
+
+def test_enrichment_subcommand_verbose_shows_file_count_and_summary(mocker):
+    mocker.patch(
+        "docvet.cli.discover_files",
+        return_value=[Path("/a.py"), Path("/b.py"), Path("/c.py")],
+    )
+    result = runner.invoke(app, ["enrichment", "--all", "--verbose"])
+    assert result.exit_code == 0
+    assert "Found 3 file(s) to check" in result.output
+    assert "Vetted" in result.output
+
+
+def test_enrichment_app_level_verbose_shows_file_count_and_summary(mocker):
+    mocker.patch(
+        "docvet.cli.discover_files",
+        return_value=[Path("/a.py"), Path("/b.py")],
+    )
+    result = runner.invoke(app, ["--verbose", "enrichment", "--all"])
+    assert result.exit_code == 0
+    assert "Found 2 file(s) to check" in result.output
+    assert "Vetted" in result.output
+
+
+def test_enrichment_subcommand_quiet_suppresses_summary():
+    result = runner.invoke(app, ["enrichment", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+
+
+def test_enrichment_subcommand_quiet_wins_over_verbose():
+    result = runner.invoke(app, ["enrichment", "--all", "-q", "--verbose"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+    assert "Found" not in result.output
+
+
+def test_coverage_subcommand_quiet_suppresses_summary():
+    result = runner.invoke(app, ["coverage", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output

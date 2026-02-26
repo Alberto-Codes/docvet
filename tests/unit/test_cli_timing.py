@@ -23,7 +23,9 @@ TIMING_LINE_RE = re.compile(
 SUMMARY_LINE_RE = re.compile(
     r"^Vetted \d+ files \[.+\] \u2014 .+\. \(\d+\.\d+s\)$", re.MULTILINE
 )
-SUBCOMMAND_TOTAL_RE = re.compile(r"^Completed in \d+\.\d+s$", re.MULTILINE)
+SUBCOMMAND_TOTAL_RE = re.compile(
+    r"^Vetted \d+ files \[.+\] \u2014 .+\. \(\d+\.\d+s\)$", re.MULTILINE
+)
 
 
 # ---------------------------------------------------------------------------
