@@ -166,8 +166,8 @@ development_status:
   epic-18-retrospective: optional
 
   # Epic 19: Advanced Exclude Patterns
-  epic-19: backlog
-  19-1-trailing-slash-and-double-star-pattern-support: backlog
+  epic-19: in-progress
+  19-1-trailing-slash-and-double-star-pattern-support: review
   19-2-integration-tests-and-documentation: backlog
   epic-19-retrospective: optional
 
