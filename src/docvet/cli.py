@@ -208,9 +208,9 @@ def _output_and_exit(
     """Format findings, optionally write to file, and exit with proper code.
 
     Implements the unified output pipeline: resolves no_color, optionally
-    prints verbose header to stderr, selects format, writes file or prints
-    findings to stdout, and raises ``typer.Exit`` with the appropriate
-    exit code.
+    prints verbose header to stderr (only for multi-check runs), selects
+    format, writes file or prints findings to stdout, and raises
+    ``typer.Exit`` with the appropriate exit code.
 
     Args:
         ctx: Typer context carrying global options in ``ctx.obj``.
@@ -239,8 +239,8 @@ def _output_and_exit(
     for findings in findings_by_check.values():
         all_findings.extend(findings)
 
-    # 3. Verbose header to stderr
-    if verbose and not quiet:
+    # 3. Verbose header to stderr (only for multi-check runs)
+    if verbose and not quiet and len(checks) > 1:
         sys.stderr.write(format_verbose_header(file_count, checks))
 
     # 4. Resolve format and produce formatted string

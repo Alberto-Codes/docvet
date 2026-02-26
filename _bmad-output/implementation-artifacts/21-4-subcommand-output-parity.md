@@ -1,6 +1,6 @@
 # Story 21.4: Subcommand Output Parity
 
-Status: review
+Status: done
 Branch: `feat/cli-21-4-subcommand-output-parity`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -84,9 +84,9 @@ So that the output experience is consistent regardless of which command I use.
 | 2 | `test_freshness_subcommand_shows_vetted_summary_on_stderr`, `test_freshness_subcommand_with_findings_shows_findings_and_summary` | Pass |
 | 3 | `test_coverage_subcommand_shows_vetted_summary_on_stderr` | Pass |
 | 4 | `test_griffe_subcommand_shows_vetted_summary_on_stderr` | Pass |
-| 5 | `test_enrichment_subcommand_verbose_shows_file_count_and_summary`, `test_enrichment_app_level_verbose_shows_file_count_and_summary` | Pass |
-| 6 | `test_enrichment_subcommand_quiet_suppresses_summary`, `test_enrichment_subcommand_quiet_wins_over_verbose`, `test_coverage_subcommand_quiet_suppresses_summary` | Pass |
-| 7 | Full suite: 870 tests pass, 0 regressions | Pass |
+| 5 | `test_enrichment_subcommand_verbose_shows_file_count_and_summary`, `test_enrichment_app_level_verbose_shows_file_count_and_summary`, `test_verbose_single_check_suppresses_header` | Pass |
+| 6 | `test_enrichment_subcommand_quiet_suppresses_summary`, `test_enrichment_subcommand_quiet_wins_over_verbose`, `test_coverage_subcommand_quiet_suppresses_summary`, `test_griffe_subcommand_quiet_passes_quiet_to_run_griffe` | Pass |
+| 7 | Full suite: 872 tests pass, 0 regressions | Pass |
 
 ## Dev Notes
 
@@ -289,7 +289,7 @@ Note: Individual subcommands do NOT have per-check timing lines (that's a `check
 - [x] `uv run ruff check .` — zero lint violations
 - [x] `uv run ruff format --check .` — zero format issues
 - [x] `uv run ty check` — zero type errors
-- [x] `uv run pytest` — all tests pass (870 passed), no regressions
+- [x] `uv run pytest` — all tests pass (872 passed), no regressions
 - [x] `uv run docvet check --all` — zero findings (Vetted 12 files — no findings)
 - [x] `uv run interrogate -v` — docstring coverage 100%
 
@@ -314,16 +314,24 @@ None — clean implementation with no blockers.
 - Updated griffe mock assertion to include `quiet=False` kwarg
 - Added 13 new tests covering all ACs (summary line per subcommand, verbose/quiet tiers, quiet wins)
 - All 870 tests pass, all quality gates green
+- Code review: fixed 5 findings (M1-M3, L1-L2), accepted L3 as by-design
+- M1: Added `len(checks) > 1` guard in `_output_and_exit` to suppress redundant verbose header for single-check subcommands
+- M2: Added stdout finding assertion to AC2 test
+- M3: Added `test_griffe_subcommand_quiet_passes_quiet_to_run_griffe` for unique griffe quiet wiring
+- L1: Consolidated duplicate `SUBCOMMAND_TOTAL_RE` into `SUMMARY_LINE_RE`
+- L2: Removed dead `"Completed in"` filter from `_non_timing_lines`
+- Post-review: 872 tests pass, all quality gates green
 
 ### Change Log
 
 - 2026-02-26: Implemented subcommand output parity — all subcommands now emit unified `Vetted` summary line with three-tier verbosity control
+- 2026-02-26: Code review fixes — verbose header guard for single-check runs, test gaps (AC2 stdout, griffe quiet wiring), test constant cleanup
 
 ### File List
 
-- `src/docvet/cli.py` — modified (enrichment, freshness, coverage, griffe subcommands + module docstring)
-- `tests/unit/test_cli.py` — modified (griffe mock assertion fix + 13 new tests)
-- `tests/unit/test_cli_timing.py` — modified (SUBCOMMAND_TOTAL_RE regex update)
+- `src/docvet/cli.py` — modified (enrichment, freshness, coverage, griffe subcommands + module docstring + `_output_and_exit` verbose header guard)
+- `tests/unit/test_cli.py` — modified (griffe mock assertion fix + 15 new tests + dead filter cleanup + verbose header test updates)
+- `tests/unit/test_cli_timing.py` — modified (SUBCOMMAND_TOTAL_RE consolidated into SUMMARY_LINE_RE)
 
 ## Code Review
 
@@ -331,15 +339,25 @@ None — clean implementation with no blockers.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review + party-mode consensus with Dev, QA, Architect, UX, Analyst agents)
+
 ### Outcome
+
+Approved with fixes (all applied)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | Medium | Verbose header "Checking N files" appears after "Vetted N files" for single-check subcommands — violates AC5 two-element verbose contract | Fixed: added `len(checks) > 1` guard in `_output_and_exit` + negative assertion + new `test_verbose_single_check_suppresses_header` test |
+| M2 | Medium | AC2 test does not verify findings appear on stdout | Fixed: added `assert "test.py:1:" in result.output` to `test_freshness_subcommand_with_findings_shows_findings_and_summary` |
+| M3 | Medium | No CLI test for `griffe -q` passing `quiet=True` to `_run_griffe` (unique wiring) | Fixed: added `test_griffe_subcommand_quiet_passes_quiet_to_run_griffe` |
+| L1 | Low | `SUBCOMMAND_TOTAL_RE` identical to `SUMMARY_LINE_RE` — redundant constant | Fixed: removed `SUBCOMMAND_TOTAL_RE`, replaced all usages with `SUMMARY_LINE_RE` |
+| L2 | Low | `_non_timing_lines` filters dead `"Completed in"` pattern — no command produces this anymore | Fixed: removed dead filter branch |
+| L3 | Low | Four subcommands repeat identical verbose/quiet boilerplate (~40 lines) | Accepted: by design per story instructions, typer decorator pattern doesn't lend to abstraction |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
