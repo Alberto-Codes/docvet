@@ -129,4 +129,13 @@ Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet
 !!! tip "Default `warn-on` overlap"
     The default `warn-on` list includes all four checks. If you add a check to `fail-on`, docvet silently removes it from the default `warn-on` — no warnings, no findings lost. Warnings only appear when you explicitly set both `fail-on` and `warn-on` with overlapping checks.
 
+!!! tip "Suppress summary output in scripts"
+    Use `-q` (quiet mode) when you only need the exit code and don't want summary or timing output:
+
+    ```yaml
+    - uses: Alberto-Codes/docvet@v1
+      with:
+        args: 'check --all -q'
+    ```
+
 See [Configuration](configuration.md) for the full list of options including freshness thresholds, enrichment toggles, and exclusion patterns.

@@ -89,6 +89,13 @@ Check specific files:
 docvet enrichment --files src/myapp/utils.py --files src/myapp/models.py
 ```
 
+Add `--verbose` for file count and timing, or `-q` to suppress the summary line:
+
+```bash
+docvet enrichment --all --verbose
+docvet enrichment --all -q
+```
+
 Or run enrichment as part of all checks:
 
 ```bash

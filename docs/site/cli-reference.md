@@ -1,6 +1,6 @@
 # CLI Reference
 
-docvet provides five subcommands. Global options are placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
+docvet provides five subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
 
 ```
 docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
@@ -10,7 +10,8 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `--verbose` | flag | off | Enable verbose output (shows file count and active checks) |
+| `--verbose` | flag | off | Show file count, per-check timing, and active checks |
+| `-q` / `--quiet` | flag | off | Suppress non-finding output (summary, timing, verbose details). Config warnings are always shown. |
 | `--format` | `terminal` \| `markdown` | `terminal` | Output format |
 | `--output` | `PATH` | stdout | Write report to file |
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
@@ -18,15 +19,43 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 
 When `--output` is specified without `--format`, the format defaults to `markdown`.
 
-Global options must precede the subcommand:
+`--verbose` and `--quiet` can be placed before **or** after the subcommand name (dual-registered). Both positions are equivalent:
 
 ```bash
-# Correct
-docvet --verbose --format markdown check --all
-
-# Wrong — global options after subcommand won't be recognized
-docvet check --verbose --all
+docvet --verbose check --all      # before subcommand
+docvet check --all --verbose      # after subcommand — also valid
+docvet check --all -q             # quiet after subcommand
 ```
+
+When both `--quiet` and `--verbose` are specified, `--quiet` wins.
+
+## Output Tiers
+
+docvet uses a three-tier output model. Findings always go to **stdout**; metadata goes to **stderr**.
+
+| Tier | Trigger | stderr | stdout |
+|------|---------|--------|--------|
+| Quiet | `-q` / `--quiet` | *(nothing)* | Findings only |
+| Default | *(no flags)* | Summary line | Findings only |
+| Verbose | `--verbose` | File count + per-check timing + summary | Findings only |
+
+Parse and availability warnings always appear regardless of output tier.
+
+**Default output** (zero findings):
+
+```
+Vetted 42 files [enrichment, freshness, coverage, griffe] — no findings. (0.3s)
+```
+
+**Default output** (with findings):
+
+```
+src/app/utils.py:12: missing-raises Raises section missing for ValueError [required]
+src/app/utils.py:30: stale-signature Docstring may be stale (signature changed) [required]
+Vetted 42 files [enrichment, freshness, coverage] — 2 findings (2 required, 0 recommended). (0.4s)
+```
+
+The summary line uses the brand verb "Vetted" and always includes the elapsed time and list of checks that ran. When griffe is not installed, it is omitted from the check list.
 
 ## Discovery Flags
 
@@ -144,7 +173,13 @@ docvet --format markdown --output report.md check --all
 Run only the freshness drift sweep with verbose output:
 
 ```bash
-docvet --verbose freshness --all --mode drift
+docvet freshness --all --mode drift --verbose
+```
+
+Suppress all non-finding output (useful in scripts and CI):
+
+```bash
+docvet check --all -q
 ```
 
 Check specific files:

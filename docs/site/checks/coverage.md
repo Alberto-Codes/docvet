@@ -70,6 +70,13 @@ Check specific files:
 docvet coverage --files src/myapp/helpers/utils.py --files src/myapp/plugins/auth.py
 ```
 
+Add `--verbose` for file count and timing, or `-q` to suppress the summary line:
+
+```bash
+docvet coverage --all --verbose
+docvet coverage --all -q
+```
+
 Or run coverage as part of all checks:
 
 ```bash
