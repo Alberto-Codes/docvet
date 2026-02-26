@@ -1,6 +1,6 @@
 # Story 19.1: Trailing-Slash and Double-Star Pattern Support
 
-Status: review
+Status: done
 Branch: `feat/discovery-19-1-trailing-slash-double-star-patterns`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -181,7 +181,7 @@ This story fixes these silent failures. Users who already have these patterns in
 
 ### Cognitive Complexity Consideration
 
-The `_matches_double_star` helper keeps `_is_excluded` as a clean 4-branch dispatcher (~6 CC). The helper itself is ~4 CC. Both well under the SonarQube target of 12 (with buffer for the full scanner's threshold of 15).
+Initial implementation had `_is_excluded` at CC=27 (SonarQube snippet analyzer) due to nested `if` checks inside the `for` loop's 4-branch dispatch. Code review refactored to compound `and` conditions with an extracted `_matches_trailing_slash()` helper (mirrors `_matches_double_star`), reducing `_is_excluded` to ~9 CC — well under the SonarQube threshold of 15.
 
 ### What NOT to Change
 
@@ -249,7 +249,7 @@ The `_matches_double_star` helper keeps `_is_excluded` as a clean 4-branch dispa
 - [x] `uv run ruff check .` — zero lint violations
 - [x] `uv run ruff format --check .` — zero format issues
 - [x] `uv run ty check` — zero type errors
-- [x] `uv run pytest` — 783 tests pass, no regressions
+- [x] `uv run pytest` — 785 tests pass, no regressions
 - [x] `uv run docvet check --all` — 0 required findings (1 recommended transient false positive from diff context overlap on unchanged `_run_git`, resolves on commit)
 - [x] `uv run interrogate -v` — 100% docstring coverage
 
@@ -271,16 +271,17 @@ None required — zero-debug implementation.
 - Updated module docstring to document new pattern capabilities.
 - Updated `_is_excluded` docstring to document all four dispatch branches.
 - 21 new unit tests covering all 4 ACs (7 trailing-slash, 9 double-star, 3 backward-compat regression, 2 mixed-pattern tests).
-- All 783 tests pass. All quality gates green.
+- All 785 tests pass. All quality gates green.
 
 ### Change Log
 
 - 2026-02-25: Implemented trailing-slash and double-star pattern support in `_is_excluded` with `_matches_double_star` helper. Added 21 unit tests.
+- 2026-02-25: Code review — extracted `_matches_trailing_slash()` helper, refactored `_is_excluded` to compound `or` expression (CC 27→0 SonarQube issues), added 2 boundary tests, updated docstrings with limitation notes.
 
 ### File List
 
-- `src/docvet/discovery.py` — Modified: added `_matches_double_star()` helper, extended `_is_excluded` with trailing-slash and double-star branches, updated module and function docstrings
-- `tests/unit/test_discovery.py` — Modified: added 21 new tests for trailing-slash, double-star, backward-compat, and mixed patterns
+- `src/docvet/discovery.py` — Modified: added `_matches_trailing_slash()` and `_matches_double_star()` helpers, `_is_excluded` uses compound `or` dispatch, updated module and function docstrings with limitation notes
+- `tests/unit/test_discovery.py` — Modified: added 23 new tests for trailing-slash, double-star, backward-compat, mixed patterns, and boundary cases
 
 ## Code Review
 
@@ -288,15 +289,24 @@ None required — zero-debug implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Changes Requested → Fixed → Approved
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| F1 | HIGH | `_is_excluded` CC=27 exceeds SonarQube threshold of 15 | Fixed: extracted `_matches_trailing_slash()` helper, refactored to compound `or` expression. SonarQube: 0 issues. |
+| F2 | MEDIUM | Trailing-slash + double-star pattern interaction silently fails (`build/**/`, `**/`) | Documented: added Note sections to `_is_excluded` and `_matches_trailing_slash` docstrings. Added boundary test. |
+| F3 | MEDIUM | Dev Notes CC estimate inaccurate ("~6 CC" vs actual 27) | Fixed: corrected CC section in story Dev Notes. |
+| F4 | LOW | `_matches_double_star` only collapses one `/**/` for zero-segment fallback | Documented: added Note section to `_matches_double_star` docstring. |
+| F5 | LOW | No tests for degenerate patterns (`**`, `build/**/`, `**/`) | Fixed: added 2 boundary tests documenting expected behavior. |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (785 tests, ruff, ty, interrogate, SonarQube 0 issues)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
