@@ -3,7 +3,7 @@
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
 combined ``check`` entry point. Handles config loading, file discovery
-dispatch, and report rendering.
+dispatch, progress bar rendering, and report output.
 
 Examples:
     Run all checks on changed files::
@@ -329,7 +329,12 @@ def _get_git_blame(file_path: Path, project_root: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _run_enrichment(files: list[Path], config: DocvetConfig) -> list[Finding]:
+def _run_enrichment(
+    files: list[Path],
+    config: DocvetConfig,
+    *,
+    show_progress: bool = False,
+) -> list[Finding]:
     """Run the enrichment check on discovered files.
 
     Reads each file, parses its AST, and runs all enabled enrichment
@@ -338,20 +343,24 @@ def _run_enrichment(files: list[Path], config: DocvetConfig) -> list[Finding]:
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
+        show_progress: Display a progress bar on stderr.
 
     Returns:
         All enrichment findings across all files.
     """
     all_findings: list[Finding] = []
-    for file_path in files:
-        source = file_path.read_text(encoding="utf-8")
-        try:
-            tree = ast.parse(source, filename=str(file_path))
-        except SyntaxError:
-            typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
-            continue
-        findings = check_enrichment(source, tree, config.enrichment, str(file_path))
-        all_findings.extend(findings)
+    with typer.progressbar(
+        files, label="enrichment", file=sys.stderr, hidden=not show_progress
+    ) as progress:
+        for file_path in progress:
+            source = file_path.read_text(encoding="utf-8")
+            try:
+                tree = ast.parse(source, filename=str(file_path))
+            except SyntaxError:
+                typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+                continue
+            findings = check_enrichment(source, tree, config.enrichment, str(file_path))
+            all_findings.extend(findings)
     return all_findings
 
 
@@ -360,6 +369,8 @@ def _run_freshness(
     config: DocvetConfig,
     freshness_mode: FreshnessMode = FreshnessMode.DIFF,
     discovery_mode: DiscoveryMode = DiscoveryMode.DIFF,
+    *,
+    show_progress: bool = False,
 ) -> list[Finding]:
     """Run the freshness check on discovered files.
 
@@ -373,37 +384,46 @@ def _run_freshness(
         config: Loaded docvet configuration.
         freshness_mode: The freshness check strategy (diff or drift).
         discovery_mode: Controls which git diff variant to run.
+        show_progress: Display a progress bar on stderr.
 
     Returns:
         All freshness findings across all files.
     """
     if freshness_mode is not FreshnessMode.DIFF:
         all_findings: list[Finding] = []
-        for file_path in files:
+        with typer.progressbar(
+            files, label="freshness", file=sys.stderr, hidden=not show_progress
+        ) as progress:
+            for file_path in progress:
+                source = file_path.read_text(encoding="utf-8")
+                try:
+                    tree = ast.parse(source, filename=str(file_path))
+                except SyntaxError:
+                    typer.echo(
+                        f"warning: {file_path}: failed to parse, skipping", err=True
+                    )
+                    continue
+                blame_output = _get_git_blame(file_path, config.project_root)
+                findings = check_freshness_drift(
+                    str(file_path), blame_output, tree, config.freshness
+                )
+                all_findings.extend(findings)
+        return all_findings
+
+    all_findings: list[Finding] = []
+    with typer.progressbar(
+        files, label="freshness", file=sys.stderr, hidden=not show_progress
+    ) as progress:
+        for file_path in progress:
             source = file_path.read_text(encoding="utf-8")
             try:
                 tree = ast.parse(source, filename=str(file_path))
             except SyntaxError:
                 typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
                 continue
-            blame_output = _get_git_blame(file_path, config.project_root)
-            findings = check_freshness_drift(
-                str(file_path), blame_output, tree, config.freshness
-            )
+            diff_output = _get_git_diff(file_path, config.project_root, discovery_mode)
+            findings = check_freshness_diff(str(file_path), diff_output, tree)
             all_findings.extend(findings)
-        return all_findings
-
-    all_findings: list[Finding] = []
-    for file_path in files:
-        source = file_path.read_text(encoding="utf-8")
-        try:
-            tree = ast.parse(source, filename=str(file_path))
-        except SyntaxError:
-            typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
-            continue
-        diff_output = _get_git_diff(file_path, config.project_root, discovery_mode)
-        findings = check_freshness_diff(str(file_path), diff_output, tree)
-        all_findings.extend(findings)
     return all_findings
 
 
@@ -541,6 +561,8 @@ def check(
 ) -> None:
     """Run all enabled checks.
 
+    Displays a progress bar on stderr when connected to a TTY.
+
     Args:
         ctx: Typer invocation context.
         staged: Run on staged files.
@@ -550,9 +572,12 @@ def check(
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    enrichment_findings = _run_enrichment(discovered, config)
+    show_progress = sys.stderr.isatty()
+    enrichment_findings = _run_enrichment(
+        discovered, config, show_progress=show_progress
+    )
     freshness_findings = _run_freshness(
-        discovered, config, discovery_mode=discovery_mode
+        discovered, config, discovery_mode=discovery_mode, show_progress=show_progress
     )
     coverage_findings = _run_coverage(discovered, config)
     griffe_findings = _run_griffe(
@@ -582,6 +607,8 @@ def enrichment(
 ) -> None:
     """Check for missing docstring sections.
 
+    Displays a progress bar on stderr when connected to a TTY.
+
     Args:
         ctx: Typer invocation context.
         staged: Run on staged files.
@@ -591,7 +618,7 @@ def enrichment(
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
-    findings = _run_enrichment(discovered, config)
+    findings = _run_enrichment(discovered, config, show_progress=sys.stderr.isatty())
     _output_and_exit(
         ctx, {"enrichment": findings}, config, len(discovered), ["enrichment"]
     )
@@ -609,6 +636,8 @@ def freshness(
 ) -> None:
     """Detect stale docstrings.
 
+    Displays a progress bar on stderr when connected to a TTY.
+
     Args:
         ctx: Typer invocation context.
         staged: Run on staged files.
@@ -620,7 +649,11 @@ def freshness(
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
     findings = _run_freshness(
-        discovered, config, freshness_mode=mode, discovery_mode=discovery_mode
+        discovered,
+        config,
+        freshness_mode=mode,
+        discovery_mode=discovery_mode,
+        show_progress=sys.stderr.isatty(),
     )
     _output_and_exit(
         ctx, {"freshness": findings}, config, len(discovered), ["freshness"]
