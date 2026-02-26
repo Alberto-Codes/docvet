@@ -1,4 +1,4 @@
-# generated: 2026-02-26T10:00
+# generated: 2026-02-26
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-26T10:00
+generated: 2026-02-26
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -176,3 +176,12 @@ development_status:
   20-1-progress-bar-for-file-processing: done
   20-2-per-check-timing-and-total-execution-time: done
   epic-20-retrospective: optional
+
+  # Epic 21: CLI Output & User Experience
+  epic-21: in-progress
+  21-1-default-output-overhaul: review
+  21-2-config-warning-cleanup: backlog
+  21-3-verbose-and-quiet-flag-redesign: backlog
+  21-4-subcommand-output-parity: backlog
+  21-5-test-migration-and-documentation: backlog
+  epic-21-retrospective: optional
