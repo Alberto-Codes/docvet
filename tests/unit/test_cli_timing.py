@@ -70,21 +70,6 @@ def _mock_perf_counter(mocker):
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _timing_lines(output):
-    """Extract per-check timing lines from output."""
-    return TIMING_LINE_RE.findall(output)
-
-
-def _total_lines(output):
-    """Extract total time lines from output."""
-    return TOTAL_LINE_RE.findall(output)
-
-
-# ---------------------------------------------------------------------------
 # Task 4.1: check() writes per-check timing to stderr when verbose
 # ---------------------------------------------------------------------------
 
