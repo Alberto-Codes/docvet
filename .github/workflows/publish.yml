@@ -64,6 +64,10 @@ jobs:
     needs: [build-and-publish]
     timeout-minutes: 5
     steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Extract version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
@@ -72,7 +76,7 @@ jobs:
         run: sleep 60
 
       - name: Install docvet from PyPI
-        run: pip install --no-cache-dir docvet==${{ steps.version.outputs.VERSION }}
+        run: python -m pip install --no-cache-dir docvet==${{ steps.version.outputs.VERSION }}
 
       - name: Verify docvet --version
         run: docvet --version
