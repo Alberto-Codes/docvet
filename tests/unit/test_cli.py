@@ -981,6 +981,43 @@ def test_check_subcommand_passes_discovery_mode_to_run_freshness(mocker):
     )
 
 
+def test_check_subcommand_passes_show_progress_true_when_tty(mocker):
+    mock_sys = mocker.patch("docvet.cli.sys")
+    mock_sys.stderr.isatty.return_value = True
+    mock_sys.stdout.isatty.return_value = True
+    mock_enrichment = mocker.patch("docvet.cli._run_enrichment", return_value=[])
+    mock_freshness = mocker.patch("docvet.cli._run_freshness", return_value=[])
+    runner.invoke(app, ["check"])
+    mock_enrichment.assert_called_once_with(ANY, ANY, show_progress=True)
+    mock_freshness.assert_called_once_with(
+        ANY, ANY, discovery_mode=DiscoveryMode.DIFF, show_progress=True
+    )
+
+
+def test_enrichment_subcommand_passes_show_progress_true_when_tty(mocker):
+    mock_sys = mocker.patch("docvet.cli.sys")
+    mock_sys.stderr.isatty.return_value = True
+    mock_sys.stdout.isatty.return_value = True
+    mock_enrichment = mocker.patch("docvet.cli._run_enrichment", return_value=[])
+    runner.invoke(app, ["enrichment"])
+    mock_enrichment.assert_called_once_with(ANY, ANY, show_progress=True)
+
+
+def test_freshness_subcommand_passes_show_progress_true_when_tty(mocker):
+    mock_sys = mocker.patch("docvet.cli.sys")
+    mock_sys.stderr.isatty.return_value = True
+    mock_sys.stdout.isatty.return_value = True
+    mock_freshness = mocker.patch("docvet.cli._run_freshness", return_value=[])
+    runner.invoke(app, ["freshness"])
+    mock_freshness.assert_called_once_with(
+        ANY,
+        ANY,
+        freshness_mode=FreshnessMode.DIFF,
+        discovery_mode=DiscoveryMode.DIFF,
+        show_progress=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # _run_coverage behavior tests
 # ---------------------------------------------------------------------------

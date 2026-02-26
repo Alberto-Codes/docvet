@@ -1,6 +1,6 @@
 # Story 20.1: Progress Bar for File Processing
 
-Status: review
+Status: done
 Branch: `feat/cli-20-1-progress-bar-file-processing`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -229,7 +229,7 @@ Use `pytest-mock` to mock `typer.progressbar` as a context manager. The key asse
 - [x] `uv run ruff check .` — zero lint violations
 - [x] `uv run ruff format --check .` — zero format issues
 - [x] `uv run ty check` — zero type errors
-- [x] `uv run pytest` — all tests pass (806 passed), no regressions
+- [x] `uv run pytest` — all tests pass (812 passed), no regressions
 - [x] `uv run docvet check --all` — pre-commit stale-body artifacts only (4 recommended, 0 required); will resolve post-commit when diff against HEAD is empty
 - [x] `uv run interrogate -v` — docstring coverage 100% (threshold 95%)
 
@@ -251,11 +251,12 @@ None — clean implementation, no debugging required.
 - Created 11 new unit tests in `tests/unit/test_cli_progress.py` covering both enrichment and freshness (diff + drift modes)
 - Updated 4 existing tests in `tests/unit/test_cli.py` to expect the new `show_progress=False` keyword argument
 - No new runtime dependencies — uses `typer.progressbar` (Click's `click.progressbar`)
-- All 806 tests pass, zero regressions
+- All 812 tests pass, zero regressions (6 added in code review)
 
 ### Change Log
 
 - 2026-02-26: Story implemented — progress bar for file processing in enrichment and freshness checks
+- 2026-02-26: Code review — 5 findings fixed (2 HIGH, 3 MEDIUM), 2 LOW no-action. Added 6 tests, renamed fixture.
 
 ### File List
 
@@ -269,15 +270,26 @@ None — clean implementation, no debugging required.
 
 ### Reviewer
 
+Adversarial code review (BMAD workflow) — 2026-02-26
+
 ### Outcome
+
+Changes Requested → Fixed in-place
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | No test for `show_progress=True` TTY path in CLI subcommand wiring | Fixed — added 3 tests with `mocker.patch("docvet.cli.sys")` for check, enrichment, freshness |
+| H2 | HIGH | `enrichment()` subcommand has no test for `show_progress` passthrough | Fixed — merged into H1 enrichment TTY test |
+| M1 | MEDIUM | Fixture `_mock_progressbar` violates naming convention (underscore prefix on non-autouse) | Fixed — renamed to `mock_progressbar` |
+| M2 | MEDIUM | Missing drift-mode findings-identical test | Fixed — added `test_freshness_drift_findings_identical_with_and_without_progress` |
+| M3 | MEDIUM | Missing empty-files boundary tests | Fixed — added `test_enrichment_empty_files_returns_empty_list` and `test_freshness_empty_files_returns_empty_list` |
+| L1 | LOW | Inconsistent `show_progress` computation style between subcommands | No action — appropriate scaling (inline for single consumer, variable for multiple) |
+| L2 | LOW | Redundant stderr-targeting tests | No action — test name documentation value outweighs near-zero redundancy cost |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (812 tests, ruff clean, format clean)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
