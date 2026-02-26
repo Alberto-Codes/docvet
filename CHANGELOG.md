@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.5.0](https://github.com/Alberto-Codes/docvet/compare/v1.4.0...v1.5.0) (2026-02-26)
+
+
+### Features
+
+* **cli:** add --quiet flag and dual-register --verbose on check subcommand ([#144](https://github.com/Alberto-Codes/docvet/issues/144)) ([206ab22](https://github.com/Alberto-Codes/docvet/commit/206ab22b67d16613bf3773ea3fd5734ef2ffb23c))
+* **cli:** add --verbose and --quiet flags to individual subcommands ([#145](https://github.com/Alberto-Codes/docvet/issues/145)) ([ba1bbd5](https://github.com/Alberto-Codes/docvet/commit/ba1bbd55233022dfd58ad74a0d43fa41cf28b2a6))
+* **cli:** replace Completed-in with Vetted summary line ([#141](https://github.com/Alberto-Codes/docvet/issues/141)) ([18db009](https://github.com/Alberto-Codes/docvet/commit/18db0098233d30daa9c29c23408f30b61e6c97a4))
+* **cli:** replace Completed-in with Vetted summary line on check ([18db009](https://github.com/Alberto-Codes/docvet/commit/18db0098233d30daa9c29c23408f30b61e6c97a4))
+* **config:** suppress overlap warnings for default warn-on values ([#143](https://github.com/Alberto-Codes/docvet/issues/143)) ([384a44a](https://github.com/Alberto-Codes/docvet/commit/384a44a546c10870357f16ccdfbd31ab4c9a91ba))
+
+
+### Bug Fixes
+
+* **cli:** correct --quiet flag docs and harden griffe quiet test ([#146](https://github.com/Alberto-Codes/docvet/issues/146)) ([bf1ca08](https://github.com/Alberto-Codes/docvet/commit/bf1ca088733ad1b2068f7ad7f8c9220754870508))
+* **cli:** resolve verbose/quiet dual-resolution ordering in check ([206ab22](https://github.com/Alberto-Codes/docvet/commit/206ab22b67d16613bf3773ea3fd5734ef2ffb23c))
+* **cli:** suppress verbose header for single-check subcommands ([ba1bbd5](https://github.com/Alberto-Codes/docvet/commit/ba1bbd55233022dfd58ad74a0d43fa41cf28b2a6))
+* **config:** update overlap warning docs and strengthen AC3 test ([384a44a](https://github.com/Alberto-Codes/docvet/commit/384a44a546c10870357f16ccdfbd31ab4c9a91ba))
+
 ## [1.4.0](https://github.com/Alberto-Codes/docvet/compare/v1.3.0...v1.4.0) (2026-02-26)
 
 
