@@ -1,6 +1,6 @@
 # Story 18.1: Rule Page Breadcrumb Back-Links
 
-Status: review
+Status: done
 Branch: `feat/docs-18-1-rule-page-back-links`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -45,9 +45,9 @@ so that I can navigate from a specific rule to the broader check context without
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| 1 | `mkdocs build --strict` + grep verification of "Part of: {Check} Check" link text on rendered HTML for all 4 check types (enrichment, freshness, coverage, griffe) | PASS |
+| 1 | Verified via `mkdocs build --strict` + manual grep of rendered HTML for "Part of: {Check} Check" across all 4 check types. No automated unit test — no test harness for mkdocs macros exists. | PASS (build gate) |
 | 2 | `mkdocs build --strict` exit code 0, zero warnings | PASS |
-| 3 | grep count of "Part of:" across all 19 rule page HTML outputs = 19; no individual rule .md files modified | PASS |
+| 3 | Manual grep count of "Part of:" across all 19 rule page HTML outputs = 19; no individual rule `.md` files modified. No automated regression test. | PASS (build gate) |
 
 ## Dev Notes
 
@@ -167,7 +167,7 @@ No debug issues encountered. Single-file change, clean implementation.
 
 ### File List
 
-- `docs/main.py` — Modified: added back-link generation (3 new lines + 1 changed line in return string)
+- `docs/main.py` — Modified (27 insertions / 4 deletions): back-link generation in `rule_header()` + docstring enrichment (Examples, See Also on module, expanded summaries on `define_env` and `rule_header`)
 
 ## Code Review
 
@@ -175,15 +175,25 @@ No debug issues encountered. Single-file change, clean implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approved with fixes applied
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | File List description understated scope — claimed "3+1 lines" but actual diff was 27 insertions / 4 deletions including docstring enrichment | Fixed: updated File List to reflect full scope |
+| M2 | MEDIUM | AC-to-Test mapping claimed "PASS" but verification was manual grep, not automated tests — no test harness for mkdocs macros exists | Fixed: updated AC table to be transparent about build-gate-only verification |
+| L1 | LOW | Redundant f-string `f"{back_link}"` on line 65 — equivalent to just `back_link` | Fixed: changed to `back_link +` |
+| L2 | LOW | No defensive handling for missing `check` key in rules.yml entries | Accepted: controlled data file, `mkdocs build --strict` catches at dev time |
+| L3 | LOW | Check name duplicated in back-link and metadata table | Accepted: breadcrumb (navigation) vs table row (reference) serve different purposes |
+| L4 | LOW | `capitalize()` fragile for hypothetical compound check names | Accepted: YAGNI — all current check names are single words |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
