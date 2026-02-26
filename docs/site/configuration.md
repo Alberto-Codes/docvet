@@ -41,7 +41,49 @@ Use `extend-exclude` to add patterns without replacing the defaults. This is use
 extend-exclude = ["vendor", "generated"]
 ```
 
-The final exclude list becomes `["tests", "scripts", "vendor", "generated"]`. If you also set `exclude`, `extend-exclude` patterns are appended to your custom list instead of the defaults. Patterns follow the same matching rules as `exclude` — patterns without `/` match against individual path components, patterns with `/` match the full relative path.
+The final exclude list becomes `["tests", "scripts", "vendor", "generated"]`. If you also set `exclude`, `extend-exclude` patterns are appended to your custom list instead of the defaults. See [Exclude Pattern Syntax](#exclude-pattern-syntax) below for the full matching rules.
+
+### Exclude Pattern Syntax
+
+docvet supports four pattern types in `exclude` and `extend-exclude`. Patterns are checked in the order listed below — the first match wins.
+
+| Type | Example | Matches | Does Not Match |
+|------|---------|---------|----------------|
+| **Simple glob** | `tests` | `tests/test_foo.py`, `src/tests/conftest.py` | `test_utils.py` |
+| **Path-level** | `scripts/gen_*.py` | `scripts/gen_schema.py` | `tools/gen_schema.py` |
+| **Trailing-slash** | `build/` | `build/output.py`, `build/sub/mod.py` | `rebuild/main.py` |
+| **Root-anchored trailing-slash** | `vendor/legacy/` | `vendor/legacy/old.py` | `src/vendor/legacy/old.py` |
+| **Double-star** | `**/test_*.py` | `test_foo.py`, `src/tests/test_bar.py` | `test_utils.py` (no `test_` prefix) |
+| **Middle double-star** | `src/**/generated.py` | `src/generated.py`, `src/api/v2/generated.py` | `generated.py` (no `src/` prefix) |
+
+**Simple globs** (no `/` in the pattern) match against individual path components. A pattern like `tests` excludes any file whose path contains a `tests` directory.
+
+**Path-level patterns** (contain `/` but no trailing `/` or `**`) match against the full relative path using `fnmatch`.
+
+**Trailing-slash patterns** end with `/` and match directories:
+
+- A **simple name** like `build/` matches a directory named `build` at any depth in the tree.
+- A **path** like `vendor/legacy/` is root-anchored — it only matches `vendor/legacy/` at the project root, not `src/vendor/legacy/`.
+
+**Double-star patterns** contain `**` and match across directory boundaries:
+
+- A leading `**/test_*.py` matches `test_` files at any depth, including the project root.
+- A middle `src/**/generated.py` matches `generated.py` anywhere under `src/`, including directly inside `src/`.
+
+!!! tip "Pattern examples in TOML"
+    ```toml
+    [tool.docvet]
+    exclude = [
+        "tests",              # simple glob — any 'tests' directory
+        "build/",             # trailing-slash — any 'build' directory
+        "**/conftest.py",     # double-star — conftest.py at any depth
+        "scripts/gen_*.py",   # path-level — specific path match
+    ]
+    ```
+
+!!! warning "Limitations"
+    - **No negation patterns**: You cannot use `!` to re-include previously excluded paths.
+    - **No combined trailing-slash + double-star**: Patterns like `build/**/` route to the trailing-slash branch and will not match. Use `build/` instead for recursive directory exclusion.
 
 ### Example
 

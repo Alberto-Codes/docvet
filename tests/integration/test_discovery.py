@@ -383,3 +383,231 @@ def test_all_mode_excludes_path_level_pattern(git_repo):
     assert "app.py" in names
     assert "new.py" in names
     assert "old.py" not in names
+
+
+# ---------------------------------------------------------------------------
+# Trailing-slash pattern integration
+# ---------------------------------------------------------------------------
+
+
+def test_all_mode_trailing_slash_excludes_directory(git_repo):
+    build_dir = git_repo / "build"
+    build_dir.mkdir()
+    (build_dir / "output.py").write_text("# build output")
+    rebuild_dir = git_repo / "rebuild"
+    rebuild_dir.mkdir()
+    (rebuild_dir / "main.py").write_text("# rebuild main")
+    (git_repo / "app.py").write_text("# app")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["build/"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "main.py" in names
+    assert "output.py" not in names
+
+
+def test_all_mode_path_trailing_slash_excludes_rooted_only(git_repo):
+    legacy_dir = git_repo / "vendor" / "legacy"
+    legacy_dir.mkdir(parents=True)
+    (legacy_dir / "old.py").write_text("# legacy code")
+    nested_dir = git_repo / "src" / "vendor" / "legacy"
+    nested_dir.mkdir(parents=True)
+    (nested_dir / "nested.py").write_text("# nested legacy")
+    (git_repo / "app.py").write_text("# app")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["vendor/legacy/"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "old.py" not in names
+    assert "nested.py" in names
+
+
+def test_diff_mode_trailing_slash_excludes_changed_files(git_repo):
+    build_dir = git_repo / "build"
+    build_dir.mkdir()
+    (build_dir / "output.py").write_text("# v1")
+    (git_repo / "app.py").write_text("# v1")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+    (build_dir / "output.py").write_text("# v2")
+    (git_repo / "app.py").write_text("# v2")
+
+    config = _make_config(git_repo, exclude=["build/"])
+    result = discover_files(config, DiscoveryMode.DIFF)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "output.py" not in names
+    assert len(result) == 1
+
+
+def test_staged_mode_trailing_slash_excludes_staged_files(git_repo):
+    build_dir = git_repo / "build"
+    build_dir.mkdir()
+    (build_dir / "output.py").write_text("# v1")
+    (git_repo / "app.py").write_text("# v1")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+    (build_dir / "output.py").write_text("# v2")
+    (git_repo / "app.py").write_text("# v2")
+    _git(["add", "."], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["build/"])
+    result = discover_files(config, DiscoveryMode.STAGED)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "output.py" not in names
+    assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# Double-star pattern integration
+# ---------------------------------------------------------------------------
+
+
+def test_all_mode_double_star_excludes_test_files_at_all_depths(git_repo):
+    (git_repo / "test_root.py").write_text("# root test")
+    sub_dir = git_repo / "src" / "pkg"
+    sub_dir.mkdir(parents=True)
+    (sub_dir / "test_deep.py").write_text("# deep test")
+    (sub_dir / "core.py").write_text("# core")
+    (git_repo / "app.py").write_text("# app")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["**/test_*.py"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "core.py" in names
+    assert "test_root.py" not in names
+    assert "test_deep.py" not in names
+
+
+def test_all_mode_middle_double_star_excludes_at_variable_depth(git_repo):
+    shallow_dir = git_repo / "src" / "models"
+    shallow_dir.mkdir(parents=True)
+    (shallow_dir / "generated.py").write_text("# shallow generated")
+    deep_dir = git_repo / "src" / "api" / "v2" / "models"
+    deep_dir.mkdir(parents=True)
+    (deep_dir / "generated.py").write_text("# deep generated")
+    (git_repo / "src" / "main.py").write_text("# main")
+    (git_repo / "generated.py").write_text("# root generated, no src prefix")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["src/**/generated.py"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "main.py" in names
+    # Root-level generated.py does NOT match src/**/generated.py
+    assert any(p.name == "generated.py" for p in result)
+    assert all(
+        "src" not in str(p.relative_to(git_repo))
+        for p in result
+        if p.name == "generated.py"
+    )
+
+
+def test_diff_mode_double_star_excludes_changed_files(git_repo):
+    tests_dir = git_repo / "src" / "tests"
+    tests_dir.mkdir(parents=True)
+    (tests_dir / "test_foo.py").write_text("# v1")
+    (git_repo / "test_bar.py").write_text("# v1")
+    (git_repo / "app.py").write_text("# v1")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+    (tests_dir / "test_foo.py").write_text("# v2")
+    (git_repo / "test_bar.py").write_text("# v2")
+    (git_repo / "app.py").write_text("# v2")
+
+    config = _make_config(git_repo, exclude=["**/test_*.py"])
+    result = discover_files(config, DiscoveryMode.DIFF)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "test_foo.py" not in names
+    assert "test_bar.py" not in names
+    assert len(result) == 1
+
+
+def test_staged_mode_double_star_excludes_staged_files(git_repo):
+    tests_dir = git_repo / "src" / "tests"
+    tests_dir.mkdir(parents=True)
+    (tests_dir / "test_foo.py").write_text("# v1")
+    (git_repo / "test_bar.py").write_text("# v1")
+    (git_repo / "app.py").write_text("# v1")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+    (tests_dir / "test_foo.py").write_text("# v2")
+    (git_repo / "test_bar.py").write_text("# v2")
+    (git_repo / "app.py").write_text("# v2")
+    _git(["add", "."], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["**/test_*.py"])
+    result = discover_files(config, DiscoveryMode.STAGED)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "test_foo.py" not in names
+    assert "test_bar.py" not in names
+    assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# Mixed pattern integration (simple + trailing-slash + double-star)
+# ---------------------------------------------------------------------------
+
+
+def test_all_mode_mixed_patterns_exclude_correctly(git_repo):
+    scripts_dir = git_repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "deploy.py").write_text("# deploy")
+    build_dir = git_repo / "build"
+    build_dir.mkdir()
+    (build_dir / "output.py").write_text("# build output")
+    tests_dir = git_repo / "src" / "tests"
+    tests_dir.mkdir(parents=True)
+    (tests_dir / "conftest.py").write_text("# conftest")
+    (git_repo / "conftest.py").write_text("# root conftest")
+    (git_repo / "app.py").write_text("# app")
+    (git_repo / "src" / "core.py").write_text("# core")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["scripts", "build/", "**/conftest.py"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "core.py" in names
+    assert "deploy.py" not in names
+    assert "output.py" not in names
+    assert "conftest.py" not in names
+    assert len(result) == 2
+
+
+def test_all_mode_mixed_patterns_non_excluded_files_discovered(git_repo):
+    scripts_dir = git_repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "deploy.py").write_text("# deploy")
+    build_dir = git_repo / "build"
+    build_dir.mkdir()
+    (build_dir / "output.py").write_text("# build output")
+    (git_repo / "app.py").write_text("# app")
+    (git_repo / "utils.py").write_text("# utils")
+    src_dir = git_repo / "src"
+    src_dir.mkdir(exist_ok=True)
+    (src_dir / "main.py").write_text("# main")
+    _git(["add", "."], cwd=git_repo)
+    _git(["commit", "-m", "init"], cwd=git_repo)
+
+    config = _make_config(git_repo, exclude=["scripts", "build/", "**/conftest.py"])
+    result = discover_files(config, DiscoveryMode.ALL)
+    names = [p.name for p in result]
+    assert "app.py" in names
+    assert "utils.py" in names
+    assert "main.py" in names
+    assert len(result) == 3
