@@ -311,7 +311,8 @@ class TestSummaryAlwaysOnStderr:
     def test_summary_present_with_format_markdown(self, cli_runner):
         result = cli_runner.invoke(app, ["--format", "markdown", "check", "--all"])
 
-        matches = SUMMARY_LINE_RE.findall(result.output)
+        assert "Vetted" not in result.stdout
+        matches = SUMMARY_LINE_RE.findall(result.stderr)
         assert len(matches) == 1
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
@@ -319,5 +320,6 @@ class TestSummaryAlwaysOnStderr:
         out = tmp_path / "report.md"
         result = cli_runner.invoke(app, ["--output", str(out), "check", "--all"])
 
-        matches = SUMMARY_LINE_RE.findall(result.output)
+        assert "Vetted" not in result.stdout
+        matches = SUMMARY_LINE_RE.findall(result.stderr)
         assert len(matches) == 1

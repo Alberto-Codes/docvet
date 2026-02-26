@@ -563,7 +563,7 @@ def check(
 
     Displays a progress bar on stderr when connected to a TTY.
     Prints per-check timing to stderr when ``--verbose`` is set,
-    and a summary line unconditionally.
+    and a summary line when files are found.
 
     Args:
         ctx: Typer invocation context.

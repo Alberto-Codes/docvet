@@ -372,8 +372,8 @@ def test_check_when_invoked_with_no_flags_uses_diff_mode():
     # Negative assertion: placeholder until real discovery produces positive
     # evidence of DIFF mode. Verifies no other mode keywords leak into output.
     result = runner.invoke(app, ["check"])
-    non_summary = _non_timing_lines(result.output.lower())
-    output = "\n".join(non_summary)
+    non_summary = _non_timing_lines(result.output)
+    output = "\n".join(line.lower() for line in non_summary)
     assert "staged" not in output
     assert "all" not in output
 
