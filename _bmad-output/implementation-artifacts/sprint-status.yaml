@@ -168,7 +168,7 @@ development_status:
   # Epic 19: Advanced Exclude Patterns
   epic-19: in-progress
   19-1-trailing-slash-and-double-star-pattern-support: done
-  19-2-integration-tests-and-documentation: backlog
+  19-2-integration-tests-and-documentation: review
   epic-19-retrospective: optional
 
   # Epic 20: CLI Progress & Timing
