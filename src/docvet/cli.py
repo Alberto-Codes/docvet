@@ -593,8 +593,9 @@ def check(
     """Run all enabled checks.
 
     Displays a progress bar on stderr when connected to a TTY.
-    Prints per-check timing to stderr when ``--verbose`` is set,
-    and a summary line when files are found.
+    Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
+    stderr output, default shows the summary line, ``--verbose`` adds
+    per-check timing and file discovery count.
 
     Args:
         ctx: Typer invocation context.
