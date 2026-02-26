@@ -303,6 +303,17 @@
     <template-output file="{default_output_file}">
     story_completion_status</template-output>
 
+    <!-- Documentation Impact Assessment -->
+    <action>Identify documentation pages affected by this story's changes:
+      - Configuration reference (docs/site/configuration.md) if new config keys or behavior changes
+      - Check pages (docs/site/checks/*.md) if check behavior changes
+      - Rule pages (docs/rules/*.md) if new rules or rule behavior changes
+      - API reference if public API surface changes
+      - README if user-facing workflow changes
+      - Set to "None" if story is purely internal with no user-facing impact
+    </action>
+    <action>Fill the Documentation Impact section in Dev Notes with affected pages and nature of updates needed</action>
+
     <!-- CRITICAL: Set status to ready-for-dev -->
     <action>Set story Status to: "ready-for-dev"</action>
     <!-- Populate Branch field for dev agent convenience -->

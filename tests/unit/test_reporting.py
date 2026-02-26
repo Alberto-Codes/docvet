@@ -10,6 +10,7 @@ from docvet.config import DocvetConfig
 from docvet.reporting import (
     determine_exit_code,
     format_markdown,
+    format_summary,
     format_terminal,
     format_verbose_header,
     write_report,
@@ -366,3 +367,113 @@ class TestDetermineExitCode:
         findings_by_check: dict[str, list[Finding]] = {}
         config = DocvetConfig(fail_on=["enrichment", "freshness"])
         assert determine_exit_code(findings_by_check, config) == 0
+
+
+# ---------------------------------------------------------------------------
+# format_summary tests (Story 21.1, Task 1)
+# ---------------------------------------------------------------------------
+
+
+class TestFormatSummary:
+    """Tests for format_summary."""
+
+    def test_zero_findings(self):
+        """Zero findings produces 'no findings' summary with em dash."""
+        result = format_summary(
+            file_count=12,
+            checks=["enrichment", "freshness", "coverage"],
+            findings=[],
+            elapsed=1.5,
+        )
+        assert result == (
+            "Vetted 12 files [enrichment, freshness, coverage]"
+            " \u2014 no findings. (1.5s)\n"
+        )
+
+    def test_mixed_findings(self, make_finding):
+        """Mixed required/recommended findings include count breakdown."""
+        findings = [
+            make_finding(category="required"),
+            make_finding(line=2, category="required"),
+            make_finding(line=3, category="recommended"),
+        ]
+        result = format_summary(
+            file_count=5,
+            checks=["enrichment", "freshness"],
+            findings=findings,
+            elapsed=2.3,
+        )
+        assert result == (
+            "Vetted 5 files [enrichment, freshness]"
+            " \u2014 3 findings (2 required, 1 recommended). (2.3s)\n"
+        )
+
+    def test_zero_files(self):
+        """Zero files still produces valid summary."""
+        result = format_summary(
+            file_count=0,
+            checks=["enrichment", "freshness", "coverage"],
+            findings=[],
+            elapsed=0.0,
+        )
+        assert result == (
+            "Vetted 0 files [enrichment, freshness, coverage]"
+            " \u2014 no findings. (0.0s)\n"
+        )
+
+    def test_single_check(self):
+        """Single check in the list."""
+        result = format_summary(
+            file_count=1,
+            checks=["enrichment"],
+            findings=[],
+            elapsed=0.1,
+        )
+        assert result == "Vetted 1 files [enrichment] \u2014 no findings. (0.1s)\n"
+
+    def test_all_checks(self, make_finding):
+        """All four checks listed."""
+        findings = [make_finding(category="recommended")]
+        result = format_summary(
+            file_count=42,
+            checks=["enrichment", "freshness", "coverage", "griffe"],
+            findings=findings,
+            elapsed=3.7,
+        )
+        assert result == (
+            "Vetted 42 files [enrichment, freshness, coverage, griffe]"
+            " \u2014 1 findings (0 required, 1 recommended). (3.7s)\n"
+        )
+
+    def test_em_dash_character(self):
+        """Uses U+2014 em dash, not hyphen or en dash."""
+        result = format_summary(
+            file_count=1, checks=["enrichment"], findings=[], elapsed=0.1
+        )
+        assert "\u2014" in result
+        # Ensure no plain hyphen between ']' and 'no'
+        assert "] -" not in result
+        assert "] \u2013" not in result  # no en dash either
+
+    def test_trailing_newline(self):
+        """Output ends with exactly one trailing newline."""
+        result = format_summary(
+            file_count=1, checks=["enrichment"], findings=[], elapsed=0.1
+        )
+        assert result.endswith("\n")
+        assert not result.endswith("\n\n")
+
+    def test_elapsed_one_decimal(self):
+        """Elapsed time is formatted to one decimal place."""
+        result = format_summary(
+            file_count=1, checks=["enrichment"], findings=[], elapsed=1.456
+        )
+        assert "(1.5s)" in result
+
+    def test_only_required_findings(self, make_finding):
+        """All-required findings show 0 recommended."""
+        findings = [make_finding(category="required")]
+        result = format_summary(
+            file_count=1, checks=["enrichment"], findings=findings, elapsed=0.1
+        )
+        assert "1 findings (1 required, 0 recommended)" in result

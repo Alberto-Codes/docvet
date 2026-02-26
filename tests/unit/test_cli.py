@@ -32,8 +32,12 @@ def _strip_ansi(text: str) -> str:
 
 
 def _non_timing_lines(output: str) -> list[str]:
-    """Return output lines excluding timing lines (``Completed in ...``)."""
-    return [line for line in output.splitlines() if not line.startswith("Completed in")]
+    """Return output lines excluding timing/summary lines."""
+    return [
+        line
+        for line in output.splitlines()
+        if not line.startswith("Completed in") and not line.startswith("Vetted ")
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -314,7 +318,6 @@ def test_check_when_invoked_with_verbose_prints_verbose_header():
     result = runner.invoke(app, ["--verbose", "check"])
     assert result.exit_code == 0
     assert "Checking" in result.output
-    assert "No findings." in result.output
 
 
 def test_check_when_invoked_with_format_markdown_exits_successfully():
@@ -369,10 +372,10 @@ def test_check_when_invoked_with_no_flags_uses_diff_mode():
     # Negative assertion: placeholder until real discovery produces positive
     # evidence of DIFF mode. Verifies no other mode keywords leak into output.
     result = runner.invoke(app, ["check"])
-    output = result.output.lower()
+    non_summary = _non_timing_lines(result.output)
+    output = "\n".join(line.lower() for line in non_summary)
     assert "staged" not in output
     assert "all" not in output
-    assert "files" not in output
 
 
 # ---------------------------------------------------------------------------
@@ -1652,16 +1655,14 @@ class TestOutputAndExit:
         self._call(ctx, {"enrichment": []}, DocvetConfig(), 1, ["enrichment"])
         self.mock_write_report.assert_not_called()
 
-    def test_output_verbose_zero_findings_no_file_header_stderr_no_findings_stdout(
-        self, capsys
-    ):
+    def test_output_verbose_zero_findings_no_file_header_stderr_no_stdout(self, capsys):
         ctx = self._make_ctx(verbose=True, output="report.md")
         self._call(ctx, {"enrichment": []}, DocvetConfig(), 1, ["enrichment"])
         self.mock_write_report.assert_not_called()
         captured = capsys.readouterr()
         assert "Checking 1 files [enrichment]" in captured.err
         assert "Checking 1 files [enrichment]" not in captured.out
-        assert "No findings.\n" in captured.out
+        assert captured.out == ""
 
     def test_verbose_with_findings_prints_header_to_stderr(self, capsys, make_finding):
         ctx = self._make_ctx(verbose=True)
@@ -1673,7 +1674,7 @@ class TestOutputAndExit:
         assert "Checking 1 files [enrichment]" not in captured.out
         assert "terminal output" in captured.out
 
-    def test_verbose_with_zero_findings_prints_header_stderr_no_findings_stdout(
+    def test_verbose_with_zero_findings_prints_header_stderr_nothing_stdout(
         self, capsys
     ):
         ctx = self._make_ctx(verbose=True)
@@ -1681,7 +1682,7 @@ class TestOutputAndExit:
         captured = capsys.readouterr()
         assert "Checking 1 files [enrichment]" in captured.err
         assert "Checking 1 files [enrichment]" not in captured.out
-        assert "No findings.\n" in captured.out
+        assert captured.out == ""
 
     def test_exit_code_1_when_fail_on_check_has_findings(self, make_finding):
         self.mock_determine_exit_code.return_value = 1

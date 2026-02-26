@@ -44,6 +44,13 @@ so that {{benefit}}.
 
 - Cite all technical details with source paths and sections, e.g. [Source: docs/<file>.md#Section]
 
+### Documentation Impact
+
+<!-- SM: List documentation pages that may need updating based on this story's changes. Use "None" if no docs are affected. -->
+
+- Pages: [e.g., docs/site/configuration.md, docs/site/checks/enrichment.md, or "None"]
+- Nature of update: [e.g., "Add new config key to reference table", "Update CLI examples", or "N/A"]
+
 ## Quality Gates
 
 <!-- Dev agent MUST run all gates before marking story done. All gates are mandatory — no exceptions. -->

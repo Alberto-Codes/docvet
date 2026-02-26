@@ -1,8 +1,9 @@
-"""Markdown and terminal report generation for docstring findings.
+"""Markdown, terminal, and summary report generation for docstring findings.
 
-Renders check findings as terminal output (default) or markdown reports.
-Groups findings by file, calculates summary statistics, and determines
-the CLI exit code based on finding severity.
+Renders check findings as terminal output (default) or markdown reports,
+produces an unconditional summary line for stderr, groups findings by
+file, calculates summary statistics, and determines the CLI exit code
+based on finding severity.
 
 Examples:
     Generate a terminal report via the CLI::
@@ -93,7 +94,7 @@ def format_terminal(findings: list[Finding], *, no_color: bool = False) -> str:
 
 
 def format_markdown(findings: list[Finding]) -> str:
-    """Format findings as a GFM markdown table.
+    """Format findings as a GFM markdown table with summary footer.
 
     Args:
         findings: List of findings to format.
@@ -124,6 +125,59 @@ def format_markdown(findings: list[Finding]) -> str:
         f"({counts['required']} required, {counts['recommended']} recommended)"
     )
     return "\n".join(lines) + "\n"
+
+
+def format_summary(
+    file_count: int,
+    checks: Sequence[str],
+    findings: list[Finding],
+    elapsed: float,
+) -> str:
+    """Format the unconditional summary line for stderr.
+
+    Produces a one-line summary of the check run showing file count,
+    checks that ran, finding count with category breakdown, and elapsed
+    time. Uses the "Vetted" brand verb and em dash separator.
+
+    Args:
+        file_count: Number of files that were checked.
+        checks: List of check names that were run.
+        findings: All findings across all checks.
+        elapsed: Total elapsed time in seconds.
+
+    Returns:
+        Formatted summary string ending with a newline.
+
+    Examples:
+        Zero findings:
+
+        ```python
+        format_summary(12, ["enrichment", "freshness"], [], 1.5)
+        # 'Vetted 12 files [enrichment, freshness] — no findings. (1.5s)'
+        ```
+
+        With findings:
+
+        ```python
+        from docvet.checks import Finding
+
+        fs = [Finding("f", 1, "s", "r", "m", "required")]
+        format_summary(1, ["enrichment"], fs, 0.3)
+        # 'Vetted 1 files [enrichment] — 1 findings (...). (0.3s)'
+        ```
+    """
+    check_list = ", ".join(checks)
+    if findings:
+        counts = Counter(f.category for f in findings)
+        detail = (
+            f"{len(findings)} findings"
+            f" ({counts['required']} required, {counts['recommended']} recommended)"
+        )
+    else:
+        detail = "no findings"
+    return (
+        f"Vetted {file_count} files [{check_list}] \u2014 {detail}. ({elapsed:.1f}s)\n"
+    )
 
 
 def format_verbose_header(file_count: int, checks: Sequence[str]) -> str:

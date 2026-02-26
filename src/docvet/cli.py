@@ -3,8 +3,8 @@
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
 combined ``check`` entry point. Handles config loading, file discovery
-dispatch, progress bar rendering, per-check and total timing, and report
-output.
+dispatch, progress bar rendering, per-check timing, summary line output,
+and report formatting.
 
 Examples:
     Run all checks on changed files::
@@ -46,6 +46,7 @@ from docvet.discovery import DiscoveryMode, discover_files
 from docvet.reporting import (
     determine_exit_code,
     format_markdown,
+    format_summary,
     format_terminal,
     format_verbose_header,
     write_report,
@@ -203,9 +204,10 @@ def _output_and_exit(
 ) -> None:
     """Format findings, optionally write to file, and exit with proper code.
 
-    Implements the unified output pipeline: resolves no_color, prints
-    verbose header to stderr, selects format, writes file or prints to
-    stdout, and raises ``typer.Exit`` with the appropriate exit code.
+    Implements the unified output pipeline: resolves no_color, optionally
+    prints verbose header to stderr, selects format, writes file or prints
+    findings to stdout, and raises ``typer.Exit`` with the appropriate
+    exit code.
 
     Args:
         ctx: Typer context carrying global options in ``ctx.obj``.
@@ -254,11 +256,7 @@ def _output_and_exit(
         else:
             sys.stdout.write(format_terminal(all_findings, no_color=no_color))
 
-    # 7. No findings message
-    if verbose and not all_findings:
-        sys.stdout.write("No findings.\n")
-
-    # 8. Exit
+    # 7. Exit
     raise typer.Exit(determine_exit_code(findings_by_check, config))
 
 
@@ -565,7 +563,7 @@ def check(
 
     Displays a progress bar on stderr when connected to a TTY.
     Prints per-check timing to stderr when ``--verbose`` is set,
-    and total execution time unconditionally.
+    and a summary line when files are found.
 
     Args:
         ctx: Typer invocation context.
@@ -612,7 +610,17 @@ def check(
         sys.stderr.write(f"griffe: {file_count} files in {elapsed:.1f}s\n")
 
     total_elapsed = time.perf_counter() - total_start
-    sys.stderr.write(f"Completed in {total_elapsed:.1f}s\n")
+
+    checks = ["enrichment", "freshness", "coverage"]
+    if griffe_installed:
+        checks.append("griffe")
+
+    all_findings_flat = (
+        enrichment_findings + freshness_findings + coverage_findings + griffe_findings
+    )
+    sys.stderr.write(
+        format_summary(file_count, checks, all_findings_flat, total_elapsed)
+    )
 
     findings_by_check = {
         "enrichment": enrichment_findings,
@@ -625,7 +633,7 @@ def check(
         findings_by_check,
         config,
         file_count,
-        ["enrichment", "freshness", "coverage", "griffe"],
+        checks,
     )
 
 
