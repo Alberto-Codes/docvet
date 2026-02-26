@@ -636,17 +636,69 @@ def test_load_config_overlap_multiple_checks_emits_warning_for_each(
     assert "enrichment" in cfg.warn_on
 
 
-def test_load_config_overlap_default_warn_on_emits_warning(
+def test_load_config_overlap_default_warn_on_no_warning(
     tmp_path, monkeypatch, write_pyproject, capsys
 ):
     monkeypatch.chdir(tmp_path)
     write_pyproject('[tool.docvet]\nfail-on = ["freshness"]\n')
     cfg = load_config()
     err = capsys.readouterr().err
-    assert (
-        "docvet: 'freshness' appears in both fail-on and warn-on; using fail-on" in err
-    )
+    assert "appears in both" not in err
     assert "freshness" not in cfg.warn_on
+
+
+def test_load_config_fail_on_all_four_no_warn_on_zero_warnings(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nfail-on = ["enrichment", "freshness", "coverage", "griffe"]\n'
+    )
+    cfg = load_config()
+    err = capsys.readouterr().err
+    assert "appears in both" not in err
+    assert cfg.warn_on == []
+
+
+def test_load_config_fail_on_partial_no_warn_on_zero_warnings(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["enrichment"]\n')
+    cfg = load_config()
+    err = capsys.readouterr().err
+    assert "appears in both" not in err
+    assert cfg.warn_on == ["freshness", "griffe", "coverage"]
+
+
+def test_load_config_both_explicit_overlap_warns_for_overlapping_only(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        "[tool.docvet]\n"
+        'fail-on = ["enrichment"]\n'
+        'warn-on = ["enrichment", "freshness"]\n'
+    )
+    cfg = load_config()
+    err = capsys.readouterr().err
+    assert (
+        "docvet: 'enrichment' appears in both fail-on and warn-on; using fail-on" in err
+    )
+    assert err.count("appears in both") == 1
+    assert "enrichment" not in cfg.warn_on
+    assert "freshness" in cfg.warn_on
+
+
+def test_load_config_explicit_warn_on_no_fail_on_zero_warnings(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nwarn-on = ["enrichment", "freshness"]\n')
+    cfg = load_config()
+    err = capsys.readouterr().err
+    assert "appears in both" not in err
+    assert cfg.warn_on == ["enrichment", "freshness"]
 
 
 # ---------------------------------------------------------------------------
@@ -709,13 +761,14 @@ def test_load_config_exclude_and_extend_exclude_compose(
 
 
 def test_load_config_neither_exclude_uses_defaults(
-    tmp_path, monkeypatch, write_pyproject
+    tmp_path, monkeypatch, write_pyproject, capsys
 ):
     """AC4: neither key uses defaults."""
     monkeypatch.chdir(tmp_path)
     write_pyproject("[tool.docvet]\n")
     cfg = load_config()
     assert cfg.exclude == ["tests", "scripts"]
+    assert "appears in both" not in capsys.readouterr().err
 
 
 def test_load_config_wrong_type_extend_exclude_exits(
