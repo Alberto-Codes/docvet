@@ -40,8 +40,8 @@ def define_env(env):
         """Render a back-link and metadata table for the current rule page.
 
         Returns:
-            Markdown string containing a breadcrumb back-link to the parent
-            check page, a metadata table, and a summary blockquote.
+            Markdown string with a breadcrumb back-link to the parent check
+            page followed by a metadata table and summary blockquote.
 
         Raises:
             ValueError: If the page filename does not match any rule in rules.yml.
@@ -62,8 +62,7 @@ def define_env(env):
         back_link = f"*Part of: [{check_display}](../checks/{check}.md)*\n\n"
 
         return (
-            f"{back_link}"
-            f"| | |\n"
+            back_link + f"| | |\n"
             f"|---|---|\n"
             f"| **Check** | {check} |\n"
             f"| **Category** | {rule['category']} |\n"
