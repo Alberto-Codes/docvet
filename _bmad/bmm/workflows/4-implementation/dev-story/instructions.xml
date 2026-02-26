@@ -340,6 +340,7 @@
       - File List includes every new/modified/deleted file (relative paths)
       - Dev Agent Record contains implementation notes
       - Change Log includes summary of changes
+      - Documentation Impact addressed: all pages listed in Dev Notes → Documentation Impact have been updated (or confirmed "None")
       - Only permitted story sections were modified
     </action>
     <action if="AC-to-Test Mapping table is empty or incomplete">HALT - Every AC must have at least one mapped test before story can be marked done</action>

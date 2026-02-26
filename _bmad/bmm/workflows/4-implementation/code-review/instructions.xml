@@ -85,6 +85,14 @@
       4. Record specific proof (file:line)
     </action>
 
+    <!-- Documentation Impact Verification -->
+    <action>Check story's Dev Notes → Documentation Impact section:
+      1. If pages are listed: verify each listed page was actually updated in the File List
+      2. If "None": verify the story truly has no user-facing doc impact (config changes, new rules, CLI behavior)
+      3. If section is missing or empty: flag as MEDIUM finding (process gap)
+      4. If pages listed but not updated: flag as HIGH finding (documentation drift)
+    </action>
+
     <!-- Code Quality Deep Dive -->
     <action>For EACH file in comprehensive review list:
       1. **Security**: Look for injection risks, missing validation, auth issues
