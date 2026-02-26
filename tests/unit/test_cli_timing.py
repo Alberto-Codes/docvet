@@ -131,6 +131,29 @@ class TestCheckSummaryLine:
         matches = SUMMARY_LINE_RE.findall(result.output)
         assert len(matches) == 1
 
+    @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
+    def test_summary_includes_finding_count_when_findings_present(
+        self, cli_runner, mocker, make_finding
+    ):
+        mocker.patch(
+            "docvet.cli._run_enrichment",
+            return_value=[make_finding(category="required")],
+        )
+        mocker.patch(
+            "docvet.cli._run_freshness",
+            return_value=[make_finding(line=2, category="recommended")],
+        )
+
+        result = cli_runner.invoke(app, ["check", "--all"])
+
+        summary = [
+            line for line in result.output.splitlines() if line.startswith("Vetted")
+        ]
+        assert len(summary) == 1
+        assert "2 findings" in summary[0]
+        assert "1 required" in summary[0]
+        assert "1 recommended" in summary[0]
+
 
 # ---------------------------------------------------------------------------
 # Task 4.4: Individual subcommands write only total time (no per-check)

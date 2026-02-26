@@ -179,7 +179,7 @@ development_status:
 
   # Epic 21: CLI Output & User Experience
   epic-21: in-progress
-  21-1-default-output-overhaul: review
+  21-1-default-output-overhaul: done
   21-2-config-warning-cleanup: backlog
   21-3-verbose-and-quiet-flag-redesign: backlog
   21-4-subcommand-output-parity: backlog
