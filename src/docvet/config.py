@@ -518,7 +518,9 @@ def load_config(path: Path | None = None) -> DocvetConfig:
 
     Merges ``extend-exclude`` patterns on top of the resolved base
     exclude list (explicit ``exclude`` or defaults) before constructing
-    the final :class:`DocvetConfig`.
+    the final :class:`DocvetConfig`. Warns on stderr when ``warn-on``
+    and ``fail-on`` overlap, but only if ``warn-on`` was explicitly set
+    in the TOML (default overlaps are resolved silently).
 
     Args:
         path: Explicit path to a ``pyproject.toml``. When *None*,
@@ -560,13 +562,15 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         if isinstance(raw_warn, list)
         else list(defaults.warn_on)
     )
+    warn_on_explicit = "warn_on" in parsed
     fail_on_set = set(fail_on)
-    for check in warn_on:
-        if check in fail_on_set:
-            print(
-                f"docvet: '{check}' appears in both fail-on and warn-on; using fail-on",
-                file=sys.stderr,
-            )
+    if warn_on_explicit:
+        for check in warn_on:
+            if check in fail_on_set:
+                print(
+                    f"docvet: '{check}' appears in both fail-on and warn-on; using fail-on",
+                    file=sys.stderr,
+                )
 
     raw_pkg = parsed.get("package_name")
     raw_exclude = parsed.get("exclude")
