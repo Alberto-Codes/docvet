@@ -182,6 +182,6 @@ development_status:
   21-1-default-output-overhaul: done
   21-2-config-warning-cleanup: done
   21-3-verbose-and-quiet-flag-redesign: done
-  21-4-subcommand-output-parity: backlog
+  21-4-subcommand-output-parity: review
   21-5-test-migration-and-documentation: backlog
   epic-21-retrospective: optional

@@ -2,9 +2,10 @@
 
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
-combined ``check`` entry point. Handles config loading, file discovery
-dispatch, progress bar rendering, per-check timing, summary line output,
-report formatting, and three-tier verbosity control (quiet/default/verbose).
+combined ``check`` entry point. All subcommands share three-tier
+verbosity control (quiet/default/verbose) via dual-registered
+``--verbose`` and ``-q``/``--quiet`` flags and emit a unified
+``Vetted N files [check] — ...`` summary line on stderr.
 
 Examples:
     Run all checks on changed files::
@@ -207,9 +208,9 @@ def _output_and_exit(
     """Format findings, optionally write to file, and exit with proper code.
 
     Implements the unified output pipeline: resolves no_color, optionally
-    prints verbose header to stderr, selects format, writes file or prints
-    findings to stdout, and raises ``typer.Exit`` with the appropriate
-    exit code.
+    prints verbose header to stderr (only for multi-check runs), selects
+    format, writes file or prints findings to stdout, and raises
+    ``typer.Exit`` with the appropriate exit code.
 
     Args:
         ctx: Typer context carrying global options in ``ctx.obj``.
@@ -238,8 +239,8 @@ def _output_and_exit(
     for findings in findings_by_check.values():
         all_findings.extend(findings)
 
-    # 3. Verbose header to stderr
-    if verbose and not quiet:
+    # 3. Verbose header to stderr (only for multi-check runs)
+    if verbose and not quiet and len(checks) > 1:
         sys.stderr.write(format_verbose_header(file_count, checks))
 
     # 4. Resolve format and produce formatted string
@@ -678,29 +679,52 @@ def check(
 @app.command()
 def enrichment(
     ctx: typer.Context,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", help="Enable verbose output.")
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "-q",
+            "--quiet",
+            help="Suppress non-finding output (summary, timing, verbose details)."
+            " Config warnings are always shown.",
+        ),
+    ] = False,
     staged: StagedOption = False,
     all_files: AllOption = False,
     files: FilesOption = None,
 ) -> None:
     """Check for missing docstring sections.
 
-    Displays a progress bar on stderr when connected to a TTY
-    and total execution time on completion.
+    Displays a progress bar on stderr when connected to a TTY.
+    Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
+    stderr output, default shows the summary line, ``--verbose`` adds
+    file discovery count.
 
     Args:
         ctx: Typer invocation context.
+        verbose: Enable verbose output (subcommand-level).
+        quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
+    verbose = verbose or ctx.obj.get("verbose", False)
+    quiet = quiet or ctx.obj.get("quiet", False)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
 
     start = time.perf_counter()
     findings = _run_enrichment(discovered, config, show_progress=sys.stderr.isatty())
     elapsed = time.perf_counter() - start
-    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+    if not quiet:
+        sys.stderr.write(
+            format_summary(len(discovered), ["enrichment"], findings, elapsed)
+        )
 
     _output_and_exit(
         ctx, {"enrichment": findings}, config, len(discovered), ["enrichment"]
@@ -710,6 +734,18 @@ def enrichment(
 @app.command()
 def freshness(
     ctx: typer.Context,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", help="Enable verbose output.")
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "-q",
+            "--quiet",
+            help="Suppress non-finding output (summary, timing, verbose details)."
+            " Config warnings are always shown.",
+        ),
+    ] = False,
     staged: StagedOption = False,
     all_files: AllOption = False,
     files: FilesOption = None,
@@ -719,17 +755,25 @@ def freshness(
 ) -> None:
     """Detect stale docstrings.
 
-    Displays a progress bar on stderr when connected to a TTY
-    and total execution time on completion.
+    Displays a progress bar on stderr when connected to a TTY.
+    Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
+    stderr output, default shows the summary line, ``--verbose`` adds
+    file discovery count.
 
     Args:
         ctx: Typer invocation context.
+        verbose: Enable verbose output (subcommand-level).
+        quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
         files: Run on specific files.
         mode: Freshness strategy (diff or drift).
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
+    verbose = verbose or ctx.obj.get("verbose", False)
+    quiet = quiet or ctx.obj.get("quiet", False)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
 
@@ -742,7 +786,10 @@ def freshness(
         show_progress=sys.stderr.isatty(),
     )
     elapsed = time.perf_counter() - start
-    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+    if not quiet:
+        sys.stderr.write(
+            format_summary(len(discovered), ["freshness"], findings, elapsed)
+        )
 
     _output_and_exit(
         ctx, {"freshness": findings}, config, len(discovered), ["freshness"]
@@ -752,28 +799,51 @@ def freshness(
 @app.command()
 def coverage(
     ctx: typer.Context,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", help="Enable verbose output.")
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "-q",
+            "--quiet",
+            help="Suppress non-finding output (summary, timing, verbose details)."
+            " Config warnings are always shown.",
+        ),
+    ] = False,
     staged: StagedOption = False,
     all_files: AllOption = False,
     files: FilesOption = None,
 ) -> None:
     """Find files invisible to mkdocs.
 
-    Prints total execution time to stderr on completion.
+    Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
+    stderr output, default shows the summary line, ``--verbose`` adds
+    file discovery count.
 
     Args:
         ctx: Typer invocation context.
+        verbose: Enable verbose output (subcommand-level).
+        quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
+    verbose = verbose or ctx.obj.get("verbose", False)
+    quiet = quiet or ctx.obj.get("quiet", False)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
 
     start = time.perf_counter()
     findings = _run_coverage(discovered, config)
     elapsed = time.perf_counter() - start
-    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+    if not quiet:
+        sys.stderr.write(
+            format_summary(len(discovered), ["coverage"], findings, elapsed)
+        )
 
     _output_and_exit(ctx, {"coverage": findings}, config, len(discovered), ["coverage"])
 
@@ -781,27 +851,48 @@ def coverage(
 @app.command()
 def griffe(
     ctx: typer.Context,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", help="Enable verbose output.")
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "-q",
+            "--quiet",
+            help="Suppress non-finding output (summary, timing, verbose details)."
+            " Config warnings are always shown.",
+        ),
+    ] = False,
     staged: StagedOption = False,
     all_files: AllOption = False,
     files: FilesOption = None,
 ) -> None:
     """Check mkdocs rendering compatibility.
 
-    Prints total execution time to stderr on completion.
+    Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
+    stderr output, default shows the summary line, ``--verbose`` adds
+    file discovery count.
 
     Args:
         ctx: Typer invocation context.
+        verbose: Enable verbose output (subcommand-level).
+        quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
         files: Run on specific files.
     """
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
+    verbose = verbose or ctx.obj.get("verbose", False)
+    quiet = quiet or ctx.obj.get("quiet", False)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
 
     start = time.perf_counter()
-    findings = _run_griffe(discovered, config, verbose=ctx.obj.get("verbose", False))
+    findings = _run_griffe(discovered, config, verbose=verbose, quiet=quiet)
     elapsed = time.perf_counter() - start
-    sys.stderr.write(f"Completed in {elapsed:.1f}s\n")
+    if not quiet:
+        sys.stderr.write(format_summary(len(discovered), ["griffe"], findings, elapsed))
 
     _output_and_exit(ctx, {"griffe": findings}, config, len(discovered), ["griffe"])

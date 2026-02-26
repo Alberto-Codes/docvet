@@ -32,12 +32,8 @@ def _strip_ansi(text: str) -> str:
 
 
 def _non_timing_lines(output: str) -> list[str]:
-    """Return output lines excluding timing/summary lines."""
-    return [
-        line
-        for line in output.splitlines()
-        if not line.startswith("Completed in") and not line.startswith("Vetted ")
-    ]
+    """Return output lines excluding summary lines."""
+    return [line for line in output.splitlines() if not line.startswith("Vetted ")]
 
 
 # ---------------------------------------------------------------------------
@@ -556,7 +552,9 @@ def test_griffe_when_invoked_calls_discover_and_run_griffe(mocker):
     mock_run = mocker.patch("docvet.cli._run_griffe", return_value=[])
     runner.invoke(app, ["griffe"])
     mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
-    mock_run.assert_called_once_with([Path("/fake/file.py")], ANY, verbose=False)
+    mock_run.assert_called_once_with(
+        [Path("/fake/file.py")], ANY, verbose=False, quiet=False
+    )
 
 
 def test_enrichment_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
@@ -1658,33 +1656,62 @@ class TestOutputAndExit:
         self.mock_write_report.assert_not_called()
 
     def test_output_verbose_zero_findings_no_file_header_stderr_no_stdout(self, capsys):
+        self.mock_format_verbose_header.return_value = (
+            "Checking 1 files [enrichment, freshness]\n"
+        )
         ctx = self._make_ctx(verbose=True, output="report.md")
-        self._call(ctx, {"enrichment": []}, DocvetConfig(), 1, ["enrichment"])
+        self._call(
+            ctx,
+            {"enrichment": [], "freshness": []},
+            DocvetConfig(),
+            1,
+            ["enrichment", "freshness"],
+        )
         self.mock_write_report.assert_not_called()
         captured = capsys.readouterr()
-        assert "Checking 1 files [enrichment]" in captured.err
-        assert "Checking 1 files [enrichment]" not in captured.out
+        assert "Checking 1 files [enrichment, freshness]" in captured.err
         assert captured.out == ""
 
     def test_verbose_with_findings_prints_header_to_stderr(self, capsys, make_finding):
+        self.mock_format_verbose_header.return_value = (
+            "Checking 1 files [enrichment, freshness]\n"
+        )
         ctx = self._make_ctx(verbose=True)
         self._call(
-            ctx, {"enrichment": [make_finding()]}, DocvetConfig(), 1, ["enrichment"]
+            ctx,
+            {"enrichment": [make_finding()], "freshness": []},
+            DocvetConfig(),
+            1,
+            ["enrichment", "freshness"],
         )
         captured = capsys.readouterr()
-        assert "Checking 1 files [enrichment]" in captured.err
-        assert "Checking 1 files [enrichment]" not in captured.out
+        assert "Checking 1 files [enrichment, freshness]" in captured.err
         assert "terminal output" in captured.out
 
     def test_verbose_with_zero_findings_prints_header_stderr_nothing_stdout(
         self, capsys
     ):
+        self.mock_format_verbose_header.return_value = (
+            "Checking 1 files [enrichment, freshness]\n"
+        )
+        ctx = self._make_ctx(verbose=True)
+        self._call(
+            ctx,
+            {"enrichment": [], "freshness": []},
+            DocvetConfig(),
+            1,
+            ["enrichment", "freshness"],
+        )
+        captured = capsys.readouterr()
+        assert "Checking 1 files [enrichment, freshness]" in captured.err
+        assert captured.out == ""
+
+    def test_verbose_single_check_suppresses_header(self, capsys):
         ctx = self._make_ctx(verbose=True)
         self._call(ctx, {"enrichment": []}, DocvetConfig(), 1, ["enrichment"])
         captured = capsys.readouterr()
-        assert "Checking 1 files [enrichment]" in captured.err
-        assert "Checking 1 files [enrichment]" not in captured.out
-        assert captured.out == ""
+        assert "Checking" not in captured.err
+        self.mock_format_verbose_header.assert_not_called()
 
     def test_exit_code_1_when_fail_on_check_has_findings(self, make_finding):
         self.mock_determine_exit_code.return_value = 1
@@ -1995,3 +2022,104 @@ def test_check_when_quiet_with_findings_exits_nonzero(mocker):
     )
     result = runner.invoke(app, ["check", "--all", "-q"])
     assert result.exit_code == 1
+
+
+# ---------------------------------------------------------------------------
+# Story 21.4, Task 5: Summary line on each subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_enrichment_subcommand_shows_vetted_summary_on_stderr():
+    result = runner.invoke(app, ["enrichment", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[enrichment]" in result.output
+
+
+def test_freshness_subcommand_shows_vetted_summary_on_stderr():
+    result = runner.invoke(app, ["freshness", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[freshness]" in result.output
+
+
+def test_coverage_subcommand_shows_vetted_summary_on_stderr():
+    result = runner.invoke(app, ["coverage", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[coverage]" in result.output
+
+
+def test_griffe_subcommand_shows_vetted_summary_on_stderr(mocker):
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    result = runner.invoke(app, ["griffe", "--all"])
+    assert result.exit_code == 0
+    assert "Vetted" in result.output
+    assert "[griffe]" in result.output
+
+
+def test_freshness_subcommand_with_findings_shows_findings_and_summary(
+    mocker, make_finding
+):
+    findings = [make_finding(rule="stale-signature", category="required")]
+    mocker.patch("docvet.cli._run_freshness", return_value=findings)
+    result = runner.invoke(app, ["freshness", "--all"])
+    assert "test.py:1:" in result.output
+    summary = [line for line in result.output.splitlines() if line.startswith("Vetted")]
+    assert len(summary) == 1
+    assert "1 finding" in summary[0]
+    assert "[freshness]" in summary[0]
+
+
+# ---------------------------------------------------------------------------
+# Story 21.4, Task 6: Verbose/quiet on subcommands
+# ---------------------------------------------------------------------------
+
+
+def test_enrichment_subcommand_verbose_shows_file_count_and_summary(mocker):
+    mocker.patch(
+        "docvet.cli.discover_files",
+        return_value=[Path("/a.py"), Path("/b.py"), Path("/c.py")],
+    )
+    result = runner.invoke(app, ["enrichment", "--all", "--verbose"])
+    assert result.exit_code == 0
+    assert "Found 3 file(s) to check" in result.output
+    assert "Vetted" in result.output
+    assert "Checking" not in result.output
+
+
+def test_enrichment_app_level_verbose_shows_file_count_and_summary(mocker):
+    mocker.patch(
+        "docvet.cli.discover_files",
+        return_value=[Path("/a.py"), Path("/b.py")],
+    )
+    result = runner.invoke(app, ["--verbose", "enrichment", "--all"])
+    assert result.exit_code == 0
+    assert "Found 2 file(s) to check" in result.output
+    assert "Vetted" in result.output
+
+
+def test_enrichment_subcommand_quiet_suppresses_summary():
+    result = runner.invoke(app, ["enrichment", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+
+
+def test_enrichment_subcommand_quiet_wins_over_verbose():
+    result = runner.invoke(app, ["enrichment", "--all", "-q", "--verbose"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+    assert "Found" not in result.output
+
+
+def test_coverage_subcommand_quiet_suppresses_summary():
+    result = runner.invoke(app, ["coverage", "--all", "-q"])
+    assert result.exit_code == 0
+    assert "Vetted" not in result.output
+
+
+def test_griffe_subcommand_quiet_passes_quiet_to_run_griffe(mocker):
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    mock_run = mocker.patch("docvet.cli._run_griffe", return_value=[])
+    runner.invoke(app, ["griffe", "--all", "-q"])
+    mock_run.assert_called_once_with(ANY, ANY, verbose=False, quiet=True)

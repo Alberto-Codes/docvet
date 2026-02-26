@@ -23,7 +23,6 @@ TIMING_LINE_RE = re.compile(
 SUMMARY_LINE_RE = re.compile(
     r"^Vetted \d+ files \[.+\] \u2014 .+\. \(\d+\.\d+s\)$", re.MULTILINE
 )
-SUBCOMMAND_TOTAL_RE = re.compile(r"^Completed in \d+\.\d+s$", re.MULTILINE)
 
 
 # ---------------------------------------------------------------------------
@@ -165,28 +164,28 @@ class TestIndividualSubcommandTiming:
     def test_enrichment_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "enrichment", "--all"])
 
-        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
+        assert len(SUMMARY_LINE_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_freshness_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "freshness", "--all"])
 
-        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
+        assert len(SUMMARY_LINE_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_coverage_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "coverage", "--all"])
 
-        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
+        assert len(SUMMARY_LINE_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
     def test_griffe_subcommand_shows_total_only(self, cli_runner):
         result = cli_runner.invoke(app, ["--verbose", "griffe", "--all"])
 
-        assert len(SUBCOMMAND_TOTAL_RE.findall(result.output)) == 1
+        assert len(SUMMARY_LINE_RE.findall(result.output)) == 1
         assert len(TIMING_LINE_RE.findall(result.output)) == 0
 
 
