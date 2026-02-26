@@ -2,6 +2,20 @@
 
 Loads rule metadata from docs/rules.yml and provides Jinja macros
 for rendering consistent rule page headers.
+
+Examples:
+    Configure in ``mkdocs.yml``::
+
+        plugins:
+          - macros:
+              module_name: docs/main
+
+    Use in a rule page::
+
+        {{rule_header()}}
+
+See Also:
+    :doc:`docs/rules.yml`: Rule metadata catalog consumed by this module.
 """
 
 from __future__ import annotations
@@ -12,17 +26,22 @@ import yaml
 
 
 def define_env(env):
-    """Define macros and variables for mkdocs-macros-plugin."""
+    """Define macros and variables for mkdocs-macros-plugin.
+
+    Registers the ``rule_header`` macro which renders breadcrumb back-links
+    and metadata tables on rule reference pages.
+    """
     rules_path = Path(env.project_dir) / "docs" / "rules.yml"
     rules_data = yaml.safe_load(rules_path.read_text())
     rules_by_id = {rule["id"]: rule for rule in rules_data}
 
     @env.macro
     def rule_header() -> str:
-        """Render a metadata table for the current rule page.
+        """Render a back-link and metadata table for the current rule page.
 
         Returns:
-            Markdown string containing a metadata table and summary blockquote.
+            Markdown string containing a breadcrumb back-link to the parent
+            check page, a metadata table, and a summary blockquote.
 
         Raises:
             ValueError: If the page filename does not match any rule in rules.yml.
@@ -38,11 +57,15 @@ def define_env(env):
             raise ValueError(msg)
 
         rule = rules_by_id[rule_id]
+        check = rule["check"]
+        check_display = f"{check.capitalize()} Check"
+        back_link = f"*Part of: [{check_display}](../checks/{check}.md)*\n\n"
 
         return (
+            f"{back_link}"
             f"| | |\n"
             f"|---|---|\n"
-            f"| **Check** | {rule['check']} |\n"
+            f"| **Check** | {check} |\n"
             f"| **Category** | {rule['category']} |\n"
             f"| **Applies to** | {rule['applies_to']} |\n"
             f"| **Since** | v{rule['since']} |\n"
