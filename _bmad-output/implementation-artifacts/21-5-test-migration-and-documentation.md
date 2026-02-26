@@ -1,6 +1,6 @@
 # Story 21.5: Test Migration & Documentation
 
-Status: review
+Status: done
 Branch: `feat/docs-21-5-test-migration-and-documentation`
 
 ## Story
@@ -231,15 +231,23 @@ Claude Opus 4.6
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial review) — 2026-02-26
+
 ### Outcome
+
+Approved with fixes applied.
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | cli-reference.md `--quiet` description claims config messages are suppressed, contradicting CLI `--help` which says "Config warnings are always shown." | Fixed: updated Global Options description to match CLI help text |
+| M2 | MEDIUM | `test_griffe_subcommand_quiet_suppresses_summary` mocks `find_spec` but not `_run_griffe`, making test depend on optional griffe install | Fixed: added `mocker.patch("docvet.cli._run_griffe", return_value=[])` |
+| L1 | LOW | Output Tiers table says Quiet stderr = *(nothing)* but parse/availability warnings still appear | Fixed: added clarifying sentence below the table |
+| L2 | LOW | Check page docs say "suppress the summary line" vs full description elsewhere | Dismissed: intentional information architecture (task-oriented vs reference-oriented docs) |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (879 tests, ruff, ty, docvet all green)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

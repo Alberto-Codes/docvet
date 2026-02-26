@@ -11,7 +11,7 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `--verbose` | flag | off | Show file count, per-check timing, and active checks |
-| `-q` / `--quiet` | flag | off | Suppress all non-finding output (summary, timing, config messages) |
+| `-q` / `--quiet` | flag | off | Suppress non-finding output (summary, timing, verbose details). Config warnings are always shown. |
 | `--format` | `terminal` \| `markdown` | `terminal` | Output format |
 | `--output` | `PATH` | stdout | Write report to file |
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
@@ -38,6 +38,8 @@ docvet uses a three-tier output model. Findings always go to **stdout**; metadat
 | Quiet | `-q` / `--quiet` | *(nothing)* | Findings only |
 | Default | *(no flags)* | Summary line | Findings only |
 | Verbose | `--verbose` | File count + per-check timing + summary | Findings only |
+
+Parse and availability warnings always appear regardless of output tier.
 
 **Default output** (zero findings):
 

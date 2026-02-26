@@ -2140,6 +2140,7 @@ def test_freshness_subcommand_quiet_suppresses_summary():
 def test_griffe_subcommand_quiet_suppresses_summary(mocker):
     """Griffe -q suppresses Vetted summary."""
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    mocker.patch("docvet.cli._run_griffe", return_value=[])
     result = runner.invoke(app, ["griffe", "--all", "-q"])
     assert result.exit_code == 0
     assert "Vetted" not in result.output
