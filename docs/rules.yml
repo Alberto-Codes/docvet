@@ -8,6 +8,14 @@
   applies_to: functions, methods
   summary: Function raises exceptions but has no Raises section
   since: "1.0.0"
+  fix: |
+    Add a `Raises:` section listing each exception type and the condition that triggers it:
+
+    ```python
+    Raises:
+        ValueError: If the input path is not a .toml file.
+        FileNotFoundError: If the config file does not exist.
+    ```
 
 - id: missing-yields
   name: Missing Yields Section
@@ -16,6 +24,13 @@
   applies_to: functions, methods
   summary: Generator yields values but has no Yields section
   since: "1.0.0"
+  fix: |
+    Add a `Yields:` section describing the type and meaning of each yielded value:
+
+    ```python
+    Yields:
+        Row data as a dictionary with column names as keys.
+    ```
 
 - id: missing-receives
   name: Missing Receives Section
@@ -24,6 +39,13 @@
   applies_to: functions, methods
   summary: Generator uses send pattern but has no Receives section
   since: "1.0.0"
+  fix: |
+    Add a `Receives:` section describing the value accepted via `.send()`:
+
+    ```python
+    Receives:
+        Numeric value to add to the running total.
+    ```
 
 - id: missing-warns
   name: Missing Warns Section
@@ -32,6 +54,14 @@
   applies_to: functions, methods
   summary: Function calls warnings.warn() but has no Warns section
   since: "1.0.0"
+  fix: |
+    Add a `Warns:` section listing each warning category and its trigger condition:
+
+    ```python
+    Warns:
+        UserWarning: If timeout is less than 5 seconds.
+        DeprecationWarning: If the legacy API flag is set.
+    ```
 
 - id: missing-other-parameters
   name: Missing Other Parameters Section
@@ -40,6 +70,14 @@
   applies_to: functions, methods
   summary: Function accepts **kwargs but has no Other Parameters section
   since: "1.0.0"
+  fix: |
+    Add an `Other Parameters:` section documenting the keyword arguments passed via `**kwargs`:
+
+    ```python
+    Other Parameters:
+        timeout (int): Request timeout in seconds. Defaults to 30.
+        retries (int): Number of retry attempts. Defaults to 3.
+    ```
 
 - id: missing-attributes
   name: Missing Attributes Section
@@ -48,6 +86,15 @@
   applies_to: classes, modules
   summary: Class or module has undocumented attributes
   since: "1.0.0"
+  fix: |
+    Add an `Attributes:` section listing each public attribute with its type and description:
+
+    ```python
+    Attributes:
+        name (str): The user's display name.
+        email (str): The user's email address.
+        role (str): The user's role. Defaults to "viewer".
+    ```
 
 - id: missing-typed-attributes
   name: Missing Typed Attributes
@@ -56,6 +103,14 @@
   applies_to: classes
   summary: "Attributes: entries lack `name (type): description` format"
   since: "1.0.0"
+  fix: |
+    Add the type in parentheses to each `Attributes:` entry using `name (type): description` format:
+
+    ```python
+    Attributes:
+        host (str): The server hostname.
+        port (int): The server port number.
+    ```
 
 - id: missing-examples
   name: Missing Examples Section
@@ -64,6 +119,16 @@
   applies_to: classes, modules
   summary: Class or type that requires examples has no Examples section
   since: "1.0.0"
+  fix: |
+    Add an `Examples:` section with a fenced code block showing basic usage:
+
+    ```python
+    Examples:
+        ```python
+        coord = Coordinate(latitude=40.7128, longitude=-74.0060)
+        print(coord.latitude)  # 40.7128
+        ```
+    ```
 
 - id: missing-cross-references
   name: Missing Cross-References
@@ -72,6 +137,14 @@
   applies_to: modules
   summary: Module See Also section missing or lacking properly formatted cross-references
   since: "1.0.0"
+  fix: |
+    Add a `See Also:` section with bracket-style cross-references that render as clickable links:
+
+    ```python
+    See Also:
+        [`myapp.utils.parsing`][]: String and data parsing helpers.
+        [`myapp.utils.validation`][]: Input validation utilities.
+    ```
 
 - id: prefer-fenced-code-blocks
   name: Prefer Fenced Code Blocks
@@ -80,6 +153,16 @@
   applies_to: any symbol
   summary: Examples section uses doctest format instead of fenced code blocks
   since: "1.0.0"
+  fix: |
+    Replace doctest `>>>` format with triple-backtick fenced code blocks and a `python` language marker:
+
+    ```python
+    Examples:
+        ```python
+        add(1, 2)  # returns 3
+        add(-1, 1)  # returns 0
+        ```
+    ```
 
 - id: stale-signature
   name: Stale Signature
@@ -88,6 +171,10 @@
   applies_to: functions, methods
   summary: Function signature changed but docstring not updated
   since: "1.0.0"
+  fix: |
+    The function signature changed but the docstring was not updated.
+    Review the current parameters, default values, and return type, then
+    update the `Args:`, `Returns:`, and summary line to match the new signature.
 
 - id: stale-body
   name: Stale Body
@@ -96,6 +183,11 @@
   applies_to: functions, methods
   summary: Function body changed but docstring not updated
   since: "1.0.0"
+  fix: |
+    The function body changed but the docstring was not updated.
+    Review the current implementation for new branches, changed return values,
+    or altered side effects, then update the docstring description, `Returns:`,
+    and `Raises:` sections to reflect the actual behavior.
 
 - id: stale-import
   name: Stale Import
@@ -104,6 +196,10 @@
   applies_to: functions, methods
   summary: Import or formatting changed but docstring not updated
   since: "1.0.0"
+  fix: |
+    Imports or formatting changed near this function but the docstring was not updated.
+    Review whether the import change affects documented behavior (e.g., a dependency
+    swap or new library) and update the docstring summary or description if needed.
 
 - id: stale-drift
   name: Stale Drift
@@ -112,6 +208,11 @@
   applies_to: functions, methods, classes
   summary: Code modified more recently than docstring beyond drift threshold
   since: "1.0.0"
+  fix: |
+    The code has been modified more recently than the docstring by more than the
+    configured drift threshold. Review the entire docstring against the current
+    implementation and update the summary, `Args:`, `Returns:`, and any other
+    sections to accurately describe the current behavior.
 
 - id: stale-age
   name: Stale Age
@@ -120,6 +221,11 @@
   applies_to: functions, methods, classes
   summary: Docstring untouched beyond age threshold
   since: "1.0.0"
+  fix: |
+    The docstring has not been updated for longer than the configured age threshold.
+    Review the entire docstring for accuracy — even small wording improvements reset
+    the age counter. Confirm the summary, parameters, return values, and examples
+    still reflect current behavior.
 
 - id: missing-init
   name: Missing __init__.py
@@ -128,6 +234,12 @@
   applies_to: directories
   summary: Directory in source tree lacks __init__.py file
   since: "1.0.0"
+  fix: |
+    Create an `__init__.py` file in the directory with a module docstring:
+
+    ```python
+    """Subpackage for handling configuration parsing."""
+    ```
 
 - id: griffe-unknown-param
   name: Griffe Unknown Parameter
@@ -136,6 +248,10 @@
   applies_to: functions, methods
   summary: Docstring documents a parameter not in the function signature
   since: "1.0.0"
+  fix: |
+    Remove or rename the documented parameter that does not exist in the function signature.
+    Check if the parameter was renamed during a refactor and update the `Args:` entry to
+    match the current parameter name, or delete the entry if the parameter was removed.
 
 - id: griffe-missing-type
   name: Griffe Missing Type
@@ -144,6 +260,17 @@
   applies_to: functions, methods
   summary: Parameter or return value lacks type annotation in docstring
   since: "1.0.0"
+  fix: |
+    Add the type in parentheses using `name (type): description` format in `Args:` entries,
+    or add the type on a separate line in the `Returns:` section:
+
+    ```python
+    Args:
+        name (str): The user's display name.
+
+    Returns:
+        User: The created user object.
+    ```
 
 - id: griffe-format-warning
   name: Griffe Format Warning
@@ -152,3 +279,9 @@
   applies_to: any symbol
   summary: Docstring format issue that would break mkdocs rendering
   since: "1.0.0"
+  fix: |
+    Fix the formatting issue identified by griffe's parser. Common fixes include:
+
+    - Indent section entries by 4 spaces under the section header
+    - Use the exact section header format (e.g., `Args:` not `Arguments:`)
+    - Ensure a blank line between sections

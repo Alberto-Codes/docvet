@@ -10,6 +10,8 @@ This rule flags generator functions that use the send pattern (`value = yield`) 
 
 Callers using `.send()` on the generator don't know what values it accepts. Without a `Receives:` section, the two-way communication contract is undocumented, making the generator error-prone to use. This is especially problematic for coroutine-style generators where the sent value drives behavior.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

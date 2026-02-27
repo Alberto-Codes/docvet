@@ -1,7 +1,7 @@
 """Macros hook for mkdocs-macros-plugin.
 
 Loads rule metadata from docs/rules.yml and provides Jinja macros
-for rendering consistent rule page headers.
+for rendering consistent rule page headers and fix guidance sections.
 
 Examples:
     Configure in ``mkdocs.yml``::
@@ -13,6 +13,7 @@ Examples:
     Use in a rule page::
 
         {{rule_header()}}
+        {{rule_fix()}}
 
 See Also:
     :doc:`docs/rules.yml`: Rule metadata catalog consumed by this module.
@@ -28,8 +29,9 @@ import yaml
 def define_env(env):
     """Define macros and variables for mkdocs-macros-plugin.
 
-    Registers the ``rule_header`` macro which renders breadcrumb back-links
-    and metadata tables on rule reference pages.
+    Registers the ``rule_header`` and ``rule_fix`` macros which render
+    breadcrumb back-links, metadata tables, and "How to Fix" sections
+    on rule reference pages.
     """
     rules_path = Path(env.project_dir) / "docs" / "rules.yml"
     rules_data = yaml.safe_load(rules_path.read_text())
@@ -38,6 +40,9 @@ def define_env(env):
     @env.macro
     def rule_header() -> str:
         """Render a back-link and metadata table for the current rule page.
+
+        Looks up the rule by page filename in the ``rules_by_id`` dict and
+        builds a markdown string with navigation and metadata.
 
         Returns:
             Markdown string with a breadcrumb back-link to the parent check
@@ -71,3 +76,23 @@ def define_env(env):
             f"\n"
             f"> {rule['summary']}\n"
         )
+
+    @env.macro
+    def rule_fix() -> str:
+        """Render a "How to Fix" section for the current rule page.
+
+        Reads the ``fix`` field from rules.yml for the current page's rule
+        and wraps it with a heading.
+
+        Returns:
+            Markdown string with a "How to Fix" heading and fix content,
+            or empty string if no fix content exists.
+        """
+        rule_id = env.page.file.name.removesuffix(".md")
+        rule = rules_by_id.get(rule_id)
+        if not rule:
+            return ""
+        fix_content = rule.get("fix", "")
+        if not fix_content:
+            return ""
+        return f"## How to Fix\n\n{fix_content}\n"

@@ -10,6 +10,8 @@ This rule flags functions whose body was changed in a git diff but whose docstri
 
 A changed function body means the behavior may have changed — new branches, different return values, or altered side effects. The docstring may now describe outdated behavior, leading to confusion for anyone relying on the documentation to understand what the function does.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

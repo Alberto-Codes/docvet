@@ -10,6 +10,8 @@ This rule flags docstrings with formatting issues caught by griffe's parser that
 
 Formatting issues cause griffe parser warnings during `mkdocs build`, and the resulting documentation renders incorrectly or incompletely. Visitors to your docs site see broken layouts, missing sections, or garbled text instead of clean API documentation.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

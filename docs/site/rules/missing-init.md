@@ -10,6 +10,8 @@ This rule flags directories in your source tree that contain Python files but la
 
 Without an `__init__.py`, the directory is not recognized as a Python package by documentation generators like mkdocstrings. All Python files in that directory become invisible to your docs site — they won't appear in auto-generated API documentation, even though they may be importable at runtime via implicit namespace packages.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

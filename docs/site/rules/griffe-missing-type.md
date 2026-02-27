@@ -10,6 +10,8 @@ This rule flags parameters or return values in docstrings that lack a type annot
 
 mkdocstrings relies on docstring type annotations to render type information in API documentation. Without the parenthesized type, the generated docs lose type context, forcing users to check the source code or type stubs to understand what types a function expects and returns.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

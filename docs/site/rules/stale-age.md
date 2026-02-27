@@ -10,6 +10,8 @@ This rule flags symbols whose docstring has not been touched for more than `age-
 
 Very old docstrings may describe obsolete behavior, outdated APIs, or deprecated patterns — even if the surrounding code hasn't changed much. A periodic review of aging docstrings ensures they remain accurate and relevant as the project evolves.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"
