@@ -1,6 +1,6 @@
 # Story 23.4: Pre-Commit Hook Definition
 
-Status: review
+Status: done
 Branch: `feat/ci-23-4-pre-commit-hook-definition`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -61,7 +61,7 @@ so that docstring quality is checked automatically on every commit without manua
 | AC2 (pre-commit run --all-files) | Manual: `pre-commit try-repo . docvet --all-files` — 74 findings reported, exit code 1 | PASS |
 | AC3 (2.x/3.x compat) | Manual: tested with pre-commit 4.5.1 (3.x+ line). Hook YAML uses only 1.x-compatible fields | PASS |
 | AC4 (accurate documentation) | Manual: `docs/site/ci-integration.md` updated — removed `--staged` claim, added positional filename explanation, exclude callout, `require_serial` note, progress suppression note | PASS |
-| AC5 (unit test validates YAML) | `TestPreCommitHooksYaml` — 11 tests covering all required fields, values, and `pass_filenames` negative assertion | PASS |
+| AC5 (unit test validates YAML) | `TestPreCommitHooksYaml` — 12 tests covering all required fields, values, and `pass_filenames` negative assertion | PASS |
 | AC6 (description field) | `test_description_field_present_and_nonempty` | PASS |
 
 ## Dev Notes
@@ -253,15 +253,25 @@ None — zero-debug implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review + party-mode consensus)
+
 ### Outcome
+
+Approved with fixes (3 accepted, 3 rejected)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | `test_types_contains_python` doesn't verify `types` is a list — `"python" in "python"` (string) also passes | Fixed: added `assert isinstance(hook["types"], list)` |
+| M2 | MEDIUM | `test_entry_starts_with_docvet` too loose — `startswith("docvet")` passes for bare `docvet` (no subcommand) | Fixed: changed to `startswith("docvet check")`, renamed test |
+| L1 | LOW | Repeated YAML loading in every test — could use module-scoped fixture | Rejected: test isolation > DRY for 7-line files, matches codebase convention |
+| L2 | LOW | No `name` value assertion — only presence tested, not value | Fixed: added `test_name_is_docvet` |
+| L3 | LOW | `description` not in `_REQUIRED_FIELDS` constant | Rejected: preserves intentional AC5/AC6 design boundary |
+| L4 | LOW | Doc says "staged Python filenames" — slightly misleading for `--all-files` | Rejected: accurate in primary commit-hook context |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

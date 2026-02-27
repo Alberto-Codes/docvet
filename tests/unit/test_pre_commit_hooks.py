@@ -63,14 +63,20 @@ class TestPreCommitHooksYaml:
     def test_types_contains_python(self) -> None:
         """Hook types list contains 'python' for .py file filtering."""
         hook = yaml.safe_load(_HOOKS_PATH.read_text(encoding="utf-8"))[0]
+        assert isinstance(hook["types"], list), "types must be a list, not a string"
         assert "python" in hook["types"]
 
-    def test_entry_starts_with_docvet(self) -> None:
-        """Hook entry starts with 'docvet' to accept positional filenames."""
+    def test_entry_starts_with_docvet_check(self) -> None:
+        """Hook entry starts with 'docvet check' to accept positional filenames."""
         hook = yaml.safe_load(_HOOKS_PATH.read_text(encoding="utf-8"))[0]
-        assert hook["entry"].startswith("docvet"), (
-            f"Entry should start with 'docvet', got: {hook['entry']}"
+        assert hook["entry"].startswith("docvet check"), (
+            f"Entry should start with 'docvet check', got: {hook['entry']}"
         )
+
+    def test_name_is_docvet(self) -> None:
+        """Hook name is 'docvet'."""
+        hook = yaml.safe_load(_HOOKS_PATH.read_text(encoding="utf-8"))[0]
+        assert hook["name"] == "docvet"
 
     def test_require_serial_is_true(self) -> None:
         """Hook uses require_serial to prevent parallel git races."""
