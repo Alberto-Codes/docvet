@@ -123,6 +123,7 @@ def test_finding_exports_finding_class():
 
 
 def test_finding_normalizes_backslash_paths_to_forward_slashes():
+    """Test that Finding normalizes backslash path separators to forward slashes."""
     finding = Finding(
         file="src\\docvet\\checks\\enrichment.py",
         line=1,
@@ -134,7 +135,21 @@ def test_finding_normalizes_backslash_paths_to_forward_slashes():
     assert finding.file == "src/docvet/checks/enrichment.py"
 
 
+def test_finding_normalizes_mixed_separator_paths():
+    """Test that Finding normalizes paths with mixed forward and backslash separators."""
+    finding = Finding(
+        file="src/docvet\\checks/enrichment.py",
+        line=1,
+        symbol="test",
+        rule="missing-raises",
+        message="test message",
+        category="required",
+    )
+    assert finding.file == "src/docvet/checks/enrichment.py"
+
+
 def test_finding_preserves_forward_slash_paths():
+    """Test that Finding preserves paths already using forward slashes."""
     finding = Finding(
         file="src/docvet/checks/enrichment.py",
         line=1,
