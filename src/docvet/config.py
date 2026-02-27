@@ -2,7 +2,9 @@
 
 Loads and validates the ``[tool.docvet]`` configuration table from
 ``pyproject.toml``. Supports ``extend-exclude`` for additive pattern
-merging on top of defaults or an explicit ``exclude`` list. Exposes
+merging on top of defaults or an explicit ``exclude`` list. Uses
+composable validation helpers (``_validate_string_list``,
+``_resolve_fail_warn``) to keep individual parsers focused. Exposes
 ``EnrichmentConfig`` and ``FreshnessConfig`` dataclasses with sensible
 defaults for all check modules.
 
@@ -277,6 +279,10 @@ def _validate_type(
 ) -> None:
     """Type-check a single config value.
 
+    Rejects ``bool`` when *expected* is ``int`` (since ``bool`` is a
+    subclass of ``int`` in Python). Used directly for scalar fields
+    and composed by :func:`_validate_string_list` for list entries.
+
     Args:
         value: The value to check.
         expected: The expected Python type.
@@ -293,6 +299,34 @@ def _validate_type(
         msg = f"docvet: '{key}' in {section} must be {expected.__name__}, got {actual}"
         print(msg, file=sys.stderr)
         sys.exit(1)
+
+
+def _validate_string_list(
+    data: dict[str, object],
+    key: str,
+    section: str,
+    *,
+    check_names: bool = False,
+) -> None:
+    """Validate that ``data[key]`` is a list of strings.
+
+    Checks that the value is a ``list``, that every entry is a ``str``,
+    and optionally that each string is a recognised check name.
+
+    Args:
+        data: Parsed config dictionary containing *key*.
+        key: The snake_case key to validate inside *data*.
+        section: Human-readable TOML section label (kebab-case) used in
+            error messages passed to :func:`_validate_type`.
+        check_names: When ``True``, additionally validate entries
+            against :data:`_VALID_CHECK_NAMES` via
+            :func:`_validate_check_names`.
+    """
+    _validate_type(data[key], list, section, _TOOL_SECTION)
+    for entry in data[key]:  # type: ignore[union-attr]
+        _validate_type(entry, str, section, _TOOL_SECTION)
+    if check_names:
+        _validate_check_names(data[key], section)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -397,8 +431,10 @@ def _parse_docvet_section(
     """Validate and parse a non-empty ``[tool.docvet]`` dict.
 
     Converts kebab-case keys to snake_case, validates types for all
-    top-level keys including ``extend-exclude``, and delegates nested
-    sections to their respective parsers.
+    top-level keys, and delegates nested sections to their respective
+    parsers. List-of-string fields (``exclude``, ``extend-exclude``,
+    ``fail-on``, ``warn-on``) are validated via
+    :func:`_validate_string_list`.
 
     Args:
         data: Mutable copy of the raw TOML ``[tool.docvet]`` section.
@@ -426,25 +462,13 @@ def _parse_docvet_section(
     if "package_name" in converted:
         _validate_type(converted["package_name"], str, "package-name", _TOOL_SECTION)
     if "exclude" in converted:
-        _validate_type(converted["exclude"], list, "exclude", _TOOL_SECTION)
-        for entry in converted["exclude"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "exclude", _TOOL_SECTION)
+        _validate_string_list(converted, "exclude", "exclude")
     if "extend_exclude" in converted:
-        _validate_type(
-            converted["extend_exclude"], list, "extend-exclude", _TOOL_SECTION
-        )
-        for entry in converted["extend_exclude"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "extend-exclude", _TOOL_SECTION)
+        _validate_string_list(converted, "extend_exclude", "extend-exclude")
     if "fail_on" in converted:
-        _validate_type(converted["fail_on"], list, "fail-on", _TOOL_SECTION)
-        for entry in converted["fail_on"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "fail-on", _TOOL_SECTION)
-        _validate_check_names(converted["fail_on"], "fail-on")  # type: ignore[arg-type]
+        _validate_string_list(converted, "fail_on", "fail-on", check_names=True)
     if "warn_on" in converted:
-        _validate_type(converted["warn_on"], list, "warn-on", _TOOL_SECTION)
-        for entry in converted["warn_on"]:  # type: ignore[union-attr]
-            _validate_type(entry, str, "warn-on", _TOOL_SECTION)
-        _validate_check_names(converted["warn_on"], "warn-on")  # type: ignore[arg-type]
+        _validate_string_list(converted, "warn_on", "warn-on", check_names=True)
 
     return converted
 
@@ -490,6 +514,9 @@ def _read_docvet_toml(pyproject_path: Path) -> dict[str, object]:
 def _find_pyproject_path(path: Path | None) -> Path | None:
     """Resolve an explicit or discovered ``pyproject.toml`` path.
 
+    When *path* is given, validates it exists; otherwise falls back
+    to :func:`_find_pyproject` for upward directory traversal.
+
     Args:
         path: Explicit path provided by the caller, or *None* for
             automatic discovery.
@@ -508,6 +535,48 @@ def _find_pyproject_path(path: Path | None) -> Path | None:
     return _find_pyproject()
 
 
+def _resolve_fail_warn(
+    parsed: dict[str, object],
+    defaults: DocvetConfig,
+) -> tuple[list[str], list[str]]:
+    """Resolve ``fail-on`` and ``warn-on`` lists from parsed config.
+
+    Extracts both lists from *parsed* with fallback to *defaults*.
+    Detects overlap and emits a stderr warning per overlapping check
+    (only when ``warn-on`` was explicitly set). Filters ``warn-on``
+    to exclude items already present in ``fail-on``.
+
+    Args:
+        parsed: Validated config dict (snake_case keys).
+        defaults: Default :class:`DocvetConfig` for fallback values.
+
+    Returns:
+        A ``(fail_on, warn_on)`` tuple ready for
+        :class:`DocvetConfig` construction.
+    """
+    raw_fail = parsed.get("fail_on")
+    fail_on: list[str] = (
+        [str(x) for x in raw_fail]
+        if isinstance(raw_fail, list)
+        else list(defaults.fail_on)
+    )
+    raw_warn = parsed.get("warn_on")
+    warn_on: list[str] = (
+        [str(x) for x in raw_warn]
+        if isinstance(raw_warn, list)
+        else list(defaults.warn_on)
+    )
+    fail_on_set = set(fail_on)
+    if "warn_on" in parsed:
+        for check in warn_on:
+            if check in fail_on_set:
+                print(
+                    f"docvet: '{check}' appears in both fail-on and warn-on; using fail-on",
+                    file=sys.stderr,
+                )
+    return fail_on, [c for c in warn_on if c not in fail_on_set]
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -518,9 +587,9 @@ def load_config(path: Path | None = None) -> DocvetConfig:
 
     Merges ``extend-exclude`` patterns on top of the resolved base
     exclude list (explicit ``exclude`` or defaults) before constructing
-    the final :class:`DocvetConfig`. Warns on stderr when ``warn-on``
-    and ``fail-on`` overlap, but only if ``warn-on`` was explicitly set
-    in the TOML (default overlaps are resolved silently).
+    the final :class:`DocvetConfig`. Delegates ``fail-on``/``warn-on``
+    resolution (including overlap detection and filtering) to
+    :func:`_resolve_fail_warn`.
 
     Args:
         path: Explicit path to a ``pyproject.toml``. When *None*,
@@ -550,27 +619,7 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         configured_src if isinstance(configured_src, str) else None,
     )
 
-    raw_fail = parsed.get("fail_on")
-    fail_on: list[str] = (
-        [str(x) for x in raw_fail]
-        if isinstance(raw_fail, list)
-        else list(defaults.fail_on)
-    )
-    raw_warn = parsed.get("warn_on")
-    warn_on: list[str] = (
-        [str(x) for x in raw_warn]
-        if isinstance(raw_warn, list)
-        else list(defaults.warn_on)
-    )
-    warn_on_explicit = "warn_on" in parsed
-    fail_on_set = set(fail_on)
-    if warn_on_explicit:
-        for check in warn_on:
-            if check in fail_on_set:
-                print(
-                    f"docvet: '{check}' appears in both fail-on and warn-on; using fail-on",
-                    file=sys.stderr,
-                )
+    fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
 
     raw_pkg = parsed.get("package_name")
     raw_exclude = parsed.get("exclude")
@@ -591,7 +640,7 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         package_name=raw_pkg if isinstance(raw_pkg, str) else None,
         exclude=base_exclude,
         fail_on=fail_on,
-        warn_on=[c for c in warn_on if c not in fail_on_set],
+        warn_on=warn_on,
         freshness=(
             raw_freshness
             if isinstance(raw_freshness, FreshnessConfig)

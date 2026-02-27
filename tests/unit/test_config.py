@@ -13,6 +13,8 @@ from docvet.config import (
     EnrichmentConfig,
     FreshnessConfig,
     _find_pyproject,
+    _resolve_fail_warn,
+    _validate_string_list,
     load_config,
 )
 
@@ -807,3 +809,96 @@ def test_load_config_unknown_key_extend_excludes_typo_exits(
     with pytest.raises(SystemExit):
         load_config()
     assert "extend-excludes" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# _validate_string_list
+# ---------------------------------------------------------------------------
+
+
+def test_validate_string_list_valid_list_passes():
+    data: dict[str, object] = {"exclude": ["tests", "scripts"]}
+    _validate_string_list(data, "exclude", "exclude")
+
+
+def test_validate_string_list_non_list_exits(capsys):
+    data: dict[str, object] = {"exclude": "not-a-list"}
+    with pytest.raises(SystemExit):
+        _validate_string_list(data, "exclude", "exclude")
+    assert "list" in capsys.readouterr().err
+
+
+def test_validate_string_list_non_string_entry_exits(capsys):
+    data: dict[str, object] = {"exclude": [123]}
+    with pytest.raises(SystemExit):
+        _validate_string_list(data, "exclude", "exclude")
+    assert "str" in capsys.readouterr().err
+
+
+def test_validate_string_list_check_names_true_invalid_exits(capsys):
+    data: dict[str, object] = {"fail_on": ["bogus"]}
+    with pytest.raises(SystemExit):
+        _validate_string_list(data, "fail_on", "fail-on", check_names=True)
+    assert "bogus" in capsys.readouterr().err
+
+
+def test_validate_string_list_check_names_false_skips_name_validation():
+    data: dict[str, object] = {"exclude": ["anything-goes"]}
+    _validate_string_list(data, "exclude", "exclude", check_names=False)
+
+
+# ---------------------------------------------------------------------------
+# _resolve_fail_warn
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_fail_warn_both_from_parsed():
+    parsed: dict[str, object] = {
+        "fail_on": ["freshness"],
+        "warn_on": ["enrichment"],
+    }
+    defaults = DocvetConfig()
+    fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
+    assert fail_on == ["freshness"]
+    assert warn_on == ["enrichment"]
+
+
+def test_resolve_fail_warn_both_from_defaults():
+    parsed: dict[str, object] = {}
+    defaults = DocvetConfig()
+    fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
+    assert fail_on == []
+    assert warn_on == ["freshness", "enrichment", "griffe", "coverage"]
+
+
+def test_resolve_fail_warn_overlap_explicit_warn_emits_warning(capsys):
+    parsed: dict[str, object] = {
+        "fail_on": ["freshness"],
+        "warn_on": ["freshness", "enrichment"],
+    }
+    defaults = DocvetConfig()
+    fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
+    err = capsys.readouterr().err
+    assert "freshness" in err
+    assert "appears in both" in err
+    assert fail_on == ["freshness"]
+    assert warn_on == ["enrichment"]
+
+
+def test_resolve_fail_warn_default_warn_overlap_silent(capsys):
+    parsed: dict[str, object] = {"fail_on": ["freshness"]}
+    defaults = DocvetConfig()
+    _resolve_fail_warn(parsed, defaults)
+    err = capsys.readouterr().err
+    assert "appears in both" not in err
+
+
+def test_resolve_fail_warn_filtered_warn_excludes_fail_items():
+    parsed: dict[str, object] = {
+        "fail_on": ["freshness", "coverage"],
+        "warn_on": ["freshness", "coverage", "enrichment"],
+    }
+    defaults = DocvetConfig()
+    fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
+    assert fail_on == ["freshness", "coverage"]
+    assert warn_on == ["enrichment"]
