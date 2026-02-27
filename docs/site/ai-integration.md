@@ -14,7 +14,7 @@ Add docvet to your AI coding workflow. Drop a snippet into your agent's instruct
 | Cursor | `.cursorrules` (also reads `AGENTS.md`) |
 | GitHub Copilot | `.github/copilot-instructions.md` (also reads `AGENTS.md`) |
 | Claude Code | `CLAUDE.md` |
-| Windsurf | `.windsurfrules` |
+| Windsurf | `.windsurfrules` (also reads `AGENTS.md`) |
 | Kilo Code | `AGENTS.md` |
 
 Place the file at your project root. Each snippet below contains the same core content adapted to the tool's conventions. Copy the one that matches your tool and paste it into the file.
