@@ -45,6 +45,16 @@ Before creating a PR, always:
 
 Never add `Co-Authored-By` trailers (or any variation) to commit messages or PR descriptions. Commits and PRs should not attribute authorship to Claude.
 
+## Hash References Are GitHub-Only
+
+The `#N` syntax (e.g., `#180`, `Closes #42`) is **reserved for GitHub issues and PRs**. GitHub auto-links any `#N` to the corresponding item, so using it for non-GitHub references creates incorrect links.
+
+- **Correct**: `Closes #180` (real GitHub issue), `feat(ci): add hook definition` (no story ref needed)
+- **Wrong**: `feat(ci): add hook definition (#23.4)` — GitHub links `#23` to issue/PR 23
+- BMAD story IDs (e.g., 23.4) must NOT appear with `#` prefix in commit messages, PR titles, or PR bodies
+- The branch name already carries the story ID (e.g., `feat/ci-23-4-pre-commit-hook-definition`) — no need to repeat it in the commit subject
+- If a story reference is needed in the PR body, use plain text: `Story 23.4` (no `#`)
+
 ## Push Before PR
 
 Ensure the branch is pushed to remote with `-u` before creating the PR:
