@@ -1,5 +1,6 @@
 # Rule metadata catalog — single source of truth for all 19 docvet rules.
 # Used by docs/main.py macros hook to render consistent rule page headers.
+# Schema: id, name, check, category, applies_to, summary, since, fix (all required)
 
 - id: missing-raises
   name: Missing Raises Section

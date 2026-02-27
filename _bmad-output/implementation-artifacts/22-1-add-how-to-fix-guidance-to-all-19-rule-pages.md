@@ -1,6 +1,6 @@
 # Story 22.1: Add "How to Fix" Guidance to All 19 Rule Pages
 
-Status: review
+Status: done
 Branch: `feat/docs-22-1-how-to-fix-rule-pages`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -229,6 +229,7 @@ None — clean implementation with no debugging needed.
 ### Change Log
 
 - 2026-02-26: Added "How to Fix" guidance sections to all 19 rule pages via data-driven `rule_fix()` macro
+- 2026-02-26: Code review — 1 LOW fixed (schema comment in `rules.yml`), 3 dismissed after party-mode consensus
 
 ### File List
 
@@ -260,15 +261,23 @@ None — clean implementation with no debugging needed.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approve — 1 LOW finding fixed, 3 findings dismissed after party-mode debate.
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| R1 | MEDIUM | `rule_fix()` silently swallows unknown rule IDs (asymmetry with `rule_header()`) | Dismissed — `rule_header()` guards the runtime path; `rule_fix()` can never encounter an unknown rule. Merged into R2. |
+| R2 | LOW | No regression guard for `fix` field presence in `rules.yml` | Fixed — added schema comment to `rules.yml` header documenting `fix` as required. |
+| R3 | LOW | Module docstring uses RST `::` directive in Examples section | Dismissed — pre-existing in a file not rendered by mkdocstrings; zero user impact. |
+| R4 | LOW | Untracked `rule_header()` docstring enhancement | Dismissed — improving adjacent docstrings when editing a file is expected practice. |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
