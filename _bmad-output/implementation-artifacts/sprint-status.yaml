@@ -1,4 +1,4 @@
-# generated: 2026-02-26
+# generated: 2026-02-27
 # project: docvet
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-26
+generated: 2026-02-27
 project: docvet
 project_key: NOKEY
 tracking_system: file-system
@@ -140,7 +140,7 @@ development_status:
   14-3-dogfood-ci: done
   14-4-ci-and-pre-commit-integration-docs: done
   14-5-docvet-badge: done
-  epic-14-retrospective: optional
+  epic-14-retrospective: done
 
   # Epic 15: Documentation Quality & Cross-Reference Linking
   epic-15: done
@@ -185,3 +185,26 @@ development_status:
   21-4-subcommand-output-parity: done
   21-5-test-migration-and-documentation: done
   epic-21-retrospective: optional
+
+  # Epic 22: Discoverable and Understandable
+  epic-22: backlog
+  22-1-add-how-to-fix-guidance-to-all-19-rule-pages: backlog
+  22-2-rewrite-readme-with-ai-agent-section-and-competitive-positioning: backlog
+  22-3-create-agents-md-for-cross-tool-agent-discovery: backlog
+  22-4-create-contributing-md-contributor-guide: backlog
+  22-5-audit-and-expand-discoverability-metadata: backlog
+  epic-22-retrospective: optional
+
+  # Epic 23: Machine-Readable and Cross-Platform
+  epic-23: backlog
+  23-1-cross-platform-ci-matrix-trust-gate: backlog
+  23-2-positional-file-arguments-for-cli: backlog
+  23-3-json-structured-output-format-json: backlog
+  23-4-pre-commit-hook-definition: backlog
+  epic-23-retrospective: optional
+
+  # Epic 24: Real-Time Diagnostics for IDEs and Agents
+  epic-24: backlog
+  24-1-lsp-server-for-real-time-diagnostics: backlog
+  24-2-claude-code-plugin-configuration: backlog
+  epic-24-retrospective: optional
