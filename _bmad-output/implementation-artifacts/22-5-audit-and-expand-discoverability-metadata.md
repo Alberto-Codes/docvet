@@ -172,8 +172,9 @@ Pattern: `feat(docs):` or `chore(...)` prefix, issue number in title, clean sing
 
 ### Project Structure Notes
 
-- `pyproject.toml` at repo root — only file modified
+- `pyproject.toml` at repo root — primary deliverable (classifiers + keywords)
 - GitHub topics managed via `gh repo edit` — no file changes needed for topics
+- `_bmad-output/implementation-artifacts/` — story file, sprint-status, and retro committed alongside
 - No conflicts with existing files
 
 ### References
