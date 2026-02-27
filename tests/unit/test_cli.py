@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import Any
 from unittest.mock import ANY, MagicMock
 
 import pytest
@@ -2323,7 +2324,7 @@ def test_check_when_invoked_with_positional_and_all_fails_with_error():
 # ---------------------------------------------------------------------------
 
 
-def _extract_json(output: str) -> dict:
+def _extract_json(output: str) -> dict[str, Any]:
     """Extract JSON object from mixed CLI output (may contain stderr text)."""
     start = output.index("{")
     end = output.rindex("}") + 1
