@@ -1,6 +1,6 @@
 # Story 22.3: Create AGENTS.md for Cross-Tool Agent Discovery
 
-Status: review
+Status: done
 Branch: `feat/docs-22-3-agents-md`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -236,6 +236,7 @@ None — clean implementation, no debugging required.
 ### Change Log
 
 - 2026-02-26: Created AGENTS.md and AI Agent Integration docs page; wired navigation and cross-links; all quality gates pass.
+- 2026-02-27: Post-merge fix: added `(also reads AGENTS.md)` to Windsurf table entry per Copilot automated review comment. Verified against Windsurf docs.
 
 ### File List
 
@@ -254,7 +255,7 @@ Code review (adversarial) — 2026-02-26
 
 ### Outcome
 
-Changes Requested — 2 fixes applied, re-verify quality gates.
+Approved — 2 fixes applied during initial review, 1 post-merge fix from Copilot automated review.
 
 ### Findings Summary
 
@@ -263,6 +264,7 @@ Changes Requested — 2 fixes applied, re-verify quality gates.
 | H1 | HIGH | `<rule-id>` placeholder in AGENTS.md line 69 renders as invisible HTML tag on GitHub; task 4.2 verification gap | Fixed: backtick-wrapped URL template |
 | M1 | MEDIUM | ai-integration.md intro says `docvet check` but all snippets say `docvet check --all` — inconsistency within same page | Fixed: changed intro to `docvet check --all` |
 | M2 | LOW | "Rules reference" link label targets single rule page, not an index | Accepted: no rules index page exists; sidebar navigation handles discovery |
+| P1 | LOW | Windsurf table entry missing `(also reads AGENTS.md)` note — inconsistent with Cursor/Copilot rows | Fixed: updated table entry per Windsurf docs confirmation |
 
 ### Verification
 
