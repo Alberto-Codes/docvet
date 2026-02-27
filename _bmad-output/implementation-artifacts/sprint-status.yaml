@@ -153,7 +153,7 @@ development_status:
   epic-16: done
   16-1-config-parsing-and-merge-logic: done
   16-2-integration-verification-and-documentation: done
-  epic-16-retrospective: done
+  epic-16-retrospective: done  # 2026-02-27
 
   # Epic 17: Publish Reliability
   epic-17: done
@@ -190,8 +190,8 @@ development_status:
   epic-22: in-progress
   22-1-add-how-to-fix-guidance-to-all-19-rule-pages: done
   22-2-rewrite-readme-with-ai-agent-section-and-competitive-positioning: done
-  22-3-create-agents-md-for-cross-tool-agent-discovery: review
-  22-4-create-contributing-md-contributor-guide: backlog
+  22-3-create-agents-md-for-cross-tool-agent-discovery: done
+  22-4-create-contributing-md-contributor-guide: done
   22-5-audit-and-expand-discoverability-metadata: backlog
   epic-22-retrospective: optional
 
