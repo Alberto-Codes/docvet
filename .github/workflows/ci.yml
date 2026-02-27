@@ -43,22 +43,28 @@ jobs:
         continue-on-error: true
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-suffix: ${{ matrix.python-version }}
+          cache-suffix: ${{ matrix.os }}-py${{ matrix.python-version }}
       - run: uv python install ${{ matrix.python-version }}
-      - run: UV_PYTHON=${{ matrix.python-version }} uv sync --dev
-      - run: UV_PYTHON=${{ matrix.python-version }} uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+      - run: uv sync --dev
+        env:
+          UV_PYTHON: ${{ matrix.python-version }}
+      - run: uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+        env:
+          UV_PYTHON: ${{ matrix.python-version }}
       - uses: codecov/codecov-action@v5
-        if: matrix.python-version == '3.12'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         with:
           fail_ci_if_error: false
         env:

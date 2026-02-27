@@ -29,7 +29,7 @@ class TestCheckCoverageBasicDetection:
         findings = check_coverage(src, [module])
 
         assert len(findings) == 1
-        assert findings[0].file == str(module)
+        assert findings[0].file == str(module).replace("\\", "/")
         assert findings[0].line == 1
         assert findings[0].symbol == "<module>"
         assert findings[0].rule == "missing-init"
@@ -111,7 +111,7 @@ class TestCheckCoverageDeduplication:
         findings = check_coverage(src, [c, a, b])
 
         assert len(findings) == 1
-        assert findings[0].file == str(a)  # lexicographically first
+        assert findings[0].file == str(a).replace("\\", "/")  # lexicographically first
         assert "3 files affected" in findings[0].message
 
     def test_missing_init_when_two_files_same_dir_uses_plural(
@@ -239,7 +239,7 @@ class TestCheckCoverageOutsideSrcRoot:
         findings = check_coverage(src, [inside, outside])
 
         assert len(findings) == 1
-        assert findings[0].file == str(inside)
+        assert findings[0].file == str(inside).replace("\\", "/")
 
 
 class TestCheckCoverageEmptyInput:
@@ -320,7 +320,7 @@ class TestCheckCoverageFindingFields:
         assert len(findings) == 1
         f = findings[0]
         assert isinstance(f, Finding)
-        assert f.file == str(module)
+        assert f.file == str(module).replace("\\", "/")
         assert f.line == 1
         assert f.symbol == "<module>"
         assert f.rule == "missing-init"

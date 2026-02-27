@@ -395,7 +395,7 @@ class TestCheckGriffeCompat:
         assert result[0].symbol == "bad_func"
         assert result[0].line == 10
         assert result[0].category == "recommended"
-        assert result[0].file == str(mod_path.resolve())
+        assert result[0].file == str(mod_path.resolve()).replace("\\", "/")
         assert "Function" in result[0].message
 
     def test_happy_path_unknown_param(self, tmp_path: Path, mocker) -> None:
@@ -436,7 +436,7 @@ class TestCheckGriffeCompat:
         assert result[0].rule == "griffe-unknown-param"
         assert result[0].category == "required"
         assert result[0].symbol == "phantom_func"
-        assert result[0].file == str(mod_path.resolve())
+        assert result[0].file == str(mod_path.resolve()).replace("\\", "/")
         assert result[0].line == 5
         assert "Function" in result[0].message
         assert "'phantom_func'" in result[0].message
@@ -477,7 +477,7 @@ class TestCheckGriffeCompat:
         assert result[0].rule == "griffe-format-warning"
         assert result[0].category == "recommended"
         assert result[0].symbol == "messy_func"
-        assert result[0].file == str(mod_path.resolve())
+        assert result[0].file == str(mod_path.resolve()).replace("\\", "/")
         assert result[0].line == 15
         assert "Function" in result[0].message
         assert "'messy_func'" in result[0].message

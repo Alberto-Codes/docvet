@@ -858,7 +858,7 @@ def test_get_git_diff_when_diff_mode_runs_git_diff(mocker):
     result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.DIFF)
     assert result == "diff output"
     mock_subprocess.assert_called_once_with(
-        ["git", "diff", "--", "/f.py"],
+        ["git", "diff", "--", str(Path("/f.py"))],
         capture_output=True,
         text=True,
         check=False,
@@ -875,7 +875,7 @@ def test_get_git_diff_when_files_mode_runs_git_diff(mocker):
     result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.FILES)
     assert result == "diff output"
     mock_subprocess.assert_called_once_with(
-        ["git", "diff", "--", "/f.py"],
+        ["git", "diff", "--", str(Path("/f.py"))],
         capture_output=True,
         text=True,
         check=False,
@@ -892,7 +892,7 @@ def test_get_git_diff_when_staged_mode_runs_git_diff_cached(mocker):
     result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.STAGED)
     assert result == "cached diff"
     mock_subprocess.assert_called_once_with(
-        ["git", "diff", "--cached", "--", "/f.py"],
+        ["git", "diff", "--cached", "--", str(Path("/f.py"))],
         capture_output=True,
         text=True,
         check=False,
@@ -909,7 +909,7 @@ def test_get_git_diff_when_all_mode_runs_git_diff_head(mocker):
     result = _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.ALL)
     assert result == "head diff"
     mock_subprocess.assert_called_once_with(
-        ["git", "diff", "HEAD", "--", "/f.py"],
+        ["git", "diff", "HEAD", "--", str(Path("/f.py"))],
         capture_output=True,
         text=True,
         check=False,
@@ -941,7 +941,7 @@ def test_get_git_blame_runs_correct_command(mocker):
     result = _get_git_blame(Path("/f.py"), Path("/project"))
     assert result == "blame output"
     mock_subprocess.assert_called_once_with(
-        ["git", "blame", "--line-porcelain", "--", "/f.py"],
+        ["git", "blame", "--line-porcelain", "--", str(Path("/f.py"))],
         capture_output=True,
         text=True,
         check=False,

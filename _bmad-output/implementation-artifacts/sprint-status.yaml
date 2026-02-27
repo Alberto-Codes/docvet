@@ -163,7 +163,7 @@ development_status:
   # Epic 18: Documentation Site Navigation
   epic-18: done
   18-1-rule-page-breadcrumb-back-links: done
-  epic-18-retrospective: optional
+  epic-18-retrospective: done  # 2026-02-27
 
   # Epic 19: Advanced Exclude Patterns
   epic-19: done
@@ -196,8 +196,8 @@ development_status:
   epic-22-retrospective: optional
 
   # Epic 23: Machine-Readable and Cross-Platform
-  epic-23: backlog
-  23-1-cross-platform-ci-matrix-trust-gate: backlog
+  epic-23: in-progress
+  23-1-cross-platform-ci-matrix-trust-gate: done
   23-2-positional-file-arguments-for-cli: backlog
   23-3-json-structured-output-format-json: backlog
   23-4-pre-commit-hook-definition: backlog
