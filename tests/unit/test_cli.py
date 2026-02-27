@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from unittest.mock import ANY, MagicMock
@@ -1585,6 +1586,9 @@ class TestOutputAndExit:
             "docvet.cli.format_verbose_header",
             return_value="Checking 1 files [enrichment]\n",
         )
+        self.mock_format_json = mocker.patch(
+            "docvet.cli.format_json", return_value='{"findings":[]}\n'
+        )
         self.mock_write_report = mocker.patch("docvet.cli.write_report")
         self.mock_determine_exit_code = mocker.patch(
             "docvet.cli.determine_exit_code", return_value=0
@@ -1785,6 +1789,31 @@ class TestOutputAndExit:
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
         self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
+
+    def test_format_json_calls_format_json_with_findings(self, capsys, make_finding):
+        """AC#1: --format json routes to format_json and emits to stdout."""
+        finding = make_finding()
+        ctx = self._make_ctx(fmt="json")
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 5, ["enrichment"])
+        self.mock_format_json.assert_called_once_with([finding], 5)
+        captured = capsys.readouterr()
+        assert captured.out == '{"findings":[]}\n'
+
+    def test_format_json_emits_even_with_zero_findings(self, capsys):
+        """AC#6: --format json always emits JSON, even with no findings."""
+        ctx = self._make_ctx(fmt="json")
+        self._call(ctx, {"enrichment": []}, DocvetConfig(), 5, ["enrichment"])
+        self.mock_format_json.assert_called_once_with([], 5)
+        captured = capsys.readouterr()
+        assert captured.out == '{"findings":[]}\n'
+
+    def test_format_json_writes_to_file_when_output_set(self, tmp_path, make_finding):
+        """AC#1: --format json --output writes JSON to file."""
+        output_file = tmp_path / "report.json"
+        finding = make_finding()
+        ctx = self._make_ctx(fmt="json", output=str(output_file))
+        self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
+        assert output_file.read_text() == '{"findings":[]}\n'
 
 
 # ---------------------------------------------------------------------------
@@ -2280,3 +2309,86 @@ def test_check_when_invoked_with_positional_and_all_fails_with_error():
     result = runner.invoke(app, ["check", "foo.py", "--all"])
     assert result.exit_code != 0
     assert "only one of" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# Story 23.3: JSON format CLI-level tests
+# ---------------------------------------------------------------------------
+
+
+def _extract_json(output: str) -> dict:
+    """Extract JSON object from mixed CLI output (may contain stderr text)."""
+    start = output.index("{")
+    end = output.rindex("}") + 1
+    return json.loads(output[start:end])
+
+
+def test_check_when_invoked_with_format_json_exits_successfully():
+    """AC#4: --format json accepted by check subcommand."""
+    result = runner.invoke(app, ["--format", "json", "check"])
+    assert result.exit_code == 0
+
+
+def test_enrichment_when_invoked_with_format_json_exits_successfully():
+    """AC#4: --format json accepted by enrichment subcommand."""
+    result = runner.invoke(app, ["--format", "json", "enrichment"])
+    assert result.exit_code == 0
+
+
+def test_freshness_when_invoked_with_format_json_exits_successfully():
+    """AC#4: --format json accepted by freshness subcommand."""
+    result = runner.invoke(app, ["--format", "json", "freshness"])
+    assert result.exit_code == 0
+
+
+def test_coverage_when_invoked_with_format_json_exits_successfully():
+    """AC#4: --format json accepted by coverage subcommand."""
+    result = runner.invoke(app, ["--format", "json", "coverage"])
+    assert result.exit_code == 0
+
+
+def test_griffe_when_invoked_with_format_json_exits_successfully():
+    """AC#4: --format json accepted by griffe subcommand."""
+    result = runner.invoke(app, ["--format", "json", "griffe"])
+    assert result.exit_code == 0
+
+
+def test_check_with_format_json_valid_json_output():
+    """AC#1: --format json produces valid JSON on stdout."""
+    result = runner.invoke(app, ["--format", "json", "check"])
+    assert result.exit_code == 0
+    parsed = _extract_json(result.output)
+    assert "findings" in parsed
+    assert "summary" in parsed
+
+
+def test_check_with_format_json_empty_findings_returns_empty_array():
+    """AC#6: --format json with no findings returns empty array."""
+    result = runner.invoke(app, ["--format", "json", "check"])
+    assert result.exit_code == 0
+    parsed = _extract_json(result.output)
+    assert parsed["findings"] == []
+    assert parsed["summary"]["total"] == 0
+
+
+def test_check_with_format_json_exit_code_1_when_findings(mocker):
+    """AC#3: --format json returns exit code 1 when findings exist."""
+    from docvet.checks import Finding
+
+    finding = Finding("f.py", 1, "s", "missing-raises", "msg", "required")
+    mocker.patch("docvet.cli._run_enrichment", return_value=[finding])
+    mocker.patch(
+        "docvet.cli.load_config",
+        return_value=DocvetConfig(fail_on=["enrichment"]),
+    )
+    result = runner.invoke(app, ["--format", "json", "check", "--all"])
+    assert result.exit_code == 1
+    parsed = _extract_json(result.output)
+    assert len(parsed["findings"]) >= 1
+
+
+def test_check_with_format_text_output_unchanged():
+    """AC#5: Default text format is unchanged."""
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 0
+    assert "{" not in result.output or "findings" not in result.output
