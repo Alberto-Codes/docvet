@@ -7,10 +7,12 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from docvet.cli import (
     FreshnessMode,
+    _merge_file_args,
     _run_coverage,
     _run_enrichment,
     _run_freshness,
@@ -260,49 +262,49 @@ def test_check_when_invoked_with_multiple_files_exits_successfully():
 def test_check_when_invoked_with_staged_and_all_fails_with_error():
     result = runner.invoke(app, ["check", "--staged", "--all"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 def test_check_when_invoked_with_staged_and_files_fails_with_error():
     result = runner.invoke(app, ["check", "--staged", "--files", "f.py"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 def test_check_when_invoked_with_all_and_files_fails_with_error():
     result = runner.invoke(app, ["check", "--all", "--files", "f.py"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 def test_check_when_invoked_with_all_three_flags_fails_with_error():
     result = runner.invoke(app, ["check", "--staged", "--all", "--files", "f.py"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 def test_enrichment_when_invoked_with_staged_and_all_fails_with_error():
     result = runner.invoke(app, ["enrichment", "--staged", "--all"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 def test_freshness_when_invoked_with_staged_and_all_fails_with_error():
     result = runner.invoke(app, ["freshness", "--staged", "--all"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 def test_coverage_when_invoked_with_staged_and_all_fails_with_error():
     result = runner.invoke(app, ["coverage", "--staged", "--all"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 def test_griffe_when_invoked_with_staged_and_all_fails_with_error():
     result = runner.invoke(app, ["griffe", "--staged", "--all"])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "only one of" in result.output.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -2153,3 +2155,128 @@ def test_check_staged_zero_files_exits_cleanly(mocker):
     assert result.exit_code == 0
     assert "No Python files to check." in result.output
     assert "Vetted" not in result.output
+
+
+# ---------------------------------------------------------------------------
+# _merge_file_args unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_merge_file_args_returns_positional_when_only_positional_provided():
+    """Positional args are returned when no --files option is given."""
+    result = _merge_file_args(["a.py", "b.py"], None)
+    assert result == ["a.py", "b.py"]
+
+
+def test_merge_file_args_returns_option_when_only_option_provided():
+    """--files option is returned when no positional args are given."""
+    result = _merge_file_args(None, ["c.py"])
+    assert result == ["c.py"]
+
+
+def test_merge_file_args_returns_none_when_neither_provided():
+    """Returns None when no file arguments are given at all."""
+    result = _merge_file_args(None, None)
+    assert result is None
+
+
+def test_merge_file_args_raises_when_both_provided():
+    """Raises BadParameter when both positional and --files are given."""
+    with pytest.raises(typer.BadParameter, match="positional files"):
+        _merge_file_args(["a.py"], ["b.py"])
+
+
+def test_merge_file_args_falls_through_to_option_when_positional_is_empty():
+    """Empty positional list (falsy) falls through to option."""
+    result = _merge_file_args([], ["x.py"])
+    assert result == ["x.py"]
+
+
+def test_merge_file_args_returns_none_for_both_empty():
+    """Both empty lists return None (option value)."""
+    result = _merge_file_args([], None)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Positional file arguments — CLI integration
+# ---------------------------------------------------------------------------
+
+
+def test_check_when_invoked_with_positional_args_exits_successfully():
+    """Positional file arguments are accepted by the check subcommand."""
+    result = runner.invoke(app, ["check", "foo.py", "bar.py"])
+    assert result.exit_code == 0
+
+
+def test_check_when_invoked_with_positional_args_calls_discover_with_files_mode(mocker):
+    """Positional args trigger FILES discovery mode with correct paths."""
+    mock_discover = mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
+    )
+    runner.invoke(app, ["check", "foo.py", "bar.py"])
+    mock_discover.assert_called_once_with(
+        ANY, DiscoveryMode.FILES, files=[Path("foo.py"), Path("bar.py")]
+    )
+
+
+def test_check_when_invoked_with_positional_and_files_flag_fails_with_error():
+    """Using both positional args and --files produces an error."""
+    result = runner.invoke(app, ["check", "foo.py", "--files", "bar.py"])
+    assert result.exit_code != 0
+    assert "positional files" in result.output.lower()
+
+
+def test_check_when_invoked_without_args_uses_diff_mode(mocker):
+    """No positional args and no --files falls back to DIFF mode."""
+    mock_discover = mocker.patch(
+        "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
+    )
+    runner.invoke(app, ["check"])
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
+
+
+def test_enrichment_when_invoked_with_positional_args_exits_successfully():
+    """Positional file arguments are accepted by the enrichment subcommand."""
+    result = runner.invoke(app, ["enrichment", "foo.py"])
+    assert result.exit_code == 0
+
+
+def test_freshness_when_invoked_with_positional_args_exits_successfully():
+    """Positional file arguments are accepted by the freshness subcommand."""
+    result = runner.invoke(app, ["freshness", "foo.py"])
+    assert result.exit_code == 0
+
+
+def test_coverage_when_invoked_with_positional_args_exits_successfully():
+    """Positional file arguments are accepted by the coverage subcommand."""
+    result = runner.invoke(app, ["coverage", "foo.py"])
+    assert result.exit_code == 0
+
+
+def test_griffe_when_invoked_with_positional_args_exits_successfully(mocker):
+    """Positional file arguments are accepted by the griffe subcommand."""
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
+    mocker.patch("docvet.cli._run_griffe", return_value=[])
+    result = runner.invoke(app, ["griffe", "foo.py"])
+    assert result.exit_code == 0
+
+
+def test_files_option_continues_to_work_for_backward_compatibility():
+    """The --files option still works identically for backward compat."""
+    result = runner.invoke(app, ["check", "--files", "foo.py"])
+    assert result.exit_code == 0
+
+
+def test_check_when_invoked_with_positional_and_staged_fails_with_error():
+    """Positional args and --staged are mutually exclusive."""
+    result = runner.invoke(app, ["check", "foo.py", "--staged"])
+    assert result.exit_code != 0
+    assert "only one of" in result.output.lower()
+
+
+def test_check_when_invoked_with_positional_and_all_fails_with_error():
+    """Positional args and --all are mutually exclusive."""
+    result = runner.invoke(app, ["check", "foo.py", "--all"])
+    assert result.exit_code != 0
+    assert "only one of" in result.output.lower()

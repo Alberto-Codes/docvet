@@ -198,7 +198,7 @@ development_status:
   # Epic 23: Machine-Readable and Cross-Platform
   epic-23: in-progress
   23-1-cross-platform-ci-matrix-trust-gate: done
-  23-2-positional-file-arguments-for-cli: backlog
+  23-2-positional-file-arguments-for-cli: done
   23-3-json-structured-output-format-json: backlog
   23-4-pre-commit-hook-definition: backlog
   epic-23-retrospective: optional

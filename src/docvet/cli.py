@@ -2,15 +2,20 @@
 
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
-combined ``check`` entry point. All subcommands share three-tier
-verbosity control (quiet/default/verbose) via dual-registered
-``--verbose`` and ``-q``/``--quiet`` flags and emit a unified
-``Vetted N files [check] — ...`` summary line on stderr.
+combined ``check`` entry point. All subcommands accept positional file
+arguments (``docvet check src/foo.py``) and the ``--files`` option,
+share three-tier verbosity control (quiet/default/verbose) via
+dual-registered ``--verbose`` and ``-q``/``--quiet`` flags, and emit
+a unified ``Vetted N files [check] — ...`` summary line on stderr.
 
 Examples:
     Run all checks on changed files::
 
         $ docvet check
+
+    Check specific files::
+
+        $ docvet check src/foo.py src/bar.py
 
     Run the enrichment check on the entire codebase::
 
@@ -109,7 +114,14 @@ class FreshnessMode(enum.StrEnum):
 StagedOption = Annotated[bool, typer.Option("--staged", help="Run on staged files.")]
 AllOption = Annotated[bool, typer.Option("--all", help="Run on entire codebase.")]
 FilesOption = Annotated[
-    list[str] | None, typer.Option("--files", help="Run on specific files.")
+    list[str] | None,
+    typer.Option(
+        "--files", help="Run on specific files (alternative to positional args)."
+    ),
+]
+FilesArgument = Annotated[
+    list[str] | None,
+    typer.Argument(help="Files to check (positional)."),
 ]
 ConfigOption = Annotated[
     Path | None, typer.Option("--config", help="Path to pyproject.toml.")
@@ -127,6 +139,33 @@ app = typer.Typer(help="Comprehensive docstring quality vetting.")
 # ---------------------------------------------------------------------------
 
 
+def _merge_file_args(
+    positional: list[str] | None,
+    option: list[str] | None,
+) -> list[str] | None:
+    """Merge positional file arguments with the ``--files`` option.
+
+    Returns the resolved file list: positional args, ``--files`` option,
+    or *None* if neither was provided.
+
+    Args:
+        positional: File paths from positional arguments.
+        option: File paths from the ``--files`` option.
+
+    Returns:
+        The merged file list, or *None* if no files were specified.
+
+    Raises:
+        typer.BadParameter: If both positional args and ``--files`` are
+            provided.
+    """
+    if positional and option:
+        raise typer.BadParameter("Cannot use both positional files and --files.")
+    if positional:
+        return positional
+    return option
+
+
 def _resolve_discovery_mode(
     staged: bool,
     all_files: bool,
@@ -137,7 +176,8 @@ def _resolve_discovery_mode(
     Args:
         staged: Whether ``--staged`` was passed.
         all_files: Whether ``--all`` was passed.
-        files: Explicit file list from ``--files``, or *None*.
+        files: Explicit file list from ``--files`` or positional args,
+            or *None*.
 
     Returns:
         The resolved :class:`DiscoveryMode`.
@@ -147,9 +187,7 @@ def _resolve_discovery_mode(
     """
     flags_set = sum((staged, all_files, files is not None))
     if flags_set > 1:
-        raise typer.BadParameter(
-            "Options --staged, --all, and --files are mutually exclusive."
-        )
+        raise typer.BadParameter("Use only one of: --staged, --all, or file arguments.")
     if staged:
         return DiscoveryMode.STAGED
     if all_files:
@@ -575,6 +613,7 @@ def main(
 @app.command()
 def check(
     ctx: typer.Context,
+    files_pos: FilesArgument = None,
     verbose: Annotated[
         bool, typer.Option("--verbose", help="Enable verbose output.")
     ] = False,
@@ -600,12 +639,14 @@ def check(
 
     Args:
         ctx: Typer invocation context.
+        files_pos: Positional file paths to check.
         verbose: Enable verbose output (subcommand-level).
         quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
-        files: Run on specific files.
+        files: Run on specific files via ``--files``.
     """
+    files = _merge_file_args(files_pos, files)
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     verbose = verbose or ctx.obj.get("verbose", False)
     quiet = quiet or ctx.obj.get("quiet", False)
@@ -679,6 +720,7 @@ def check(
 @app.command()
 def enrichment(
     ctx: typer.Context,
+    files_pos: FilesArgument = None,
     verbose: Annotated[
         bool, typer.Option("--verbose", help="Enable verbose output.")
     ] = False,
@@ -704,12 +746,14 @@ def enrichment(
 
     Args:
         ctx: Typer invocation context.
+        files_pos: Positional file paths to check.
         verbose: Enable verbose output (subcommand-level).
         quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
-        files: Run on specific files.
+        files: Run on specific files via ``--files``.
     """
+    files = _merge_file_args(files_pos, files)
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     verbose = verbose or ctx.obj.get("verbose", False)
     quiet = quiet or ctx.obj.get("quiet", False)
@@ -734,6 +778,7 @@ def enrichment(
 @app.command()
 def freshness(
     ctx: typer.Context,
+    files_pos: FilesArgument = None,
     verbose: Annotated[
         bool, typer.Option("--verbose", help="Enable verbose output.")
     ] = False,
@@ -762,13 +807,15 @@ def freshness(
 
     Args:
         ctx: Typer invocation context.
+        files_pos: Positional file paths to check.
         verbose: Enable verbose output (subcommand-level).
         quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
-        files: Run on specific files.
+        files: Run on specific files via ``--files``.
         mode: Freshness strategy (diff or drift).
     """
+    files = _merge_file_args(files_pos, files)
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     verbose = verbose or ctx.obj.get("verbose", False)
     quiet = quiet or ctx.obj.get("quiet", False)
@@ -799,6 +846,7 @@ def freshness(
 @app.command()
 def coverage(
     ctx: typer.Context,
+    files_pos: FilesArgument = None,
     verbose: Annotated[
         bool, typer.Option("--verbose", help="Enable verbose output.")
     ] = False,
@@ -823,12 +871,14 @@ def coverage(
 
     Args:
         ctx: Typer invocation context.
+        files_pos: Positional file paths to check.
         verbose: Enable verbose output (subcommand-level).
         quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
-        files: Run on specific files.
+        files: Run on specific files via ``--files``.
     """
+    files = _merge_file_args(files_pos, files)
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     verbose = verbose or ctx.obj.get("verbose", False)
     quiet = quiet or ctx.obj.get("quiet", False)
@@ -851,6 +901,7 @@ def coverage(
 @app.command()
 def griffe(
     ctx: typer.Context,
+    files_pos: FilesArgument = None,
     verbose: Annotated[
         bool, typer.Option("--verbose", help="Enable verbose output.")
     ] = False,
@@ -875,12 +926,14 @@ def griffe(
 
     Args:
         ctx: Typer invocation context.
+        files_pos: Positional file paths to check.
         verbose: Enable verbose output (subcommand-level).
         quiet: Suppress non-finding output on stderr (subcommand-level).
         staged: Run on staged files.
         all_files: Run on entire codebase.
-        files: Run on specific files.
+        files: Run on specific files via ``--files``.
     """
+    files = _merge_file_args(files_pos, files)
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
     verbose = verbose or ctx.obj.get("verbose", False)
     quiet = quiet or ctx.obj.get("quiet", False)

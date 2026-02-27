@@ -1,7 +1,6 @@
 - id: docvet
   name: docvet
-  entry: docvet check --staged
+  entry: docvet check
   language: python
   types: [python]
-  pass_filenames: false
   require_serial: true
