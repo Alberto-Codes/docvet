@@ -2192,8 +2192,8 @@ def test_merge_file_args_falls_through_to_option_when_positional_is_empty():
     assert result == ["x.py"]
 
 
-def test_merge_file_args_returns_none_for_both_empty():
-    """Both empty lists return None (option value)."""
+def test_merge_file_args_returns_none_when_positional_empty_and_option_absent():
+    """Empty positional list and option=None return None (no file args)."""
     result = _merge_file_args([], None)
     assert result is None
 

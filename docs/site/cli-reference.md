@@ -57,11 +57,11 @@ Vetted 42 files [enrichment, freshness, coverage] — 2 findings (2 required, 0 
 
 The summary line uses the brand verb "Vetted" and always includes the elapsed time and list of checks that ran. When griffe is not installed, it is omitted from the check list.
 
-## Discovery Flags
+## Discovery Modes
 
-All subcommands accept the same set of discovery flags. These are **mutually exclusive** — use only one at a time.
+All subcommands accept the same set of discovery modes. These are **mutually exclusive** — use only one at a time.
 
-| Flag | Description |
+| Mode | Description |
 |------|-------------|
 | *(default)* | Files from `git diff` (unstaged changes) |
 | `--staged` | Files from `git diff --cached` (staged changes) |

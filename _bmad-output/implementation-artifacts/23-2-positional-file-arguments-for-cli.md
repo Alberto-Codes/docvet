@@ -58,10 +58,10 @@ so that docvet matches ruff/ty ergonomics and works with pre-commit's filename c
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| AC1: Positional args discover and check files | `test_check_when_invoked_with_positional_files_calls_discover_with_files_mode`, `test_check_when_invoked_with_positional_files_exits_successfully` | Pass |
-| AC2: All subcommands accept positional args | `test_enrichment_when_invoked_with_positional_files_exits_successfully`, `test_freshness_when_invoked_with_positional_files_exits_successfully`, `test_coverage_when_invoked_with_positional_files_exits_successfully`, `test_griffe_when_invoked_with_positional_files_exits_successfully` | Pass |
-| AC3: `--files` backward compatibility | `test_check_when_invoked_with_files_option_exits_successfully` | Pass |
-| AC4: Positional + `--files` error | `test_merge_file_args_when_both_provided_raises_bad_parameter`, `test_check_when_invoked_with_positional_and_files_flag_fails_with_error` | Pass |
+| AC1: Positional args discover and check files | `test_check_when_invoked_with_positional_args_calls_discover_with_files_mode`, `test_check_when_invoked_with_positional_args_exits_successfully` | Pass |
+| AC2: All subcommands accept positional args | `test_enrichment_when_invoked_with_positional_args_exits_successfully`, `test_freshness_when_invoked_with_positional_args_exits_successfully`, `test_coverage_when_invoked_with_positional_args_exits_successfully`, `test_griffe_when_invoked_with_positional_args_exits_successfully` | Pass |
+| AC3: `--files` backward compatibility | `test_files_option_continues_to_work_for_backward_compatibility` | Pass |
+| AC4: Positional + `--files` error | `test_merge_file_args_raises_when_both_provided`, `test_check_when_invoked_with_positional_and_files_flag_fails_with_error` | Pass |
 | AC5: `.pre-commit-hooks.yaml` updated | Static file inspection: no `pass_filenames: false`, no `--staged` in entry | Pass |
 
 ## Dev Notes
@@ -73,7 +73,7 @@ In typer, positional arguments use `typer.Argument()`. The key design:
 ```python
 # New shared type alias (alongside existing FilesOption)
 FilesArgument = Annotated[
-    list[str] | None, typer.Argument(default=None, help="Files to check.")
+    list[str] | None, typer.Argument(help="Files to check (positional).")
 ]
 ```
 
