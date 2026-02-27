@@ -56,8 +56,12 @@ jobs:
           enable-cache: true
           cache-suffix: ${{ matrix.os }}-py${{ matrix.python-version }}
       - run: uv python install ${{ matrix.python-version }}
-      - run: UV_PYTHON=${{ matrix.python-version }} uv sync --dev
-      - run: UV_PYTHON=${{ matrix.python-version }} uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+      - run: uv sync --dev
+        env:
+          UV_PYTHON: ${{ matrix.python-version }}
+      - run: uv run pytest --tb=short --cov=docvet --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+        env:
+          UV_PYTHON: ${{ matrix.python-version }}
       - uses: codecov/codecov-action@v5
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         with:
