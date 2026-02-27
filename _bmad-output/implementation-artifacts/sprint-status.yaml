@@ -158,7 +158,7 @@ development_status:
   # Epic 17: Publish Reliability
   epic-17: done
   17-1-post-publish-pypi-smoke-test: done
-  epic-17-retrospective: optional
+  epic-17-retrospective: done  # 2026-02-27
 
   # Epic 18: Documentation Site Navigation
   epic-18: done
@@ -187,12 +187,12 @@ development_status:
   epic-21-retrospective: optional
 
   # Epic 22: Discoverable and Understandable
-  epic-22: in-progress
+  epic-22: done
   22-1-add-how-to-fix-guidance-to-all-19-rule-pages: done
   22-2-rewrite-readme-with-ai-agent-section-and-competitive-positioning: done
   22-3-create-agents-md-for-cross-tool-agent-discovery: done
   22-4-create-contributing-md-contributor-guide: done
-  22-5-audit-and-expand-discoverability-metadata: backlog
+  22-5-audit-and-expand-discoverability-metadata: done
   epic-22-retrospective: optional
 
   # Epic 23: Machine-Readable and Cross-Platform
