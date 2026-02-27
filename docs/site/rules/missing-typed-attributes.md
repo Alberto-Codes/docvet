@@ -10,6 +10,8 @@ This rule flags `Attributes:` section entries that lack the typed format `name (
 
 mkdocstrings relies on the `name (type): description` format to render attribute types in API documentation. Without the type in parentheses, the generated docs lose type information, forcing users to look elsewhere to understand the data types of each attribute.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

@@ -10,6 +10,8 @@ This rule flags classes (dataclasses, NamedTuples, TypedDicts, and classes with 
 
 Users can't discover object properties or module-level variables without reading the source code. Documentation generators like mkdocstrings render empty attribute tables when the `Attributes:` section is missing, creating a poor documentation experience for anyone trying to use the class or module.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

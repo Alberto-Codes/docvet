@@ -10,6 +10,8 @@ This rule flags functions where only imports or formatting changed in a git diff
 
 While import changes are often cosmetic, they can indicate dependency changes that affect documented behavior — for example, switching from one library to another, or adding a new import for functionality that should be documented. This rule serves as a low-priority reminder to review the docstring when the surrounding code context changes.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

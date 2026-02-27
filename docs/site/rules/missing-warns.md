@@ -10,6 +10,8 @@ This rule flags functions that call `warnings.warn()` but have no `Warns:` secti
 
 Users of the function don't know which warnings to expect or suppress. Undocumented warnings create noisy log output in production and make it impossible to write targeted warning filters. Callers need to know the warning category and trigger condition to handle them appropriately.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

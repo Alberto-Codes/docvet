@@ -10,6 +10,8 @@ This rule flags module docstrings that are missing a `See Also:` section, or whe
 
 Modules serve as navigation entry points in documentation. Without cross-references, users landing on a module page in mkdocs have no links to related modules or classes. This breaks the discoverability that makes documentation sites useful — readers are left to browse the navigation tree manually.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

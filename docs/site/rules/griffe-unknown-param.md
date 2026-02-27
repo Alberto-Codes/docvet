@@ -10,6 +10,8 @@ This rule flags docstrings that document a parameter which does not exist in the
 
 A documented parameter that doesn't exist in the signature is actively misleading. The parameter may have been renamed or removed during a refactor, leaving stale documentation that confuses callers. This also causes visible rendering errors on mkdocs documentation sites.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

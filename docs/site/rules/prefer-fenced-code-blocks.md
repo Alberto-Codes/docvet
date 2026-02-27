@@ -10,6 +10,8 @@ This rule flags `Examples:` sections that use doctest `>>>` format instead of tr
 
 mkdocs-material renders fenced code blocks with syntax highlighting, copy buttons, and line numbers. Doctest `>>>` format renders as plain, unhighlighted text, resulting in a noticeably worse reading experience on your documentation site. Fenced blocks also support annotations and other material theme features.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

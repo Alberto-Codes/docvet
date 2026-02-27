@@ -10,6 +10,8 @@ This rule flags functions whose signature (parameters, return type, or decorator
 
 A changed signature means the function's calling contract has changed. Callers relying on the documented parameters, types, or return values now have wrong information. This is the most impactful form of docstring staleness because it directly misleads anyone reading the docs.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

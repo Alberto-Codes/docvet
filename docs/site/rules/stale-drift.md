@@ -10,6 +10,8 @@ This rule flags symbols where the code was modified more recently than the docst
 
 A growing gap between code modification dates and docstring dates means the documentation is gradually falling behind. Even if no single change was large enough to trigger a diff-mode finding, the cumulative drift means the docstring may now describe outdated behavior. Catching drift early prevents documentation from becoming unreliable over time.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

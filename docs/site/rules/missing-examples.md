@@ -10,6 +10,8 @@ This rule flags symbols whose kind appears in the `require-examples` configurati
 
 Complex types without usage examples force users to reverse-engineer behavior from source code. An `Examples:` section showing instantiation and basic usage is often the fastest way for someone to understand how to use a class, dataclass, or enum correctly.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"

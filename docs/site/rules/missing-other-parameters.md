@@ -10,6 +10,8 @@ This rule flags functions that accept `**kwargs` in their signature but have no 
 
 Callers must read the source code to discover which keyword arguments are accepted and what they do. Without an `Other Parameters:` section, the function's interface is only partially documented. This is especially problematic for wrapper functions and factory patterns where `**kwargs` carries meaningful configuration.
 
+{{ rule_fix() }}
+
 ## Example
 
 === "Violation"
