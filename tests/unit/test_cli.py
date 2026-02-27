@@ -1815,6 +1815,13 @@ class TestOutputAndExit:
         self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 1, ["enrichment"])
         assert output_file.read_text() == '{"findings":[]}\n'
 
+    def test_format_json_writes_empty_to_file_when_output_set(self, tmp_path):
+        """AC#6: --format json --output writes valid JSON even with zero findings."""
+        output_file = tmp_path / "report.json"
+        ctx = self._make_ctx(fmt="json", output=str(output_file))
+        self._call(ctx, {"enrichment": []}, DocvetConfig(), 3, ["enrichment"])
+        assert output_file.read_text() == '{"findings":[]}\n'
+
 
 # ---------------------------------------------------------------------------
 # Story 21.3: Verbose & Quiet Flag Redesign
@@ -2391,4 +2398,4 @@ def test_check_with_format_text_output_unchanged():
     """AC#5: Default text format is unchanged."""
     result = runner.invoke(app, ["check"])
     assert result.exit_code == 0
-    assert "{" not in result.output or "findings" not in result.output
+    assert '{"findings"' not in result.output

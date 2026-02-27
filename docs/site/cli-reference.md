@@ -23,6 +23,27 @@ When `--output` is specified without `--format`, the format defaults to `markdow
 
 The `--format json` option produces a structured JSON object for programmatic consumption. The schema includes a `findings` array and a `summary` object:
 
+```json
+{
+  "findings": [
+    {
+      "file": "src/app/utils.py",
+      "line": 12,
+      "symbol": "my_func",
+      "rule": "missing-raises",
+      "message": "Function 'my_func' raises ValueError but...",
+      "category": "required",
+      "severity": "high"
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "by_category": { "required": 1, "recommended": 0 },
+    "files_checked": 42
+  }
+}
+```
+
 - Each finding has seven fields: `file`, `line`, `symbol`, `rule`, `message`, `category`, `severity`.
 - The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"recommended"` maps to `"low"`. It has exactly two values and is a convenience alias, not a separate signal.
 - The `summary` object includes `total`, `by_category` (with `required` and `recommended` counts), and `files_checked`.

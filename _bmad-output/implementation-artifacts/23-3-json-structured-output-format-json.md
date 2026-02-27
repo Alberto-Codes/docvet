@@ -1,7 +1,7 @@
 # Story 23.3: JSON Structured Output (`--format json`)
 
-Status: review
-Branch: `feat/cli-23-3-json-structured-output`
+Status: done
+Branch: `feat/cli-json-output`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -222,7 +222,7 @@ The CLI surface (`cli.py`) was last modified in story 23.2 (positional args). Th
 - [x] `uv run ruff check .` — zero lint violations
 - [x] `uv run ruff format --check .` — zero format issues
 - [x] `uv run ty check` — zero type errors
-- [x] `uv run pytest` — 932 tests pass, no regressions
+- [x] `uv run pytest` — 934 tests pass, no regressions
 - [x] `uv run docvet check --all` — zero docvet findings
 - [x] `uv run interrogate -v` — 100.0% docstring coverage
 
@@ -268,15 +268,25 @@ None — zero-debug implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approved with fixes applied. All 6 ACs verified, all quality gates pass, SonarQube clean (0 issues on both src/ files).
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | LOW (downgraded) | `_output_and_exit()` bypasses `write_report()` for JSON file writes — dual path | Accept: intentional design, respects `write_report()`'s non-empty contract |
+| M2 | MEDIUM | Missing test: `--format json --output <file>` with zero findings | Fixed: added `test_format_json_writes_empty_to_file_when_output_set` |
+| L1 | LOW | Branch name mismatch in story metadata | Fixed: updated to `feat/cli-json-output` |
+| L2 | LOW | Weak `or` assertion in `test_check_with_format_text_output_unchanged` | Fixed: replaced with `assert '{"findings"' not in result.output` |
+| L3 | LOW | No unicode round-trip test for `format_json()` | Fixed: added `test_unicode_preserved_in_message` |
+| L4 | LOW | No JSON schema code block in published docs | Fixed: added fenced JSON example in `cli-reference.md` |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (934 tests, ruff, format, ty, docvet, interrogate)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

@@ -419,6 +419,15 @@ class TestFormatJson:
         assert f["category"] == "required"
         assert f["severity"] == "high"
 
+    def test_unicode_preserved_in_message(self, make_finding):
+        """Non-ASCII characters survive JSON round-trip via ensure_ascii=False."""
+        finding = make_finding(message="Funci\u00f3n \u2018foo\u2019 raises ValueError")
+        result = json.loads(format_json([finding], 1))
+        assert (
+            result["findings"][0]["message"]
+            == "Funci\u00f3n \u2018foo\u2019 raises ValueError"
+        )
+
 
 class TestWriteReportJson:
     """Tests for write_report with JSON format."""
