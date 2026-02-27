@@ -76,7 +76,7 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step.
 
 ## Pre-commit
 
-docvet ships a [pre-commit](https://pre-commit.com/) hook that checks staged files before each commit.
+docvet ships a [pre-commit](https://pre-commit.com/) hook that checks Python files before each commit.
 
 === "Basic"
 
@@ -99,7 +99,21 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks staged fil
             additional_dependencies: [griffe]
     ```
 
-The hook runs `docvet check --staged`, which checks only the files you are about to commit. It runs on Python files only and discovers files through git — no filenames are passed by pre-commit.
+=== "With exclude"
+
+    ```yaml
+    repos:
+      - repo: https://github.com/Alberto-Codes/docvet
+        rev: v1.2.0
+        hooks:
+          - id: docvet
+            exclude: ^tests/
+    ```
+
+Pre-commit passes staged Python filenames as positional arguments to `docvet check`. The hook uses `require_serial: true` to prevent parallel invocations that could race on git state. Progress output is automatically suppressed because pre-commit pipes stderr.
+
+!!! note "Exclude patterns in pre-commit mode"
+    When run as a pre-commit hook, docvet checks only the files pre-commit passes — your `[tool.docvet].exclude` patterns do not apply. Use pre-commit's own `exclude` key to filter files, as shown in the "With exclude" tab above.
 
 !!! info "Pin `rev` to a release tag"
     Replace `v1.2.0` with the [latest release tag](https://github.com/Alberto-Codes/docvet/releases). Pre-commit caches the hook environment per `rev`, so pinning to a tag avoids unnecessary reinstalls.
