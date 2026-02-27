@@ -122,6 +122,30 @@ def test_finding_exports_finding_class():
     assert "Finding" in dir(checks)
 
 
+def test_finding_normalizes_backslash_paths_to_forward_slashes():
+    finding = Finding(
+        file="src\\docvet\\checks\\enrichment.py",
+        line=1,
+        symbol="test",
+        rule="missing-raises",
+        message="test message",
+        category="required",
+    )
+    assert finding.file == "src/docvet/checks/enrichment.py"
+
+
+def test_finding_preserves_forward_slash_paths():
+    finding = Finding(
+        file="src/docvet/checks/enrichment.py",
+        line=1,
+        symbol="test",
+        rule="missing-raises",
+        message="test message",
+        category="required",
+    )
+    assert finding.file == "src/docvet/checks/enrichment.py"
+
+
 def test_finding_rejects_empty_file():
     """Test that Finding raises ValueError for empty file path."""
     with pytest.raises(ValueError, match="file must be non-empty"):

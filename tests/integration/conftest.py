@@ -12,6 +12,12 @@ def git_repo(tmp_path):
     """Create a temporary git repository for integration tests."""
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
+        ["git", "config", "core.autocrlf", "false"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
         ["git", "config", "user.email", "test@test.com"],
         cwd=tmp_path,
         check=True,

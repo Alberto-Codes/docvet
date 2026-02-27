@@ -31,10 +31,13 @@ class Finding:
     freshness, griffe, coverage) return list[Finding] to the CLI layer.
 
     The 6-field shape is stable for v1 and will not change within the v1
-    lifecycle (no fields added, removed, or renamed).
+    lifecycle (no fields added, removed, or renamed). Backslash path
+    separators in ``file`` are normalized to forward slashes on construction
+    for consistent cross-platform output.
 
     Attributes:
         file (str): Source file path where the finding was detected.
+            Backslashes are normalized to forward slashes.
         line (int): Line number of the symbol definition (def/class keyword
             line).
         symbol (str): Name of the symbol with the issue
@@ -67,11 +70,15 @@ class Finding:
     category: Literal["required", "recommended"]
 
     def __post_init__(self) -> None:
-        """Validate Finding fields after initialization.
+        """Validate Finding fields and normalize paths after initialization.
+
+        Normalizes backslash path separators to forward slashes for
+        consistent cross-platform output.
 
         Raises:
             ValueError: If any field has an invalid value.
         """
+        object.__setattr__(self, "file", self.file.replace("\\", "/"))
         if not self.file:
             raise ValueError("file must be non-empty")
         if self.line < 1:
