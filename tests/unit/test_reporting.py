@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 import typer
 
@@ -9,6 +11,7 @@ from docvet.checks import Finding
 from docvet.config import DocvetConfig
 from docvet.reporting import (
     determine_exit_code,
+    format_json,
     format_markdown,
     format_summary,
     format_terminal,
@@ -312,7 +315,141 @@ class TestWriteReport:
         findings = [make_finding()]
         output = tmp_path / "report.txt"
         with pytest.raises(ValueError, match="Unknown format"):
-            write_report(findings, output, fmt="json")
+            write_report(findings, output, fmt="xml")
+
+
+# ---------------------------------------------------------------------------
+# format_json tests (Story 23.3)
+# ---------------------------------------------------------------------------
+
+
+class TestFormatJson:
+    """Tests for format_json."""
+
+    def test_all_seven_fields_present(self, make_finding):
+        """AC#1: Each finding has all 7 fields."""
+        findings = [make_finding(category="required")]
+        result = json.loads(format_json(findings, 1))
+        finding = result["findings"][0]
+        assert set(finding.keys()) == {
+            "file",
+            "line",
+            "symbol",
+            "rule",
+            "message",
+            "category",
+            "severity",
+        }
+
+    def test_severity_mapping_required_to_high(self, make_finding):
+        """AC#1: required category maps to high severity."""
+        findings = [make_finding(category="required")]
+        result = json.loads(format_json(findings, 1))
+        assert result["findings"][0]["severity"] == "high"
+
+    def test_severity_mapping_recommended_to_low(self, make_finding):
+        """AC#1: recommended category maps to low severity."""
+        findings = [make_finding(category="recommended")]
+        result = json.loads(format_json(findings, 1))
+        assert result["findings"][0]["severity"] == "low"
+
+    def test_summary_structure(self, make_finding):
+        """AC#2: Summary has total, by_category, files_checked."""
+        findings = [
+            make_finding(category="required"),
+            make_finding(category="recommended"),
+        ]
+        result = json.loads(format_json(findings, 42))
+        summary = result["summary"]
+        assert summary["total"] == 2
+        assert summary["by_category"]["required"] == 1
+        assert summary["by_category"]["recommended"] == 1
+        assert summary["files_checked"] == 42
+
+    def test_empty_findings_produces_valid_json_with_zero_summary(self):
+        """AC#6: Empty findings produces valid JSON with zero summary."""
+        result = json.loads(format_json([], 5))
+        assert result["findings"] == []
+        assert result["summary"]["total"] == 0
+        assert result["summary"]["by_category"]["required"] == 0
+        assert result["summary"]["by_category"]["recommended"] == 0
+        assert result["summary"]["files_checked"] == 5
+
+    def test_findings_sorted_by_file_and_line(self, make_finding):
+        """Findings are sorted by (file, line)."""
+        findings = [
+            make_finding(file="z.py", line=10),
+            make_finding(file="a.py", line=5),
+            make_finding(file="a.py", line=1),
+        ]
+        result = json.loads(format_json(findings, 3))
+        files_lines = [(f["file"], f["line"]) for f in result["findings"]]
+        assert files_lines == [("a.py", 1), ("a.py", 5), ("z.py", 10)]
+
+    def test_round_trip_valid_json(self, make_finding):
+        """Output is valid parseable JSON."""
+        findings = [make_finding()]
+        raw = format_json(findings, 1)
+        parsed = json.loads(raw)
+        assert isinstance(parsed, dict)
+        assert "findings" in parsed
+        assert "summary" in parsed
+
+    def test_trailing_newline(self, make_finding):
+        """Output ends with a trailing newline."""
+        assert format_json([make_finding()], 1).endswith("\n")
+
+    def test_field_values_preserved_exactly(self, make_finding):
+        """All Finding field values are preserved in the JSON output."""
+        finding = make_finding(
+            file="src/app.py",
+            line=42,
+            symbol="my_func",
+            rule="missing-raises",
+            message="Function 'my_func' raises ValueError",
+            category="required",
+        )
+        result = json.loads(format_json([finding], 1))
+        f = result["findings"][0]
+        assert f["file"] == "src/app.py"
+        assert f["line"] == 42
+        assert f["symbol"] == "my_func"
+        assert f["rule"] == "missing-raises"
+        assert f["message"] == "Function 'my_func' raises ValueError"
+        assert f["category"] == "required"
+        assert f["severity"] == "high"
+
+    def test_unicode_preserved_in_message(self, make_finding):
+        """Non-ASCII characters survive JSON round-trip via ensure_ascii=False."""
+        finding = make_finding(message="Funci\u00f3n \u2018foo\u2019 raises ValueError")
+        result = json.loads(format_json([finding], 1))
+        assert (
+            result["findings"][0]["message"]
+            == "Funci\u00f3n \u2018foo\u2019 raises ValueError"
+        )
+
+
+class TestWriteReportJson:
+    """Tests for write_report with JSON format."""
+
+    def test_json_write(self, make_finding, tmp_path):
+        """AC#1: Writes valid JSON to file."""
+        findings = [make_finding(category="required")]
+        output = tmp_path / "report.json"
+        write_report(findings, output, fmt="json", file_count=10)
+        content = output.read_text()
+        parsed = json.loads(content)
+        assert len(parsed["findings"]) == 1
+        assert parsed["summary"]["files_checked"] == 10
+
+    def test_json_write_empty_findings(self, tmp_path):
+        """AC#6: Empty findings writes valid JSON with empty array."""
+        output = tmp_path / "report.json"
+        write_report([], output, fmt="json", file_count=5)
+        content = output.read_text()
+        parsed = json.loads(content)
+        assert parsed["findings"] == []
+        assert parsed["summary"]["total"] == 0
 
 
 # ---------------------------------------------------------------------------

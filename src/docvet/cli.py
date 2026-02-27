@@ -5,8 +5,9 @@ Defines the ``typer.Typer`` app with subcommands for each check layer
 combined ``check`` entry point. All subcommands accept positional file
 arguments (``docvet check src/foo.py``) and the ``--files`` option,
 share three-tier verbosity control (quiet/default/verbose) via
-dual-registered ``--verbose`` and ``-q``/``--quiet`` flags, and emit
-a unified ``Vetted N files [check] — ...`` summary line on stderr.
+dual-registered ``--verbose`` and ``-q``/``--quiet`` flags, emit
+a unified ``Vetted N files [check] — ...`` summary line on stderr,
+and support ``--format json`` for structured machine-readable output.
 
 Examples:
     Run all checks on changed files::
@@ -51,6 +52,7 @@ from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode, discover_files
 from docvet.reporting import (
     determine_exit_code,
+    format_json,
     format_markdown,
     format_summary,
     format_terminal,
@@ -80,14 +82,21 @@ class OutputFormat(enum.StrEnum):
         ```python
         fmt = OutputFormat.MARKDOWN  # "markdown"
         ```
+
+        Select JSON output for programmatic consumption:
+
+        ```python
+        fmt = OutputFormat.JSON  # "json"
+        ```
     """
 
     TERMINAL = "terminal"
     MARKDOWN = "markdown"
+    JSON = "json"
 
 
 class FreshnessMode(enum.StrEnum):
-    """Freshness check strategy.
+    """Freshness check strategy for the ``--mode`` option.
 
     Examples:
         Use diff mode for fast CI checks against recent changes:
@@ -247,8 +256,9 @@ def _output_and_exit(
 
     Implements the unified output pipeline: resolves no_color, optionally
     prints verbose header to stderr (only for multi-check runs), selects
-    format, writes file or prints findings to stdout, and raises
-    ``typer.Exit`` with the appropriate exit code.
+    format (terminal, markdown, or JSON), writes file or prints findings
+    to stdout, and raises ``typer.Exit`` with the appropriate exit code.
+    JSON format always emits output, even when there are no findings.
 
     Args:
         ctx: Typer context carrying global options in ``ctx.obj``.
@@ -289,8 +299,14 @@ def _output_and_exit(
     else:
         resolved_fmt = "terminal"
 
-    # 5-6. Output findings
-    if output_path and all_findings:
+    # 5-6. Output findings (JSON always emits, even when empty)
+    if resolved_fmt == "json":
+        json_output = format_json(all_findings, file_count)
+        if output_path:
+            Path(output_path).write_text(json_output)
+        else:
+            sys.stdout.write(json_output)
+    elif output_path and all_findings:
         write_report(all_findings, Path(output_path), fmt=resolved_fmt)
     elif all_findings:
         if resolved_fmt == "markdown":
@@ -578,7 +594,7 @@ def main(
         ctx: Typer invocation context.
         verbose: Enable verbose output.
         quiet: Suppress non-finding output on stderr.
-        fmt: Output format (terminal or markdown).
+        fmt: Output format (terminal, markdown, or json).
         output: Optional file path for report output.
         config: Explicit path to a ``pyproject.toml``.
         version: Show version and exit.

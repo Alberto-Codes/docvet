@@ -1,9 +1,9 @@
-"""Markdown, terminal, and summary report generation for docstring findings.
+"""Markdown, terminal, JSON, and summary report generation for docstring findings.
 
-Renders check findings as terminal output (default) or markdown reports,
-produces an unconditional summary line for stderr, groups findings by
-file, calculates summary statistics, and determines the CLI exit code
-based on finding severity.
+Renders check findings as terminal output (default), markdown reports, or
+structured JSON for programmatic consumption. Produces an unconditional
+summary line for stderr, groups findings by file, calculates summary
+statistics, and determines the CLI exit code based on finding severity.
 
 Examples:
     Generate a terminal report via the CLI::
@@ -14,6 +14,10 @@ Examples:
 
         $ docvet check --all --format markdown --output report.md
 
+    Produce JSON output for agent or CI consumption::
+
+        $ docvet check --all --format json
+
 See Also:
     [`docvet.cli`][]: Subcommands that invoke report rendering.
     [`docvet.checks`][]: Check functions that produce findings.
@@ -21,6 +25,7 @@ See Also:
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from collections.abc import Sequence
 from itertools import groupby
@@ -36,6 +41,11 @@ __all__: list[str] = []
 _COLORS: dict[str, str] = {
     "required": typer.colors.RED,
     "recommended": typer.colors.YELLOW,
+}
+
+_CATEGORY_TO_SEVERITY: dict[str, str] = {
+    "required": "high",
+    "recommended": "low",
 }
 
 
@@ -96,6 +106,9 @@ def format_terminal(findings: list[Finding], *, no_color: bool = False) -> str:
 def format_markdown(findings: list[Finding]) -> str:
     """Format findings as a GFM markdown table with summary footer.
 
+    Produces a pipe-delimited table with File, Line, Rule, Symbol,
+    Message, and Category columns, followed by a bold summary count.
+
     Args:
         findings: List of findings to format.
 
@@ -127,6 +140,61 @@ def format_markdown(findings: list[Finding]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def format_json(findings: list[Finding], file_count: int) -> str:
+    """Format findings as a structured JSON object.
+
+    Produces a JSON object with a ``findings`` array and a ``summary``
+    object. Each finding includes all six ``Finding`` fields plus a
+    derived ``severity`` field (``"high"`` for required, ``"low"`` for
+    recommended). Always returns a valid JSON object, even when there
+    are no findings.
+
+    Args:
+        findings: List of findings to format.
+        file_count: Number of files that were checked.
+
+    Returns:
+        JSON string with ``indent=2`` formatting.
+
+    Examples:
+        Format findings for JSON output:
+
+        ```python
+        from docvet.checks import Finding
+
+        fs = [Finding("a.py", 1, "f", "missing-raises", "msg", "required")]
+        result = format_json(fs, 10)
+        # '{"findings": [...], "summary": {"total": 1, ...}}'
+        ```
+    """
+    sorted_findings = sorted(findings, key=lambda f: (f.file, f.line))
+    counts = Counter(f.category for f in findings)
+
+    obj = {
+        "findings": [
+            {
+                "file": f.file,
+                "line": f.line,
+                "symbol": f.symbol,
+                "rule": f.rule,
+                "message": f.message,
+                "category": f.category,
+                "severity": _CATEGORY_TO_SEVERITY[f.category],
+            }
+            for f in sorted_findings
+        ],
+        "summary": {
+            "total": len(findings),
+            "by_category": {
+                "required": counts.get("required", 0),
+                "recommended": counts.get("recommended", 0),
+            },
+            "files_checked": file_count,
+        },
+    }
+    return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
+
+
 def format_summary(
     file_count: int,
     checks: Sequence[str],
@@ -135,9 +203,9 @@ def format_summary(
 ) -> str:
     """Format the unconditional summary line for stderr.
 
-    Produces a one-line summary of the check run showing file count,
-    checks that ran, finding count with category breakdown, and elapsed
-    time. Uses the "Vetted" brand verb and em dash separator.
+    Produces a one-line summary showing file count, checks that ran,
+    finding count with category breakdown, and elapsed time. Uses the
+    "Vetted" brand verb and an em dash separator.
 
     Args:
         file_count: Number of files that were checked.
@@ -194,25 +262,34 @@ def format_verbose_header(file_count: int, checks: Sequence[str]) -> str:
 
 
 def write_report(
-    findings: list[Finding], output: Path, *, fmt: str = "markdown"
+    findings: list[Finding],
+    output: Path,
+    *,
+    fmt: str = "markdown",
+    file_count: int = 0,
 ) -> None:
     """Write formatted findings to a file.
 
     Args:
         findings: List of findings to write.
         output: Path to write the report to.
-        fmt: Output format, either "markdown" or "terminal".
+        fmt: Output format — ``"markdown"``, ``"terminal"``, or
+            ``"json"``.
+        file_count: Number of files checked. Only used when
+            *fmt* is ``"json"`` (for the summary object).
 
     Raises:
         FileNotFoundError: If the parent directory does not exist.
-        ValueError: If fmt is not "markdown" or "terminal".
+        ValueError: If fmt is not a recognized format.
     """
     if fmt == "markdown":
         content = format_markdown(findings)
     elif fmt == "terminal":
         content = format_terminal(findings, no_color=True)
+    elif fmt == "json":
+        content = format_json(findings, file_count)
     else:
-        msg = f"Unknown format: {fmt!r}. Expected 'markdown' or 'terminal'"
+        msg = f"Unknown format: {fmt!r}. Expected 'markdown', 'terminal', or 'json'"
         raise ValueError(msg)
     output.write_text(content)
 

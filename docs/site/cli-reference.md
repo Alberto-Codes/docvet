@@ -12,12 +12,43 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 |--------|------|---------|-------------|
 | `--verbose` | flag | off | Show file count, per-check timing, and active checks |
 | `-q` / `--quiet` | flag | off | Suppress non-finding output (summary, timing, verbose details). Config warnings are always shown. |
-| `--format` | `terminal` \| `markdown` | `terminal` | Output format |
+| `--format` | `terminal` \| `markdown` \| `json` | `terminal` | Output format |
 | `--output` | `PATH` | stdout | Write report to file |
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
 | `--version` | flag | | Show version and exit |
 
-When `--output` is specified without `--format`, the format defaults to `markdown`.
+When `--output` is specified without `--format`, the format defaults to `markdown`. When `--format json` is used, output is always a JSON object (even when no findings exist).
+
+### JSON Output
+
+The `--format json` option produces a structured JSON object for programmatic consumption. The schema includes a `findings` array and a `summary` object:
+
+```json
+{
+  "findings": [
+    {
+      "file": "src/app/utils.py",
+      "line": 12,
+      "symbol": "my_func",
+      "rule": "missing-raises",
+      "message": "Function 'my_func' raises ValueError but...",
+      "category": "required",
+      "severity": "high"
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "by_category": { "required": 1, "recommended": 0 },
+    "files_checked": 42
+  }
+}
+```
+
+- Each finding has seven fields: `file`, `line`, `symbol`, `rule`, `message`, `category`, `severity`.
+- The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"recommended"` maps to `"low"`. It has exactly two values and is a convenience alias, not a separate signal.
+- The `summary` object includes `total`, `by_category` (with `required` and `recommended` counts), and `files_checked`.
+- Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
+- Exit codes are unchanged: `0` for no findings, `1` when findings exist in a `fail_on` check.
 
 `--verbose` and `--quiet` can be placed before **or** after the subcommand name (dual-registered). Both positions are equivalent:
 
@@ -171,6 +202,18 @@ Generate a markdown report for CI:
 
 ```bash
 docvet --format markdown --output report.md check --all
+```
+
+Produce structured JSON output for agents or CI pipelines:
+
+```bash
+docvet --format json check --all
+```
+
+Write JSON findings to a file:
+
+```bash
+docvet --format json --output report.json check --all
 ```
 
 Run only the freshness drift sweep with verbose output:
