@@ -4,7 +4,7 @@ title: AI Agent Integration
 
 # AI Agent Integration
 
-Add docvet to your AI coding workflow. Drop a snippet into your agent's instruction file so it runs `docvet check` after modifying Python code.
+Add docvet to your AI coding workflow. Drop a snippet into your agent's instruction file so it runs `docvet check --all` after modifying Python code.
 
 ## Which File Should I Use?
 

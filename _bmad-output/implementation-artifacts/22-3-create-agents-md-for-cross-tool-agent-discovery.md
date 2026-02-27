@@ -250,15 +250,22 @@ None — clean implementation, no debugging required.
 
 ### Reviewer
 
+Code review (adversarial) — 2026-02-26
+
 ### Outcome
+
+Changes Requested — 2 fixes applied, re-verify quality gates.
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | `<rule-id>` placeholder in AGENTS.md line 69 renders as invisible HTML tag on GitHub; task 4.2 verification gap | Fixed: backtick-wrapped URL template |
+| M1 | MEDIUM | ai-integration.md intro says `docvet check` but all snippets say `docvet check --all` — inconsistency within same page | Fixed: changed intro to `docvet check --all` |
+| M2 | LOW | "Rules reference" link label targets single rule page, not an index | Accepted: no rules index page exists; sidebar navigation handles discovery |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

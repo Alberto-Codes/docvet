@@ -66,7 +66,7 @@ Key options: `exclude` filters directories, `fail-on` controls which checks caus
 
 Each finding includes a rule ID (e.g., `missing-raises`, `stale-signature`). Look up the rule for explanation and fix guidance:
 
-https://alberto-codes.github.io/docvet/rules/<rule-id>/
+`https://alberto-codes.github.io/docvet/rules/<rule-id>/`
 
 General approach by category:
 
