@@ -57,7 +57,7 @@ so that docstring quality is checked automatically on every commit without manua
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| AC1 (hook fields + positional filenames) | `test_all_required_fields_present`, `test_id_is_docvet`, `test_language_is_python`, `test_types_contains_python`, `test_entry_starts_with_docvet`, `test_require_serial_is_true` | PASS |
+| AC1 (hook fields + positional filenames) | `test_all_required_fields_present`, `test_id_is_docvet`, `test_name_is_docvet`, `test_language_is_python`, `test_types_contains_python`, `test_entry_starts_with_docvet_check`, `test_require_serial_is_true` | PASS |
 | AC2 (pre-commit run --all-files) | Manual: `pre-commit try-repo . docvet --all-files` — 74 findings reported, exit code 1 | PASS |
 | AC3 (2.x/3.x compat) | Manual: tested with pre-commit 4.5.1 (3.x+ line). Hook YAML uses only 1.x-compatible fields | PASS |
 | AC4 (accurate documentation) | Manual: `docs/site/ci-integration.md` updated — removed `--staged` claim, added positional filename explanation, exclude callout, `require_serial` note, progress suppression note | PASS |
@@ -225,7 +225,7 @@ None — zero-debug implementation.
 
 - Added `description: Check docstring quality` to `.pre-commit-hooks.yaml` (7 → 8 lines)
 - Added `pyyaml>=6.0` as explicit dev dependency in `pyproject.toml` (was transitively available via mkdocs)
-- Created `tests/unit/test_pre_commit_hooks.py` with 11 tests validating YAML schema, field values, and `pass_filenames` negative assertion
+- Created `tests/unit/test_pre_commit_hooks.py` with 12 tests validating YAML schema, field values, and `pass_filenames` negative assertion
 - Fixed 3 factual errors in `docs/site/ci-integration.md` Pre-commit section: removed `--staged` claim, corrected to positional filename approach
 - Added "With exclude" tab, exclude behavior callout, `require_serial` explanation, progress suppression note to docs
 - Manual verification: `pre-commit try-repo . docvet --all-files` succeeded with pre-commit 4.5.1 (74 findings reported, exit code 1)
@@ -235,7 +235,7 @@ None — zero-debug implementation.
 
 - `.pre-commit-hooks.yaml`: Added `description` field
 - `pyproject.toml`: Added `pyyaml>=6.0` to dev dependencies
-- `tests/unit/test_pre_commit_hooks.py`: Created with 11 hook YAML schema validation tests
+- `tests/unit/test_pre_commit_hooks.py`: Created with 12 hook YAML schema validation tests
 - `docs/site/ci-integration.md`: Rewrote Pre-commit section — fixed stale `--staged` description, added exclude callout, `require_serial` note, progress suppression note, "With exclude" tab
 
 ### File List
