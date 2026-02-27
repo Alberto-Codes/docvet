@@ -161,6 +161,7 @@ dev = [
     "griffe>=1.0",
     "griffelib>=2.0",
     "interrogate>=1.5",
+    "pyyaml>=6.0",
     "pytest>=9.0",
     "pytest-cov>=7.0",
     "pytest-mock>=3.15",
