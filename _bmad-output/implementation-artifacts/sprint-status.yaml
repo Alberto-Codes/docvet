@@ -189,7 +189,7 @@ development_status:
   # Epic 22: Discoverable and Understandable
   epic-22: in-progress
   22-1-add-how-to-fix-guidance-to-all-19-rule-pages: done
-  22-2-rewrite-readme-with-ai-agent-section-and-competitive-positioning: backlog
+  22-2-rewrite-readme-with-ai-agent-section-and-competitive-positioning: done
   22-3-create-agents-md-for-cross-tool-agent-discovery: backlog
   22-4-create-contributing-md-contributor-guide: backlog
   22-5-audit-and-expand-discoverability-metadata: backlog

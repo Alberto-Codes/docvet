@@ -9,6 +9,8 @@
 
 **Better docstrings, better AI.**
 
+## Why docvet?
+
 ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right. Existing tools cover presence and style — docvet delivers the layers they miss:
 
 | Layer | Check | ruff | interrogate | pydoclint | **docvet** |
@@ -20,9 +22,9 @@ ruff checks how your docstrings look. interrogate checks if they exist. docvet c
 | 5. Rendering | "Will mkdocs render it correctly?" | -- | -- | -- | **Yes** |
 | 6. Visibility | "Will mkdocs even see the file?" | -- | -- | -- | **Yes** |
 
-**pydoclint** checks Args/Returns/Raises alignment with function signatures (structural completeness). docvet's enrichment covers that plus Yields, Receives, Warns, Attributes, Examples, typed attributes, and cross-references -- 19 rules across 4 checks. docvet also covers freshness (git diff/blame), griffe rendering compatibility, and mkdocs coverage -- territory no other tool touches.
+**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 10 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, and cross-references. Add freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 19 rules across 4 checks, in territory no other tool touches.
 
-**[Quickstart](#quickstart)** | **[GitHub Action](#github-action)** | **[Pre-commit](#pre-commit)** | **[Configuration](#configuration)** | **[Docs](https://alberto-codes.github.io/docvet/)**
+**[Quickstart](#quickstart)** | **[GitHub Action](#github-action)** | **[Pre-commit](#pre-commit)** | **[Configuration](#configuration)** | **[AI Agent Integration](#ai-agent-integration)** | **[Docs](https://alberto-codes.github.io/docvet/)**
 
 ## What It Checks
 
@@ -124,9 +126,38 @@ For griffe rendering checks, install griffe before running docvet:
     args: 'check --all'
 ```
 
+## AI Agent Integration
+
+Add docvet to your AI coding workflow. Drop this into your `CLAUDE.md`, `.cursorrules`, or agent configuration:
+
+```markdown
+## Docstring Quality
+
+After modifying Python functions, classes, or modules, run `docvet check` and fix all findings before committing.
+```
+
+Recommended `pyproject.toml` configuration:
+
+```toml
+[tool.docvet]
+fail-on = ["enrichment", "freshness", "coverage", "griffe"]
+```
+
+### Subcommand Quick Reference
+
+| Command | Description |
+|---------|-------------|
+| `docvet check` | Run all enabled checks (default: git diff files) |
+| `docvet check --all` | Run all checks on entire codebase |
+| `docvet check --staged` | Run all checks on staged files only |
+| `docvet enrichment` | Check for missing docstring sections |
+| `docvet freshness` | Detect stale docstrings via git |
+| `docvet coverage` | Find files invisible to mkdocs |
+| `docvet griffe` | Check mkdocs rendering compatibility |
+
 ## Better Docstrings, Better AI
 
-AI coding agents rely on docstrings as context when generating and modifying code. Research shows stale or incorrect documentation is actively harmful -- worse than no docs at all:
+AI coding agents rely on docstrings as context when generating and modifying code. Agents modify code but often leave docstrings stale, and research shows stale or incorrect documentation is actively harmful, worse than no docs at all:
 
 - Incorrect docs [degrade LLM task success by 22.6 percentage points](https://arxiv.org/abs/2404.03114)
 - Comment density [improves code generation by 40-54%](https://arxiv.org/abs/2402.13013)
