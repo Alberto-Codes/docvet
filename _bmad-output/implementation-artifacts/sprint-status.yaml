@@ -20,7 +20,7 @@
 #   - ready-for-dev: Story file created in stories folder
 #   - in-progress: Developer actively working on implementation
 #   - review: Ready for code review (via Dev's code-review workflow)
-#   - done: Story completed
+#   - done: Story completed (ALL ACs verified, including maintainer-dependent steps)
 #
 # Retrospective Status:
 #   - optional: Can be completed but not required
@@ -147,7 +147,7 @@ development_status:
   15-1-mkdocstrings-configuration-overhaul: done
   15-2-fix-own-cross-reference-syntax: done
   15-3-tighten-cross-reference-rule-to-require-linkable-syntax: done
-  epic-15-retrospective: optional
+  epic-15-retrospective: done
 
   # Epic 16: Additive Exclude Configuration
   epic-16: done
