@@ -70,7 +70,7 @@ src/docvet/
     __init__.py
     cli.py                # typer CLI: config loading, file discovery, check dispatch
     config.py             # reads [tool.docvet] from pyproject.toml
-    discovery.py          # file discovery via git diff, git diff --cached, --all, or --files
+    discovery.py          # file discovery via git diff, git diff --cached, --all, positional args, or --files
     ast_utils.py          # shared AST helpers (docstring ranges, node walking, symbol mapping)
     reporting.py          # markdown/terminal report generation
     checks/

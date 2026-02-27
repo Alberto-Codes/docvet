@@ -57,21 +57,23 @@ Vetted 42 files [enrichment, freshness, coverage] — 2 findings (2 required, 0 
 
 The summary line uses the brand verb "Vetted" and always includes the elapsed time and list of checks that ran. When griffe is not installed, it is omitted from the check list.
 
-## Discovery Flags
+## Discovery Modes
 
-All subcommands accept the same set of discovery flags. These are **mutually exclusive** — use only one at a time.
+All subcommands accept the same set of discovery modes. These are **mutually exclusive** — use only one at a time.
 
-| Flag | Description |
+| Mode | Description |
 |------|-------------|
 | *(default)* | Files from `git diff` (unstaged changes) |
 | `--staged` | Files from `git diff --cached` (staged changes) |
 | `--all` | All Python files in the project |
-| `--files` | Specific files (repeatable) |
+| *(positional)* | Specific files as positional arguments |
+| `--files` | Specific files (repeatable alternative) |
 
-The `--files` flag is repeated for each file:
+Pass files as positional arguments (preferred) or with the `--files` flag:
 
 ```bash
-docvet check --files src/app/utils.py --files src/app/models.py
+docvet check src/app/utils.py src/app/models.py
+docvet check --files src/app/utils.py --files src/app/models.py  # equivalent
 ```
 
 ## Commands
@@ -81,9 +83,10 @@ docvet check --files src/app/utils.py --files src/app/models.py
 Run all enabled checks.
 
 ```bash
-docvet check              # unstaged changes (default)
-docvet check --staged     # staged files
-docvet check --all        # entire codebase
+docvet check                          # unstaged changes (default)
+docvet check --staged                 # staged files
+docvet check --all                    # entire codebase
+docvet check src/foo.py src/bar.py    # specific files
 ```
 
 This runs enrichment, freshness, coverage, and griffe (if installed) in sequence and produces a unified report.
@@ -185,5 +188,5 @@ docvet check --all -q
 Check specific files:
 
 ```bash
-docvet enrichment --files src/myapp/utils.py --files src/myapp/models.py
+docvet enrichment src/myapp/utils.py src/myapp/models.py
 ```

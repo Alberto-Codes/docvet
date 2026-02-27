@@ -36,7 +36,7 @@ uv run docvet check --staged
 uv run docvet check --all
 
 # Run on specific files
-uv run docvet check --files foo.py --files bar.py
+uv run docvet check foo.py bar.py
 
 # Run individual checks
 uv run docvet enrichment
