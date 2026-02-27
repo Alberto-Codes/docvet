@@ -128,6 +128,8 @@ For griffe rendering checks, install griffe before running docvet:
 
 ## AI Agent Integration
 
+For tool-specific integration snippets, see the [full AI Agent Integration guide](https://alberto-codes.github.io/docvet/ai-integration/).
+
 Add docvet to your AI coding workflow. Drop this into your `CLAUDE.md`, `.cursorrules`, or agent configuration:
 
 ```markdown
