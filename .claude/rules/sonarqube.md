@@ -18,9 +18,9 @@ This project has a SonarQube Community Edition instance on the local LAN, connec
 
 ## Scanning (Manual)
 
-Community Edition has no branch analysis and no automatic scan triggers. Scans must be run manually after merging to develop.
+Community Edition has no branch analysis and no automatic scan triggers. Scans must be run manually after merging to main.
 
-**Scan command** (run from project root on develop branch):
+**Scan command** (run from project root on main branch):
 
 ```bash
 # Optional: generate coverage report first
@@ -43,11 +43,11 @@ The scanner reads `sonar-project.properties` from the project root. **Do NOT add
 - After completing code changes, use `analyze_code_snippet` to check modified files for issues
 - Use `search_sonar_issues_in_projects` with `projects: ["docvet"]` to review open issues
 - Use `get_project_quality_gate_status` with `projectKey: "docvet"` to check gate status
-- After a PR merges to develop, offer to run a scan if the user is on-LAN
+- After a PR merges to main, offer to run a scan if the user is on-LAN
 
 ## Known Issue Patterns
 
-- The dominant finding is **cognitive complexity** (`python:S3776`, threshold 15). When refactoring functions, aim to stay under 15.
+- The dominant finding is **cognitive complexity** (`python:S3776`, threshold 15). When refactoring functions, aim to stay under 15. When using `analyze_code_snippet` for fast feedback, target CC ≤ 12 to buffer against divergence between the MCP tool and the full scanner.
 - Enrichment `_check_*` functions take a `node_index` parameter for interface consistency even when unused — these `S1172` findings are by design.
 - `analyze_code_snippet` (MCP tool) and the full scanner may calculate CC slightly differently — always trust the full scanner results on the dashboard as the source of truth.
 
