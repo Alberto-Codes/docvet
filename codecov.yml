@@ -10,8 +10,8 @@ coverage:
   status:
     project:
       default:
-        target: 85%  # Matches CI --cov-fail-under=85
-        threshold: 2%
+        target: 85%  # Codecov status target (CI gate is the hard enforcement)
+        threshold: 0%
     patch:
       default:
         target: 80%  # New code should maintain coverage
