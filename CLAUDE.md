@@ -153,4 +153,4 @@ PR titles follow: `type(scope): description`
 
 Types: feat | fix | docs | refactor | test | chore | perf
 
-Scopes: enrichment, freshness, coverage, griffe, cli, config, discovery, ast
+Scopes: enrichment, freshness, coverage, griffe, cli, config, discovery, ast, docs

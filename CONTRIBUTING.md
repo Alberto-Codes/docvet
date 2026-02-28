@@ -127,7 +127,15 @@ type(scope): description
 | chore | Maintenance tasks |
 | perf | Performance improvements |
 
-**Scopes:** enrichment, freshness, coverage, griffe, cli, config, discovery, ast
+**Scopes:** enrichment, freshness, coverage, griffe, cli, config, discovery, ast, docs
+
+**Examples:**
+
+```
+feat(enrichment): add missing-raises detection
+fix(cli): handle empty file list gracefully
+docs(enrichment): add missing-raises reference page
+```
 
 Do not add `Co-Authored-By` trailers to commits.
 

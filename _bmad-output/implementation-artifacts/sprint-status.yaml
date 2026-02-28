@@ -216,11 +216,11 @@ development_status:
   25-3-enforce-docs-updates-in-story-creation: done
   25-4-add-docs-impact-check-to-code-review: done
   25-5-investigate-ci-docs-freshness-check: done
-  epic-25-retrospective: optional
+  epic-25-retrospective: done  # 2026-02-28
 
   # Epic 26: Documentation Completeness
-  epic-26: backlog
-  26-1-add-docs-scope-to-contributing-md: backlog
+  epic-26: in-progress
+  26-1-add-docs-scope-to-contributing-md: done
   26-2-add-editor-integration-page: backlog
   26-3-add-architecture-diagram-to-docs-site: backlog
   26-4-research-auto-generated-mermaid-diagrams: backlog
