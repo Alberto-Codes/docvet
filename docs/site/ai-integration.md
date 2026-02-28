@@ -125,4 +125,4 @@ See the [Configuration reference](configuration.md) for all available options in
 
 ## Rule Reference
 
-Each finding includes a rule ID. Look up any rule for explanation and fix guidance in the [Rules reference](rules/missing-raises.md).
+Each finding includes a rule ID. See the [Rules reference](rules/missing-raises.md) for rule explanations and fix guidance.

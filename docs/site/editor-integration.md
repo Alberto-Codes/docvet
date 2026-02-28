@@ -39,7 +39,7 @@ Diagnostics use two severity levels based on the rule category:
 | Required | Warning | Core quality issue — e.g., `missing-raises`, `missing-yields` |
 | Recommended | Hint | Best practice suggestion — e.g., `missing-examples`, `missing-cross-references` |
 
-See the [Rules reference](rules/missing-raises.md) for the full list of rules and their categories.
+See the [Rules reference](rules/missing-raises.md) for rule explanations and fix guidance.
 
 ### Configuration
 
@@ -51,7 +51,7 @@ Each diagnostic includes a link to its rule page on the docs site. Click the lin
 
 ## Claude Code
 
-docvet ships as a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) with zero configuration.
+docvet ships as a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) with minimal setup.
 
 ### Install
 

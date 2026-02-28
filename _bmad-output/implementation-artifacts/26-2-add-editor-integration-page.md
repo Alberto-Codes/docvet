@@ -1,6 +1,6 @@
 # Story 26.2: Add Editor Integration Page
 
-Status: review
+Status: done
 Branch: `feat/docs-26-2-editor-integration-page`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/212
 
@@ -157,6 +157,7 @@ None — docs-only story, no debugging needed.
 ### Change Log
 
 - 2026-02-28: Created Editor Integration docs page with LSP server, Claude Code plugin, Neovim, generic editor, and VS Code sections. Updated mkdocs.yml nav and ai-integration.md cross-link.
+- 2026-02-28: Code review — fixed misleading "Rules reference" link text (M1) and "zero configuration" claim (M2). No action on L1 (standard LSP syntax error behavior).
 
 ### File List
 
@@ -170,15 +171,22 @@ None — docs-only story, no debugging needed.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review + party mode consensus)
+
 ### Outcome
+
+Approve with fixes (2 fixes applied, 1 no-action)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | Rules reference link text ("full list of rules and their categories") over-promises — target page is a single rule, not an index | Fixed: changed link text to "rule explanations and fix guidance" on both editor-integration.md and ai-integration.md |
+| M2 | MEDIUM | "zero configuration" claim contradicted by prerequisite `pip install docvet[lsp]` | Fixed: changed to "minimal setup" |
+| L1 | LOW | LSP server silently returns no diagnostics on syntax errors — undocumented | No action: standard LSP behavior, documenting adds noise (party mode consensus) |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
