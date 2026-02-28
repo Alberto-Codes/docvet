@@ -1,7 +1,6 @@
 ---
 name: 'sprint-status'
-description: 'Summarize sprint-status.yaml, surface risks, and route to the right implementation workflow.'
-disable-model-invocation: true
+description: 'Summarize sprint status and surface risks. Use when the user says ""check sprint status"" or ""show sprint status""'
 ---
 
 IT IS CRITICAL THAT YOU FOLLOW THESE STEPS - while staying in character as the current agent persona you may have loaded:

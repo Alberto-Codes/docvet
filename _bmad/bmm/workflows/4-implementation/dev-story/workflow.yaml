@@ -1,15 +1,12 @@
 name: dev-story
-description: "Execute a story by implementing tasks/subtasks, writing tests, validating, and updating the story file per acceptance criteria"
-author: "BMad"
+description: 'Execute story implementation following a context filled story spec file. Use when the user says "dev this story [story file]" or "implement the next story in the sprint plan"'
 
 # Critical variables from config
 config_source: "{project-root}/_bmad/bmm/config.yaml"
-output_folder: "{config_source}:output_folder"
 user_name: "{config_source}:user_name"
 communication_language: "{config_source}:communication_language"
 user_skill_level: "{config_source}:user_skill_level"
 document_output_language: "{config_source}:document_output_language"
-story_dir: "{config_source}:implementation_artifacts"
 date: system-generated
 
 # Workflow components

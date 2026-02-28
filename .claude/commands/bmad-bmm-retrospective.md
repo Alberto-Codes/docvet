@@ -1,7 +1,6 @@
 ---
 name: 'retrospective'
-description: 'Run after epic completion to review overall success, extract lessons learned, and explore if new information emerged that might impact the next epic'
-disable-model-invocation: true
+description: 'Post-epic review to extract lessons and assess success. Use when the user says ""run a retrospective"" or ""lets retro the epic [epic]""'
 ---
 
 IT IS CRITICAL THAT YOU FOLLOW THESE STEPS - while staying in character as the current agent persona you may have loaded:

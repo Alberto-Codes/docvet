@@ -1,6 +1,6 @@
 ---
 name: quick-spec
-description: Conversational spec engineering - ask questions, investigate code, produce implementation-ready tech-spec.
+description: 'Very quick process to create implementation-ready quick specs for small changes or features. Use when the user says "create a quick spec" or "generate a quick tech spec"'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 # Checkpoint handler paths
@@ -68,11 +68,12 @@ This uses **step-file architecture** for disciplined execution:
 
 Load and read full config from `{main_config}` and resolve:
 
-- `project_name`, `output_folder`, `planning_artifacts`, `implementation_artifacts`, `user_name`
+- `project_name`, `planning_artifacts`, `implementation_artifacts`, `user_name`
 - `communication_language`, `document_output_language`, `user_skill_level`
 - `date` as system-generated current datetime
+- `project_context` = `**/project-context.md` (load if exists)
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the config `{communication_language}`
 
 ### 2. First Step Execution
 
-Read fully and follow: `steps/step-01-understand.md` to begin the workflow.
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/bmad-quick-flow/quick-spec/steps/step-01-understand.md` to begin the workflow.

@@ -1,7 +1,6 @@
 ---
 name: 'document-project'
-description: 'Analyzes and documents brownfield projects by scanning codebase, architecture, and patterns to create comprehensive reference documentation for AI-assisted development'
-disable-model-invocation: true
+description: 'Document brownfield projects for AI context. Use when the user says ""document this project"" or ""generate project docs""'
 ---
 
 IT IS CRITICAL THAT YOU FOLLOW THESE STEPS - while staying in character as the current agent persona you may have loaded:

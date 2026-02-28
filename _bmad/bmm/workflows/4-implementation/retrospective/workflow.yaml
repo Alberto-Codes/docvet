@@ -14,6 +14,7 @@ tracking_system: "{config_source}:tracking_system" # Options: file-system, githu
 github_repository: "{config_source}:github_repository" # owner/repo for GitHub integration
 planning_artifacts: "{config_source}:planning_artifacts"
 implementation_artifacts: "{config_source}:implementation_artifacts"
+project_context: "**/project-context.md"
 
 installed_path: "{project-root}/_bmad/bmm/workflows/4-implementation/retrospective"
 template: false

@@ -1,7 +1,6 @@
 ---
 name: 'create-story'
-description: 'Create the next user story from epics+stories with enhanced context analysis and direct ready-for-dev marking'
-disable-model-invocation: true
+description: 'Creates a dedicated story file with all the context the agent will need to implement it later. Use when the user says ""create the next story"" or ""create story [story identifier]""'
 ---
 
 IT IS CRITICAL THAT YOU FOLLOW THESE STEPS - while staying in character as the current agent persona you may have loaded:

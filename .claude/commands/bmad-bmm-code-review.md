@@ -1,7 +1,6 @@
 ---
 name: 'code-review'
-description: 'Perform an ADVERSARIAL Senior Developer code review that finds 3-10 specific problems in every story. Challenges everything: code quality, test coverage, architecture compliance, security, performance. NEVER accepts `looks good` - must find minimum issues and can auto-fix with user approval.'
-disable-model-invocation: true
+description: 'Perform adversarial code review finding specific issues. Use when the user says ""run code review"" or ""review this code""'
 ---
 
 IT IS CRITICAL THAT YOU FOLLOW THESE STEPS - while staying in character as the current agent persona you may have loaded:
