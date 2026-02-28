@@ -85,6 +85,63 @@
       4. Record specific proof (file:line)
     </action>
 
+    <!-- Documentation Impact Verification (Enhanced — Story 25.4) -->
+    <!-- Step A: Classify changed files using the decision tree -->
+    <action>Classify EACH file in the comprehensive review list into user-facing or internal:
+
+      USER-FACING file patterns (require docs verification):
+        1. src/docvet/cli.py or CLI flag changes → expects docs/site/cli-reference.md
+        2. src/docvet/config.py or [tool.docvet] key changes → expects docs/site/configuration.md
+        3. src/docvet/checks/*.py (check behavior changes) → expects a corresponding docs/site/checks/*.md page:
+             - src/docvet/checks/coverage.py   → docs/site/checks/coverage.md
+             - src/docvet/checks/enrichment.py → docs/site/checks/enrichment.md
+             - src/docvet/checks/freshness.py  → docs/site/checks/freshness.md
+             - src/docvet/checks/griffe_compat.py → docs/site/checks/griffe.md
+            For new checks, the docs slug should match the check's public name, not necessarily the Python filename.
+        4. Rule behavior changes → expects docs/site/rules/{rule_name}.md
+        5. Public API surface changes (__all__, new modules) → expects reference/ updates (auto-generated from docstrings — update source code docstrings, not docs files directly)
+        6. User workflow changes (install, pre-commit, CI setup) → expects README.md and/or relevant docs/site/ page
+
+      INTERNAL file patterns (NO docs required):
+        - tests/**
+        - .github/** (CI config, instructions, templates)
+        - _bmad/** and _bmad-output/**
+        - .claude/** and other IDE config (.cursor/, .windsurf/)
+        - pyproject.toml (UNLESS config key changes in [tool.docvet])
+        - Internal refactoring with no behavior change
+
+      Collect the set of EXPECTED docs pages based on which user-facing patterns matched.
+    </action>
+
+    <!-- Step B: Read the story's Documentation Impact section -->
+    <action>Extract the story's Dev Notes → Documentation Impact section:
+      - Read the "Pages:" field (concrete page paths or "None — no user-facing changes")
+      - Read the "Nature of update:" field
+    </action>
+
+    <!-- Step C: Cross-reference and produce findings -->
+    <!-- Evaluate each expected docs page independently; multiple cases may apply to the same PR across different pages. -->
+    <action>Compare file classification results against story's Documentation Impact:
+
+      CASE 1 — Documentation Impact section is missing or empty:
+        → MEDIUM finding: "Documentation Impact section missing — every story must declare affected pages or 'None'"
+
+      CASE 2 — Story says "None" but changed files include user-facing source code:
+        → HIGH finding: "Documentation Impact says 'None' but PR modifies user-facing files: {list files}. Expected docs updates: {expected pages from decision tree}"
+
+      CASE 3 — Story lists specific pages but those pages are NOT in the comprehensive review list (File List + git changes — not actually updated):
+        → HIGH finding: "Documentation Impact lists {pages} but these were not updated in the PR. Either update the docs or explain why in a completion note"
+
+      CASE 4 — Story lists pages AND those pages appear in the File List:
+        → No finding (docs were planned and delivered)
+
+      CASE 5 — Story says "None" AND all changed files are internal (tests, CI, BMAD, config):
+        → No finding (correctly classified as no user-facing impact)
+
+      CASE 6 — File classification identifies expected docs pages NOT listed in Documentation Impact:
+        → MEDIUM finding: "Changed files suggest docs updates to {expected pages} but Documentation Impact doesn't list them"
+    </action>
+
     <!-- Code Quality Deep Dive -->
     <action>For EACH file in comprehensive review list:
       1. **Security**: Look for injection risks, missing validation, auth issues
@@ -92,6 +149,15 @@
       3. **Error Handling**: Missing try/catch, poor error messages
       4. **Code Quality**: Complex functions, magic numbers, poor naming
       5. **Test Quality**: Are tests real assertions or placeholders?
+    </action>
+
+    <!-- SonarQube Analysis (if MCP server available) -->
+    <action>For EACH modified src/ file in the comprehensive review list:
+      1. Read the file content
+      2. Run analyze_code_snippet MCP tool with projectKey "docvet" and language "py"
+      3. Report any HIGH or BLOCKER severity findings as review issues
+      4. Note cognitive complexity warnings (threshold: 15) as MEDIUM findings
+      5. If SonarQube server is unreachable (off-LAN), skip gracefully and note in review
     </action>
 
     <check if="total_issues_found lt 3">

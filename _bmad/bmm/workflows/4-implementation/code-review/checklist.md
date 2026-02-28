@@ -10,8 +10,10 @@
 - [ ] MCP doc search performed (or web fallback) and references captured
 - [ ] Acceptance Criteria cross-checked against implementation
 - [ ] File List reviewed and validated for completeness
+- [ ] Documentation Impact verified: listed pages updated, or "None" confirmed accurate
 - [ ] Tests identified and mapped to ACs; gaps noted
 - [ ] Code quality review performed on changed files
+- [ ] SonarQube `analyze_code_snippet` run on each modified `src/` file (skip gracefully if server unreachable)
 - [ ] Security review performed on changed files and dependencies
 - [ ] Outcome decided (Approve/Changes Requested/Blocked)
 - [ ] Review notes appended under "Senior Developer Review (AI)"
