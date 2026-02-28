@@ -324,16 +324,43 @@ Consider these when planning this epic's stories.
     <template-output file="{default_output_file}">
     story_completion_status</template-output>
 
-    <!-- Documentation Impact Assessment -->
-    <action>Identify documentation pages affected by this story's changes:
-      - Configuration reference (docs/site/configuration.md) if new config keys or behavior changes
-      - Check pages (docs/site/checks/*.md) if check behavior changes
-      - Rule pages (docs/rules/*.md) if new rules or rule behavior changes
-      - API reference if public API surface changes
-      - README if user-facing workflow changes
-      - Set to "None" if story is purely internal with no user-facing impact
-    </action>
-    <action>Fill the Documentation Impact section in Dev Notes with affected pages and nature of updates needed</action>
+    <!-- Documentation Impact Assessment (GATING — requires explicit page names or "None") -->
+    <template-output file="{default_output_file}">documentation_impact_assessment
+
+    INSTRUCTIONS: Classify this story and fill the Documentation Impact section in Dev Notes.
+
+    DECISION TREE — follow top-to-bottom, collect ALL matching pages:
+      1. Does the story touch src/docvet/cli.py or change CLI flags/subcommands?
+         → docs/site/cli-reference.md
+      2. Does it add/change config keys in [tool.docvet]?
+         → docs/site/configuration.md
+      3. Does it change check behavior (enrichment, freshness, coverage, griffe)?
+         → docs/site/checks/{check_name}.md
+      4. Does it add/change rules or rule behavior?
+         → docs/site/rules/{rule_name}.md
+      5. Does it change the public Python API surface (__all__, new modules)?
+         → reference/ (auto-generated from docstrings — update source code, not docs files directly)
+      6. Does it change user-facing workflow (install, pre-commit, CI)?
+         → README.md and/or relevant docs/site/ page
+
+    If NONE of the above apply (internal refactor, test-only, internal CI config, BMAD workflow):
+      → Set Pages to "None — no user-facing changes"
+      → Set Nature of update to "N/A"
+
+    REQUIRED OUTPUT FORMAT (fill in template):
+      - Pages: [concrete page paths from decision tree, or "None — no user-facing changes"]
+      - Nature of update: [specific description per page, or "N/A"]
+
+    EXAMPLES of correct entries:
+      ✓ Pages: docs/site/configuration.md, docs/site/checks/enrichment.md
+        Nature of update: Add new `max_complexity` config key to reference table; update enrichment check examples
+      ✓ Pages: docs/site/cli-reference.md
+        Nature of update: Document new `--json` flag for structured output
+      ✓ Pages: None — no user-facing changes
+        Nature of update: N/A
+      ✗ Pages: "update docs if needed" (TOO VAGUE — name specific pages)
+      ✗ [left blank] (MUST be filled — use "None" if no docs affected)
+    </template-output>
 
     <!-- CRITICAL: Set status to ready-for-dev -->
     <action>Set story Status to: "ready-for-dev"</action>

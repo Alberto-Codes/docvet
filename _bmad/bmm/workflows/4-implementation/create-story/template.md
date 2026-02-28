@@ -47,10 +47,20 @@ so that {{benefit}}.
 
 ### Documentation Impact
 
-<!-- SM: List documentation pages that may need updating based on this story's changes. Use "None" if no docs are affected. -->
+<!-- REQUIRED: Every story must identify affected docs pages or explicitly acknowledge "None". Do NOT leave blank or use vague language like "update docs if needed". -->
 
-- Pages: [e.g., docs/site/configuration.md, docs/site/checks/enrichment.md, or "None"]
-- Nature of update: [e.g., "Add new config key to reference table", "Update CLI examples", or "N/A"]
+- Pages: [REQUIRED — use concrete paths from the decision tree below, or "None — no user-facing changes"]
+- Nature of update: [REQUIRED — describe the specific update per page, or "N/A"]
+
+<!-- Decision tree for docs page identification (source of truth: instructions.xml step 5, documentation_impact_assessment):
+  CLI changes (flags, subcommands) → docs/site/cli-reference.md
+  Config key changes ([tool.docvet]) → docs/site/configuration.md
+  Check behavior changes → docs/site/checks/{check_name}.md
+  Rule changes → docs/site/rules/{rule_name}.md
+  Public API surface changes → reference/ (auto-generated from docstrings; update source code)
+  User workflow changes (install, pre-commit, CI) → README.md and/or relevant docs/site/ page
+  Internal-only (refactor, test, internal CI config, BMAD) → "None — no user-facing changes"
+-->
 
 ## Quality Gates
 
