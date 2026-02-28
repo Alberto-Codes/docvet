@@ -92,7 +92,12 @@
       USER-FACING file patterns (require docs verification):
         1. src/docvet/cli.py or CLI flag changes → expects docs/site/cli-reference.md
         2. src/docvet/config.py or [tool.docvet] key changes → expects docs/site/configuration.md
-        3. src/docvet/checks/*.py (check behavior changes) → expects docs/site/checks/{check_name}.md
+        3. src/docvet/checks/*.py (check behavior changes) → expects a corresponding docs/site/checks/*.md page:
+             - src/docvet/checks/coverage.py   → docs/site/checks/coverage.md
+             - src/docvet/checks/enrichment.py → docs/site/checks/enrichment.md
+             - src/docvet/checks/freshness.py  → docs/site/checks/freshness.md
+             - src/docvet/checks/griffe_compat.py → docs/site/checks/griffe.md
+            For new checks, the docs slug should match the check's public name, not necessarily the Python filename.
         4. Rule behavior changes → expects docs/site/rules/{rule_name}.md
         5. Public API surface changes (__all__, new modules) → expects reference/ updates (auto-generated from docstrings — update source code docstrings, not docs files directly)
         6. User workflow changes (install, pre-commit, CI setup) → expects README.md and/or relevant docs/site/ page
@@ -115,6 +120,7 @@
     </action>
 
     <!-- Step C: Cross-reference and produce findings -->
+    <!-- Evaluate each expected docs page independently; multiple cases may apply to the same PR across different pages. -->
     <action>Compare file classification results against story's Documentation Impact:
 
       CASE 1 — Documentation Impact section is missing or empty:
