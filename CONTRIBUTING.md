@@ -134,7 +134,7 @@ type(scope): description
 ```
 feat(enrichment): add missing-raises detection
 fix(cli): handle empty file list gracefully
-docs(rules): add missing-raises reference page
+docs(enrichment): add missing-raises reference page
 ```
 
 Do not add `Co-Authored-By` trailers to commits.
