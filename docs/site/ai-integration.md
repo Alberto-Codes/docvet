@@ -6,6 +6,9 @@ title: AI Agent Integration
 
 Add docvet to your AI coding workflow. Drop a snippet into your agent's instruction file so it runs `docvet check --all` after modifying Python code.
 
+!!! tip "Looking for real-time diagnostics?"
+    If you want inline findings as you type (LSP server, Claude Code plugin, Neovim, VS Code), see [Editor Integration](editor-integration.md).
+
 ## Which File Should I Use?
 
 | Your AI Tool | Add This File |
