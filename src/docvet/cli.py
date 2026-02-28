@@ -1003,11 +1003,11 @@ def lsp() -> None:
     Requires the ``[lsp]`` extra (``pip install docvet[lsp]``).
 
     Raises:
-        typer.Exit: If pygls is not installed.
+        typer.Exit: If required LSP dependencies are not installed.
     """
     try:
         from docvet.lsp import start_server
-    except ImportError:
+    except ModuleNotFoundError:
         typer.echo(
             "LSP server requires pygls. Install with: pip install docvet[lsp]",
             err=True,
