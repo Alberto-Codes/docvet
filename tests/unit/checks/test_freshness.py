@@ -17,6 +17,7 @@ from docvet.checks.freshness import (
     _classify_changed_lines,
     _compute_age,
     _compute_drift,
+    _diff_line_delta,
     _parse_blame_timestamps,
     _parse_diff_hunks,
     check_freshness_diff,
@@ -85,6 +86,31 @@ class TestHunkPattern:
 
     def test_does_not_match_diff_header(self) -> None:
         assert _HUNK_PATTERN.match("diff --git a/foo.py b/foo.py") is None
+
+
+# ---------------------------------------------------------------------------
+# _diff_line_delta tests
+# ---------------------------------------------------------------------------
+
+
+class TestDiffLineDelta:
+    """Tests for _diff_line_delta helper."""
+
+    def test_addition_line_returns_changed_and_advance(self) -> None:
+        """A ``+`` prefixed line is classified as changed with advance 1."""
+        assert _diff_line_delta("+    new_line") == (True, 1)
+
+    def test_deletion_line_returns_unchanged_and_no_advance(self) -> None:
+        """A ``-`` prefixed line is unchanged with advance 0."""
+        assert _diff_line_delta("-    old_line") == (False, 0)
+
+    def test_no_newline_marker_returns_unchanged_and_no_advance(self) -> None:
+        r"""A ``\`` prefixed no-newline marker is unchanged with advance 0."""
+        assert _diff_line_delta("\\ No newline at end of file") == (False, 0)
+
+    def test_context_line_returns_unchanged_and_advance(self) -> None:
+        """A context line (space prefix) is unchanged with advance 1."""
+        assert _diff_line_delta("     context_line") == (False, 1)
 
 
 # ---------------------------------------------------------------------------
