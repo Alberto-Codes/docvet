@@ -219,11 +219,11 @@ development_status:
   epic-25-retrospective: done  # 2026-02-28
 
   # Epic 26: Documentation Completeness
-  epic-26: in-progress
+  epic-26: done
   26-1-add-docs-scope-to-contributing-md: done
   26-2-add-editor-integration-page: done
   26-3-add-architecture-diagram-to-docs-site: done
-  26-4-research-auto-generated-mermaid-diagrams: backlog
+  26-4-research-auto-generated-mermaid-diagrams: done
   epic-26-retrospective: optional
 
   # Epic 27: Freshness Accuracy
