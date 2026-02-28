@@ -224,9 +224,9 @@ development_status:
   26-2-add-editor-integration-page: done
   26-3-add-architecture-diagram-to-docs-site: done
   26-4-research-auto-generated-mermaid-diagrams: done
-  epic-26-retrospective: optional
+  epic-26-retrospective: done  # 2026-02-28
 
   # Epic 27: Freshness Accuracy
-  epic-27: backlog
-  27-1-fix-hunk-to-symbol-false-positives: backlog
+  epic-27: done
+  27-1-fix-hunk-to-symbol-false-positives: done
   epic-27-retrospective: optional
