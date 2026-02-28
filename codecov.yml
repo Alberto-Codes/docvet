@@ -1,0 +1,22 @@
+# Codecov configuration for docvet
+# See: https://docs.codecov.com/docs/codecovyml-reference
+
+codecov:
+  require_ci_to_pass: true
+  notify:
+    after_n_builds: 1  # Only 1 matrix cell uploads coverage (ubuntu/3.12)
+
+coverage:
+  status:
+    project:
+      default:
+        target: 85%  # Codecov status target (CI gate is the hard enforcement)
+        threshold: 0%
+    patch:
+      default:
+        target: 80%  # New code should maintain coverage
+
+comment:
+  layout: "reach,diff,files"
+  behavior: default
+  require_changes: false

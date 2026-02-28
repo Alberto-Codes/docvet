@@ -201,7 +201,7 @@ development_status:
   23-2-positional-file-arguments-for-cli: done
   23-3-json-structured-output-format-json: done
   23-4-pre-commit-hook-definition: done
-  epic-23-retrospective: optional
+  epic-23-retrospective: done  # 2026-02-28
 
   # Epic 24: Real-Time Diagnostics for IDEs and Agents
   epic-24: done
@@ -212,7 +212,7 @@ development_status:
   # Epic 25: Development Process & CI Quality
   epic-25: in-progress
   25-1-standardize-pytestmark-usage: review
-  25-2-audit-and-configure-codecov: backlog
+  25-2-audit-and-configure-codecov: review
   25-3-enforce-docs-updates-in-story-creation: backlog
   25-4-add-docs-impact-check-to-code-review: backlog
   25-5-investigate-ci-docs-freshness-check: backlog
