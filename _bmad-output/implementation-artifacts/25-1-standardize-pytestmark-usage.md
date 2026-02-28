@@ -181,6 +181,7 @@ No debug sessions required. Convention/cleanup story with zero implementation is
 ### Change Log
 
 - 2026-02-28: Standardized pytestmark across all 17 test files (10 unit + 1 integration added, 8 redundant decorators removed)
+- 2026-02-28: Code review — added conftest.py exclusion note to pytest.instructions.md (L2 fix)
 
 ### File List
 
@@ -195,7 +196,7 @@ No debug sessions required. Convention/cleanup story with zero implementation is
 - `tests/unit/checks/test_finding.py` — added `pytestmark = pytest.mark.unit`
 - `tests/unit/checks/test_griffe_compat.py` — added `pytestmark = pytest.mark.unit`
 - `tests/integration/test_griffe_compat.py` — added `import pytest` + `pytestmark = pytest.mark.integration`, standardized `importorskip` call
-- `.github/instructions/pytest.instructions.md` — added "Module-Level Markers" convention section, updated "Running Tests" commands
+- `.github/instructions/pytest.instructions.md` — added "Module-Level Markers" convention section, updated "Running Tests" commands, added conftest.py exclusion clarification (review fix L2)
 - `CLAUDE.md` — added `pytest -m unit` and `pytest -m integration` to Commands section
 
 ## Code Review
@@ -204,15 +205,23 @@ No debug sessions required. Convention/cleanup story with zero implementation is
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow) — 2026-02-28
+
 ### Outcome
+
+**APPROVED** with 1 inline fix (L2) applied. 1 follow-up issue (M1) recommended. 2 items logged as separate backlog chores (M2, L1).
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | No automated enforcement of pytestmark convention — new test files without `pytestmark` pass all quality gates silently | Follow-up: create GitHub issue for conftest.py enforcement hook |
+| M2 | MEDIUM | CLAUDE.md Architecture test structure lists non-existent files (`test_freshness_diff.py`, `test_freshness_drift.py`, `stale_signature.py`) | Backlog: separate chore to sweep CLAUDE.md test structure section |
+| L1 | LOW | `test_exports.py` `_ALL_DOCVET_MODULES` missing `docvet.lsp` (pre-existing, Epic 24 gap) | Backlog: separate story to add LSP module to export tests |
+| L2 | LOW | Pytest instructions don't explicitly exclude `conftest.py` from pytestmark requirement | **Fixed inline** — added parenthetical clarification to `pytest.instructions.md` |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

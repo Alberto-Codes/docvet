@@ -134,7 +134,7 @@ def test_invalid_config_raises_error():
 
 ### Module-Level Markers (Convention)
 
-Every test file **MUST** have a module-level `pytestmark` assignment after imports:
+Every test file **MUST** have a module-level `pytestmark` assignment after imports (excluding `conftest.py` files, which contain fixtures, not tests):
 
 - Unit test files (`tests/unit/`): `pytestmark = pytest.mark.unit`
 - Integration test files (`tests/integration/`): `pytestmark = pytest.mark.integration`
