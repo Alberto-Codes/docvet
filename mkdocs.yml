@@ -119,6 +119,7 @@ nav:
       - griffe-missing-type: rules/griffe-missing-type.md
       - griffe-format-warning: rules/griffe-format-warning.md
   - Configuration: configuration.md
+  - Architecture: architecture.md
   - CLI Reference: cli-reference.md
   - Glossary: glossary.md
   - Reference: reference/
@@ -128,7 +129,11 @@ markdown_extensions:
   - def_list
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite

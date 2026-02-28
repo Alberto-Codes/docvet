@@ -222,7 +222,7 @@ development_status:
   epic-26: in-progress
   26-1-add-docs-scope-to-contributing-md: done
   26-2-add-editor-integration-page: done
-  26-3-add-architecture-diagram-to-docs-site: backlog
+  26-3-add-architecture-diagram-to-docs-site: done
   26-4-research-auto-generated-mermaid-diagrams: backlog
   epic-26-retrospective: optional
 
