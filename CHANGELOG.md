@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.6.0](https://github.com/Alberto-Codes/docvet/compare/v1.5.0...v1.6.0) (2026-02-28)
+
+
+### Features
+
+* **ci:** add cross-platform CI matrix and path normalization ([#174](https://github.com/Alberto-Codes/docvet/issues/174)) ([e418fbc](https://github.com/Alberto-Codes/docvet/commit/e418fbc670539136ae7ac0b7e3f682e9f3e40016)), closes [#101](https://github.com/Alberto-Codes/docvet/issues/101)
+* **ci:** add pre-commit hook definition and tests ([#180](https://github.com/Alberto-Codes/docvet/issues/180)) ([5f11287](https://github.com/Alberto-Codes/docvet/commit/5f1128726c77311639993589f4df1419ff93cf26))
+* **cli:** add --format json for structured machine-readable output ([#177](https://github.com/Alberto-Codes/docvet/issues/177)) ([da8e51d](https://github.com/Alberto-Codes/docvet/commit/da8e51d37eadb3a053052e28798192af22b1c949)), closes [#151](https://github.com/Alberto-Codes/docvet/issues/151)
+* **cli:** add positional file arguments to all subcommands ([#175](https://github.com/Alberto-Codes/docvet/issues/175)) ([dee57cc](https://github.com/Alberto-Codes/docvet/commit/dee57cc40cf441f6bcb2ab322a1998c529e49fd4)), closes [#152](https://github.com/Alberto-Codes/docvet/issues/152)
+* **docs:** add "How to Fix" guidance to all 19 rule pages ([#166](https://github.com/Alberto-Codes/docvet/issues/166)) ([817f43c](https://github.com/Alberto-Codes/docvet/commit/817f43c303f2220cc2e35f041027a9ad47f879a4)), closes [#155](https://github.com/Alberto-Codes/docvet/issues/155)
+* **docs:** add AGENTS.md and AI Agent Integration docs page ([#171](https://github.com/Alberto-Codes/docvet/issues/171)) ([bc662a2](https://github.com/Alberto-Codes/docvet/commit/bc662a2b0215215269d37f21e3228a82b3a3baee)), closes [#161](https://github.com/Alberto-Codes/docvet/issues/161)
+* **docs:** add AI Agent Integration section and enhance competitive positioning ([#170](https://github.com/Alberto-Codes/docvet/issues/170)) ([df51114](https://github.com/Alberto-Codes/docvet/commit/df511140cf19894abe8a9a4554c3ef1483771249)), closes [#153](https://github.com/Alberto-Codes/docvet/issues/153) [#162](https://github.com/Alberto-Codes/docvet/issues/162)
+* **docs:** add CONTRIBUTING.md contributor guide ([#172](https://github.com/Alberto-Codes/docvet/issues/172)) ([4ff286f](https://github.com/Alberto-Codes/docvet/commit/4ff286f79ee2ed6fa831c5c175efe8fa9cff9c6c)), closes [#104](https://github.com/Alberto-Codes/docvet/issues/104)
+* **lsp:** add Claude Code plugin configuration ([#185](https://github.com/Alberto-Codes/docvet/issues/185)) ([17be1f3](https://github.com/Alberto-Codes/docvet/commit/17be1f30d2136a8bc11bf6f910a733fac235608f)), closes [#63](https://github.com/Alberto-Codes/docvet/issues/63)
+* **lsp:** add pygls-based LSP server for real-time diagnostics ([#184](https://github.com/Alberto-Codes/docvet/issues/184)) ([e121c38](https://github.com/Alberto-Codes/docvet/commit/e121c38c39c147bb4279f46ad2dfe93d3e391f04)), closes [#159](https://github.com/Alberto-Codes/docvet/issues/159)
+* **reporting:** add format_json() for structured JSON output ([da8e51d](https://github.com/Alberto-Codes/docvet/commit/da8e51d37eadb3a053052e28798192af22b1c949))
+
+
+### Bug Fixes
+
+* **ci:** strengthen pre-commit hook YAML test assertions ([5f11287](https://github.com/Alberto-Codes/docvet/commit/5f1128726c77311639993589f4df1419ff93cf26))
+* **docs:** code review fixes for AGENTS.md and ai-integration page ([bc662a2](https://github.com/Alberto-Codes/docvet/commit/bc662a2b0215215269d37f21e3228a82b3a3baee))
+* **lsp:** decouple server global, narrow exception, fix handler test ([e121c38](https://github.com/Alberto-Codes/docvet/commit/e121c38c39c147bb4279f46ad2dfe93d3e391f04))
+
+
+### Documentation
+
+* **cli:** document --format json schema and usage ([da8e51d](https://github.com/Alberto-Codes/docvet/commit/da8e51d37eadb3a053052e28798192af22b1c949))
+* **meta:** reserve # references for GitHub issues and PRs only ([5f11287](https://github.com/Alberto-Codes/docvet/commit/5f1128726c77311639993589f4df1419ff93cf26))
+
 ## [1.5.0](https://github.com/Alberto-Codes/docvet/compare/v1.4.0...v1.5.0) (2026-02-26)
 
 
