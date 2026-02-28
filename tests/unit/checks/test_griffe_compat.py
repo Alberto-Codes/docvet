@@ -17,6 +17,8 @@ from docvet.checks.griffe_compat import (
     check_griffe_compat,
 )
 
+pytestmark = pytest.mark.unit
+
 
 class TestWarningCollector:
     """Tests for _WarningCollector logging handler."""

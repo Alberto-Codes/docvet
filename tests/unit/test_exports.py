@@ -6,8 +6,9 @@ import importlib
 
 import pytest
 
+pytestmark = pytest.mark.unit
 
-@pytest.mark.unit
+
 class TestCheckSubmoduleExports:
     def test_enrichment_all_contains_check_enrichment(self):
         mod = importlib.import_module("docvet.checks.enrichment")
@@ -30,7 +31,6 @@ class TestCheckSubmoduleExports:
         assert mod.__all__ == ["check_coverage"]
 
 
-@pytest.mark.unit
 class TestChecksPackageReExports:
     def test_checks_all_contains_finding_and_all_check_functions(self):
         mod = importlib.import_module("docvet.checks")
@@ -60,7 +60,6 @@ class TestChecksPackageReExports:
         assert callable(mod.check_griffe_compat)
 
 
-@pytest.mark.unit
 class TestTopLevelExports:
     def test_docvet_all_contains_only_finding(self):
         mod = importlib.import_module("docvet")
@@ -69,7 +68,6 @@ class TestTopLevelExports:
         assert len(mod.__all__) == 1
 
 
-@pytest.mark.unit
 class TestConfigExports:
     def test_config_all_contains_public_types_and_load_config(self):
         mod = importlib.import_module("docvet.config")
@@ -84,7 +82,6 @@ class TestConfigExports:
         assert len(mod.__all__) == 4
 
 
-@pytest.mark.unit
 class TestInternalModulesExportNothing:
     @pytest.mark.parametrize(
         "module_path",
@@ -118,7 +115,6 @@ _ALL_DOCVET_MODULES = [
 ]
 
 
-@pytest.mark.unit
 class TestAllModulesHaveAll:
     @pytest.mark.parametrize("module_path", _ALL_DOCVET_MODULES)
     def test_module_defines_all(self, module_path):
@@ -126,7 +122,6 @@ class TestAllModulesHaveAll:
         assert hasattr(mod, "__all__"), f"{module_path} missing __all__"
 
 
-@pytest.mark.unit
 class TestAllEntriesAreResolvable:
     @pytest.mark.parametrize("module_path", _ALL_DOCVET_MODULES)
     def test_all_entries_are_resolvable(self, module_path):
@@ -137,7 +132,6 @@ class TestAllEntriesAreResolvable:
             )
 
 
-@pytest.mark.unit
 class TestNoPrivateNamesExported:
     @pytest.mark.parametrize("module_path", _ALL_DOCVET_MODULES)
     def test_no_underscore_prefixed_names_in_all(self, module_path):

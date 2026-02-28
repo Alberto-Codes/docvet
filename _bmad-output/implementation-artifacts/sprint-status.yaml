@@ -1,7 +1,7 @@
-# generated: 2026-02-27
+# generated: 2026-02-28
 # project: docvet
 # project_key: NOKEY
-# tracking_system: file-system
+# tracking_system: both
 # story_location: _bmad-output/implementation-artifacts
 
 # STATUS DEFINITIONS:
@@ -33,10 +33,10 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-27
+generated: 2026-02-28
 project: docvet
 project_key: NOKEY
-tracking_system: file-system
+tracking_system: both
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
@@ -208,3 +208,25 @@ development_status:
   24-1-lsp-server-for-real-time-diagnostics: done
   24-2-claude-code-plugin-configuration: done
   epic-24-retrospective: optional
+
+  # Epic 25: Development Process & CI Quality
+  epic-25: in-progress
+  25-1-standardize-pytestmark-usage: review
+  25-2-audit-and-configure-codecov: backlog
+  25-3-enforce-docs-updates-in-story-creation: backlog
+  25-4-add-docs-impact-check-to-code-review: backlog
+  25-5-investigate-ci-docs-freshness-check: backlog
+  epic-25-retrospective: optional
+
+  # Epic 26: Documentation Completeness
+  epic-26: backlog
+  26-1-add-docs-scope-to-contributing-md: backlog
+  26-2-add-editor-integration-page: backlog
+  26-3-add-architecture-diagram-to-docs-site: backlog
+  26-4-research-auto-generated-mermaid-diagrams: backlog
+  epic-26-retrospective: optional
+
+  # Epic 27: Freshness Accuracy
+  epic-27: backlog
+  27-1-fix-hunk-to-symbol-false-positives: backlog
+  epic-27-retrospective: optional

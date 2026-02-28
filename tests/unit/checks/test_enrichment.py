@@ -6,6 +6,8 @@ import ast
 import dataclasses
 from pathlib import Path
 
+import pytest
+
 from docvet.checks import Finding
 from docvet.checks.enrichment import (
     _RULE_DISPATCH,
@@ -33,6 +35,8 @@ from docvet.checks.enrichment import (
     check_enrichment,
 )
 from docvet.config import EnrichmentConfig
+
+pytestmark = pytest.mark.unit
 
 # ---------------------------------------------------------------------------
 # Section header constant tests

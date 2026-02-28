@@ -8,8 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from docvet.checks import Finding
 from docvet.checks.coverage import check_coverage
+
+pytestmark = pytest.mark.unit
 
 
 class TestCheckCoverageBasicDetection:

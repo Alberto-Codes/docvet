@@ -6,6 +6,8 @@ import pytest
 
 from docvet.checks import Finding
 
+pytestmark = pytest.mark.unit
+
 
 def test_finding_can_be_constructed_with_all_fields():
     """Test that Finding can be constructed with all 6 required fields."""

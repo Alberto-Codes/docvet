@@ -132,12 +132,42 @@ def test_invalid_config_raises_error():
 
 ## Test Markers
 
-```python
-@pytest.mark.unit
-def test_ast_node_walking():
-    ...
+### Module-Level Markers (Convention)
 
-@pytest.mark.integration
+Every test file **MUST** have a module-level `pytestmark` assignment after imports (excluding `conftest.py` files, which contain fixtures, not tests):
+
+- Unit test files (`tests/unit/`): `pytestmark = pytest.mark.unit`
+- Integration test files (`tests/integration/`): `pytestmark = pytest.mark.integration`
+
+Place the assignment after all imports, before any test code:
+
+```python
+from __future__ import annotations
+
+import ast
+
+import pytest
+
+from docvet.checks import Finding
+
+pytestmark = pytest.mark.unit
+
+
+class TestSomething:
+    ...
+```
+
+**Rationale:** Module-level `pytestmark` applies the marker to all tests in the file, enabling `pytest -m unit` for fast local feedback and `pytest -m integration` for targeted integration testing. All markers are registered in `pyproject.toml` with `--strict-markers` enforced.
+
+For files using `pytest.importorskip()`, place `pytestmark` after the `importorskip` call and any conditional imports it gates — `importorskip` is treated as part of the import block.
+
+Do **not** use class-level or function-level `@pytest.mark.unit`/`@pytest.mark.integration` decorators — the module-level convention makes them redundant.
+
+### Additional Markers
+
+Use function-level decorators for cross-cutting markers like `slow`:
+
+```python
 @pytest.mark.slow
 def test_freshness_diff_with_real_git(tmp_path):
     ...
@@ -146,7 +176,9 @@ def test_freshness_diff_with_real_git(tmp_path):
 ### Running Tests
 ```bash
 uv run pytest                     # All tests
-uv run pytest tests/unit          # Unit tests only
+uv run pytest tests/unit          # Unit tests only (by directory)
+uv run pytest -m unit             # Unit tests only (by marker)
+uv run pytest -m integration      # Integration tests only (by marker)
 uv run pytest -k "enrichment"    # Tests matching keyword
 uv run pytest -m "not slow"      # Exclude slow tests
 uv run pytest --cov=docvet --cov-report=term-missing  # With coverage
