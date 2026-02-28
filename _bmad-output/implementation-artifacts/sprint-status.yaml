@@ -207,14 +207,14 @@ development_status:
   epic-24: done
   24-1-lsp-server-for-real-time-diagnostics: done
   24-2-claude-code-plugin-configuration: done
-  epic-24-retrospective: optional
+  epic-24-retrospective: done  # 2026-02-28
 
   # Epic 25: Development Process & CI Quality
   epic-25: in-progress
-  25-1-standardize-pytestmark-usage: review
-  25-2-audit-and-configure-codecov: review
+  25-1-standardize-pytestmark-usage: done
+  25-2-audit-and-configure-codecov: done
   25-3-enforce-docs-updates-in-story-creation: done
-  25-4-add-docs-impact-check-to-code-review: backlog
+  25-4-add-docs-impact-check-to-code-review: done
   25-5-investigate-ci-docs-freshness-check: backlog
   epic-25-retrospective: optional
 

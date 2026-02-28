@@ -1,6 +1,6 @@
 # Story 25.1: Standardize pytestmark Usage
 
-Status: review
+Status: done
 Branch: `feat/test-25-1-standardize-pytestmark-usage`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/195
 

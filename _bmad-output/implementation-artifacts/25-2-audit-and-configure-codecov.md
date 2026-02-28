@@ -1,6 +1,6 @@
 # Story 25.2: Audit and Configure Codecov
 
-Status: review
+Status: done
 Branch: `feat/ci-25-2-audit-configure-codecov`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/198
 
