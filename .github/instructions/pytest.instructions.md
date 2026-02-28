@@ -159,6 +159,8 @@ class TestSomething:
 
 **Rationale:** Module-level `pytestmark` applies the marker to all tests in the file, enabling `pytest -m unit` for fast local feedback and `pytest -m integration` for targeted integration testing. All markers are registered in `pyproject.toml` with `--strict-markers` enforced.
 
+For files using `pytest.importorskip()`, place `pytestmark` after the `importorskip` call and any conditional imports it gates — `importorskip` is treated as part of the import block.
+
 Do **not** use class-level or function-level `@pytest.mark.unit`/`@pytest.mark.integration` decorators — the module-level convention makes them redundant.
 
 ### Additional Markers
