@@ -52,9 +52,9 @@ so that documentation drift is caught automatically as a belt-and-suspenders com
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| 1 | Spike deliverable: source-to-docs mapping designed covering all 13 source files → 4 docs targets + 2 internal exclusions. Multiple approach options evaluated (explicit, convention-based, framework-aware, hybrid). | PASS |
-| 2 | Spike deliverable: CI integration pattern designed (non-blocking job, PR-only, fetch-depth: 0, actionable warning messages). Not implemented — spike scope is recommendation, not production code. | PASS |
-| 3 | Historical evaluation: 12 PRs analyzed. 7-8/12 (58-67%) shipped source changes without docs updates. False positive rate: 1/12 (8%). Ecosystem research: zero existing tools fill this gap. Recommendation: adopt. | PASS |
+| 1 | Spike deliverable: source-to-docs mapping concept designed (not committed as a file — spike scope is recommendation). Covers all 13 source files → 4 docs targets + 2 internal exclusions. Multiple approach options evaluated (explicit, convention-based, framework-aware, hybrid). | PASS |
+| 2 | Spike deliverable: CI integration pattern designed (non-blocking job, PR-only, fetch-depth: 0, actionable warning messages). Design only — spike scope is recommendation, not production code. | PASS |
+| 3 | Historical evaluation: 12 PRs analyzed. 7-8/12 (58-67%) shipped source changes without docs updates. False positive rate: 1/12 (8%). Ecosystem research: zero existing tools fill this gap. Recommendation: defer — process gates sufficient for current scale. | PASS |
 | 4 | Approach documented: convention-based Python script preferred. Explicit mapping file as fallback. Non-blocking warnings with actionable messages. Promotion deferred — process gates (25.3, 25.4) provide sufficient coverage for current project scale. | PASS |
 
 ## Dev Notes
@@ -117,7 +117,7 @@ The investigation confirmed the problem is real (7/12 historical PRs had docs dr
 
 ### Project Structure Notes
 
-- No files modified — spike produced analysis and recommendation only
+- No product source files (`src/docvet/`) modified — spike produced this story document and analysis only
 - Existing process gates (25.3, 25.4) address the underlying concern
 
 ### References
