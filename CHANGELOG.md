@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.6.1](https://github.com/Alberto-Codes/docvet/compare/v1.6.0...v1.6.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* **bmad:** add feature branch creation step to dev-story workflow ([a32582a](https://github.com/Alberto-Codes/docvet/commit/a32582a36664c51dbc34b1fc515e22d872423678))
+* **freshness:** eliminate hunk-to-symbol false positives ([12a0314](https://github.com/Alberto-Codes/docvet/commit/12a03147537196c6c0a5fa29a05269f2e0f76482)), closes [#218](https://github.com/Alberto-Codes/docvet/issues/218)
+
+
+### Documentation
+
+* **docs:** add architecture page with Mermaid check pipeline diagram ([b9666fb](https://github.com/Alberto-Codes/docvet/commit/b9666fbf4c40e4b0f6fb9cadb29b984b44416419)), closes [#214](https://github.com/Alberto-Codes/docvet/issues/214)
+* **docs:** add docs scope to commit conventions ([f7bde04](https://github.com/Alberto-Codes/docvet/commit/f7bde042f77751392c0791fa0657fe58b3e46fce)), closes [#209](https://github.com/Alberto-Codes/docvet/issues/209)
+* **docs:** add editor integration page ([15a83fa](https://github.com/Alberto-Codes/docvet/commit/15a83fa18b99f391d70e303e306d9d6abc2418b3)), closes [#212](https://github.com/Alberto-Codes/docvet/issues/212)
+* **docs:** fix misleading link text and zero-config claim ([15a83fa](https://github.com/Alberto-Codes/docvet/commit/15a83fa18b99f391d70e303e306d9d6abc2418b3))
+
 ## [1.6.0](https://github.com/Alberto-Codes/docvet/compare/v1.5.0...v1.6.0) (2026-02-28)
 
 
