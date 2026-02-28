@@ -10,6 +10,8 @@ communication_language: "{config_source}:communication_language"
 user_skill_level: "{config_source}:user_skill_level"
 document_output_language: "{config_source}:document_output_language"
 date: system-generated
+tracking_system: "{config_source}:tracking_system" # Options: file-system, github, both
+github_repository: "{config_source}:github_repository" # owner/repo for GitHub integration
 planning_artifacts: "{config_source}:planning_artifacts"
 implementation_artifacts: "{config_source}:implementation_artifacts"
 

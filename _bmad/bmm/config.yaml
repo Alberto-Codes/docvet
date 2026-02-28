@@ -14,3 +14,7 @@ user_name: Alberto-Codes
 communication_language: English
 document_output_language: English
 output_folder: "{project-root}/_bmad-output"
+
+# GitHub integration
+tracking_system: "both"  # "file-system" | "github" | "both"
+github_repository: "Alberto-Codes/docvet"

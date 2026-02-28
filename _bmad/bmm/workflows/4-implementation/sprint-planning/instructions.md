@@ -143,6 +143,40 @@ development_status:
 <action>Ensure all items are ordered: epic, its stories, its retrospective, next epic...</action>
 </step>
 
+<step n="4b" goal="Create GitHub milestones and epic labels">
+<check if="tracking_system == 'github' or tracking_system == 'both'">
+<action>For each epic discovered in step 1, create GitHub tracking artifacts:</action>
+
+**Milestones:**
+
+1. Check if milestone "Epic {num}: {title}" already exists:
+   ```bash
+   gh api repos/{github_repository}/milestones --jq '.[] | select(.title | startswith("Epic {num}:")) | .number'
+   ```
+2. If not found, create it:
+   ```bash
+   gh api repos/{github_repository}/milestones -f title="Epic {num}: {title}" -f state="open" -f description="Tracks all stories for Epic {num}"
+   ```
+
+**Labels:**
+
+1. Check if label `epic-{num}` exists:
+   ```bash
+   gh label list --search "epic-{num}" --json name --jq '.[].name'
+   ```
+2. If not found, create it:
+   ```bash
+   gh label create "epic-{num}" --description "Epic {num}: {title}" --color "0E8A16"
+   ```
+3. Also ensure the `story` label exists (one-time, for story issue tagging):
+   ```bash
+   gh label create "story" --description "BMAD user story" --color "1D76DB" 2>/dev/null || true
+   ```
+
+<action>Report milestones and labels created vs already existing</action>
+</check>
+</step>
+
 <step n="5" goal="Validate and report">
 <action>Perform validation checks:</action>
 

@@ -1354,6 +1354,49 @@ Retrospective document was saved successfully, but {sprint_status_file} may need
 </output>
 </check>
 
+<!-- GitHub issue creation for retro action items -->
+<check if="tracking_system == 'github' or tracking_system == 'both'">
+  <action>Ask {user_name}: "Would you like to create GitHub issues for the action items from this retrospective?"</action>
+
+  <check if="user confirms">
+    <action>Also ensure the `retro-action` label exists:</action>
+    <action>gh label create "retro-action" --description "Retrospective action item" --color "D93F0B" 2>/dev/null || true</action>
+
+    <action>For each action item from the retrospective:</action>
+    <action>
+      gh issue create \
+        --repo {github_repository} \
+        --title "Retro Action: {{action_item_title}}" \
+        --label "retro-action,epic-{{epic_number}}" \
+        --body "$(cat &lt;&lt;'EOF'
+## Action Item
+
+{{action_item_description}}
+
+## Context
+
+- **Source**: Epic {{epic_number}} retrospective ({date})
+- **Owner**: {{action_item_owner}}
+- **Priority**: {{action_item_priority}}
+
+---
+
+Retrospective: `{retrospectives_folder}/epic-{{epic_number}}-retro-{date}.md`
+EOF
+)"
+    </action>
+    <action>Report created issue numbers</action>
+    <output>
+✅ Created {{issue_count}} GitHub issues for retro action items:
+{{created_issues_list}}
+    </output>
+  </check>
+
+  <check if="user declines">
+    <output>Skipping GitHub issue creation for action items.</output>
+  </check>
+</check>
+
 </step>
 
 <step n="12" goal="Final Summary and Handoff">

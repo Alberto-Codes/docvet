@@ -193,7 +193,7 @@ development_status:
   22-3-create-agents-md-for-cross-tool-agent-discovery: done
   22-4-create-contributing-md-contributor-guide: done
   22-5-audit-and-expand-discoverability-metadata: done
-  epic-22-retrospective: optional
+  epic-22-retrospective: done  # 2026-02-27
 
   # Epic 23: Machine-Readable and Cross-Platform
   epic-23: done
@@ -204,7 +204,7 @@ development_status:
   epic-23-retrospective: optional
 
   # Epic 24: Real-Time Diagnostics for IDEs and Agents
-  epic-24: in-progress
+  epic-24: done
   24-1-lsp-server-for-real-time-diagnostics: done
   24-2-claude-code-plugin-configuration: done
   epic-24-retrospective: optional

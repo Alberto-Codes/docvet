@@ -360,6 +360,46 @@ Consider these when planning this epic's stories.
       <action>Save file, preserving ALL comments and structure including STATUS DEFINITIONS</action>
     </check>
 
+    <!-- GitHub issue creation -->
+    <check if="tracking_system == 'github' or tracking_system == 'both'">
+      <action>Check if GitHub issue already exists for this story:</action>
+      <action>Search: gh search issues "Story {{epic_num}}.{{story_num}}:" --repo {github_repository} --json number,title --jq '.[0].number'</action>
+
+      <check if="no existing issue found">
+        <action>Create GitHub issue with:</action>
+        <action>
+          gh issue create \
+            --repo {github_repository} \
+            --title "Story {{epic_num}}.{{story_num}}: {{story_title_readable}}" \
+            --label "story,epic-{{epic_num}}" \
+            --milestone "Epic {{epic_num}}: {{epic_title}}" \
+            --body "$(cat &lt;&lt;'EOF'
+## Story
+
+{{user_story_statement}}
+
+## Acceptance Criteria
+
+{{acceptance_criteria_list}}
+
+---
+
+Story file: `{{story_file}}`
+Branch: `feat/{{scope}}-{{epic_num}}-{{story_num}}-{{description}}`
+EOF
+)"
+        </action>
+        <action>Capture the created issue number and URL</action>
+      </check>
+
+      <check if="existing issue found">
+        <action>Use existing issue number and URL</action>
+        <output>GitHub issue already exists: #{{issue_number}}</output>
+      </check>
+
+      <action>Update the story file's "GitHub Issue:" field with the issue URL</action>
+    </check>
+
     <action>Report completion</action>
     <output>**🎯 ULTIMATE BMad Method STORY CONTEXT CREATED, {user_name}!**
 
