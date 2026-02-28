@@ -58,4 +58,4 @@ The **LSP path** receives files directly from the editor via `textDocument/didOp
 
 ## Contributing a New Check
 
-To add a new check, create a module in `src/docvet/checks/` and register it in `cli.py`. For LSP support, also add it to the `_check_file` function in `lsp.py`. Each check module receives a list of files (or directories for coverage-style checks) and returns a list of `Finding` objects. Checks are isolated — they share no state and must not import from each other.
+To add a new check, create a module in `src/docvet/checks/` and register it in `cli.py`. For LSP support, also add it to the `_check_file` function in `lsp.py`. Each check module exposes a public function that returns a `list[Finding]` — see existing checks for the expected signature patterns. Checks are isolated — they share no state and must not import from each other.
