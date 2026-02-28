@@ -363,7 +363,7 @@ Consider these when planning this epic's stories.
     <!-- GitHub issue creation -->
     <check if="tracking_system == 'github' or tracking_system == 'both'">
       <action>Check if GitHub issue already exists for this story:</action>
-      <action>Search: gh search issues "Story {{epic_num}}.{{story_num}}:" --repo {github_repository} --json number,title --jq '.[0].number'</action>
+      <action>Search: gh search issues "Story {{epic_num}}.{{story_num}}: in:title" --repo {github_repository} --json number,title --jq '.[] | select(.title | startswith("Story {{epic_num}}.{{story_num}}:")) | .number'</action>
 
       <check if="no existing issue found">
         <action>Create GitHub issue with:</action>

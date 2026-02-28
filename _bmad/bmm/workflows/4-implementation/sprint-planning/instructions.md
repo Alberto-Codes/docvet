@@ -151,7 +151,7 @@ development_status:
 
 1. Check if milestone "Epic {num}: {title}" already exists:
    ```bash
-   gh api repos/{github_repository}/milestones --jq '.[] | select(.title | startswith("Epic {num}:")) | .number'
+   gh api repos/{github_repository}/milestones --paginate -f state=all --jq '.[] | select(.title | startswith("Epic {num}:")) | .number'
    ```
 2. If not found, create it:
    ```bash
@@ -162,15 +162,15 @@ development_status:
 
 1. Check if label `epic-{num}` exists:
    ```bash
-   gh label list --search "epic-{num}" --json name --jq '.[].name'
+   gh label list --repo {github_repository} --search "epic-{num}" --json name --jq '.[].name'
    ```
 2. If not found, create it:
    ```bash
-   gh label create "epic-{num}" --description "Epic {num}: {title}" --color "0E8A16"
+   gh label create "epic-{num}" --repo {github_repository} --description "Epic {num}: {title}" --color "0E8A16"
    ```
 3. Also ensure the `story` label exists (one-time, for story issue tagging):
    ```bash
-   gh label create "story" --description "BMAD user story" --color "1D76DB" 2>/dev/null || true
+   gh label create "story" --repo {github_repository} --description "BMAD user story" --color "1D76DB" 2>/dev/null || true
    ```
 
 <action>Report milestones and labels created vs already existing</action>

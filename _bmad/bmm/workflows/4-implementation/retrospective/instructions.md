@@ -1360,7 +1360,7 @@ Retrospective document was saved successfully, but {sprint_status_file} may need
 
   <check if="user confirms">
     <action>Also ensure the `retro-action` label exists:</action>
-    <action>gh label create "retro-action" --description "Retrospective action item" --color "D93F0B" 2>/dev/null || true</action>
+    <action>gh label create "retro-action" --repo {github_repository} --description "Retrospective action item" --color "D93F0B" 2>/dev/null || true</action>
 
     <action>For each action item from the retrospective:</action>
     <action>
@@ -1392,7 +1392,7 @@ EOF
     </output>
   </check>
 
-  <check if="user declines">
+  <check if="user denies">
     <output>Skipping GitHub issue creation for action items.</output>
   </check>
 </check>
