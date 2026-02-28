@@ -210,12 +210,12 @@ development_status:
   epic-24-retrospective: done  # 2026-02-28
 
   # Epic 25: Development Process & CI Quality
-  epic-25: in-progress
+  epic-25: done
   25-1-standardize-pytestmark-usage: done
   25-2-audit-and-configure-codecov: done
   25-3-enforce-docs-updates-in-story-creation: done
   25-4-add-docs-impact-check-to-code-review: done
-  25-5-investigate-ci-docs-freshness-check: backlog
+  25-5-investigate-ci-docs-freshness-check: done
   epic-25-retrospective: optional
 
   # Epic 26: Documentation Completeness
