@@ -103,7 +103,7 @@ This means the plugin is part of the main docvet repository, not a separate repo
   "homepage": "https://alberto-codes.github.io/docvet/",
   "repository": "https://github.com/Alberto-Codes/docvet",
   "license": "MIT",
-  "keywords": ["python", "docstring", "linting", "diagnostics", "lsp"],
+  "keywords": ["python", "docstrings", "linting", "code-quality", "lsp", "language-server", "documentation", "mkdocs"],
   "lspServers": "./.lsp.json"
 }
 ```
@@ -112,7 +112,7 @@ Key decisions:
 - **`name`**: `docvet-lsp` — follows kebab-case convention, namespaces the plugin
 - **`version`**: `1.0.0` — initial release, independent of docvet CLI version (plugin config has its own semver)
 - **`lspServers`**: Points to `.lsp.json` rather than inlining — separates concerns and follows the common pattern for LSP-only plugins
-- **`keywords`**: Agent/AI-oriented plus core functionality terms
+- **`keywords`**: Domain-specific terms answering "what does this solve?" — validated against 34 real Claude Code plugins via primary GitHub research
 
 ### .lsp.json — Minimal Configuration
 
@@ -123,7 +123,8 @@ Key decisions:
     "args": ["lsp"],
     "extensionToLanguage": {
       ".py": "python"
-    }
+    },
+    "maxRestarts": 3
   }
 }
 ```
@@ -132,7 +133,7 @@ Key decisions:
 - **`command`**: `docvet` — assumes `docvet` is in PATH (installed via `pip install docvet[lsp]`)
 - **`args`**: `["lsp"]` — invokes the `docvet lsp` subcommand from Story 24.1
 - **No `initializationOptions`**: The LSP server has no configurable options beyond what `load_config()` reads from `pyproject.toml`
-- **No `startupTimeout`/`maxRestarts`**: Use Claude Code defaults — the server starts fast (<100ms) and is stable
+- **`maxRestarts: 3`**: Auto-recover from crashes — matches Piebald community pattern for robust LSP plugins
 - **No `.pyi` mapping**: Python stub files don't have docstrings — no value in analyzing them
 
 ### Executable Requirement — User Must Install docvet
