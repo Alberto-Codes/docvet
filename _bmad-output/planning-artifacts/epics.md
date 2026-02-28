@@ -3,387 +3,885 @@ stepsCompleted:
   - 'step-01-validate-prerequisites'
   - 'step-02-design-epics'
   - 'step-03-create-stories'
-  - 'step-04-final-validation'
-  - 'freshness-step-01'
-  - 'freshness-step-02'
-  - 'freshness-step-03'
-  - 'freshness-step-04'
-  - 'coverage-step-01'
-  - 'coverage-step-02'
-  - 'coverage-step-03'
-  - 'coverage-step-04'
-  - 'griffe-step-01'
-  - 'griffe-step-02'
-  - 'griffe-step-03'
-  - 'griffe-step-04'
-  - 'reporting-step-01'
-  - 'reporting-step-02'
-  - 'reporting-step-03'
-  - 'reporting-step-04'
-  - 'v1-publish-step-01'
-  - 'v1-publish-step-02'
-  - 'v1-publish-step-03'
-  - 'v1-publish-step-04'
-v1PublishCompletedAt: '2026-02-19'
-reportingStartedAt: '2026-02-11'
-freshnessStartedAt: '2026-02-09'
-coverageStartedAt: '2026-02-11'
-griffeStartedAt: '2026-02-11'
-v1PublishStartedAt: '2026-02-19'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
-  - 'docs/product-vision.md'
+  - '_bmad-output/planning-artifacts/epics-cli-ux.md'
+  - '_bmad-output/planning-artifacts/prd-validation-report.md'
+  - 'GitHub Issues: #72, #148, #149, #150, #154, #157, #158, #160, #163, #164, #176, #181, #182, #186, #187, #188, #189, #190, #191'
 ---
 
-# docvet v1.0 Polish & Publish - Epic Breakdown
+# docvet - Epic Breakdown
 
 ## Overview
 
-This document provides the epic and story breakdown for docvet's **v1.0 "Polish & Publish" phase** — the packaging, presentation, and integration infrastructure required to ship docvet as a credible, installable, and discoverable Python developer tool. All check modules and reporting are complete (678 tests, 19 rules, 5 subcommands); this phase wraps them for public consumption.
+This document provides the complete epic and story breakdown for docvet, decomposing the requirements from the PRD, Architecture, CLI UX epics, and open GitHub issues into implementable stories. The project is at v1.4.0 on PyPI with all 19 rules implemented (737 tests), docs site live, and 13 epics complete (plus Epics 14-24 for LSP, CLI UX, and more). This epic breakdown covers the **next phase** of development informed by open GitHub issues.
 
 ## Requirements Inventory
 
 ### Functional Requirements
 
-- **FR111:** The system can be installed from PyPI via `pip install docvet` with no compilation step — pure Python package with typer as the only required runtime dependency
-- **FR112:** The system can expose an optional `griffe` extra via `pip install docvet[griffe]` for users who want rendering compatibility checks — **ALREADY SATISFIED** (`pyproject.toml` lines 14-17)
-- **FR113:** The system can publish PyPI package metadata that includes classifiers for Development Status (Production/Stable), Environment (Console), Python versions (3.12, 3.13), and tags including adjacent tool names (interrogate, pydocstyle, darglint, docstring, mkdocs) for search discoverability
-- **FR114:** The system can provide a `.pre-commit-hooks.yaml` in the repository root with hook id `docvet` that runs `docvet check` on staged Python files, using `language: python` and `types: [python]`
-- **FR115:** The pre-commit hook respects `[tool.docvet]` configuration from `pyproject.toml`, including `fail-on`, `warn-on`, and per-check configuration sections — **ALREADY SATISFIED** (hook runs `docvet check`, CLI reads config)
-- **FR116:** The system can provide a first-party composite GitHub Action (`runs-using: composite`) that runs `docvet check` with three configurable inputs: `version` (default: `latest`), `args` (default: `check`), and `src` (default: `.`), supporting version pinning via explicit input or automatic detection from `pyproject.toml`
-- **FR117:** The GitHub Action produces exit codes compatible with GitHub Actions pass/fail semantics — exit 0 on success, exit 1 when `fail-on` checks produce findings — **ALREADY SATISFIED** (Action runs `docvet check`, which has correct exit codes)
-- **FR118:** The README includes a comparison table showing layer coverage for docvet vs ruff, interrogate, and pydoclint across the six-layer quality model
-- **FR119:** The README includes a single-command quickstart (`pip install docvet && docvet check --all`) and a pre-commit configuration snippet — a developer can go from discovery to first findings in under 2 minutes
-- **FR120:** The README includes a badge row (PyPI version, CI status, license, Python versions, "docs vetted | docvet"), a copy-paste badge snippet for adopters to display in their own projects, and a "Used By" section
-- **FR121:** The system can serve a documentation site built with mkdocs-material, containing at minimum 6 pages: Getting Started, Enrichment Check, Freshness Check, Coverage Check, Griffe Check, and CLI Reference
-- **FR122:** The system can generate documentation that includes client-side full-text search via mkdocs-material's built-in search plugin, and a Configuration page documenting every `[tool.docvet]` key with defaults, types, and examples
-- **FR123:** Each of the 19 rule identifiers has a dedicated documentation page showing the rule code, check type, default severity, and category
-- **FR124:** Each rule reference page follows the What/Why/Example/Fix template: "What it does", "Why is this bad?", "Example" (code showing violation), and "Fix" (code showing corrected version)
-- **FR125:** Running `docvet check --all` on docvet's own codebase produces zero findings — the tool's own documentation meets its own quality standards. **CURRENT STATE: 23 findings (8 required, 15 recommended) across 5 files**
-- **FR126:** The README displays a "docs vetted | docvet" shields.io badge linking to the project, serving as a self-referential credibility signal
-- **FR127:** All public modules define `__all__` exports, ensuring only intentional symbols are part of the stable v1 public API. **CURRENT STATE: 2 of 11 modules have `__all__`; 9 need it added**
+**From PRD (FR1-FR127) — All Complete:**
+FR1-FR15: Section Detection (enrichment) — COMPLETE
+FR16-FR22: Finding Production — COMPLETE
+FR23-FR25: Rule Management — COMPLETE
+FR26-FR31: Configuration — COMPLETE
+FR32-FR38: Symbol Analysis — COMPLETE
+FR39-FR42: Integration — COMPLETE
+FR43-FR49: Diff Mode Detection (freshness) — COMPLETE
+FR50-FR54: Drift Mode Detection (freshness) — COMPLETE
+FR55-FR58: Freshness Edge Cases — COMPLETE
+FR59-FR62: Freshness Finding Production — COMPLETE
+FR63-FR65: Freshness Configuration — COMPLETE
+FR66-FR68: Freshness Integration — COMPLETE
+FR69-FR74: Coverage Detection — COMPLETE
+FR75-FR76: Coverage Finding Production — COMPLETE
+FR77-FR80: Coverage Integration — COMPLETE
+FR81-FR85: Griffe Detection — COMPLETE
+FR86-FR89: Griffe Finding Production — COMPLETE
+FR90-FR93: Griffe Edge Cases — COMPLETE
+FR94-FR97: Griffe Integration — COMPLETE
+FR98-FR102: Reporting Output — COMPLETE
+FR103-FR104a: Reporting File Output — COMPLETE
+FR105-FR107: Exit Code Logic — COMPLETE
+FR108-FR110: Reporting Integration — COMPLETE
+FR111-FR113: Packaging & Distribution — COMPLETE
+FR114-FR115: Pre-commit Integration — COMPLETE
+FR116-FR117: GitHub Action — COMPLETE
+FR118-FR120: README — COMPLETE
+FR121-FR122: Documentation Site — COMPLETE
+FR123-FR124: Rule Reference — COMPLETE
+FR125-FR126: Dogfooding — COMPLETE
+FR127: API Surface — COMPLETE
 
-#### Gap FRs (identified during party-mode review)
+**From CLI UX Epics (FR-UX1 through FR-UX16) — NEW:**
+FR-UX1: Unconditional "Vetted" summary line on stderr
+FR-UX2: "Vetted" brand verb in output
+FR-UX3: Check list in summary line
+FR-UX4: Omit skipped checks (griffe not installed) from summary
+FR-UX5: Silent overlap resolution for default warn-on
+FR-UX6: Preserve warning for explicit both-set conflict
+FR-UX7: Explicit-vs-default detection based on TOML key presence
+FR-UX8: --verbose dual-registration (app callback + subcommand)
+FR-UX9: Logical OR for verbose in both positions
+FR-UX10: Verbose tier content unchanged
+FR-UX11: -q/--quiet flag suppresses non-finding output
+FR-UX12: Quiet preserves findings on stdout
+FR-UX13: Quiet beats verbose when both specified
+FR-UX14: Quiet dual-registration pattern
+FR-UX15: Individual subcommands follow three-tier output model
+FR-UX16: Subcommand summary with own check name only
 
-- **FR-G1:** The project includes a LICENSE file at the repository root and a `license` field in `pyproject.toml` — required for PyPI credibility and corporate adoption
-- **FR-G2:** The package version is bumped to `1.0.0` in `pyproject.toml` and is accessible via `docvet --version` at the CLI
-- **FR-G3:** The project includes a CHANGELOG.md with a v1.0.0 release entry summarizing the complete feature set
-- **FR-G4:** The package is validated on TestPyPI before production PyPI publish — install, import, and `docvet check --help` verified in a fresh virtual environment
-- **FR-G5:** The build configuration (`[tool.hatch.build]`) excludes non-distribution files (tests/, fixtures/, _bmad-output/, docs source, .github/) from the published wheel and sdist
+**From GitHub Issues — NEW:**
+FR-GH176: Freshness diff mode shall not produce false positives on symbols adjacent to changed hunks (tighten hunk-to-symbol mapping to changed lines only)
+FR-GH186: Documentation site shall include an Editor Integration page covering LSP server, Claude Code plugin, and severity mapping
+FR-GH191: CONTRIBUTING.md shall include `docs` as a valid commit scope
+FR-GH181: pytestmark usage shall be standardized across all unit test files (either all have it or none)
+FR-GH182: Codecov setup shall be audited — app install, codecov.yml config, and badge reliability
+FR-GH187: Story creation workflow shall enforce docs-site update identification in ACs
+FR-GH188: Code review workflow shall include a blocking docs-impact check
+FR-GH189: CI shall detect when source files change without corresponding docs pages
+FR-GH190: Docs site shall include at least one Mermaid architecture diagram
+FR-GH148: Exclude configuration shall support negation patterns (!pattern)
+
+**Backlog/Future (tracked but not scheduled):**
+FR-GH149: MCP server for agentic AI integration
+FR-GH150: `docvet init` command for agent-ready project scaffolding
+FR-GH154: Agent workflow example page on docs site
+FR-GH157: GitHub Action for PR inline docstring comments
+FR-GH158: mkdocs-material + mkdocstrings example project template
+FR-GH160: VS Code extension for docstring diagnostics
+FR-GH163: SARIF output format
+FR-GH164: Run docvet on flagship open-source projects
+FR-GH72: Explore WebMCP integration for agent-friendly documentation
 
 ### NonFunctional Requirements
 
-- **NFR55:** The PyPI package installs cleanly in a fresh virtual environment with no compilation step and no system-level dependencies (pure Python wheel)
-- **NFR56:** The package size stays under 500KB — no bundled binaries, test data, fixture files, or development artifacts in the published distribution
-- **NFR57:** The documentation site loads in under 3 seconds, includes client-side search, and renders without layout breaks on viewports >= 320px wide through 1920px
-- **NFR58:** Every CLI flag documented in the docs site matches the actual `--help` output — no drift between documentation and implementation
-- **NFR59:** The pre-commit hook executes in under 10 seconds for 50 staged Python files on commodity hardware
-- **NFR60:** The GitHub Action runs in under 60 seconds for a 200-file codebase on a standard GitHub Actions runner
-- **NFR61:** The pre-commit hook works with pre-commit framework v3.x and v4.x without version-specific workarounds
-- **NFR62:** The GitHub Action works with `ubuntu-latest`, `macos-latest`, and `windows-latest` runners without platform-specific code paths
-- **NFR63:** docvet's own codebase maintains zero findings from `docvet check --all` as a CI gate
-- **NFR64:** The public API surface (`Finding` dataclass, check functions, CLI command names, CLI option names) is stable for v1 — no breaking changes within the v1.x lifecycle
-- **NFR65:** All public modules define `__all__` exports — importing `from docvet.checks import *` or `from docvet import *` produces only the intended public symbols
-- **NFR66:** The v1 API stability commitment covers: `Finding` (6 fields), `check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`, and all CLI subcommand names
+**From PRD (NFR1-NFR66) — All Complete/Applicable:**
+NFR1-NFR4: Enrichment Performance — COMPLETE
+NFR5-NFR9: Enrichment Correctness — COMPLETE
+NFR10-NFR13: Enrichment Maintainability — COMPLETE
+NFR14-NFR16: Enrichment Compatibility — COMPLETE
+NFR17-NFR19: Enrichment Integration — COMPLETE
+NFR20-NFR22: Freshness Performance — COMPLETE
+NFR23-NFR26: Freshness Correctness — COMPLETE
+NFR27-NFR28: Freshness Maintainability — COMPLETE
+NFR29-NFR30: Freshness Compatibility — COMPLETE
+NFR31-NFR32: Freshness Integration — COMPLETE
+NFR33: Coverage Performance — COMPLETE
+NFR34-NFR35: Coverage Correctness — COMPLETE
+NFR36: Coverage Maintainability — COMPLETE
+NFR37: Coverage Compatibility — COMPLETE
+NFR38: Coverage Integration — COMPLETE
+NFR39-NFR40: Griffe Performance — COMPLETE
+NFR41-NFR43: Griffe Correctness — COMPLETE
+NFR44-NFR45: Griffe Maintainability — COMPLETE
+NFR46: Griffe Compatibility — COMPLETE
+NFR47-NFR48: Griffe Integration — COMPLETE
+NFR49: Reporting Performance — COMPLETE
+NFR50-NFR51: Reporting Correctness — COMPLETE
+NFR52-NFR53: Reporting Compatibility — COMPLETE
+NFR54: Reporting Integration — COMPLETE
+NFR55-NFR56: Packaging Quality — COMPLETE
+NFR57-NFR58: Documentation Quality — APPLICABLE (ongoing)
+NFR59-NFR60: CI Integration Quality — COMPLETE
+NFR61-NFR62: v1.0 Compatibility — COMPLETE
+NFR63: Dogfooding — APPLICABLE (ongoing CI gate)
+NFR64-NFR66: API Stability — APPLICABLE (ongoing v1.x constraint)
+
+**From CLI UX Epics (NFR-UX1 through NFR-UX8) — NEW:**
+NFR-UX1: Summary line format stable for v1.x (scripts may parse it)
+NFR-UX2: Stream separation maintained (findings stdout, metadata stderr)
+NFR-UX3: Pre-commit output shows summary on stderr
+NFR-UX4: GitHub Actions logs show summary clearly
+NFR-UX5: No new runtime dependencies
+NFR-UX6: All 729+ existing tests continue passing
+NFR-UX7: --format markdown and --output work correctly with summary
+NFR-UX8: Zero-file edge cases produce meaningful summary
 
 ### Additional Requirements
 
-**From Architecture:**
-- No new runtime dependencies beyond typer (and optional griffe) — stdlib-only architecture
-- `Finding` dataclass shape is frozen for v1 — 6 fields, no additions or removals
-- All check modules are isolated — no cross-imports between check modules
-- Module layout follows `src/docvet/` structure with `checks/` subpackage
-- Google-style docstrings assumed throughout
+**From Architecture Document:**
+- No starter template needed (brownfield project)
+- Table-driven dispatch pattern for uniform-signature rule chains
+- Scope-aware iterative walk for AST body-level inspection (prevents nested scope false positives)
+- Finding construction uses literal rule/category strings (no dynamic computation)
+- Config gating in orchestrator, not in _check_* functions
+- No cross-check imports between check modules
+- Checks are isolated — no shared mutable state
+- All public modules define __all__ exports (API stability)
 
-**From Product Vision:**
-- Package targets PyPI publication as `docvet` — short, memorable, zero-conflict name
-- Fills the gap between style linting (ruff D rules) and presence checking (interrogate)
-- Layers 1-2 delegated to existing tools; layers 3-6 are docvet's territory
-- Target consumers: Python projects using Google-style docstrings, especially mkdocs-material + mkdocstrings workflows
-- Positioning: "ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right."
+**From CLI UX Research (Party Mode Session 2026-02-26):**
+- "Vetted" chosen as brand verb — unique in Python tool ecosystem
+- Three-tier output model (quiet/default/verbose) follows clig.dev best practices
+- Config overlap warning is #1 noise source — fires 4x on common pattern
+- --verbose dual-registration is standard Typer solution for placement flexibility
+- Pre-commit captures stdout; GitHub Actions renders both streams
 
-**From PRD Market Research:**
-- 73% of developers demand hands-on value within minutes — zero-config trial essential
-- Documentation quality is the #1 trust signal (34.2%) for Python developer tool adoption
-- Pre-commit hooks serve as viral distribution channels
-- 8 deliverables mapped to GitHub issues #49-#56: dogfooding, README, docs site, rule reference, pre-commit, GitHub Action, PyPI publish, API surface audit
-
-### FR Triage (party-mode review)
-
-#### Bucket 1: Already Satisfied (verify only)
-
-| FR | Description | Evidence |
-|----|-------------|----------|
-| FR112 | Optional `griffe` extra | `pyproject.toml` already declares `[project.optional-dependencies] griffe` |
-| FR115 | Pre-commit hook respects config | Hook runs `docvet check`, CLI already reads `pyproject.toml` |
-| FR117 | GitHub Action exit codes | Action runs `docvet check`, which already has correct exit codes |
-
-#### Bucket 2: New Artifact Creation
-
-| FR | Description | Artifact |
-|----|-------------|----------|
-| FR113 | PyPI classifiers + tags | `pyproject.toml` `[project]` section update |
-| FR114 | `.pre-commit-hooks.yaml` | New file, ~10 lines YAML |
-| FR116 | GitHub Action composite | New `action.yml`, ~30-40 lines |
-| FR118 | README comparison table | README content |
-| FR119 | README quickstart + snippet | README content |
-| FR120 | README badge row | README content |
-| FR121 | mkdocs-material docs site | `mkdocs.yml` + docs pages — **largest artifact** |
-| FR122 | Search + Configuration page | Part of docs site |
-| FR123 | 19 rule reference pages | 19 markdown files — **high volume, templated** |
-| FR124 | What/Why/Example/Fix per rule | Content for each of 19 pages |
-| FR126 | "docs vetted" badge | Badge markdown in README |
-| FR-G1 | LICENSE file | New file + `pyproject.toml` field |
-| FR-G3 | CHANGELOG.md | New file with v1.0.0 entry |
-
-#### Bucket 3: Code Changes
-
-| FR | Description | Scope |
-|----|-------------|-------|
-| FR111 | Installable from PyPI | Build config audit, license field, version bump |
-| FR125 | Zero findings on own codebase | **23 findings to fix** across 5 files |
-| FR127 | `__all__` on all public modules | 9 modules need `__all__` added |
-| FR-G2 | Version bump to 1.0.0 | `pyproject.toml` + verify `--version` works |
-| FR-G4 | TestPyPI validation | Build + upload + install verification |
-| FR-G5 | Build exclusions | `[tool.hatch.build]` config in `pyproject.toml` |
+**From PRD Validation Report:**
+- Overall quality rating: 5/5 Exemplary
+- 130 FRs, 66 NFRs, 19 rules, 14 journeys — all complete
+- Minor gaps: FR119 metric precision, dogfooding journey missing
+- Zero critical gaps; document is execution-ready
 
 ### FR Coverage Map
 
 | FR | Epic | Description |
 |----|------|-------------|
-| FR111 | Epic 10 | PyPI installable, pure Python |
-| FR112 | — | Already satisfied (griffe extra exists) |
-| FR113 | Epic 10 | PyPI classifiers and tags |
-| FR114 | Epic 10 | `.pre-commit-hooks.yaml` |
-| FR115 | — | Already satisfied (CLI reads config) |
-| FR116 | Epic 10 | GitHub Action composite |
-| FR117 | — | Already satisfied (correct exit codes) |
-| FR118 | Epic 10 | README comparison table |
-| FR119 | Epic 10 | README quickstart + snippet |
-| FR120 | Epic 10 | README badge row |
-| FR121 | Epic 11 | mkdocs-material docs site |
-| FR122 | Epic 11 | Search + Configuration page |
-| FR123 | Epic 11 | 19 rule reference pages |
-| FR124 | Epic 11 | What/Why/Example/Fix template |
-| FR125 | Epic 9 | Zero findings on own codebase |
-| FR126 | Epic 10 | "docs vetted" badge |
-| FR127 | Epic 9 | `__all__` exports on all modules |
-| FR-G1 | Epic 10 | LICENSE file |
-| FR-G2 | Epic 9 | Version bump to 1.0.0 |
-| FR-G3 | Epic 10 | CHANGELOG.md |
-| FR-G4 | Epic 10 | TestPyPI validation |
-| FR-G5 | Epic 9 | Build exclusions config |
+| FR-GH187 | 25 | Story creation DoD — enforce docs-site update identification |
+| FR-GH188 | 25 | Code review docs-impact blocking check |
+| FR-GH189 | 25 | CI file-mapping check for docs freshness |
+| FR-GH181 | 25 | pytestmark standardization across unit tests |
+| FR-GH182 | 25 | Codecov audit — app install, config, badge reliability |
+| FR-GH186 | 26 | Editor Integration docs page (LSP + Claude Code plugin) |
+| FR-GH190 | 26 | Mermaid architecture diagram on docs site |
+| FR-GH191 | 26 | Add `docs` scope to CONTRIBUTING.md commit conventions |
+| FR-GH176 | 27 | Freshness diff mode false positive fix (hunk-to-symbol tightening) |
+| FR-UX1 | 28 | Unconditional "Vetted" summary line on stderr |
+| FR-UX2 | 28 | "Vetted" brand verb in output |
+| FR-UX3 | 28 | Check list in summary line |
+| FR-UX4 | 28 | Omit skipped checks from summary |
+| FR-UX5 | 28 | Silent overlap resolution for default warn-on |
+| FR-UX6 | 28 | Preserve warning for explicit both-set conflict |
+| FR-UX7 | 28 | Explicit-vs-default detection based on TOML key presence |
+| FR-UX8 | 28 | --verbose dual-registration |
+| FR-UX9 | 28 | Logical OR for verbose in both positions |
+| FR-UX10 | 28 | Verbose tier content unchanged |
+| FR-UX11 | 28 | -q/--quiet flag suppresses non-finding output |
+| FR-UX12 | 28 | Quiet preserves findings on stdout |
+| FR-UX13 | 28 | Quiet beats verbose when both specified |
+| FR-UX14 | 28 | Quiet dual-registration pattern |
+| FR-UX15 | 28 | Individual subcommands follow three-tier output model |
+| FR-UX16 | 28 | Subcommand summary with own check name only |
+| FR-GH148 | Backlog | Negation pattern support for exclude config |
+| FR-GH149 | Backlog | MCP server for agentic AI integration |
+| FR-GH150 | Backlog | `docvet init` command |
+| FR-GH154 | Backlog | Agent workflow example docs page |
+| FR-GH157 | Backlog | GitHub Action for PR inline comments |
+| FR-GH158 | Backlog | mkdocs + mkdocstrings example template |
+| FR-GH160 | Backlog | VS Code extension |
+| FR-GH163 | Backlog | SARIF output format |
+| FR-GH164 | Backlog | Run docvet on flagship OSS projects |
+| FR-GH72 | Backlog | WebMCP integration |
 
 ## Epic List
 
-### Epic 9: Dogfooding & API Hardening
+### Epic 25: Development Process & CI Quality
+The development process prevents documentation drift and CI provides reliable, consistent quality signals. BMAD workflows enforce docs-site updates at story creation and code review time, CI detects source-without-docs changes, and testing/coverage infrastructure is standardized.
+**FRs covered:** FR-GH187, FR-GH188, FR-GH189, FR-GH181, FR-GH182
+**GitHub Issues:** #187, #188, #189, #181, #182
 
-Fix all 23 docvet findings on docvet's own codebase, add `__all__` exports to all public modules, bump version to 1.0.0, and configure build exclusions — proving the tool works on itself and locking down the v1 public API surface.
+## Epic 25: Development Process & CI Quality
 
-**FRs covered:** FR125, FR127, FR-G2, FR-G5
-**NFRs addressed:** NFR63, NFR65, NFR56
-**Prerequisite for:** Epic 10, Epic 11
+The development process prevents documentation drift and CI provides reliable, consistent quality signals. BMAD workflows enforce docs-site updates at story creation and code review time, CI detects source-without-docs changes, and testing/coverage infrastructure is standardized.
 
-### Epic 10: Package, Publish & Integrations
+### Story 25.1: Standardize pytestmark Usage
 
-Ship docvet as a credible PyPI package with LICENSE, classifiers, CHANGELOG, README (comparison table, quickstart, badges), pre-commit hook, GitHub Action, and TestPyPI validation — a developer can discover, install, and integrate docvet into their workflow.
+As a **docvet contributor**,
+I want pytestmark usage to be consistent across all unit test files,
+So that test organization follows a clear convention and marker-based filtering works reliably if adopted.
 
-**FRs covered:** FR111, FR113, FR114, FR116, FR118, FR119, FR120, FR126, FR-G1, FR-G3, FR-G4
-**NFRs addressed:** NFR55, NFR56, NFR59, NFR60, NFR61, NFR62
-**Depends on:** Epic 9
+**FRs covered:** FR-GH181
 
-### Epic 11: Documentation Site & Rule Reference
+**Acceptance Criteria:**
 
-Build an mkdocs-material documentation site with Getting Started, per-check pages, Configuration, CLI Reference, and 19 dedicated rule reference pages following the What/Why/Example/Fix template — a developer who receives a finding can understand and fix it in 30 seconds.
+AC 1:
+**Given** the 13 unit test files (5 with `pytestmark`, 8 without)
+**When** the convention decision is made
+**Then** all unit test files either have `pytestmark = pytest.mark.unit` or none do — no split
 
-**FRs covered:** FR121, FR122, FR123, FR124
-**NFRs addressed:** NFR57, NFR58
-**Depends on:** Epic 9 (soft — docs can be written in parallel with Epic 10)
+AC 2:
+**Given** the standardization decision
+**When** applied to test files
+**Then** `uv run pytest` passes with all 737+ tests green
+
+AC 3:
+**Given** the decision on whether to adopt or remove markers
+**When** documented
+**Then** `.github/instructions/pytest.instructions.md` includes the convention and rationale
+
+AC 4:
+**Given** markers are adopted (if that's the decision)
+**When** a contributor checks CLAUDE.md or pytest instructions
+**Then** `pytest -m unit` and `pytest -m integration` usage is documented
+
+**Implementation notes:**
+- Issue #181 lists all 13 files and their current state
+- Decision point: does marker filtering provide value? CI runs `uv run pytest` without `-m` filtering today
+- If removing: delete `pytestmark` from the 5 files that have it
+- If adopting: add `pytestmark = pytest.mark.unit` to the 8 files missing it, add `pytestmark = pytest.mark.integration` to integration test files
 
 ---
 
-## Epic 9: Dogfooding & API Hardening
+### Story 25.2: Audit and Configure Codecov
 
-Fix all 23 docvet findings on docvet's own codebase, add `__all__` exports to all public modules, bump version to 1.0.0, and configure build exclusions — proving the tool works on itself and locking down the v1 public API surface.
+As a **docvet maintainer**,
+I want Codecov properly configured with reliable PR comments and badge updates,
+So that coverage feedback is consistent and contributors see coverage impact on every PR.
 
-### Story 9.1: Fix Docvet Findings on Own Codebase
-
-As a docvet maintainer,
-I want all 23 docstring findings on docvet's own source code resolved to zero,
-So that the tool credibly dogfoods itself before publication.
+**FRs covered:** FR-GH182
 
 **Acceptance Criteria:**
 
-**Given** the docvet codebase at current state with 23 findings (8 required, 15 recommended)
-**When** findings are resolved (via docstring fixes or config adjustments — e.g., narrowing `require-examples` in `[tool.docvet.enrichment]` for internal enums is a valid approach)
-**Then** `docvet check --all` produces zero findings
-**And** all quality gates pass (`ruff check`, `ruff format --check`, `ty check`, `interrogate`) — fixes do not introduce new violations
-**And** all existing tests continue to pass (`uv run pytest`)
+AC 1:
+**Given** the Codecov GitHub App is not installed
+**When** the audit is complete
+**Then** a decision is documented on whether to install the App (yes/no with rationale)
 
-### Story 9.2: Add `__all__` Exports to All Public Modules
+AC 2:
+**Given** no `codecov.yml` exists
+**When** the audit recommends adding one
+**Then** `codecov.yml` is committed with project/patch coverage targets and PR comment configuration
 
-As a Python developer importing from docvet,
-I want only intentional public symbols exported from each module,
-So that the v1 API surface is explicit and stable.
+AC 3:
+**Given** the README badge `[![Coverage](https://codecov.io/gh/...)]`
+**When** the badge strategy is decided
+**Then** the badge updates reliably on pushes to main
 
-**Acceptance Criteria:**
+AC 4:
+**Given** a PR is opened against main
+**When** CI runs and uploads coverage
+**Then** Codecov PR comments appear consistently showing coverage delta
 
-**Given** 11 modules in `src/docvet/` (9 currently lack `__all__`)
-**When** `__all__` is defined in every module
-**Then** each module's `__all__` lists only its intended public symbols per NFR66 (`Finding`, `check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`, and supporting public types)
-**And** `from docvet.checks import *` produces only `Finding` and the check functions — no internal helpers
-**And** `from docvet import *` produces only the intended top-level API
-**And** internal helpers (prefixed with `_`) are not accessible via `*` import from any module (negative assertion)
-**And** modules that already have `__all__` (`checks/__init__.py`, `checks/coverage.py`) are unchanged or verified as correct
-**And** all existing tests continue to pass
+AC 5:
+**Given** all changes are applied
+**When** `uv run pytest` is executed
+**Then** all tests pass
 
-### Story 9.3: Version Bump and Build Configuration
-
-As a package maintainer preparing for v1.0 release,
-I want the version set to 1.0.0 and non-distribution files excluded from the build,
-So that the published package is correctly versioned and contains only production code.
-
-**Acceptance Criteria:**
-
-**Given** `pyproject.toml` with `version = "0.1.0"`, no build exclusions, and no `--version` CLI flag
-**When** the version is bumped, a `--version` flag is added, and sdist build exclusions are configured
-**Then** `pyproject.toml` shows `version = "1.0.0"`
-**And** a `--version` CLI callback is implemented (via `importlib.metadata` or typer's version callback) so that `docvet --version` outputs `1.0.0`
-**And** `[tool.hatch.build.targets.sdist]` excludes non-distribution directories (`tests/`, `_bmad-output/`, `_bmad/`, `.github/`, `docs/`, fixture files) — wheel exclusions are unnecessary as hatchling's `src` layout already scopes the wheel to `src/docvet/`
-**And** `uv build` produces both wheel and sdist, each under 500KB (NFR56)
-**And** the wheel contains only `src/docvet/` package files (verified via `zipfile -l`)
-**And** all existing tests continue to pass
+**Implementation notes:**
+- Issue #182 details 5 decision points: App install, codecov.yml, components vs flags, badge strategy, `--cov-fail-under` location
+- Components (free for OSS) can track coverage by area without splitting uploads
+- Flags require separate pytest+upload steps in CI — evaluate cost vs benefit
 
 ---
 
-## Epic 10: Package, Publish & Integrations
+### Story 25.3: Enforce Docs Updates in Story Creation
 
-Ship docvet as a credible PyPI package with LICENSE, classifiers, CHANGELOG, README (comparison table, quickstart, badges), pre-commit hook, GitHub Action, and TestPyPI validation — a developer can discover, install, and integrate docvet into their workflow.
+As a **docvet contributor using the BMAD story creation workflow**,
+I want the workflow to require identification of affected docs pages in acceptance criteria,
+So that documentation updates are planned alongside code changes, not forgotten after.
 
-### Story 10.1: LICENSE and Package Metadata
-
-As a Python developer evaluating docvet,
-I want to see a clear license and proper PyPI classifiers,
-So that I can confirm the tool is safe to adopt in my project.
+**FRs covered:** FR-GH187
 
 **Acceptance Criteria:**
 
-**Given** `pyproject.toml` has no `license` field or classifiers
-**When** LICENSE file and metadata are added
-**Then** a LICENSE file exists at the repository root (MIT or Apache-2.0)
-**And** `pyproject.toml` includes a `license` field referencing the LICENSE file
-**And** `pyproject.toml` includes classifiers: Development Status (Production/Stable), Environment (Console), Intended Audience (Developers), License, Programming Language (Python :: 3.12, Python :: 3.13), Topic (Software Development :: Quality Assurance)
-**And** `pyproject.toml` includes `keywords` with: `docstring`, `linter`, `mkdocs`, `interrogate`, `pydocstyle`, `darglint`, `documentation`, `quality`
-**And** all existing tests continue to pass (`uv run pytest`)
+AC 1:
+**Given** the BMAD create-story workflow (`_bmad/bmm/workflows/4-implementation/create-story/`)
+**When** a story touches user-facing behavior
+**Then** the workflow requires listing specific docs pages to update (e.g., "update `docs/site/cli.md`") as concrete ACs
 
-### Story 10.2: README with Comparison Table, Quickstart, and Badges
+AC 2:
+**Given** a story that does NOT touch user-facing behavior (e.g., internal refactor, test-only)
+**When** the workflow processes the story
+**Then** the docs requirement is acknowledged as "N/A — no user-facing changes" rather than silently skipped
 
-As a developer discovering docvet on PyPI or GitHub,
-I want to understand what it does, how it compares to alternatives, and how to start using it in under 2 minutes,
-So that I can make an informed adoption decision quickly.
+AC 3:
+**Given** the updated workflow
+**When** a contributor runs `/bmad-bmm-create-story`
+**Then** the docs-page identification step appears as an explicit gate, not a suggestion
 
-**Acceptance Criteria:**
-
-**Given** an empty `README.md`
-**When** the README is written
-**Then** it includes a badge row: PyPI version, CI status, license, Python versions, "docs vetted | docvet"
-**And** it includes a one-line tagline and the six-layer quality model summary
-**And** it includes a comparison table showing layer coverage for ruff, interrogate, pydoclint, and docvet
-**And** it includes a single-command quickstart: `pip install docvet && docvet check --all`
-**And** it includes a 3-line pre-commit configuration YAML snippet
-**And** it includes a copy-paste badge snippet for adopters (`[![docs vetted | docvet]...]`)
-**And** it includes a "Used By" section placeholder
-**And** the README renders correctly as PyPI long description — verified via `twine check dist/*` or `python -m readme_renderer README.md` (no rendering errors, no broken links)
-
-### Story 10.3: Pre-commit Hook and GitHub Action
-
-As a developer integrating docvet into CI,
-I want a pre-commit hook and GitHub Action available with minimal configuration,
-So that I can automate documentation quality gating in my workflow.
-
-**Acceptance Criteria:**
-
-**Given** no `.pre-commit-hooks.yaml` or `action.yml` exists
-**When** both integration files are created
-**Then** `.pre-commit-hooks.yaml` exists at repo root with `id: docvet`, `language: python`, `types: [python]`, `entry: docvet check`
-**And** the hook is verified via `pre-commit try-repo . docvet --all-files` against the local repo (manual verification — not automatable in CI until published)
-**And** `action.yml` exists at repo root as a composite GitHub Action with inputs: `version` (default: `latest`), `args` (default: `check`), `src` (default: `.`)
-**And** the Action installs docvet, runs `docvet` with the provided args, and propagates the exit code
-**And** the README's pre-commit snippet references the correct repo URL and hook id
-
-### Story 10.4: CHANGELOG and Publication Pipeline
-
-As a package maintainer,
-I want a CHANGELOG documenting v1.0.0 and a validated publish pipeline,
-So that the package is professionally released with an auditable history.
-
-**Acceptance Criteria:**
-
-**Given** no CHANGELOG exists and the package has never been published
-**When** CHANGELOG and publish pipeline are prepared
-**Then** `CHANGELOG.md` exists with a v1.0.0 entry summarizing: 4 check modules (enrichment, freshness, coverage, griffe), 19 rules, reporting module, CLI with 5 subcommands
-**And** `uv build` produces both wheel and sdist
-**And** the wheel installs cleanly in a fresh virtual environment (`pip install dist/docvet-1.0.0-py3-none-any.whl`)
-**And** `docvet check --help` works after install from wheel
-**And** `import docvet` works after install from wheel
-**And** the package is validated on TestPyPI: upload, install from TestPyPI, verify `docvet --version` outputs `1.0.0` (prerequisite: TestPyPI account and API token configured — infrastructure setup, not a code change)
-**And** all existing tests continue to pass (`uv run pytest`)
+**Implementation notes:**
+- Issue #187: direct process update to BMAD workflow configuration
+- The requirement is for concrete page names, not vague "update docs if needed"
+- Source: Epic 22 retrospective action item 1
 
 ---
 
-## Epic 11: Documentation Site & Rule Reference
+### Story 25.4: Add Docs-Impact Check to Code Review
 
-Build an mkdocs-material documentation site with Getting Started, per-check pages, Configuration, CLI Reference, and 19 dedicated rule reference pages following the What/Why/Example/Fix template — a developer who receives a finding can understand and fix it in 30 seconds.
+As a **code reviewer using the BMAD code review workflow**,
+I want the workflow to flag when source files changed without corresponding docs updates,
+So that documentation drift is caught during review, not after shipping.
 
-### Story 11.1: Documentation Site Scaffold and Core Pages
-
-As a developer who just installed docvet,
-I want a documentation site with Getting Started and CLI Reference pages,
-So that I can learn how to use the tool without reading source code.
+**FRs covered:** FR-GH188
 
 **Acceptance Criteria:**
 
-**Given** no `mkdocs.yml` or documentation site exists
-**When** the docs site is scaffolded
-**Then** `mkdocs.yml` exists with mkdocs-material theme, navigation, and search plugin enabled
-**And** a Getting Started page exists with installation instructions (`pip install docvet`, `pip install docvet[griffe]`), quickstart command, and a brief overview of the four checks
-**And** a CLI Reference page exists documenting all 5 subcommands (`check`, `enrichment`, `freshness`, `coverage`, `griffe`) and all global options (`--format`, `--output`, `--verbose`, `--staged`, `--all`, `--files`)
-**And** `mkdocs serve` builds the site without errors
-**And** client-side search returns results for "enrichment", "freshness", "coverage", "griffe"
+AC 1:
+**Given** the BMAD code-review workflow (`_bmad/bmm/workflows/4-implementation/code-review/`)
+**When** source files in `src/docvet/` are modified in the PR
+**Then** the workflow includes a blocking check: "Were corresponding docs pages updated?"
 
-### Story 11.2: Check Pages and Configuration Reference
+AC 2:
+**Given** a PR that modifies user-facing behavior without touching docs
+**When** the code review runs
+**Then** the docs-impact gap is flagged as a finding (not just a suggestion)
 
-As a developer configuring docvet for their team,
-I want dedicated pages for each check type and a configuration reference,
-So that I understand what each check does and how to customize it.
+AC 3:
+**Given** a PR that modifies only tests, CI, or internal tooling
+**When** the code review runs
+**Then** no docs-impact finding is produced (internal changes don't require docs updates)
 
-**Acceptance Criteria:**
+**Implementation notes:**
+- Issue #188: direct process update to BMAD workflow configuration
+- This is a gate, not a suggestion — if user-facing behavior changed and no docs were touched, it's a finding
+- Source: Epic 22 retrospective action item 2
 
-**Given** the docs site scaffold from Story 11.1
-**When** check pages and config reference are added
-**Then** an Enrichment Check page exists explaining the 10 enrichment rules, required vs recommended categories, and `[tool.docvet.enrichment]` config options
-**And** a Freshness Check page exists explaining diff mode vs drift mode, the 5 freshness rules, severity levels, and `[tool.docvet.freshness]` config options
-**And** a Coverage Check page exists explaining `missing-init` detection and `src-root` behavior
-**And** a Griffe Check page exists explaining the 3 griffe rules, optional dependency, and graceful skip behavior
-**And** a Configuration page exists documenting every `[tool.docvet]` key with its type, default value, and an example
-**And** every CLI flag documented in the site matches the actual `docvet --help` output (NFR58)
-**And** `mkdocs serve` builds without errors and all pages are navigable
+---
 
-### Story 11.3: Rule Reference Pages
+### Story 25.5: Investigate CI Docs-Freshness Check
 
-As a developer who received a docvet finding,
-I want to look up the rule by its identifier and understand what it means, why it matters, and how to fix it,
-So that I can resolve findings quickly without guessing.
+As a **docvet maintainer**,
+I want a CI check that warns when source files change without corresponding docs pages being updated,
+So that documentation drift is caught automatically as a belt-and-suspenders complement to process enforcement.
+
+**FRs covered:** FR-GH189
 
 **Acceptance Criteria:**
 
-**Given** the docs site with check pages from Story 11.2
-**When** 19 rule reference pages are added
-**Then** each of the 19 rule identifiers (`missing-raises`, `missing-yields`, `missing-receives`, `missing-warns`, `missing-other-parameters`, `missing-attributes`, `missing-typed-attributes`, `missing-examples`, `missing-cross-references`, `prefer-fenced-code-blocks`, `stale-signature`, `stale-body`, `stale-import`, `stale-drift`, `stale-age`, `griffe-missing-type`, `griffe-unknown-param`, `griffe-format-warning`, `missing-init`) has a dedicated page
-**And** each page shows: rule code, check type (enrichment/freshness/coverage/griffe), default category (required/recommended)
-**And** each page follows the What/Why/Example/Fix template: "What it detects" (1-2 sentences), "Why is this a problem?" (consequence explanation), "Example" (Python code showing the violation), "Fix" (Python code showing the corrected version)
-**And** all 19 pages are linked from their parent check page
-**And** navigation includes a "Rules" section listing all 19 rules
-**And** all 19 rule pages are structurally consistent: same H2 headings (`What it detects`, `Why is this a problem?`, `Example`, `Fix`), same code fence language markers (`python`), same metadata fields (rule code, check type, category)
-**And** `mkdocs serve` builds without errors
+AC 1:
+**Given** a source-to-docs mapping concept (e.g., `cli.py` → `docs/site/cli.md`)
+**When** the spike is complete
+**Then** a proof-of-concept mapping file or configuration exists in the repository
+
+AC 2:
+**Given** the PoC mapping
+**When** a PR modifies a mapped source file but not the corresponding docs file
+**Then** the CI check produces a warning (not a blocking failure for the initial spike)
+
+AC 3:
+**Given** the PoC CI check
+**When** evaluated against the last 5 merged PRs
+**Then** the false positive rate and maintainability are documented with a recommendation on whether to adopt
+
+AC 4:
+**Given** the spike is complete
+**When** the recommendation is "adopt"
+**Then** the mapping file format and CI integration approach are documented for promotion to a real story in a future epic
+
+**Implementation notes:**
+- Issue #189: this is a spike — success is a recommendation with evidence, not necessarily a production-ready CI check
+- Lightweight approach: YAML/JSON mapping file checked in CI via a shell script comparing `git diff` file lists
+- Source: Epic 22 retrospective action item 3
+
+---
+
+## Epic 26: Documentation Completeness
+
+Users and contributors find complete, accurate information — editor setup for LSP and Claude Code plugin, architecture overview via Mermaid diagrams, and contribution conventions with `docs` scope are all documented.
+
+### Story 26.1: Add `docs` Scope to CONTRIBUTING.md
+
+As a **docvet contributor**,
+I want `docs` listed as a valid commit scope in CONTRIBUTING.md,
+So that documentation-only commits follow the same conventions as code commits.
+
+**FRs covered:** FR-GH191
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the commit conventions section in CONTRIBUTING.md
+**When** updated
+**Then** `docs` appears in the list of valid scopes
+
+AC 2:
+**Given** the updated CONTRIBUTING.md
+**When** a contributor reads the conventions
+**Then** usage examples show `docs` scope (e.g., `docs(rules): add missing-raises reference page`)
+
+**Implementation notes:**
+- Issue #191: trivial fix — direct edit to CONTRIBUTING.md
+- Source: Epic 22 story 22.4 deferred code review finding
+
+---
+
+### Story 26.2: Add Editor Integration Page
+
+As a **developer setting up docvet in their editor**,
+I want a docs page explaining LSP server configuration and Claude Code plugin installation,
+So that I can get real-time docstring diagnostics without reading source code.
+
+**FRs covered:** FR-GH186
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the docs site
+**When** a user navigates to the Editor Integration page
+**Then** the page documents the `docvet lsp` command, which checks run (enrichment, coverage, griffe — not freshness), and how to configure in any LSP-capable editor
+
+AC 2:
+**Given** the Editor Integration page
+**When** a user reads the Claude Code plugin section
+**Then** the install command (`claude plugin install github:Alberto-Codes/docvet`), prerequisites (`pip install docvet[lsp]`), and expected diagnostics are documented
+
+AC 3:
+**Given** the Editor Integration page
+**When** a user reads the severity mapping section
+**Then** the mapping is documented: required rules → Warning, recommended rules → Hint
+
+AC 4:
+**Given** the Editor Integration page
+**When** a user looks for VS Code support
+**Then** a reference to issue #160 (future) is included as a planned enhancement
+
+AC 5:
+**Given** the updated docs site
+**When** `mkdocs build --strict` is executed
+**Then** the build succeeds with zero warnings
+
+**Implementation notes:**
+- Issue #186: references `src/docvet/lsp.py`, `.claude-plugin/plugin.json`, `.claude-plugin/README.md`, `.lsp.json`
+- Add page to `mkdocs.yml` nav and link from existing AI Integration page
+
+---
+
+### Story 26.3: Add Architecture Diagram to Docs Site
+
+As a **docvet contributor or evaluator**,
+I want a Mermaid architecture diagram on the docs site showing the system structure,
+So that I can quickly understand how the modules, checks, and CLI fit together.
+
+**FRs covered:** FR-GH190
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the docs site
+**When** a user navigates to the architecture section
+**Then** at least one Mermaid diagram is rendered showing the system architecture (modules, data flow, or component relationships)
+
+AC 2:
+**Given** the Mermaid diagram source
+**When** inspected in the repository
+**Then** it lives alongside the docs content (not generated externally)
+
+AC 3:
+**Given** the diagram
+**When** rendered on the published docs site
+**Then** it renders correctly via mkdocs-material's built-in Mermaid support
+
+AC 4:
+**Given** the updated docs site
+**When** `mkdocs build --strict` is executed
+**Then** the build succeeds with zero warnings
+
+AC 5:
+**Given** the project's Mermaid guidelines (`.claude/rules/mermaid.md`)
+**When** the diagram is reviewed
+**Then** it follows the guidelines: standard flowchart syntax (no C4 native syntax), `<br>` for line breaks, under 20 nodes, meaningful shapes
+
+**Implementation notes:**
+- Issue #190: proof-of-concept, not exhaustive — one diagram showing the check pipeline or module relationships
+- mkdocs-material has built-in Mermaid support via `pymdownx.superfences` — no external tools needed
+- Follow `.claude/rules/mermaid.md` conventions
+
+---
+
+### Story 26.4: Research Auto-Generated Mermaid Diagrams
+
+As a **docvet maintainer**,
+I want to understand what tools or patterns exist for auto-generating Mermaid diagrams from Python codebases,
+So that architecture diagrams can stay current with the code automatically rather than requiring manual updates.
+
+**FRs covered:** (user-requested research — no existing FR)
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the Python ecosystem
+**When** researched
+**Then** a summary documents at least 3 approaches or tools for auto-generating Mermaid diagrams from Python code (e.g., AST-based module dependency graphs, import analysis, class hierarchy extraction)
+
+AC 2:
+**Given** the research results
+**When** evaluated against docvet's codebase
+**Then** each approach is assessed for: compatibility with Google-style docstrings, ability to leverage existing AST infrastructure (`ast_utils.py`), output quality, and maintenance burden
+
+AC 3:
+**Given** docvet's own docstrings and module structure
+**When** a proof-of-concept is attempted with the most promising approach
+**Then** a sample auto-generated Mermaid diagram is produced and compared against the manual diagram from Story 26.3
+
+AC 4:
+**Given** the research is complete
+**When** summarized
+**Then** a recommendation is documented: adopt (with which tool/pattern), defer (promising but not worth it now), or skip (no viable approach)
+
+**Implementation notes:**
+- Areas to explore: `py2mermaid`, `pydeps`, `pyreverse` (pylint), custom AST walkers using docvet's own `ast_utils`, or griffe's object model as a diagram source
+- Interesting angle: docvet's enrichment rules already parse docstrings for sections — could the same infrastructure feed a diagram generator?
+- This is a spike — deliverable is a recommendation with evidence, not a production feature
+- Not a hard dependency on Story 26.3 — the manual diagram ships regardless
+
+---
+
+## Epic 27: Freshness Accuracy
+
+Developers trust freshness check results — unchanged symbols adjacent to modified code no longer produce false positives. Hunk-to-symbol mapping tightened to changed lines only, excluding git diff context lines.
+
+### Story 27.1: Fix Hunk-to-Symbol False Positives
+
+As a **developer running `docvet freshness`**,
+I want unchanged symbols adjacent to modified code to not be flagged as stale,
+So that I can trust freshness results without manually dismissing false positives.
+
+**FRs covered:** FR-GH176
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** a file where a new function is added immediately above an existing function
+**When** `docvet freshness` runs on the diff
+**Then** the existing function below the insertion point produces zero freshness findings (its code and docstring are unchanged)
+
+AC 2:
+**Given** a file where an import is added to the import block
+**When** the import block change creates a diff hunk whose context overlaps with an adjacent class definition
+**Then** the adjacent class produces zero freshness findings
+
+AC 3:
+**Given** a file where a new constant is added above an existing function
+**When** the diff context lines extend into the function's definition region
+**Then** the existing function produces zero freshness findings
+
+AC 4:
+**Given** a symbol whose signature genuinely changed (parameter added/removed/renamed)
+**When** `docvet freshness` runs
+**Then** the symbol is still correctly flagged as `stale-signature` (HIGH severity) — only false positives are eliminated, not true positives
+
+AC 5:
+**Given** the hunk-to-symbol mapping implementation
+**When** inspecting changed lines within a hunk
+**Then** only `+`/`-` lines (additions/deletions) are mapped to symbols — context lines (` ` prefix) are excluded from symbol matching
+
+AC 6:
+**Given** all changes are applied
+**When** `uv run pytest` is executed
+**Then** all tests pass
+**And** existing freshness unit and integration tests continue to verify true positive detection
+
+AC 7:
+**Given** `docvet check --all` runs on docvet's own codebase
+**When** the command completes
+**Then** zero false positive freshness findings are produced
+
+**Implementation notes:**
+- Issue #176: root cause is that git's unified diff includes 3 context lines above/below each change; when a change occurs near a symbol boundary, context lines bleed into adjacent symbols
+- Fix approach: in the hunk-to-symbol mapping logic, distinguish `+`/`-` lines from ` ` (context) lines — only map changed lines to symbols
+- Affected code: `src/docvet/checks/freshness.py` hunk parsing and line-to-symbol mapping
+- The 3 false positive examples from issue #176 (`FreshnessMode`, `format_summary`, `format_markdown`) should inform regression test cases
+
+---
+
+## Epic 28: CLI Output & User Experience
+
+A developer running docvet in any context — terminal, CI, pre-commit, GitHub Actions — gets clear, brand-consistent feedback about what was vetted and what was found, using a three-tier output model (quiet/default/verbose) with the "Vetted" brand verb.
+
+### Story 28.1: Default Output Overhaul
+
+As a **developer running docvet for the first time**,
+I want to see a clear summary of what was checked and whether my docs are clean,
+So that I immediately understand the result without needing verbose mode or guessing from exit codes.
+
+**FRs covered:** FR-UX1, FR-UX2, FR-UX3, FR-UX4
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** `docvet check --all` runs on a codebase with zero findings
+**When** the command completes
+**Then** stderr contains a summary line matching the format: `Vetted {N} files [{checks}] — no findings. ({elapsed}s)`
+**And** the check list includes only checks that actually ran (e.g., `griffe` omitted if not installed)
+
+AC 2:
+**Given** `docvet check --all` runs on a codebase with findings
+**When** the command completes
+**Then** stdout contains the finding lines (unchanged format)
+**And** stderr contains a summary line: `Vetted {N} files [{checks}] — {count} findings ({required} required, {recommended} recommended). ({elapsed}s)`
+
+AC 3:
+**Given** `docvet check --all` runs with `--format markdown` or `--output report.md`
+**When** the command completes
+**Then** the summary line still appears on stderr (not in the markdown output or file)
+
+AC 4:
+**Given** zero files are discovered (empty repo or all excluded)
+**When** the command completes
+**Then** the summary line reads: `Vetted 0 files [{checks}] — no findings. ({elapsed}s)`
+
+AC 5:
+**Given** griffe is not installed
+**When** `docvet check --all` runs
+**Then** the check list in the summary omits `griffe` (e.g., `[enrichment, freshness, coverage]`)
+
+AC 6:
+**Given** the existing `Completed in Xs` output on stderr (`cli.py:615`)
+**When** the summary line is implemented
+**Then** the `Completed in Xs` line is **replaced** by the summary line (not duplicated)
+**And** the timing information is embedded in the summary line's `({elapsed}s)` suffix
+
+AC 7:
+**Given** all changes are applied
+**When** `uv run pytest` is executed
+**Then** all tests pass (existing output assertions updated as needed in this story for the `check` command only)
+
+**Implementation notes:**
+- Add `format_summary(file_count, checks, findings, elapsed)` to `reporting.py`
+- Replace `cli.py:615` (`sys.stderr.write(f"Completed in {total_elapsed:.1f}s\n")`) with `sys.stderr.write(format_summary(...))`
+- The `if verbose and not all_findings: sys.stdout.write("No findings.\n")` at `cli.py:259` can be removed — the summary line covers this
+- The `format_verbose_header` function remains for verbose mode (separate concern, Story 28.3)
+
+---
+
+### Story 28.2: Config Warning Cleanup
+
+As a **developer who set `fail-on` in their config**,
+I want docvet to silently resolve the overlap with default `warn-on` values,
+So that I don't see confusing warnings about a conflict I didn't create.
+
+**FRs covered:** FR-UX5, FR-UX6, FR-UX7
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** `pyproject.toml` with `fail-on = ["enrichment", "freshness", "coverage", "griffe"]` and no `warn-on` key
+**When** docvet loads the configuration
+**Then** the overlap between `fail-on` and default `warn-on` is resolved silently — zero warnings on stderr
+**And** the resolved `warn-on` list is empty (all four checks promoted to fail-on)
+
+AC 2:
+**Given** `pyproject.toml` with `fail-on = ["enrichment"]` and no `warn-on` key
+**When** docvet loads the configuration
+**Then** zero warnings on stderr
+**And** the resolved `warn-on` list is `["freshness", "griffe", "coverage"]` (defaults minus overlap)
+
+AC 3:
+**Given** `pyproject.toml` with both `fail-on = ["enrichment"]` and `warn-on = ["enrichment", "freshness"]` (explicit overlap)
+**When** docvet loads the configuration
+**Then** a warning is emitted: `docvet: 'enrichment' appears in both fail-on and warn-on; using fail-on`
+**And** only the overlapping check produces a warning (one warning, not four)
+
+AC 4:
+**Given** `pyproject.toml` with neither `fail-on` nor `warn-on` set
+**When** docvet loads the configuration
+**Then** zero warnings on stderr (defaults don't conflict with themselves)
+
+AC 5:
+**Given** the detection mechanism for "user explicitly set" vs "default value"
+**When** inspecting the implementation
+**Then** detection is based on key presence in the parsed TOML `[tool.docvet]` section (checking if `"warn-on"` or `"warn_on"` key exists), not on value comparison
+
+AC 6:
+**Given** all changes are applied
+**When** `uv run pytest` is executed
+**Then** all tests pass (config test assertions updated for new warning behavior)
+
+**Implementation notes:**
+- In `config.py:load_config`, track whether `warn_on` was explicitly set: `warn_on_explicit = "warn_on" in parsed or "warn-on" in raw_section`
+- Only emit overlap warnings when `warn_on_explicit is True`
+- The overlap resolution logic (stripping from warn_on, fail_on wins) remains unchanged
+
+---
+
+### Story 28.3: Verbose & Quiet Flag Redesign
+
+As a **developer using docvet in different contexts**,
+I want `--verbose` to work after the subcommand name and a `--quiet` flag for minimal output,
+So that I can control output verbosity naturally without memorizing flag ordering.
+
+**FRs covered:** FR-UX8, FR-UX9, FR-UX10, FR-UX11, FR-UX12, FR-UX13, FR-UX14
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the `check` subcommand
+**When** a user runs `docvet check --all --verbose`
+**Then** the command succeeds with verbose output (per-check timing, file discovery, verbose header)
+**And** the behavior is identical to `docvet --verbose check --all`
+
+AC 2:
+**Given** the `check` subcommand
+**When** a user runs `docvet --verbose check --all --verbose` (both positions)
+**Then** the command succeeds with verbose output (logical OR — both positions produce verbose)
+
+AC 3:
+**Given** the `check` subcommand
+**When** a user runs `docvet check --all -q`
+**Then** no summary line, timing, or config messages appear on stderr
+**And** if there are findings, they still appear on stdout
+**And** exit code reflects findings as usual
+
+AC 4:
+**Given** the `check` subcommand
+**When** a user runs `docvet check --all -q --verbose` (both quiet and verbose)
+**Then** quiet wins — no non-finding output on stderr
+
+AC 5:
+**Given** verbose mode is active
+**When** `docvet check --all --verbose` runs
+**Then** stderr shows (in order): file discovery count, per-check timing lines, summary line
+**And** the summary line format is the same as default mode (from Story 28.1)
+
+AC 6:
+**Given** the `--verbose` and `-q`/`--quiet` flags
+**When** inspecting the CLI help output for `docvet check --help`
+**Then** both flags appear as options on the subcommand (not just on the app)
+
+AC 7:
+**Given** all changes are applied
+**When** `uv run pytest` is executed
+**Then** all tests pass
+
+**Implementation notes:**
+- Add `verbose` and `quiet` parameters to `check` command signature with `typer.Option`
+- Resolve in function body: `verbose = verbose or ctx.obj.get("verbose", False)`, `quiet = quiet or ctx.obj.get("quiet", False)`
+- Gate summary line: `if not quiet: sys.stderr.write(format_summary(...))`
+- Gate verbose output: `if verbose and not quiet: sys.stderr.write(...)`
+- Apply same pattern to app callback for `-q`/`--quiet`
+
+---
+
+### Story 28.4: Subcommand Output Parity
+
+As a **developer running a single docvet check**,
+I want the individual subcommands (`enrichment`, `freshness`, `coverage`, `griffe`) to show the same summary format as `check`,
+So that the output experience is consistent regardless of which command I use.
+
+**FRs covered:** FR-UX15, FR-UX16
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** `docvet enrichment --all` runs with zero findings
+**When** the command completes
+**Then** stderr shows: `Vetted {N} files [enrichment] — no findings. ({elapsed}s)`
+
+AC 2:
+**Given** `docvet freshness --all` runs with findings
+**When** the command completes
+**Then** stderr shows: `Vetted {N} files [freshness] — {count} findings (...). ({elapsed}s)`
+**And** findings appear on stdout
+
+AC 3:
+**Given** `docvet coverage --all` runs
+**When** the command completes
+**Then** stderr shows the summary line with `[coverage]` in the check list
+
+AC 4:
+**Given** `docvet griffe --all` runs with griffe installed
+**When** the command completes
+**Then** stderr shows the summary line with `[griffe]` in the check list
+
+AC 5:
+**Given** any individual subcommand with `--verbose` flag (in either position)
+**When** the command completes
+**Then** verbose-tier output appears (per-check timing, file count) followed by the summary line
+
+AC 6:
+**Given** any individual subcommand with `-q` flag
+**When** the command completes
+**Then** quiet-tier behavior applies (no summary, findings-only on stdout)
+
+AC 7:
+**Given** all changes are applied
+**When** `uv run pytest` is executed
+**Then** all tests pass
+
+**Implementation notes:**
+- Each `_run_*` subcommand function (`enrichment`, `freshness`, `coverage`, `griffe` in `cli.py`) currently has its own output handling
+- Refactor to share the `format_summary` call with appropriate single-check name
+- Apply the same `verbose`/`quiet` dual-registration pattern from Story 28.3
+
+---
+
+### Story 28.5: Test Migration & Documentation
+
+As a **docvet contributor**,
+I want all tests updated for the new output format and docs reflecting the three-tier model,
+So that the test suite is green, docs are accurate, and future contributors understand the output design.
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** any integration tests that assert on CLI output (e.g., checking for `Completed in`)
+**When** updated for the new output format
+**Then** assertions match the `Vetted N files [...]` summary line format
+**And** all tests pass
+
+AC 2:
+**Given** the CLI Reference documentation page (`docs/site/cli-reference.md`)
+**When** updated
+**Then** it documents the three output tiers (quiet/default/verbose) with examples for each
+**And** it documents the `-q`/`--quiet` flag and the `--verbose` dual-registration behavior
+**And** example output uses the `Vetted` summary format
+
+AC 3:
+**Given** the CI Integration documentation page (`docs/site/ci-integration.md`)
+**When** updated
+**Then** it shows example GitHub Actions log output with the new summary format
+**And** it shows example pre-commit output with the new summary format
+**And** it documents the `-q` flag as useful for scripted/piped contexts
+
+AC 4:
+**Given** the Getting Started documentation page (`docs/site/getting-started.md`)
+**When** updated
+**Then** the quickstart example output matches the new default format
+
+AC 5:
+**Given** edge case tests
+**When** the following scenarios are tested
+**Then** each produces correct output:
+- Zero files discovered → `Vetted 0 files [...] — no findings.`
+- Griffe not installed → check list omits `griffe`
+- `--format markdown` → summary on stderr, markdown on stdout/file
+- `--output report.md` → summary on stderr, findings in file
+- `--staged` with zero staged files → `Vetted 0 files [...]`
+- Both `-q` and `--verbose` → quiet wins
+- `--verbose` in both positions → verbose active
+
+AC 6:
+**Given** all changes across Stories 28.1–28.5
+**When** `uv run pytest` is executed
+**Then** all tests pass with zero failures
+**And** `docvet check --all` on docvet's own codebase shows the new summary format
+
+AC 7:
+**Given** the docs site with updated pages
+**When** `mkdocs build --strict` is executed
+**Then** the build succeeds with zero warnings
+
+**Implementation notes:**
+- Stories 28.1-28.4 each update tests for their own scope; this story catches any remaining test migrations and handles all docs updates
+- Edge case tests may already exist from prior stories — this story ensures comprehensive coverage
