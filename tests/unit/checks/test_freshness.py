@@ -17,6 +17,7 @@ from docvet.checks.freshness import (
     _classify_changed_lines,
     _compute_age,
     _compute_drift,
+    _diff_line_delta,
     _parse_blame_timestamps,
     _parse_diff_hunks,
     check_freshness_diff,
@@ -88,6 +89,31 @@ class TestHunkPattern:
 
 
 # ---------------------------------------------------------------------------
+# _diff_line_delta tests
+# ---------------------------------------------------------------------------
+
+
+class TestDiffLineDelta:
+    """Tests for _diff_line_delta helper."""
+
+    def test_addition_line_returns_changed_and_advance(self) -> None:
+        """A ``+`` prefixed line is classified as changed with advance 1."""
+        assert _diff_line_delta("+    new_line") == (True, 1)
+
+    def test_deletion_line_returns_unchanged_and_no_advance(self) -> None:
+        """A ``-`` prefixed line is unchanged with advance 0."""
+        assert _diff_line_delta("-    old_line") == (False, 0)
+
+    def test_no_newline_marker_returns_unchanged_and_no_advance(self) -> None:
+        r"""A ``\`` prefixed no-newline marker is unchanged with advance 0."""
+        assert _diff_line_delta("\\ No newline at end of file") == (False, 0)
+
+    def test_context_line_returns_unchanged_and_advance(self) -> None:
+        """A context line (space prefix) is unchanged with advance 1."""
+        assert _diff_line_delta("     context_line") == (False, 1)
+
+
+# ---------------------------------------------------------------------------
 # _parse_diff_hunks tests (AC 1-6)
 # ---------------------------------------------------------------------------
 
@@ -95,8 +121,8 @@ class TestHunkPattern:
 class TestParseDiffHunks:
     """Tests for _parse_diff_hunks."""
 
-    def test_basic_hunk_expansion(self) -> None:
-        """AC 1: Expands +start,count into line numbers."""
+    def test_only_addition_lines_included(self) -> None:
+        """AC 1: Only addition lines are included; context lines excluded."""
         diff = (
             "diff --git a/module.py b/module.py\n"
             "index abc1234..def5678 100644\n"
@@ -107,10 +133,11 @@ class TestParseDiffHunks:
             "+    return 42\n"
         )
         result = _parse_diff_hunks(diff)
-        assert result == {12, 13, 14, 15, 16, 17, 18, 19}
+        # Context line " pass" at line 12 excluded; addition at line 13 included
+        assert result == {13}
 
     def test_multiple_hunks(self) -> None:
-        """Multiple hunks in a single diff output."""
+        """Multiple hunks: only addition lines from each hunk are included."""
         diff = (
             "diff --git a/module.py b/module.py\n"
             "--- a/module.py\n"
@@ -122,7 +149,9 @@ class TestParseDiffHunks:
             " context\n"
         )
         result = _parse_diff_hunks(diff)
-        assert result == {1, 2, 3, 11, 12}
+        # Hunk 1: context at 1 excluded, addition at 2 included
+        # Hunk 2: context at 11 excluded, no additions
+        assert result == {2}
 
     def test_new_file_returns_empty_set(self) -> None:
         """AC 2: New files (--- /dev/null) return empty set."""
@@ -186,7 +215,8 @@ class TestParseDiffHunks:
             "+    return 1\n"
         )
         result = _parse_diff_hunks(diff)
-        assert result == {5, 6, 7}
+        # Context line " pass" at line 5 excluded; addition at line 6 included
+        assert result == {6}
 
     def test_count_zero_returns_no_lines(self) -> None:
         """Count of 0 (deletion hunk) produces no lines."""
@@ -220,6 +250,101 @@ class TestParseDiffHunks:
         diff = "--- /dev/null\n+++ b/brand_new.py\n@@ -0,0 +1,10 @@\n+line 1\n"
         result = _parse_diff_hunks(diff)
         assert result == set()
+
+    def test_context_lines_excluded_from_changed_set(self) -> None:
+        """Context lines (space prefix) are not included in changed line set."""
+        diff = _make_diff_with_body(
+            10,
+            [
+                "     context_before",
+                "+    new_line",
+                "     context_after",
+                "+    another_new",
+            ],
+        )
+        result = _parse_diff_hunks(diff)
+        assert result == {11, 13}
+
+    def test_mixed_addition_deletion_context_lines(self) -> None:
+        """Mixed +/-/space lines: only + lines produce changed line numbers."""
+        diff = _make_diff_with_body(
+            5,
+            [
+                "     unchanged_1",  # context, line 5 (not added)
+                "-    old_line",  # deletion (no new-file position change)
+                "+    new_line",  # addition, line 6 (added)
+                "     unchanged_2",  # context, line 7 (not added)
+                "+    extra_line",  # addition, line 8 (added)
+            ],
+        )
+        result = _parse_diff_hunks(diff)
+        assert result == {6, 8}
+
+    def test_only_context_lines_in_hunk_produces_empty(self) -> None:
+        """Hunk with only context lines (no additions) returns no lines."""
+        diff = (
+            "diff --git a/module.py b/module.py\n"
+            "--- a/module.py\n"
+            "+++ b/module.py\n"
+            "@@ -10,3 +10,3 @@\n"
+            "     line_a\n"
+            "     line_b\n"
+            "     line_c\n"
+        )
+        result = _parse_diff_hunks(diff)
+        assert result == set()
+
+    def test_no_newline_marker_skipped(self) -> None:
+        r"""'\ No newline at end of file' marker does not affect line counting."""
+        diff = (
+            "diff --git a/module.py b/module.py\n"
+            "--- a/module.py\n"
+            "+++ b/module.py\n"
+            "@@ -1,2 +1,2 @@\n"
+            "-old_line\n"
+            "+new_line\n"
+            "\\ No newline at end of file\n"
+        )
+        result = _parse_diff_hunks(diff)
+        assert result == {1}
+
+    def test_deletions_do_not_shift_line_numbers(self) -> None:
+        """Deletion lines do not increment the new-file line counter."""
+        diff = _make_diff_with_body(
+            1,
+            [
+                " keep_1",  # context, line 1
+                "-remove_1",  # deletion (no position change)
+                "-remove_2",  # deletion (no position change)
+                " keep_2",  # context, line 2
+                "+added",  # addition, line 3
+            ],
+        )
+        result = _parse_diff_hunks(diff)
+        assert result == {3}
+
+    def test_multi_file_diff_resets_state_at_diff_header(self) -> None:
+        """Lines after a second ``diff`` header use the new hunk's numbering."""
+        diff = "\n".join(
+            [
+                "diff --git a/foo.py b/foo.py",
+                "--- a/foo.py",
+                "+++ b/foo.py",
+                "@@ -1,3 +1,4 @@",
+                " ctx",
+                "+added_in_foo",
+                " ctx",
+                "diff --git a/bar.py b/bar.py",
+                "--- a/bar.py",
+                "+++ b/bar.py",
+                "@@ -5,3 +5,4 @@",
+                " ctx",
+                "+added_in_bar",
+                " ctx",
+            ],
+        )
+        result = _parse_diff_hunks(diff)
+        assert result == {2, 6}
 
 
 # ---------------------------------------------------------------------------
@@ -468,13 +593,40 @@ _TWO_FUNC_SOURCE = (
 
 
 def _make_diff(start: int, count: int = 1) -> str:
-    """Build a minimal unified diff with one hunk targeting given lines."""
+    """Build a minimal unified diff with a single addition line at *start*.
+
+    The diff contains one ``+changed`` line, so the changed-line set
+    will always be ``{start}`` regardless of *count*.  Use
+    ``_make_diff_with_body`` for diffs needing context or deletion lines.
+    """
     return (
         "diff --git a/test.py b/test.py\n"
         "--- a/test.py\n"
         "+++ b/test.py\n"
         f"@@ -1,1 +{start},{count} @@\n"
         "+changed\n"
+    )
+
+
+def _make_diff_with_body(start: int, body_lines: list[str]) -> str:
+    """Build a unified diff with explicit body lines.
+
+    Each element of *body_lines* must begin with a ``+``, ``-``, or
+    space prefix.  The hunk header counts are auto-computed.
+
+    Args:
+        start: New-file start line for the hunk header.
+        body_lines: Diff body lines with their prefix included.
+    """
+    old_count = sum(1 for ln in body_lines if ln.startswith(("-", " ")))
+    new_count = sum(1 for ln in body_lines if ln.startswith(("+", " ")))
+    body = "".join(ln + "\n" for ln in body_lines)
+    return (
+        "diff --git a/test.py b/test.py\n"
+        "--- a/test.py\n"
+        "+++ b/test.py\n"
+        f"@@ -1,{old_count} +{start},{new_count} @@\n"
+        f"{body}"
     )
 
 
@@ -554,7 +706,7 @@ class TestCheckFreshnessDiff:
     def test_no_docstring_symbol_skipped(self) -> None:
         # AC 11: symbol with no docstring → zero findings
         tree = ast.parse(_NO_DOC_SOURCE)
-        diff = _make_diff(start=1, count=2)  # lines 1-2 = entire function
+        diff = _make_diff(start=1, count=2)  # changed set = {1} (signature line)
         findings = check_freshness_diff("test.py", diff, tree)
         # Function has no docstring → docstring_range is None → skipped
         # Module has no docstring either → also skipped
@@ -564,14 +716,24 @@ class TestCheckFreshnessDiff:
         # AC 12: deleted function not in current AST → zero findings
         # Current source has only greet(); diff targets lines 10-15 (deleted function)
         tree = ast.parse(_SIMPLE_SOURCE)
-        diff = _make_diff(start=10, count=5)  # lines 10-14 don't exist in current AST
+        diff = _make_diff(
+            start=10, count=5
+        )  # changed set = {10}, no AST symbol at line 10
         findings = check_freshness_diff("test.py", diff, tree)
         assert len(findings) == 0
 
     def test_docstring_updated_zero_findings(self) -> None:
         # AC 14: all changed symbols have updated docstrings → empty list
         tree = ast.parse(_SIMPLE_SOURCE)
-        diff = _make_diff(start=1, count=2)  # lines 1-2 = signature + docstring
+        # Diff with both signature (line 1) and docstring (line 2) as additions
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -1,2 +1,2 @@\n"
+            "+def greet(name):\n"
+            '+    """Say hello."""\n'
+        )
         findings = check_freshness_diff("test.py", diff, tree)
         assert len(findings) == 0
 
@@ -618,7 +780,16 @@ class TestCheckFreshnessDiff:
         # When a function moves, git shows all lines at the new location as added.
         # The docstring line is in the changed set → finding suppressed (no false positive).
         tree = ast.parse(_SIMPLE_SOURCE)
-        diff = _make_diff(start=1, count=3)  # lines 1-3 = entire function
+        # All 3 lines as additions (simulates function moved to new location)
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -0,0 +1,3 @@\n"
+            "+def greet(name):\n"
+            '+    """Say hello."""\n'
+            '+    return f"Hello, {name}"\n'
+        )
         findings = check_freshness_diff("test.py", diff, tree)
         assert len(findings) == 0
 
@@ -640,6 +811,138 @@ class TestCheckFreshnessDiff:
         rules = {f.rule for f in findings}
         assert "stale-signature" in rules
         assert "stale-body" in rules
+
+    def test_new_function_above_existing_no_false_positive(self) -> None:
+        # AC 1: new function added above existing → context lines bleed into
+        # existing function, but only + lines are mapped → zero findings
+        # for the unchanged function below.
+        # Source: two functions, greet (lines 3-5) and farewell (lines 7-9)
+        tree = ast.parse(_TWO_FUNC_SOURCE)
+        # Simulate adding a new function above greet: diff changes line 1
+        # (import), context lines overlap into greet's definition area
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -1,3 +1,3 @@\n"
+            "+import sys\n"  # addition at line 1
+            " \n"  # context at line 2
+            ' def greet(name, greeting="Hi"):\n'  # context at line 3
+        )
+        findings = check_freshness_diff("test.py", diff, tree)
+        # Line 1 maps to module symbol (no docstring → skipped FR54).
+        # Lines 2-3 are context → not in changed set → greet not flagged.
+        assert len(findings) == 0
+
+    def test_import_context_overlaps_adjacent_class_no_false_positive(self) -> None:
+        # AC 2: import addition creates hunk whose context overlaps adjacent class
+        source = (
+            "import os\n"  # line 1: import
+            "\n"  # line 2: blank
+            "class Config:\n"  # line 3: class definition
+            '    """Configuration."""\n'  # line 4: class docstring
+            "    debug = False\n"  # line 5: class body
+        )
+        tree = ast.parse(source)
+        # Diff: import line changed, context lines overlap into class
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -1,4 +1,4 @@\n"
+            "-import os\n"  # deletion (old import)
+            "+import sys\n"  # addition at line 1
+            " \n"  # context at line 2
+            " class Config:\n"  # context at line 3
+            '     """Configuration."""\n'  # context at line 4
+        )
+        findings = check_freshness_diff("test.py", diff, tree)
+        # Only line 1 is changed (addition). Config class not touched.
+        # Line 1 maps to module symbol (no docstring → skipped).
+        assert len(findings) == 0
+
+    def test_constant_above_function_context_overlap_no_false_positive(self) -> None:
+        # AC 3: constant added above function, context extends into function
+        source = (
+            "MAX_RETRIES = 3\n"  # line 1: constant
+            "\n"  # line 2: blank
+            "def process(data):\n"  # line 3: function def
+            '    """Process data."""\n'  # line 4: docstring
+            "    return data\n"  # line 5: body
+        )
+        tree = ast.parse(source)
+        # Diff: constant changed, context overlaps function definition
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -1,4 +1,4 @@\n"
+            "-MAX_RETRIES = 3\n"
+            "+MAX_RETRIES = 5\n"  # addition at line 1
+            " \n"  # context at line 2
+            " def process(data):\n"  # context at line 3
+            '     """Process data."""\n'  # context at line 4
+        )
+        findings = check_freshness_diff("test.py", diff, tree)
+        # Only line 1 is changed. Maps to module symbol (no docstring → skipped).
+        # process() not flagged because context lines are excluded.
+        assert len(findings) == 0
+
+    def test_only_context_lines_in_symbol_range_no_finding(self) -> None:
+        # AC 5: diff with ONLY context lines in a symbol's region → not flagged
+        tree = ast.parse(_SIMPLE_SOURCE)
+        # Hunk where all lines overlapping greet are context, no additions
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -1,3 +1,3 @@\n"
+            " def greet(name):\n"  # context at line 1
+            '     """Say hello."""\n'  # context at line 2
+            '     return f"Hello, {name}"\n'  # context at line 3
+        )
+        findings = check_freshness_diff("test.py", diff, tree)
+        assert len(findings) == 0
+
+    def test_genuine_signature_change_still_flagged_with_context(self) -> None:
+        # AC 4: genuine signature change with context lines present → stale-signature
+        tree = ast.parse(_SIMPLE_SOURCE)
+        # Signature (line 1) is a + line; body (line 3) is context
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -1,3 +1,3 @@\n"
+            "-def greet(name):\n"  # deletion (old signature)
+            '+def greet(name, greeting="Hi"):\n'  # addition at line 1
+            '     """Say hello."""\n'  # context at line 2
+            '     return f"Hello, {name}"\n'  # context at line 3
+        )
+        findings = check_freshness_diff("test.py", diff, tree)
+        assert len(findings) == 1
+        assert findings[0].rule == "stale-signature"
+        assert findings[0].category == "required"
+        assert findings[0].symbol == "greet"
+
+    def test_genuine_body_change_adjacent_unchanged_not_flagged(self) -> None:
+        # AC 4 + AC 1-3: body change on farewell, context overlaps greet → only
+        # farewell flagged, greet not flagged
+        tree = ast.parse(_TWO_FUNC_SOURCE)
+        # farewell body (line 9) changed, context overlaps greet area
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -7,3 +7,3 @@\n"
+            " def farewell(name):\n"  # context at line 7
+            '     """Say goodbye."""\n'  # context at line 8
+            '-    return f"Bye, {name}"\n'  # deletion
+            '+    return f"Goodbye, {name}"\n'  # addition at line 9
+        )
+        findings = check_freshness_diff("test.py", diff, tree)
+        assert len(findings) == 1
+        assert findings[0].rule == "stale-body"
+        assert findings[0].symbol == "farewell"
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ Examples:
 
         from docvet.checks import check_freshness_diff
 
-        findings = check_freshness_diff(path, diff_text, source, tree)
+        findings = check_freshness_diff(path, diff_text, tree)
 
 See Also:
     [`docvet.config`][]: ``FreshnessConfig`` dataclass for drift thresholds.
@@ -87,11 +87,33 @@ def _build_finding(
 # ---------------------------------------------------------------------------
 
 
+def _diff_line_delta(line: str) -> tuple[bool, int]:
+    """Classify a diff body line for hunk parsing.
+
+    Args:
+        line: A single line from within a unified diff hunk body.
+
+    Returns:
+        A ``(is_changed, advance)`` pair.  *is_changed* is ``True``
+        for addition lines (``+`` prefix).  *advance* is ``1`` for
+        lines that occupy a new-file position (additions and context)
+        or ``0`` for deletions and no-newline markers.
+    """
+    if line.startswith("+"):
+        return True, 1
+    if line.startswith(("-", "\\")):
+        return False, 0
+    return False, 1
+
+
 def _parse_diff_hunks(diff_output: str) -> set[int]:
     """Extract changed line numbers from unified diff output.
 
-    Parses ``@@ ... +start,count @@`` hunk headers and expands them
-    into a set of affected line numbers in the new file version.
+    Parses diff body lines after ``@@ ... +start,count @@`` hunk headers.
+    Only addition lines (``+`` prefix) contribute to the changed set;
+    context lines (space prefix) and deletion lines (``-`` prefix) are
+    excluded.  This prevents false positives when git's default 3 context
+    lines overlap adjacent unchanged symbols.
 
     Args:
         diff_output: Raw unified diff output from ``git diff``.
@@ -104,22 +126,29 @@ def _parse_diff_hunks(diff_output: str) -> set[int]:
         return set()
 
     changed: set[int] = set()
-    is_new_file = False
+    current_line: int | None = None
 
     for line in diff_output.splitlines():
-        if line.startswith("--- /dev/null"):
-            is_new_file = True
-            continue
-        if line.startswith("Binary files"):
+        if line.startswith(("--- /dev/null", "Binary files")):
             return set()
+
         match = _HUNK_PATTERN.match(line)
         if match:
-            start = int(match.group(1))
-            count = int(match.group(2) or "1")
-            changed.update(range(start, start + count))
+            current_line = int(match.group(1))
+            continue
 
-    if is_new_file:
-        return set()
+        if current_line is None:
+            continue
+
+        if line.startswith("diff "):
+            current_line = None
+            continue
+
+        is_changed, advance = _diff_line_delta(line)
+        if is_changed:
+            changed.add(current_line)
+        current_line += advance
+
     return changed
 
 
