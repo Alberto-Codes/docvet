@@ -1,0 +1,10 @@
+{
+  "docvet": {
+    "command": "docvet",
+    "args": ["lsp"],
+    "extensionToLanguage": {
+      ".py": "python"
+    },
+    "maxRestarts": 3
+  }
+}
