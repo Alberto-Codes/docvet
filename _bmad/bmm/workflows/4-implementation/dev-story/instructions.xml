@@ -221,6 +221,33 @@
     </check>
   </step>
 
+  <step n="4b" goal="Create and switch to the story feature branch">
+    <critical>All implementation work MUST happen on the story's feature branch, never on main or develop</critical>
+
+    <action>Read the Branch field from the story file header (e.g., "feat/test-25-1-standardize-pytestmark-usage")</action>
+    <action>Check current git branch: run `git branch --show-current`</action>
+
+    <check if="already on the story branch">
+      <output>Already on branch `{{story_branch}}` — continuing</output>
+    </check>
+
+    <check if="NOT on the story branch">
+      <action>Check if the story branch already exists locally: `git branch --list {{story_branch}}`</action>
+
+      <check if="branch exists locally">
+        <action>Switch to existing branch: `git checkout {{story_branch}}`</action>
+        <output>Switched to existing branch `{{story_branch}}`</output>
+      </check>
+
+      <check if="branch does NOT exist locally">
+        <action>Create and switch to new branch: `git checkout -b {{story_branch}}`</action>
+        <output>🌿 Created and switched to branch `{{story_branch}}`</output>
+      </check>
+    </check>
+
+    <action if="Branch field is missing from story file">HALT: "Story file is missing the Branch field — cannot create feature branch"</action>
+  </step>
+
   <step n="5" goal="Implement task following red-green-refactor cycle">
     <critical>FOLLOW THE STORY FILE TASKS/SUBTASKS SEQUENCE EXACTLY AS WRITTEN - NO DEVIATION</critical>
 
