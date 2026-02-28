@@ -56,8 +56,8 @@ so that {{benefit}}.
   CLI changes (flags, subcommands) → docs/site/cli-reference.md
   Config key changes ([tool.docvet]) → docs/site/configuration.md
   Check behavior changes → docs/site/checks/{check_name}.md
-  Rule changes → docs/rules/{rule_name}.md
-  Public API surface changes → docs/site/api-reference.md
+  Rule changes → docs/site/rules/{rule_name}.md
+  Public API surface changes → reference/ (auto-generated from docstrings; update source code)
   User workflow changes (install, pre-commit, CI) → README.md and/or relevant docs/site/ page
   Internal-only (refactor, test, internal CI config, BMAD) → "None — no user-facing changes"
 -->

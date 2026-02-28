@@ -155,7 +155,7 @@ No debug sessions required. BMAD workflow-only story with zero implementation is
 
 - `_bmad/bmm/workflows/4-implementation/create-story/instructions.xml` — Promoted Documentation Impact from advisory `<action>` to gating `<template-output>` with decision tree
 - `_bmad/bmm/workflows/4-implementation/create-story/template.md` — Enhanced Documentation Impact section with REQUIRED markers and decision tree reference
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` — Story status updated (backlog → review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — Story status updated (backlog → done)
 - `_bmad-output/implementation-artifacts/25-3-enforce-docs-updates-in-story-creation.md` — Story file updates
 
 ## Code Review
