@@ -67,7 +67,7 @@ so that architecture diagrams can stay current with the code automatically rathe
 - **`Symbol.kind`**: `Literal["function", "class", "method", "module"]` — covers entity types for class hierarchy diagrams.
 - **`Symbol.parent`**: Enclosing class name — enables class-method relationship extraction (but not cross-module dependencies).
 - **Griffe optional dep**: Griffe (`griffe >=1.0`) is already an optional dependency. Its object model (`griffe.dataclasses.Module`, `.Class`, `.Function`) is significantly richer than raw AST — includes resolved imports, inheritance, and member relationships. See "Griffe: Strongest Candidate" section below.
-- **Module layout**: `src/docvet/` has 10 source modules (cli, config, discovery, ast_utils, reporting, lsp, checks/enrichment, checks/freshness, checks/coverage, checks/griffe_compat) + internal helpers (`_finding.py`).
+- **Module layout**: `src/docvet/` has 10 source modules (excluding `__init__.py` files): cli, config, discovery, ast_utils, reporting, lsp, checks/enrichment, checks/freshness, checks/coverage, checks/griffe_compat — plus internal helpers (`_finding.py`). PoC tools that scan all `.py` files report 13 nodes (including `__init__.py` files and `_finding.py`).
 
 ### Research Angles (from epics file)
 
@@ -219,7 +219,7 @@ A ~50-line stdlib `ast` script visiting `ast.ImportFrom` nodes produced the most
 Four approaches were run against `src/docvet/`:
 
 **1. pyreverse package diagram** (module dependencies as `classDiagram`):
-- 12 module nodes, correct import edges
+- 13 module nodes, correct import edges
 - Uses `classDiagram` syntax (empty class bodies with `-->` edges)
 - Accurate but visually suboptimal — class diagram syntax for a dependency graph
 
@@ -241,7 +241,7 @@ Four approaches were run against `src/docvet/`:
 
 | Dimension | Manual (26.3) | Custom AST Walker | pyreverse (package) | pymermaider (class) |
 |-----------|---------------|-------------------|--------------------|--------------------|
-| **Node count** | 12 | 13 (under 20 limit) | 12 (under 20 limit) | 9 (under 20 limit) |
+| **Node count** | 12 | 13 (under 20 limit) | 13 (under 20 limit) | 9 (under 20 limit) |
 | **Relationship accuracy** | Curated data flow (conceptual) | Import edges (structural, complete) | Import edges (structural, correct) | Class composition/inheritance (structural) |
 | **Readability** | High — entry points, subgraph, output stages | Medium — many crossing edges, flat layout | Low — empty class bodies look odd for deps | High — familiar UML-style class diagram |
 | **Information density** | Right level — shows architecture, not implementation | Noisy — every internal import shown (23 edges for 13 modules) | Moderate — same edges as AST but in class syntax | Right level for class structure |
@@ -455,7 +455,7 @@ Auto-generated Mermaid diagrams are technically feasible but not worth adopting 
 1. **No tool replaces the manual architecture diagram.** The manual diagram (26.3) is a curated data-flow overview showing entry points, check pipeline, and output stages. Auto-generated tools produce structural snapshots (import graphs, class hierarchies) — useful but different. The manual diagram would still need manual maintenance.
 
 2. **Two useful auto-generated diagram types exist** but don't justify the investment now:
-   - **Module dependency graph** (custom AST walker, ~50 lines) — useful for onboarding, but docvet has only 12 modules. The architecture page + module table already communicates this clearly.
+   - **Module dependency graph** (custom AST walker, ~50 lines) — useful for onboarding, but docvet has only ~13 modules. The architecture page + module table already communicates this clearly.
    - **Class diagram** (pymermaider) — useful for understanding data model relationships, but docvet has only 9 classes. The current docs site doesn't need this level of detail.
 
 3. **CI diagram drift detection is solvable** (generate diagram, diff against committed version, warn on divergence), but the overhead of maintaining the generation script + CI job exceeds the value for a stable, small codebase.
@@ -508,6 +508,7 @@ No debug sessions required. Spike — research and analysis only.
 
 - 2026-02-28: Spike completed — ecosystem research (7 tools), 4 PoC runs, 6-dimension comparison, and recommendation documented
 - 2026-02-28: Code review fixes — added raw PoC Mermaid output for independent verification, fixed module count (9 → 10), annotated Task 4.3 as N/A
+- 2026-02-28: PR review fixes — reconciled pyreverse node count (12 → 13) to match raw PoC output, clarified module counting methodology, updated recommendation section
 
 ### File List
 
