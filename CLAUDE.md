@@ -37,7 +37,9 @@ uv run ty check
 
 # Tests
 uv run pytest                  # All tests
-uv run pytest tests/unit       # Unit tests only
+uv run pytest tests/unit       # Unit tests only (by directory)
+uv run pytest -m unit           # Unit tests only (by marker)
+uv run pytest -m integration    # Integration tests only (by marker)
 uv run pytest -k test_name     # Single test by name
 uv run pytest -m "not slow"    # Skip slow tests
 uv run pytest --cov=docvet --cov-report=term-missing  # With coverage

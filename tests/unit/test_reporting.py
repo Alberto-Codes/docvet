@@ -19,6 +19,8 @@ from docvet.reporting import (
     write_report,
 )
 
+pytestmark = pytest.mark.unit
+
 # ---------------------------------------------------------------------------
 # format_terminal tests (Task 8)
 # ---------------------------------------------------------------------------

@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-griffe = __import__("pytest").importorskip("griffe")
+import pytest
+
+griffe = pytest.importorskip("griffe")
 
 from docvet.checks.griffe_compat import check_griffe_compat  # noqa: E402
+
+pytestmark = pytest.mark.integration
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 

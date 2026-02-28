@@ -7,6 +7,8 @@ import re
 from typing import Literal
 from unittest.mock import patch
 
+import pytest
+
 from docvet.ast_utils import Symbol
 from docvet.checks import Finding
 from docvet.checks.freshness import (
@@ -21,6 +23,8 @@ from docvet.checks.freshness import (
     check_freshness_drift,
 )
 from docvet.config import FreshnessConfig
+
+pytestmark = pytest.mark.unit
 
 # ---------------------------------------------------------------------------
 # Helpers

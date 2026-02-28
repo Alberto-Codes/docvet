@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml  # dev dependency: pyyaml
+
+pytestmark = pytest.mark.unit
 
 # ---------------------------------------------------------------------------
 # Helpers
