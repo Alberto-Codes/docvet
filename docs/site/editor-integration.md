@@ -30,6 +30,9 @@ The LSP server runs three of docvet's four checks on every file you open or save
 
 Freshness checks are excluded because they require git context that is not available in single-file LSP mode.
 
+!!! note
+    Griffe checks require the `griffe` extra. Install with `pip install docvet[lsp,griffe]` to enable all three checks. Without it, griffe diagnostics are silently skipped.
+
 ### Severity Mapping
 
 Diagnostics use two severity levels based on the rule category:
@@ -43,7 +46,7 @@ See the [Rules reference](rules/missing-raises.md) for rule explanations and fix
 
 ### Configuration
 
-The LSP server reads `[tool.docvet]` from `pyproject.toml` in your project root on startup. All configuration options (excludes, enrichment toggles, etc.) apply to LSP diagnostics. See the [Configuration reference](configuration.md) for details.
+The LSP server reads `[tool.docvet]` from `pyproject.toml` in your project root on startup. Enrichment rule toggles and project root settings apply to LSP diagnostics. File `exclude` patterns are not enforced — in LSP mode, the editor controls which files are checked. See the [Configuration reference](configuration.md) for details.
 
 ### Documentation Links
 
