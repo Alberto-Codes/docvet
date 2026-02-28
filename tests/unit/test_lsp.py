@@ -18,7 +18,9 @@ from docvet.lsp import (  # noqa: E402
     _check_file,
     _finding_to_diagnostic,
     _publish_diagnostics,
+    _resolve_src_root,
     _uri_to_path,
+    did_open,
     did_save,
 )
 
@@ -239,6 +241,31 @@ class TestCheckFile:
 
 
 # ---------------------------------------------------------------------------
+# _resolve_src_root
+# ---------------------------------------------------------------------------
+
+
+class TestResolveSrcRoot:
+    """Tests for _resolve_src_root workspace resolution."""
+
+    def test_uses_first_workspace_folder_when_available(
+        self, config: DocvetConfig
+    ) -> None:
+        ls = MagicMock()
+        ls.workspace.folders = {
+            "file:///home/user/myproject": MagicMock(),
+        }
+        result = _resolve_src_root(ls, config)
+        assert result == Path("/home/user/myproject") / config.src_root
+
+    def test_falls_back_to_config_when_no_folders(self, config: DocvetConfig) -> None:
+        ls = MagicMock()
+        ls.workspace.folders = {}
+        result = _resolve_src_root(ls, config)
+        assert result == config.project_root / config.src_root
+
+
+# ---------------------------------------------------------------------------
 # Task 6: LSP event handlers and CLI command
 # ---------------------------------------------------------------------------
 
@@ -255,14 +282,8 @@ class TestDidOpen:
                 text="x = 1\n",
             )
         )
-        with (
-            patch("docvet.lsp._check_file", return_value=[]) as mock_check,
-        ):
-            _publish_diagnostics(
-                mock_server,
-                params.text_document.uri,
-                params.text_document.text,
-            )
+        with patch("docvet.lsp._check_file", return_value=[]) as mock_check:
+            did_open(mock_server, params)
         mock_check.assert_called_once_with(
             mock_server,
             "file:///fake/project/src/app.py",
