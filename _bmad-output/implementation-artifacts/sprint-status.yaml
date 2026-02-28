@@ -205,6 +205,6 @@ development_status:
 
   # Epic 24: Real-Time Diagnostics for IDEs and Agents
   epic-24: in-progress
-  24-1-lsp-server-for-real-time-diagnostics: review
+  24-1-lsp-server-for-real-time-diagnostics: done
   24-2-claude-code-plugin-configuration: backlog
   epic-24-retrospective: optional

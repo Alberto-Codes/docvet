@@ -5,7 +5,9 @@ docstring quality diagnostics on ``textDocument/didOpen`` and
 ``textDocument/didSave`` events. The server runs enrichment, coverage,
 and griffe compatibility checks on individual files, converting
 :class:`~docvet.checks.Finding` objects to LSP ``Diagnostic`` instances
-with appropriate severity, source, and documentation links.
+with appropriate severity, source, and documentation links. Internal
+helpers thread the ``ls`` server instance explicitly for testability
+rather than accessing the module-level ``server`` global.
 
 Freshness checks are excluded because they require git context that is
 not available in single-file LSP mode.
@@ -98,6 +100,8 @@ def _finding_to_diagnostic(finding: Finding) -> types.Diagnostic:
 def _uri_to_path(uri: str) -> Path:
     """Convert a ``file://`` URI to a local ``Path``.
 
+    Percent-decodes the URI path component (e.g., ``%20`` to space).
+
     Args:
         uri: A ``file://`` URI string.
 
@@ -108,7 +112,7 @@ def _uri_to_path(uri: str) -> Path:
     return Path(unquote(parsed.path))
 
 
-def _resolve_src_root(config: DocvetConfig) -> Path:
+def _resolve_src_root(ls: LanguageServer, config: DocvetConfig) -> Path:
     """Resolve the source root from workspace folders or config.
 
     Uses the first LSP workspace folder if available, otherwise falls
@@ -116,12 +120,13 @@ def _resolve_src_root(config: DocvetConfig) -> Path:
     ``src_root`` subdirectory.
 
     Args:
+        ls: The language server instance.
         config: The loaded docvet configuration.
 
     Returns:
         The resolved source root path.
     """
-    workspace_folders = server.workspace.folders
+    workspace_folders = ls.workspace.folders
     if workspace_folders:
         first_uri = next(iter(workspace_folders))
         base = _uri_to_path(first_uri)
@@ -131,6 +136,7 @@ def _resolve_src_root(config: DocvetConfig) -> Path:
 
 
 def _check_file(
+    ls: LanguageServer,
     uri: str,
     source: str,
     config: DocvetConfig,
@@ -143,6 +149,7 @@ def _check_file(
     errors or the file is not a Python file.
 
     Args:
+        ls: The language server instance.
         uri: The document URI.
         source: The full document text.
         config: The loaded docvet configuration.
@@ -163,12 +170,12 @@ def _check_file(
 
     findings.extend(check_enrichment(source, tree, config.enrichment, str(file_path)))
 
-    src_root = _resolve_src_root(config)
+    src_root = _resolve_src_root(ls, config)
     findings.extend(check_coverage(src_root, [file_path]))
 
     try:
         findings.extend(check_griffe_compat(src_root, [file_path]))
-    except Exception:  # noqa: BLE001
+    except (ImportError, OSError):
         pass
 
     return [_finding_to_diagnostic(f) for f in findings]
@@ -191,7 +198,7 @@ def _publish_diagnostics(
         source: The full document text.
     """
     config: DocvetConfig = ls.docvet_config  # type: ignore[attr-defined]
-    diagnostics = _check_file(uri, source, config)
+    diagnostics = _check_file(ls, uri, source, config)
     ls.text_document_publish_diagnostics(
         types.PublishDiagnosticsParams(
             uri=uri,

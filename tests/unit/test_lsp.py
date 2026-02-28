@@ -19,6 +19,7 @@ from docvet.lsp import (  # noqa: E402
     _finding_to_diagnostic,
     _publish_diagnostics,
     _uri_to_path,
+    did_save,
 )
 
 # ---------------------------------------------------------------------------
@@ -142,41 +143,43 @@ class TestFindingToDiagnostic:
 class TestCheckFile:
     """Tests for _check_file orchestrator."""
 
-    def test_enrichment_findings_included(self, config: DocvetConfig) -> None:
+    def test_enrichment_findings_included(
+        self, mock_server: MagicMock, config: DocvetConfig
+    ) -> None:
         source = 'def foo():\n    """Summary."""\n    raise ValueError("x")\n'
         uri = "file:///fake/project/src/app.py"
         with (
             patch("docvet.lsp.check_enrichment") as mock_enrich,
             patch("docvet.lsp.check_coverage", return_value=[]),
             patch("docvet.lsp.check_griffe_compat", return_value=[]),
-            patch("docvet.lsp.server") as mock_srv,
         ):
-            mock_srv.workspace.folders = {}
             finding = Finding("app.py", 2, "foo", "missing-raises", "msg", "required")
             mock_enrich.return_value = [finding]
-            result = _check_file(uri, source, config)
+            result = _check_file(mock_server, uri, source, config)
         assert len(result) == 1
         assert result[0].code == "missing-raises"
 
-    def test_griffe_findings_included(self, config: DocvetConfig) -> None:
+    def test_griffe_findings_included(
+        self, mock_server: MagicMock, config: DocvetConfig
+    ) -> None:
         source = "def foo():\n    pass\n"
         uri = "file:///fake/project/src/app.py"
         with (
             patch("docvet.lsp.check_enrichment", return_value=[]),
             patch("docvet.lsp.check_coverage", return_value=[]),
             patch("docvet.lsp.check_griffe_compat") as mock_griffe,
-            patch("docvet.lsp.server") as mock_srv,
         ):
-            mock_srv.workspace.folders = {}
             finding = Finding(
                 "app.py", 1, "foo", "griffe-unknown-param", "msg", "recommended"
             )
             mock_griffe.return_value = [finding]
-            result = _check_file(uri, source, config)
+            result = _check_file(mock_server, uri, source, config)
         assert len(result) == 1
         assert result[0].code == "griffe-unknown-param"
 
-    def test_griffe_returns_empty_when_exception(self, config: DocvetConfig) -> None:
+    def test_griffe_returns_empty_when_exception(
+        self, mock_server: MagicMock, config: DocvetConfig
+    ) -> None:
         source = "def foo():\n    pass\n"
         uri = "file:///fake/project/src/app.py"
         with (
@@ -186,50 +189,52 @@ class TestCheckFile:
                 "docvet.lsp.check_griffe_compat",
                 side_effect=ImportError("no griffe"),
             ),
-            patch("docvet.lsp.server") as mock_srv,
         ):
-            mock_srv.workspace.folders = {}
-            result = _check_file(uri, source, config)
+            result = _check_file(mock_server, uri, source, config)
         assert result == []
 
-    def test_coverage_findings_included(self, config: DocvetConfig) -> None:
+    def test_coverage_findings_included(
+        self, mock_server: MagicMock, config: DocvetConfig
+    ) -> None:
         source = "x = 1\n"
         uri = "file:///fake/project/src/app.py"
         with (
             patch("docvet.lsp.check_enrichment", return_value=[]),
             patch("docvet.lsp.check_coverage") as mock_cov,
             patch("docvet.lsp.check_griffe_compat", return_value=[]),
-            patch("docvet.lsp.server") as mock_srv,
         ):
-            mock_srv.workspace.folders = {}
             finding = Finding("src/pkg", 1, "pkg", "missing-init", "msg", "required")
             mock_cov.return_value = [finding]
-            result = _check_file(uri, source, config)
+            result = _check_file(mock_server, uri, source, config)
         assert len(result) == 1
         assert result[0].code == "missing-init"
 
-    def test_no_findings_returns_empty(self, config: DocvetConfig) -> None:
+    def test_no_findings_returns_empty(
+        self, mock_server: MagicMock, config: DocvetConfig
+    ) -> None:
         source = "x = 1\n"
         uri = "file:///fake/project/src/app.py"
         with (
             patch("docvet.lsp.check_enrichment", return_value=[]),
             patch("docvet.lsp.check_coverage", return_value=[]),
             patch("docvet.lsp.check_griffe_compat", return_value=[]),
-            patch("docvet.lsp.server") as mock_srv,
         ):
-            mock_srv.workspace.folders = {}
-            result = _check_file(uri, source, config)
+            result = _check_file(mock_server, uri, source, config)
         assert result == []
 
-    def test_syntax_error_returns_empty(self, config: DocvetConfig) -> None:
+    def test_syntax_error_returns_empty(
+        self, mock_server: MagicMock, config: DocvetConfig
+    ) -> None:
         source = "def foo(\n"
         uri = "file:///fake/project/src/app.py"
-        result = _check_file(uri, source, config)
+        result = _check_file(mock_server, uri, source, config)
         assert result == []
 
-    def test_non_python_file_returns_empty(self, config: DocvetConfig) -> None:
+    def test_non_python_file_returns_empty(
+        self, mock_server: MagicMock, config: DocvetConfig
+    ) -> None:
         uri = "file:///fake/project/README.md"
-        result = _check_file(uri, "# Title", config)
+        result = _check_file(mock_server, uri, "# Title", config)
         assert result == []
 
 
@@ -259,6 +264,7 @@ class TestDidOpen:
                 params.text_document.text,
             )
         mock_check.assert_called_once_with(
+            mock_server,
             "file:///fake/project/src/app.py",
             "x = 1\n",
             mock_server.docvet_config,
@@ -292,19 +298,24 @@ class TestDidSave:
         mock_doc.source = "fallback_source\n"
         mock_server.workspace.get_text_document.return_value = mock_doc
 
-        uri = "file:///fake/project/src/app.py"
-
-        # Simulate the didSave handler fallback logic
-        source = None
-        if source is None:
-            doc = mock_server.workspace.get_text_document(uri)
-            source = doc.source
+        params = types.DidSaveTextDocumentParams(
+            text_document=types.TextDocumentIdentifier(
+                uri="file:///fake/project/src/app.py",
+            ),
+            text=None,
+        )
 
         with patch("docvet.lsp._check_file", return_value=[]) as mock_check:
-            _publish_diagnostics(mock_server, uri, source)
+            did_save(mock_server, params)
 
+        mock_server.workspace.get_text_document.assert_called_once_with(
+            "file:///fake/project/src/app.py"
+        )
         mock_check.assert_called_once_with(
-            uri, "fallback_source\n", mock_server.docvet_config
+            mock_server,
+            "file:///fake/project/src/app.py",
+            "fallback_source\n",
+            mock_server.docvet_config,
         )
 
     def test_non_python_publishes_empty(self, mock_server: MagicMock) -> None:
