@@ -214,7 +214,7 @@ development_status:
   25-1-standardize-pytestmark-usage: done
   25-2-audit-and-configure-codecov: done
   25-3-enforce-docs-updates-in-story-creation: done
-  25-4-add-docs-impact-check-to-code-review: review
+  25-4-add-docs-impact-check-to-code-review: done
   25-5-investigate-ci-docs-freshness-check: backlog
   epic-25-retrospective: optional
 

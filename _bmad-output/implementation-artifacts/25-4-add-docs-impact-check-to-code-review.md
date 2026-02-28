@@ -1,6 +1,6 @@
 # Story 25.4: Add Docs-Impact Check to Code Review
 
-Status: review
+Status: done
 Branch: `feat/bmad-25-4-docs-impact-code-review`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/202
 
@@ -47,7 +47,7 @@ so that documentation drift is caught during review, not after shipping.
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| 1 | Mental trace: user-facing PR (config key change) → Step A classifies `src/docvet/config.py` as user-facing, Step C CASE 2/3 produces finding. Blocking check present in workflow Step 3. | PASS |
+| 1 | Mental trace: user-facing PR (config key change) → Step A classifies `src/docvet/config.py` as user-facing, Step C CASE 2/3 produces finding. Blocking check present in workflow Step 3. Happy path: PR lists `docs/site/configuration.md` AND updates it → CASE 4, no finding. | PASS |
 | 2 | Mental trace: PR modifying `src/docvet/checks/enrichment.py` without docs → Step C CASE 2 produces HIGH finding: "Documentation Impact says 'None' but PR modifies user-facing files" | PASS |
 | 3 | Mental trace: internal-only PR (pytestmark standardization, all files in `tests/`) → Step A classifies all as INTERNAL, Step C CASE 5 produces no finding | PASS |
 
@@ -152,6 +152,7 @@ No debug sessions required. BMAD workflow-only story with zero implementation is
 ### Change Log
 
 - 2026-02-28: Enhanced Documentation Impact Verification in code-review instructions.xml with 3-step structured check (file classification, story cross-reference, finding production)
+- 2026-02-28: Code review — fixed 3 findings: CASE 3 "File List" ambiguity (M1), Pattern 5 wording precision (L1), AC-to-Test CASE 4 trace (L2)
 
 ### File List
 
@@ -163,15 +164,22 @@ No debug sessions required. BMAD workflow-only story with zero implementation is
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approve (all findings fixed)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | CASE 3 references ambiguous "File List" — could produce false HIGH findings when docs updated but not in story File List | Fixed: changed to "comprehensive review list (File List + git changes)" |
+| L1 | LOW | Pattern 5 (API surface) wording less precise than create-story source of truth — could cause reviewer to look for reference/ file changes instead of source docstring updates | Fixed: added "update source code docstrings, not docs files directly" clarification |
+| L2 | LOW | AC-to-Test table lacks explicit happy-path trace for CASE 4 (docs planned and delivered) | Fixed: added CASE 4 happy-path trace to AC 1 row |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
