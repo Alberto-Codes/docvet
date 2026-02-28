@@ -48,14 +48,14 @@ so that coverage feedback is consistent and contributors see coverage impact on 
 - [x] Task 3: Badge strategy (AC: 3)
   - [x] 3.1: Decision: **KEEP Codecov native badge** — reliability issues likely caused by missing App install. Revisit only if badge remains unreliable after App installation
   - [x] 3.2: No README badge URL change needed (keep current `graph/badge.svg`)
-  - [x] 3.3: **Verified post-merge**: Badge update confirmed on next push to main after PR merges
+  - [ ] 3.3: **Post-merge verification required**: Confirm badge updates reliably after Codecov App install and merge to main
 - [x] Task 4: CI pipeline verification (AC: 4, 5)
   - [x] 4.1: Keep `fail_ci_if_error: false` — upload failures are informational, not a gate. The gate is `--cov-fail-under=85` in pytest
   - [x] 4.2: Decision: **Keep `--cov-fail-under=85` in CI workflow only** — single source of truth. `codecov.yml` project target is for Codecov status checks, not CI enforcement
   - [x] 4.3: Run `uv run pytest` to verify all tests pass
 - [x] Task 5: Finalize and verify (AC: 1-5)
   - [x] 5.1: Document all 5 decision points with rationale in Dev Notes
-  - [x] 5.2: **Verified on-PR**: Codecov PR comment appears on the story's own PR (chicken-and-egg — the PR is the integration test)
+  - [ ] 5.2: **On-PR verification required**: Confirm Codecov PR comment with coverage delta appears on story's own PR after CI runs
 
 ## AC-to-Test Mapping
 
@@ -129,6 +129,15 @@ so that coverage feedback is consistent and contributors see coverage impact on 
 - [Source: _bmad-output/planning-artifacts/epics.md#Story 25.2] — epic acceptance criteria and implementation notes
 - [Source: pyproject.toml:145-157] — pytest configuration (no `--cov-fail-under` in addopts)
 
+### Post-Merge Maintainer Actions
+
+After this PR merges to main, the maintainer should complete these in a single pass:
+
+- [ ] Install Codecov GitHub App via GitHub Settings > Integrations > Codecov
+- [ ] Verify badge updates on next push to main (AC 3 / Task 3.3)
+- [ ] Verify Codecov PR comment appears on next PR (AC 4 / Task 5.2)
+- [ ] Flip `codecov.yml` `require_changes: false` → `true` (bootstrap period complete)
+
 ### Documentation Impact
 
 - Pages: None — this story changes CI configuration and adds `codecov.yml`, no docs-site pages affected
@@ -173,6 +182,7 @@ No debug sessions required. CI/config story with zero implementation issues.
 
 - 2026-02-28: Created `codecov.yml` with minimal configuration (project 85%, patch 80%, comment layout)
 - 2026-02-28: Documented all 5 decision points from Issue #182 with rationale
+- 2026-02-28: Code review — unchecked deferred tasks 3.3/5.2, added Post-Merge Maintainer Actions checklist, kept `require_changes: false` as intentional bootstrap
 
 ### File List
 
@@ -186,15 +196,24 @@ No debug sessions required. CI/config story with zero implementation issues.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow + party mode consensus)
+
 ### Outcome
+
+Changes Requested → Fixed (3 of 5 findings addressed, 2 accepted as-is)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | Task 3.3 marked [x] but post-merge verification not yet done | Fixed: unchecked task, reworded as pending verification |
+| H2 | HIGH | Task 5.2 marked [x] but on-PR verification not yet done | Fixed: unchecked task, reworded as pending verification |
+| M1 | MEDIUM | `require_changes: false` adds noise to non-code PRs | Intentional bootstrap — flip to `true` after Codecov App confirmed working (noted in Post-Merge Maintainer Actions) |
+| L1 | LOW | Non-story commit (Epic 23 retro) on feature branch | Accepted: squash merge will consolidate; awareness for future workflow |
+| L2 | LOW | Deferred ACs lack follow-up tracking mechanism | Fixed: added Post-Merge Maintainer Actions checklist to Dev Notes |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified (3 PASS, 2 DEFERRED with tracking mechanism)
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
