@@ -1,0 +1,14 @@
+{
+  "name": "docvet-lsp",
+  "description": "Real-time docstring quality diagnostics for Python files",
+  "version": "1.0.0",
+  "author": {
+    "name": "Alberto-Codes",
+    "url": "https://github.com/Alberto-Codes"
+  },
+  "homepage": "https://alberto-codes.github.io/docvet/",
+  "repository": "https://github.com/Alberto-Codes/docvet",
+  "license": "MIT",
+  "keywords": ["python", "docstrings", "linting", "code-quality", "lsp", "language-server", "documentation", "mkdocs"],
+  "lspServers": "./.lsp.json"
+}
