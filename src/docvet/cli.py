@@ -1,7 +1,7 @@
 """Typer CLI application for docvet.
 
 Defines the ``typer.Typer`` app with subcommands for each check layer
-(``enrichment``, ``freshness``, ``coverage``, ``griffe``) and the
+(``enrichment``, ``freshness``, ``coverage``, ``griffe``, ``lsp``) and the
 combined ``check`` entry point. All subcommands accept positional file
 arguments (``docvet check src/foo.py``) and the ``--files`` option,
 share three-tier verbosity control (quiet/default/verbose) via
@@ -961,7 +961,7 @@ def griffe(
     all_files: AllOption = False,
     files: FilesOption = None,
 ) -> None:
-    """Check mkdocs rendering compatibility.
+    """Check mkdocs rendering compatibility via griffe.
 
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
@@ -992,3 +992,25 @@ def griffe(
         sys.stderr.write(format_summary(len(discovered), ["griffe"], findings, elapsed))
 
     _output_and_exit(ctx, {"griffe": findings}, config, len(discovered), ["griffe"])
+
+
+@app.command()
+def lsp() -> None:
+    """Start the LSP server for real-time diagnostics.
+
+    Launches a Language Server Protocol server on stdio that publishes
+    docstring quality diagnostics on file open and save events.
+    Requires the ``[lsp]`` extra (``pip install docvet[lsp]``).
+
+    Raises:
+        typer.Exit: If required LSP dependencies are not installed.
+    """
+    try:
+        from docvet.lsp import start_server
+    except ModuleNotFoundError:
+        typer.echo(
+            "LSP server requires pygls. Install with: pip install docvet[lsp]",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    start_server()

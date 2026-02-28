@@ -175,7 +175,7 @@ development_status:
   epic-20: done
   20-1-progress-bar-for-file-processing: done
   20-2-per-check-timing-and-total-execution-time: done
-  epic-20-retrospective: optional
+  epic-20-retrospective: done  # 2026-02-27
 
   # Epic 21: CLI Output & User Experience
   epic-21: done
@@ -204,7 +204,7 @@ development_status:
   epic-23-retrospective: optional
 
   # Epic 24: Real-Time Diagnostics for IDEs and Agents
-  epic-24: backlog
-  24-1-lsp-server-for-real-time-diagnostics: backlog
+  epic-24: in-progress
+  24-1-lsp-server-for-real-time-diagnostics: done
   24-2-claude-code-plugin-configuration: backlog
   epic-24-retrospective: optional
