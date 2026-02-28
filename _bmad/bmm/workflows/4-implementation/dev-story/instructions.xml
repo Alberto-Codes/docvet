@@ -78,7 +78,7 @@
 
     <!-- Non-sprint story discovery -->
     <check if="{{sprint_status}} file does NOT exist">
-      <action>Search {story_dir} for stories directly</action>
+      <action>Search {implementation_artifacts} for stories directly</action>
       <action>Find stories with "ready-for-dev" status in files</action>
       <action>Look for story files matching pattern: *-*-*.md</action>
       <action>Read each candidate story file to check Status section</action>
@@ -114,7 +114,7 @@
     </check>
 
     <action>Store the found story_key (e.g., "1-2-user-authentication") for later status updates</action>
-    <action>Find matching story file in {story_dir} using story_key pattern: {{story_key}}.md</action>
+    <action>Find matching story file in {implementation_artifacts} using story_key pattern: {{story_key}}.md</action>
     <action>Read COMPLETE story file from discovered path</action>
 
     <anchor id="task_check" />
@@ -219,33 +219,6 @@
       <output>ℹ️ No sprint status file exists - story progress will be tracked in story file only</output>
       <action>Set {{current_sprint_status}} = "no-sprint-tracking"</action>
     </check>
-  </step>
-
-  <step n="4b" goal="Create and switch to the story feature branch">
-    <critical>All implementation work MUST happen on the story's feature branch, never on main or develop</critical>
-
-    <action>Read the Branch field from the story file header (e.g., "feat/test-25-1-standardize-pytestmark-usage")</action>
-    <action>Check current git branch: run `git branch --show-current`</action>
-
-    <check if="already on the story branch">
-      <output>Already on branch `{{story_branch}}` — continuing</output>
-    </check>
-
-    <check if="NOT on the story branch">
-      <action>Check if the story branch already exists locally: `git branch --list {{story_branch}}`</action>
-
-      <check if="branch exists locally">
-        <action>Switch to existing branch: `git checkout {{story_branch}}`</action>
-        <output>Switched to existing branch `{{story_branch}}`</output>
-      </check>
-
-      <check if="branch does NOT exist locally">
-        <action>Create and switch to new branch: `git checkout -b {{story_branch}}`</action>
-        <output>🌿 Created and switched to branch `{{story_branch}}`</output>
-      </check>
-    </check>
-
-    <action if="Branch field is missing from story file">HALT: "Story file is missing the Branch field — cannot create feature branch"</action>
   </step>
 
   <step n="5" goal="Implement task following red-green-refactor cycle">
@@ -358,7 +331,6 @@
     <action>Validate definition-of-done checklist with essential requirements:
       - All tasks/subtasks marked complete with [x]
       - Implementation satisfies every Acceptance Criterion
-      - AC-to-Test Mapping table is complete: every AC has at least one test listed with passing status
       - Unit tests for core functionality added/updated
       - Integration tests for component interactions added when required
       - End-to-end tests for critical flows added when story demands them
@@ -367,10 +339,8 @@
       - File List includes every new/modified/deleted file (relative paths)
       - Dev Agent Record contains implementation notes
       - Change Log includes summary of changes
-      - Documentation Impact addressed: all pages listed in Dev Notes → Documentation Impact have been updated (or confirmed "None")
       - Only permitted story sections were modified
     </action>
-    <action if="AC-to-Test Mapping table is empty or incomplete">HALT - Every AC must have at least one mapped test before story can be marked done</action>
 
     <!-- Mark story ready for review - sprint status conditional -->
     <check if="{sprint_status} file exists AND {{current_sprint_status}} != 'no-sprint-tracking'">

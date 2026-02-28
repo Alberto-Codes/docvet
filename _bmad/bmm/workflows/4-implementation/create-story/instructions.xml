@@ -174,27 +174,6 @@
     <action>GOTO step 2a</action>
   </step>
 
-  <step n="1b" goal="Surface outstanding retro action items for new epics">
-    <check if="{{story_num}} == 1">
-      <action>Search {{story_dir}} for the most recent retrospective file matching pattern: epic-*-retro-*.md (sort by epic number descending)</action>
-      <check if="retrospective file found">
-        <action>Load the retrospective file and extract the Action Items table</action>
-        <action>Identify any action items NOT marked as completed (✅)</action>
-        <check if="outstanding action items exist">
-          <output>
-📋 **RETRO ACTION ITEMS** — The following items from the most recent retrospective are still outstanding:
-{{outstanding_action_items_list}}
-
-Consider these when planning this epic's stories.
-          </output>
-        </check>
-        <check if="no outstanding action items">
-          <output>✅ All previous retro action items resolved — clean slate for Epic {{epic_num}}</output>
-        </check>
-      </check>
-    </check>
-  </step>
-
   <step n="2" goal="Load and analyze core artifacts">
     <critical>🔬 EXHAUSTIVE ARTIFACT ANALYSIS - This is where you prevent future developer fuckups!</critical>
 
@@ -213,7 +192,8 @@ Consider these when planning this epic's stories.
     (As a, I want, so that) - Detailed acceptance criteria (already BDD formatted) - Technical requirements specific to this story -
     Business context and value - Success criteria <!-- Previous story analysis for context continuity -->
     <check if="story_num > 1">
-      <action>Load previous story file: {{story_dir}}/{{epic_num}}-{{previous_story_num}}-*.md</action> **PREVIOUS STORY INTELLIGENCE:** -
+      <action>Find {{previous_story_num}}: scan {implementation_artifacts} for the story file in epic {{epic_num}} with the highest story number less than {{story_num}}</action>
+      <action>Load previous story file: {implementation_artifacts}/{{epic_num}}-{{previous_story_num}}-*.md</action> **PREVIOUS STORY INTELLIGENCE:** -
     Dev notes and learnings from previous story - Review feedback and corrections needed - Files that were created/modified and their
     patterns - Testing approaches that worked/didn't work - Problems encountered and solutions found - Code patterns established <action>Extract
     all learnings that could impact current story implementation</action>
@@ -324,51 +304,8 @@ Consider these when planning this epic's stories.
     <template-output file="{default_output_file}">
     story_completion_status</template-output>
 
-    <!-- Documentation Impact Assessment (GATING — requires explicit page names or "None") -->
-    <template-output file="{default_output_file}">documentation_impact_assessment
-
-    INSTRUCTIONS: Classify this story and fill the Documentation Impact section in Dev Notes.
-
-    DECISION TREE — follow top-to-bottom, collect ALL matching pages:
-      1. Does the story touch src/docvet/cli.py or change CLI flags/subcommands?
-         → docs/site/cli-reference.md
-      2. Does it add/change config keys in [tool.docvet]?
-         → docs/site/configuration.md
-      3. Does it change check behavior (enrichment, freshness, coverage, griffe)?
-         → docs/site/checks/{check_name}.md
-      4. Does it add/change rules or rule behavior?
-         → docs/site/rules/{rule_name}.md
-      5. Does it change the public Python API surface (__all__, new modules)?
-         → reference/ (auto-generated from docstrings — update source code, not docs files directly)
-      6. Does it change user-facing workflow (install, pre-commit, CI)?
-         → README.md and/or relevant docs/site/ page
-
-    If NONE of the above apply (internal refactor, test-only, internal CI config, BMAD workflow):
-      → Set Pages to "None — no user-facing changes"
-      → Set Nature of update to "N/A"
-
-    REQUIRED OUTPUT FORMAT (fill in template):
-      - Pages: [concrete page paths from decision tree, or "None — no user-facing changes"]
-      - Nature of update: [specific description per page, or "N/A"]
-
-    EXAMPLES of correct entries:
-      ✓ Pages: docs/site/configuration.md, docs/site/checks/enrichment.md
-        Nature of update: Add new `max_complexity` config key to reference table; update enrichment check examples
-      ✓ Pages: docs/site/cli-reference.md
-        Nature of update: Document new `--json` flag for structured output
-      ✓ Pages: None — no user-facing changes
-        Nature of update: N/A
-      ✗ Pages: "update docs if needed" (TOO VAGUE — name specific pages)
-      ✗ [left blank] (MUST be filled — use "None" if no docs affected)
-    </template-output>
-
     <!-- CRITICAL: Set status to ready-for-dev -->
     <action>Set story Status to: "ready-for-dev"</action>
-    <!-- Populate Branch field for dev agent convenience -->
-    <action>Set Branch field: feat/{{scope}}-{{epic_num}}-{{story_num}}-{{description}} where:
-      - {{scope}}: the primary codebase area (e.g., enrichment, freshness, cli, docs) — infer from the story's main module or check name
-      - {{description}}: kebab-case summary of the story title (e.g., "scaffold-site", "rule-reference-pages")
-    </action>
     <action>Add completion note: "Ultimate
     context engine analysis completed - comprehensive developer guide created"</action>
   </step>
@@ -385,46 +322,6 @@ Consider these when planning this epic's stories.
       <action>Verify current status is "backlog" (expected previous state)</action>
       <action>Update development_status[{{story_key}}] = "ready-for-dev"</action>
       <action>Save file, preserving ALL comments and structure including STATUS DEFINITIONS</action>
-    </check>
-
-    <!-- GitHub issue creation -->
-    <check if="tracking_system == 'github' or tracking_system == 'both'">
-      <action>Check if GitHub issue already exists for this story:</action>
-      <action>Search: gh search issues "Story {{epic_num}}.{{story_num}}: in:title" --repo {github_repository} --json number,title --jq '.[] | select(.title | startswith("Story {{epic_num}}.{{story_num}}:")) | .number'</action>
-
-      <check if="no existing issue found">
-        <action>Create GitHub issue with:</action>
-        <action>
-          gh issue create \
-            --repo {github_repository} \
-            --title "Story {{epic_num}}.{{story_num}}: {{story_title_readable}}" \
-            --label "story,epic-{{epic_num}}" \
-            --milestone "Epic {{epic_num}}: {{epic_title}}" \
-            --body "$(cat &lt;&lt;'EOF'
-## Story
-
-{{user_story_statement}}
-
-## Acceptance Criteria
-
-{{acceptance_criteria_list}}
-
----
-
-Story file: `{{story_file}}`
-Branch: `feat/{{scope}}-{{epic_num}}-{{story_num}}-{{description}}`
-EOF
-)"
-        </action>
-        <action>Capture the created issue number and URL</action>
-      </check>
-
-      <check if="existing issue found">
-        <action>Use existing issue number and URL</action>
-        <output>GitHub issue already exists: #{{issue_number}}</output>
-      </check>
-
-      <action>Update the story file's "GitHub Issue:" field with the issue URL</action>
     </check>
 
     <action>Report completion</action>
