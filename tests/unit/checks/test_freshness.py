@@ -297,6 +297,29 @@ class TestParseDiffHunks:
         result = _parse_diff_hunks(diff)
         assert result == {3}
 
+    def test_multi_file_diff_resets_state_at_diff_header(self) -> None:
+        """Lines after a second ``diff`` header use the new hunk's numbering."""
+        diff = "\n".join(
+            [
+                "diff --git a/foo.py b/foo.py",
+                "--- a/foo.py",
+                "+++ b/foo.py",
+                "@@ -1,3 +1,4 @@",
+                " ctx",
+                "+added_in_foo",
+                " ctx",
+                "diff --git a/bar.py b/bar.py",
+                "--- a/bar.py",
+                "+++ b/bar.py",
+                "@@ -5,3 +5,4 @@",
+                " ctx",
+                "+added_in_bar",
+                " ctx",
+            ],
+        )
+        result = _parse_diff_hunks(diff)
+        assert result == {2, 6}
+
 
 # ---------------------------------------------------------------------------
 # _build_finding tests (AC 7)
