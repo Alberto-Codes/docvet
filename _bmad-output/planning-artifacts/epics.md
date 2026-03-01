@@ -3,12 +3,16 @@ stepsCompleted:
   - 'step-01-validate-prerequisites'
   - 'step-02-design-epics'
   - 'step-03-create-stories'
+  - 'step-02-design-epics-phase3'
+  - 'step-03-create-stories-phase3'
+  - 'step-04-final-validation-phase3'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
   - '_bmad-output/planning-artifacts/epics-cli-ux.md'
   - '_bmad-output/planning-artifacts/prd-validation-report.md'
   - 'GitHub Issues: #72, #148, #149, #150, #154, #157, #158, #160, #163, #164, #176, #181, #182, #186, #187, #188, #189, #190, #191'
+  - 'Phase 3 GitHub Issues (Tiers 1-3): #204, #208, #207, #206, #154, #220, #221'
 ---
 
 # docvet - Epic Breakdown
@@ -84,10 +88,16 @@ FR-GH189: CI shall detect when source files change without corresponding docs pa
 FR-GH190: Docs site shall include at least one Mermaid architecture diagram
 FR-GH148: Exclude configuration shall support negation patterns (!pattern)
 
+**Phase 3 — From GitHub Issues (Tiers 1-3, 2026-02-28):**
+FR-GH204: Replace nested conditional expression (S3358) in `_output_and_exit` format resolution with flat if/elif/else to clear SonarQube quality gate ERROR
+FR-GH208: Add `docvet.lsp` to `_ALL_DOCVET_MODULES` list in `tests/unit/test_exports.py` so export verification includes the LSP module
+FR-GH207: Update CLAUDE.md test structure tree — remove stale references to `test_freshness_diff.py`, `test_freshness_drift.py`, and `stale_signature.py` fixture
+FR-GH206: Document three CLI output features in `docs/site/cli-reference.md`: progress bar (TTY vs piped), per-check `--verbose` timing, and "Vetted N files" summary format
+FR-GH154: Create new docs page with agent workflow loop diagram, setup instructions, before/after examples, and CI integration guidance
+
 **Backlog/Future (tracked but not scheduled):**
 FR-GH149: MCP server for agentic AI integration
 FR-GH150: `docvet init` command for agent-ready project scaffolding
-FR-GH154: Agent workflow example page on docs site
 FR-GH157: GitHub Action for PR inline docstring comments
 FR-GH158: mkdocs-material + mkdocstrings example project template
 FR-GH160: VS Code extension for docstring diagnostics
@@ -139,6 +149,12 @@ NFR-UX6: All 729+ existing tests continue passing
 NFR-UX7: --format markdown and --output work correctly with summary
 NFR-UX8: Zero-file edge cases produce meaningful summary
 
+**Phase 3 — From GitHub Issues (2026-02-28):**
+NFR-NEW1: SonarQube quality gate must return to PASSED — zero new violations on main (drives FR-GH204)
+NFR-NEW2: `docvet check --all` passes on own codebase with zero findings (dogfooding)
+NFR-NEW3: `mkdocs build --strict` passes with zero warnings after docs changes
+NFR-NEW4: All existing tests continue passing with zero regressions
+
 ### Additional Requirements
 
 **From Architecture Document:**
@@ -150,6 +166,10 @@ NFR-UX8: Zero-file edge cases produce meaningful summary
 - No cross-check imports between check modules
 - Checks are isolated — no shared mutable state
 - All public modules define __all__ exports (API stability)
+
+**Phase 3 — Process Improvements (2026-02-28):**
+- AR-GH220: Add `analyze_code_snippet` as standard task in BMAD story template for code-changing stories — run SonarQube snippet analysis on modified functions before marking done (Source: #220, Epic 27 retro)
+- AR-GH221: Document multi-layer review practice (adversarial + party mode + Copilot + codecov) as standard for non-trivial stories (Source: #221, Epic 27 retro)
 
 **From CLI UX Research (Party Mode Session 2026-02-26):**
 - "Vetted" chosen as brand verb — unique in Python tool ecosystem
@@ -193,10 +213,16 @@ NFR-UX8: Zero-file edge cases produce meaningful summary
 | FR-UX14 | 28 | Quiet dual-registration pattern |
 | FR-UX15 | 28 | Individual subcommands follow three-tier output model |
 | FR-UX16 | 28 | Subcommand summary with own check name only |
+| FR-GH204 | Standalone fix | Replace nested ternary — SonarQube S3358 (ships outside epic) |
+| FR-GH208 | 29 | Add docvet.lsp to test_exports.py |
+| FR-GH207 | 29 | Update CLAUDE.md test structure |
+| AR-GH220 | 29 | Add snippet analysis to story template |
+| AR-GH221 | 29 | Document multi-layer review practice |
+| FR-GH206 | 29 | CLI reference — progress, timing, summary |
+| FR-GH154 | 29 | Agent workflow docs page |
 | FR-GH148 | Backlog | Negation pattern support for exclude config |
 | FR-GH149 | Backlog | MCP server for agentic AI integration |
 | FR-GH150 | Backlog | `docvet init` command |
-| FR-GH154 | Backlog | Agent workflow example docs page |
 | FR-GH157 | Backlog | GitHub Action for PR inline comments |
 | FR-GH158 | Backlog | mkdocs + mkdocstrings example template |
 | FR-GH160 | Backlog | VS Code extension |
@@ -205,6 +231,15 @@ NFR-UX8: Zero-file edge cases produce meaningful summary
 | FR-GH72 | Backlog | WebMCP integration |
 
 ## Epic List
+
+### Standalone Fix (pre-epic): fix(cli) nested ternary — #204
+SonarQube quality gate ERROR (S3358). Ships immediately as a standalone PR, not wrapped in epic ceremony.
+**FRs covered:** FR-GH204
+
+### Epic 29: Post-Launch Polish
+Maintainers and contributors work with complete test coverage, accurate project documentation, improved development process, and users find accurate CLI reference plus a clear agent workflow guide.
+**FRs covered:** FR-GH208, FR-GH207, AR-GH220, AR-GH221, FR-GH206, FR-GH154
+**GitHub Issues:** #208, #207, #220, #221, #206, #154
 
 ### Epic 25: Development Process & CI Quality
 The development process prevents documentation drift and CI provides reliable, consistent quality signals. BMAD workflows enforce docs-site updates at story creation and code review time, CI detects source-without-docs changes, and testing/coverage infrastructure is standardized.
@@ -885,3 +920,171 @@ AC 7:
 **Implementation notes:**
 - Stories 28.1-28.4 each update tests for their own scope; this story catches any remaining test migrations and handles all docs updates
 - Edge case tests may already exist from prior stories — this story ensures comprehensive coverage
+
+---
+
+## Standalone Fix (pre-epic): fix(cli) nested ternary — #204
+
+SonarQube quality gate ERROR (S3358). Ships immediately as a standalone PR:
+
+> **fix(cli): replace nested ternary in `_output_and_exit` format resolution**
+> Replace nested conditional at `cli.py:338` with flat if/elif/else. Closes #204. Quality gate returns to PASSED.
+
+**FRs covered:** FR-GH204
+
+---
+
+## Epic 29: Post-Launch Polish
+
+Maintainers and contributors work with complete test coverage, accurate project documentation, improved development process, and users find accurate CLI reference plus a clear agent workflow guide.
+
+### Story 29.1: Test & Documentation Hygiene
+
+As a **docvet contributor**,
+I want the test export coverage to include all public modules and the CLAUDE.md test structure to reflect the current codebase,
+So that AI agents and contributors get accurate project context.
+
+**FRs covered:** FR-GH208, FR-GH207
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the `_ALL_DOCVET_MODULES` list in `tests/unit/test_exports.py`
+**When** `uv run pytest tests/unit/test_exports.py` is run before any changes
+**Then** confirm the export test fails or is incomplete for `docvet.lsp` (verify gap exists)
+**And** after adding `docvet.lsp` to the list, the test passes
+
+AC 2:
+**Given** the Architecture → Test Structure section in `CLAUDE.md`
+**When** updated
+**Then** stale references to `test_freshness_diff.py`, `test_freshness_drift.py`, and `stale_signature.py` fixture are removed
+**And** the tree reflects the current `tests/` directory structure
+
+AC 3:
+**Given** all changes are applied
+**When** `uv run pytest` is executed
+**Then** all tests pass with zero regressions
+
+**Implementation notes:**
+- #208: add one string (`"docvet.lsp"`) to the module list
+- #207: run `find tests/` to get current tree, replace the markdown block in CLAUDE.md
+- Single PR, single commit
+
+---
+
+### Story 29.2: Development Process Updates
+
+As a **docvet contributor using BMAD workflows**,
+I want the story template to include SonarQube snippet analysis as a standard task and the multi-layer review practice to be documented,
+So that quality issues are caught earlier in the development cycle and review practices are consistent.
+
+**FRs covered:** AR-GH220, AR-GH221
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the BMAD dev-story workflow at `_bmad/bmm/workflows/4-implementation/dev-story/`
+**When** the post-implementation quality checks step is updated
+**Then** the step includes a task to run `analyze_code_snippet` on modified functions before marking the story done
+
+AC 2:
+**Given** the multi-layer review practice (adversarial review + party mode + Copilot PR review + codecov)
+**When** documented as a new file at `.claude/rules/review-practice.md`
+**Then** the file describes the four review layers, when to apply them (non-trivial stories), and the evidence that each layer catches distinct issue categories with zero overlap
+
+AC 3:
+**Given** the updated workflow
+**When** a contributor runs `/bmad-bmm-dev-story`
+**Then** the SonarQube analysis step appears in the workflow execution
+
+**Implementation notes:**
+- #220: edit the appropriate step file in `_bmad/bmm/workflows/4-implementation/dev-story/steps/`
+- #221: create `.claude/rules/review-practice.md` with the four-layer review practice
+- Single PR covering both template/process changes
+
+---
+
+### Story 29.3: CLI Reference Documentation Update
+
+As a **docvet user reading the CLI reference**,
+I want the docs to accurately describe progress bar behavior, per-check timing, and the vetted summary format,
+So that I understand what output to expect in different contexts (TTY, piped, verbose).
+
+**FRs covered:** FR-GH206
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** `docs/site/cli-reference.md`
+**When** updated
+**Then** it documents progress bar behavior: displays on stderr when connected to a TTY, suppressed when piped or redirected
+
+AC 2:
+**Given** the CLI reference
+**When** a user reads the verbose mode section
+**Then** per-check timing is documented (e.g., `enrichment: 42 files in 0.3s`)
+**And** total execution time in the summary line is documented
+
+AC 3:
+**Given** the CLI reference
+**When** a user reads the output section
+**Then** the vetted summary line format is documented, captured from a real `docvet check --all` run against the current released CLI (v1.6.1+)
+
+AC 4:
+**Given** the updated docs site
+**When** `mkdocs build --strict` is executed
+**Then** the build succeeds with zero warnings
+
+**Implementation notes:**
+- #206: three features from Epics 20-21 (progress bar PR #139, per-check timing PR #140, vetted summary PR #141) — all shipped in v1.6.x
+- Document current released behavior; run `docvet check --all` to capture actual output
+- Single page edit, no new pages needed
+
+---
+
+### Story 29.4: Agent Workflow Documentation Page
+
+As a **developer evaluating docvet for AI-assisted workflows**,
+I want a dedicated docs page showing exactly where docvet fits in the agent development loop,
+So that I can set up docvet in my project and configure my AI agent to use it effectively.
+
+**FRs covered:** FR-GH154
+
+**Acceptance Criteria:**
+
+AC 1:
+**Given** the docs site navigation
+**When** a user browses the top-level nav
+**Then** an "Agent Workflow" page is visible, placed after the AI Agent Integration page in `mkdocs.yml`
+
+AC 2:
+**Given** the agent workflow page
+**When** a user reads the workflow section
+**Then** a Mermaid diagram illustrates the loop: code change → `docvet check` → read findings → fix docstrings → commit clean
+**And** the diagram follows `.claude/rules/mermaid.md` conventions and uses styling consistent with the existing `docs/site/architecture.md` diagram
+
+AC 3:
+**Given** the agent workflow page
+**When** a user reads the setup section
+**Then** instructions cover pyproject.toml `[tool.docvet]` configuration and at minimum a CLAUDE.md agent instruction snippet, with optional examples for other agents (Cursor, Copilot) if tested
+
+AC 4:
+**Given** the agent workflow page
+**When** a user reads the examples section
+**Then** at least one before/after example shows: agent changes a function signature, docvet catches stale docstring, agent fixes it
+
+AC 5:
+**Given** the agent workflow page
+**When** a user reads the CI section
+**Then** GitHub Actions integration is documented showing how `docvet check` catches agent-generated PRs with docstring issues
+
+AC 6:
+**Given** the updated docs site
+**When** `mkdocs build --strict` is executed
+**Then** the build succeeds with zero warnings
+
+**Implementation notes:**
+- #154: creative deliverable — new page, not an edit
+- Add to mkdocs.yml nav after AI Agent Integration
+- Follow `.claude/rules/mermaid.md` for diagram styling; reference `docs/site/architecture.md` for visual consistency
+- Cross-link from existing AI Agent Integration page

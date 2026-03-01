@@ -229,4 +229,4 @@ development_status:
   # Epic 27: Freshness Accuracy
   epic-27: done
   27-1-fix-hunk-to-symbol-false-positives: done
-  epic-27-retrospective: optional
+  epic-27-retrospective: done  # 2026-02-28
