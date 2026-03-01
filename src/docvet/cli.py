@@ -295,9 +295,10 @@ def _output_and_exit(
 
     Implements the unified output pipeline: resolves ``no_color`` from
     environment and TTY state, optionally prints a verbose header to
-    stderr for multi-check runs, resolves the output format via an
-    explicit identity check on the ``--format`` and ``--output`` options, delegates to
-    :func:`_emit_findings` for format dispatch, and raises
+    stderr for multi-check runs, resolves the output format via a
+    three-tier precedence chain (explicit ``--format``, then
+    ``--output`` implies markdown, then terminal default), delegates
+    to :func:`_emit_findings` for format dispatch, and raises
     ``typer.Exit`` with the appropriate exit code.
 
     Args:
@@ -332,11 +333,12 @@ def _output_and_exit(
         sys.stderr.write(format_verbose_header(file_count, checks))
 
     # 4. Resolve format
-    resolved_fmt = (
-        fmt_opt
-        if fmt_opt is not None
-        else ("markdown" if output_path is not None else "terminal")
-    )
+    if fmt_opt is not None:
+        resolved_fmt = fmt_opt
+    elif output_path is not None:
+        resolved_fmt = "markdown"
+    else:
+        resolved_fmt = "terminal"
 
     # 5. Emit findings
     _emit_findings(resolved_fmt, all_findings, output_path, no_color, file_count)
