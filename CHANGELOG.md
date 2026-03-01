@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/Alberto-Codes/docvet/compare/v1.6.1...v1.6.2) (2026-03-01)
+
+
+### Bug Fixes
+
+* **cli:** replace nested ternary in _output_and_exit format resolution ([f8e7984](https://github.com/Alberto-Codes/docvet/commit/f8e798487cf99338a2c312ef94ad742ad11ebf0e)), closes [#204](https://github.com/Alberto-Codes/docvet/issues/204)
+
 ## [1.6.1](https://github.com/Alberto-Codes/docvet/compare/v1.6.0...v1.6.1) (2026-02-28)
 
 
