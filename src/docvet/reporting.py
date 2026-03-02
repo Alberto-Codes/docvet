@@ -2,8 +2,10 @@
 
 Renders check findings as terminal output (default), markdown reports, or
 structured JSON for programmatic consumption. Produces an unconditional
-summary line for stderr, groups findings by file, calculates summary
-statistics, and determines the CLI exit code based on finding severity.
+summary line for stderr (with optional coverage percentage from the
+presence check), groups findings by file, calculates summary statistics,
+and determines the CLI exit code based on finding severity and coverage
+threshold enforcement.
 
 Examples:
     Generate a terminal report via the CLI:
@@ -40,6 +42,7 @@ from pathlib import Path
 import typer
 
 from docvet.checks import Finding
+from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
 
 __all__: list[str] = []
@@ -146,18 +149,31 @@ def format_markdown(findings: list[Finding]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def format_json(findings: list[Finding], file_count: int) -> str:
+def format_json(
+    findings: list[Finding],
+    file_count: int,
+    *,
+    presence_stats: PresenceStats | None = None,
+    min_coverage: float = 0.0,
+) -> str:
     """Format findings as a structured JSON object.
 
     Produces a JSON object with a ``findings`` array and a ``summary``
     object. Each finding includes all six ``Finding`` fields plus a
     derived ``severity`` field (``"high"`` for required, ``"low"`` for
-    recommended). Always returns a valid JSON object, even when there
-    are no findings.
+    recommended). When *presence_stats* is provided, a
+    ``presence_coverage`` object is added using
+    :attr:`PresenceStats.percentage` for documented/total counts,
+    percentage, threshold, and pass/fail status. Always returns a valid
+    JSON object, even when there are no findings.
 
     Args:
         findings: List of findings to format.
         file_count: Number of files that were checked.
+        presence_stats: Aggregate presence coverage stats, or *None*
+            when the presence check did not run.
+        min_coverage: Coverage threshold from config (0.0 means no
+            threshold enforcement).
 
     Returns:
         JSON string with ``indent=2`` formatting.
@@ -176,7 +192,7 @@ def format_json(findings: list[Finding], file_count: int) -> str:
     sorted_findings = sorted(findings, key=lambda f: (f.file, f.line))
     counts = Counter(f.category for f in findings)
 
-    obj = {
+    obj: dict[str, object] = {
         "findings": [
             {
                 "file": f.file,
@@ -198,6 +214,15 @@ def format_json(findings: list[Finding], file_count: int) -> str:
             "files_checked": file_count,
         },
     }
+    if presence_stats is not None:
+        pct = presence_stats.percentage
+        obj["presence_coverage"] = {
+            "documented": presence_stats.documented,
+            "total": presence_stats.total,
+            "percentage": round(pct, 1),
+            "threshold": min_coverage,
+            "passed": pct >= min_coverage,
+        }
     return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -206,18 +231,23 @@ def format_summary(
     checks: Sequence[str],
     findings: list[Finding],
     elapsed: float,
+    *,
+    coverage_pct: float | None = None,
 ) -> str:
     """Format the unconditional summary line for stderr.
 
     Produces a one-line summary showing file count, checks that ran,
-    finding count with category breakdown, and elapsed time. Uses the
-    "Vetted" brand verb and an em dash separator.
+    finding count with category breakdown, optional coverage percentage,
+    and elapsed time. Uses the "Vetted" brand verb and an em dash
+    separator.
 
     Args:
         file_count: Number of files that were checked.
         checks: List of check names that were run.
         findings: All findings across all checks.
         elapsed: Total elapsed time in seconds.
+        coverage_pct: Docstring coverage percentage from the presence
+            check. When not *None*, appended to the detail string.
 
     Returns:
         Formatted summary string ending with a newline.
@@ -230,14 +260,14 @@ def format_summary(
         # 'Vetted 12 files [enrichment, freshness] — no findings. (1.5s)'
         ```
 
-        With findings:
+        With findings and coverage:
 
         ```python
         from docvet.checks import Finding
 
         fs = [Finding("f", 1, "s", "r", "m", "required")]
-        format_summary(1, ["enrichment"], fs, 0.3)
-        # 'Vetted 1 files [enrichment] — 1 findings (...). (0.3s)'
+        format_summary(1, ["enrichment"], fs, 0.3, coverage_pct=87.0)
+        # 'Vetted 1 files [enrichment] — 1 findings (...), 87.0% coverage. (0.3s)'
         ```
     """
     check_list = ", ".join(checks)
@@ -249,6 +279,8 @@ def format_summary(
         )
     else:
         detail = "no findings"
+    if coverage_pct is not None:
+        detail = f"{detail}, {coverage_pct:.1f}% coverage"
     return (
         f"Vetted {file_count} files [{check_list}] \u2014 {detail}. ({elapsed:.1f}s)\n"
     )
@@ -301,18 +333,32 @@ def write_report(
 
 
 def determine_exit_code(
-    findings_by_check: dict[str, list[Finding]], config: DocvetConfig
+    findings_by_check: dict[str, list[Finding]],
+    config: DocvetConfig,
+    *,
+    presence_stats: PresenceStats | None = None,
 ) -> int:
     """Determine the CLI exit code based on findings and fail_on config.
+
+    Returns 1 if any ``fail_on`` check has findings, or if the
+    presence coverage threshold (compared via
+    :attr:`PresenceStats.percentage`) is configured and not met.
+    Returns 0 otherwise.
 
     Args:
         findings_by_check: Findings grouped by check name.
         config: The docvet configuration with fail_on list.
+        presence_stats: Aggregate presence coverage stats, or *None*
+            when the presence check did not run.
 
     Returns:
-        1 if any fail_on check has findings, 0 otherwise.
+        1 if any fail_on check has findings or coverage is below
+        threshold, 0 otherwise.
     """
     for check in config.fail_on:
         if findings_by_check.get(check, []):
+            return 1
+    if presence_stats is not None and config.presence.min_coverage > 0.0:
+        if presence_stats.percentage < config.presence.min_coverage:
             return 1
     return 0

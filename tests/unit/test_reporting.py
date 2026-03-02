@@ -8,7 +8,7 @@ import pytest
 import typer
 
 from docvet.checks import Finding
-from docvet.config import DocvetConfig
+from docvet.config import DocvetConfig, PresenceConfig
 from docvet.reporting import (
     determine_exit_code,
     format_json,
@@ -616,3 +616,117 @@ class TestFormatSummary:
             file_count=1, checks=["enrichment"], findings=findings, elapsed=0.1
         )
         assert "1 findings (1 required, 0 recommended)" in result
+
+
+# ---------------------------------------------------------------------------
+# Presence-related reporting tests (Story 28.2)
+# ---------------------------------------------------------------------------
+
+
+class TestFormatSummaryWithCoverage:
+    """Tests for format_summary coverage_pct parameter."""
+
+    def test_coverage_pct_appended_when_provided(self, make_finding):
+        """10.17: Summary line includes 'X.X% coverage' when presence runs."""
+        result = format_summary(
+            10, ["presence", "enrichment"], [], 1.0, coverage_pct=96.0
+        )
+        assert "96.0% coverage" in result
+        assert "no findings, 96.0% coverage" in result
+
+    def test_coverage_pct_with_findings(self, make_finding):
+        """10.17: Summary with findings includes coverage."""
+        findings = [make_finding()]
+        result = format_summary(
+            10, ["presence", "enrichment"], findings, 1.0, coverage_pct=87.0
+        )
+        assert "87.0% coverage" in result
+        assert "1 findings" in result
+
+    def test_no_coverage_when_none(self):
+        """10.18: No coverage when coverage_pct is None."""
+        result = format_summary(10, ["enrichment"], [], 1.0)
+        assert "coverage" not in result
+
+
+class TestFormatJsonWithPresence:
+    """Tests for format_json presence_stats parameter."""
+
+    def test_includes_presence_coverage_object(self, make_finding):
+        """10.14: JSON includes presence_coverage object with all 5 fields."""
+        from docvet.checks.presence import PresenceStats
+
+        stats = PresenceStats(documented=87, total=100)
+        result = format_json(
+            [make_finding()], 10, presence_stats=stats, min_coverage=95.0
+        )
+        parsed = json.loads(result)
+        cov = parsed["presence_coverage"]
+        assert cov["documented"] == 87
+        assert cov["total"] == 100
+        assert cov["percentage"] == 87.0
+        assert cov["threshold"] == 95.0
+        assert cov["passed"] is False
+
+    def test_presence_coverage_passed_true_when_above(self):
+        """10.15: presence_coverage.passed reflects threshold comparison."""
+        from docvet.checks.presence import PresenceStats
+
+        stats = PresenceStats(documented=96, total=100)
+        result = format_json([], 10, presence_stats=stats, min_coverage=95.0)
+        parsed = json.loads(result)
+        assert parsed["presence_coverage"]["passed"] is True
+
+    def test_omits_presence_coverage_when_no_stats(self):
+        """10.16: JSON omits presence_coverage when no presence stats."""
+        result = format_json([], 10)
+        parsed = json.loads(result)
+        assert "presence_coverage" not in parsed
+
+    def test_presence_coverage_present_with_zero_findings_and_full_coverage(self):
+        """10.27: presence_coverage present even when 0 findings and 100%."""
+        from docvet.checks.presence import PresenceStats
+
+        stats = PresenceStats(documented=100, total=100)
+        result = format_json([], 10, presence_stats=stats, min_coverage=0.0)
+        parsed = json.loads(result)
+        assert "presence_coverage" in parsed
+        assert parsed["presence_coverage"]["percentage"] == 100.0
+        assert parsed["presence_coverage"]["passed"] is True
+
+
+class TestDetermineExitCodeWithPresence:
+    """Tests for determine_exit_code with presence_stats."""
+
+    def test_returns_1_when_coverage_below_threshold(self):
+        """10.21: Returns 1 when coverage below threshold."""
+        from docvet.checks.presence import PresenceStats
+
+        config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
+        stats = PresenceStats(documented=87, total=100)
+        result = determine_exit_code({}, config, presence_stats=stats)
+        assert result == 1
+
+    def test_returns_0_when_coverage_meets_threshold(self):
+        """10.22: Returns 0 when coverage meets threshold."""
+        from docvet.checks.presence import PresenceStats
+
+        config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
+        stats = PresenceStats(documented=96, total=100)
+        result = determine_exit_code({}, config, presence_stats=stats)
+        assert result == 0
+
+    def test_returns_0_when_no_threshold(self):
+        """No threshold (0.0) means coverage is not enforced."""
+        from docvet.checks.presence import PresenceStats
+
+        config = DocvetConfig()
+        stats = PresenceStats(documented=10, total=100)
+        result = determine_exit_code({}, config, presence_stats=stats)
+        assert result == 0
+
+    def test_returns_0_when_no_stats(self):
+        """No stats means presence was not run."""
+        config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
+        result = determine_exit_code({}, config)
+        assert result == 0

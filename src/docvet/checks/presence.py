@@ -1,10 +1,10 @@
 """Presence check for missing docstrings.
 
 Detects public symbols (modules, classes, functions, methods) that lack
-a docstring, and reports per-file coverage statistics. Uses stdlib
-``ast`` only — no runtime dependencies beyond what docvet already
-requires. Complements ruff D100–D107 by adding coverage metrics and
-pipeline integration.
+a docstring, and reports per-file coverage statistics via
+:class:`PresenceStats`. Uses stdlib ``ast`` only — no runtime
+dependencies beyond what docvet already requires. Complements ruff
+D100–D107 by adding coverage metrics and pipeline integration.
 
 Examples:
     Run the presence check on a source string:
@@ -50,6 +50,14 @@ class PresenceStats:
 
     documented: int
     total: int
+
+    @property
+    def percentage(self) -> float:
+        """Coverage as a percentage (0.0–100.0).
+
+        Returns 100.0 when no symbols were checked (vacuous truth).
+        """
+        return (self.documented / self.total * 100.0) if self.total > 0 else 100.0
 
 
 def _should_skip(symbol: Symbol, config: PresenceConfig) -> bool:
