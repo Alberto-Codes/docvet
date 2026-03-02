@@ -78,7 +78,7 @@ The product vision (`docs/product-vision.md`) defines the full design. The codeb
 ### Test Conventions
 
 - Two-layer structure: `tests/unit/` (AST + mocks) and `tests/integration/` (temp git repos)
-- One test file per source module; check tests live in `tests/unit/checks/`
+- Tests are generally organized one file per source module; larger or cross-cutting areas (e.g., the CLI) may use multiple focused test files. Check tests live in `tests/unit/checks/`.
 - Fixtures in `tests/fixtures/` — .py files with known docstring issues
 - Markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.slow`
 
