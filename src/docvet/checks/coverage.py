@@ -6,11 +6,13 @@ generation.  Uses pure filesystem checks via ``pathlib`` — no AST,
 no git, no external dependencies.
 
 Examples:
-    Run the coverage check on a list of files::
+    Run the coverage check on a list of files:
 
-        from docvet.checks import check_coverage
+    ```python
+    from docvet.checks import check_coverage
 
-        findings = check_coverage(file_paths, src_root=Path("src"))
+    findings = check_coverage(file_paths, src_root=Path("src"))
+    ```
 
 See Also:
     [`docvet.checks`][]: Package-level re-exports.

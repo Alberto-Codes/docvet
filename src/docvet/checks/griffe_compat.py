@@ -5,11 +5,13 @@ parameter/type mismatches and formatting issues that would cause rendering
 problems in mkdocs-material + mkdocstrings documentation.
 
 Examples:
-    Run the griffe compatibility check on a list of files::
+    Run the griffe compatibility check on a list of files:
 
-        from docvet.checks import check_griffe_compat
+    ```python
+    from docvet.checks import check_griffe_compat
 
-        findings = check_griffe_compat(file_paths)
+    findings = check_griffe_compat(file_paths)
+    ```
 
 See Also:
     [`docvet.checks`][]: Package-level re-exports.

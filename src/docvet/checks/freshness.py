@@ -5,11 +5,13 @@ git diff hunks to AST symbols; drift mode uses git blame age comparison.
 Implements Layer 4 of the docstring quality model.
 
 Examples:
-    Run the freshness diff check on a file::
+    Run the freshness diff check on a file:
 
-        from docvet.checks import check_freshness_diff
+    ```python
+    from docvet.checks import check_freshness_diff
 
-        findings = check_freshness_diff(path, diff_text, tree)
+    findings = check_freshness_diff(path, diff_text, tree)
+    ```
 
 See Also:
     [`docvet.config`][]: ``FreshnessConfig`` dataclass for drift thresholds.

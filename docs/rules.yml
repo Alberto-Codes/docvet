@@ -152,16 +152,29 @@
   check: enrichment
   category: recommended
   applies_to: any symbol
-  summary: Examples section uses doctest format instead of fenced code blocks
+  summary: Examples section uses doctest (`>>>`) or reStructuredText (`::`) indented code blocks instead of fenced code blocks
   since: "1.0.0"
   fix: |
-    Replace doctest `>>>` format with triple-backtick fenced code blocks and a `python` language marker:
+    Replace doctest `>>>` format or rST `::` indented blocks with triple-backtick fenced code blocks and a language marker:
+
+    **Doctest `>>>` format:**
 
     ```python
     Examples:
         ```python
         add(1, 2)  # returns 3
         add(-1, 1)  # returns 0
+        ```
+    ```
+
+    **rST `::` indented block** — remove `::` from the directive line and wrap the code in fenced backticks:
+
+    ```python
+    Examples:
+        Run the check:
+
+        ```bash
+        $ docvet check --all
         ```
     ```
 

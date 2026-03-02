@@ -6,17 +6,23 @@ summary line for stderr, groups findings by file, calculates summary
 statistics, and determines the CLI exit code based on finding severity.
 
 Examples:
-    Generate a terminal report via the CLI::
+    Generate a terminal report via the CLI:
 
-        $ docvet check --all
+    ```bash
+    $ docvet check --all
+    ```
 
-    Write a markdown report to a file::
+    Write a markdown report to a file:
 
-        $ docvet check --all --format markdown --output report.md
+    ```bash
+    $ docvet check --all --format markdown --output report.md
+    ```
 
-    Produce JSON output for agent or CI consumption::
+    Produce JSON output for agent or CI consumption:
 
-        $ docvet check --all --format json
+    ```bash
+    $ docvet check --all --format json
+    ```
 
 See Also:
     [`docvet.cli`][]: Subcommands that invoke report rendering.

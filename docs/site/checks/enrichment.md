@@ -19,7 +19,7 @@ docvet enrichment --all
 | [`missing-typed-attributes`](../rules/missing-typed-attributes.md) | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
 | [`missing-examples`](../rules/missing-examples.md) | recommended | classes, modules | Symbol kind in `require-examples` list lacks `Examples:` section |
 | [`missing-cross-references`](../rules/missing-cross-references.md) | recommended | modules | Module missing or malformed `See Also:` section |
-| [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` instead of fenced code blocks |
+| [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` or rST `::` instead of fenced code blocks |
 
 **Required** rules flag structural gaps where the docstring is objectively incomplete. **Recommended** rules flag best-practice improvements that enhance documentation quality.
 

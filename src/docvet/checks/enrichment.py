@@ -6,12 +6,14 @@ analysis with section header parsing. Implements Layer 3 of the docstring
 quality model.
 
 Examples:
-    Run the enrichment check on a source file::
+    Run the enrichment check on a source file:
 
-        from docvet.checks import check_enrichment
-        from docvet.config import EnrichmentConfig
+    ```python
+    from docvet.checks import check_enrichment
+    from docvet.config import EnrichmentConfig
 
-        findings = check_enrichment(source, tree, EnrichmentConfig(), "app.py")
+    findings = check_enrichment(source, tree, EnrichmentConfig(), "app.py")
+    ```
 
 See Also:
     [`docvet.config`][]: ``EnrichmentConfig`` dataclass for rule toggles.
@@ -1196,6 +1198,31 @@ def _check_missing_cross_references(
 # ---------------------------------------------------------------------------
 
 _DOCTEST_PATTERN = re.compile(r"^\s*>>>")
+_RST_BLOCK_PATTERN = re.compile(r"::\s*$")
+
+
+def _has_rst_indented_block(lines: list[str], index: int) -> bool:
+    """Check whether the ``::`` line at *index* is followed by an indented block.
+
+    Determines if the line ending with ``::`` introduces a
+    reStructuredText indented code block by verifying that the first
+    non-blank line after ``index`` has strictly greater indentation
+    than the ``::`` line itself.
+
+    Args:
+        lines: All lines from the ``Examples:`` section content.
+        index: Index of the line ending with ``::``.
+
+    Returns:
+        ``True`` when a non-blank line with greater indentation follows,
+        ``False`` otherwise (including when no non-blank line follows).
+    """
+    rst_indent = len(lines[index]) - len(lines[index].lstrip())
+    for subsequent in lines[index + 1 :]:
+        if not subsequent.strip():
+            continue
+        return (len(subsequent) - len(subsequent.lstrip())) > rst_indent
+    return False
 
 
 def _check_prefer_fenced_code_blocks(
@@ -1205,11 +1232,14 @@ def _check_prefer_fenced_code_blocks(
     config: EnrichmentConfig,
     file_path: str,
 ) -> Finding | None:
-    """Detect ``Examples:`` sections using doctest format instead of fenced blocks.
+    """Detect ``Examples:`` sections using non-fenced code block formats.
 
-    Checks for ``>>>`` patterns in the ``Examples:`` section content.
-    Only applies when the ``Examples:`` section exists — absence is
-    handled by the ``missing-examples`` rule.
+    Checks for ``>>>`` doctest patterns and ``::`` reStructuredText
+    indented code blocks in the ``Examples:`` section content.  The
+    ``>>>`` scan runs first; ``::`` detection fires only when no
+    doctest pattern is found.  Only applies when the ``Examples:``
+    section exists — absence is handled by the ``missing-examples``
+    rule.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -1221,7 +1251,8 @@ def _check_prefer_fenced_code_blocks(
 
     Returns:
         A ``Finding`` with ``rule="prefer-fenced-code-blocks"`` when
-        doctest format is found, or ``None`` otherwise.
+        doctest format (``>>>``) or an rST indented code block (``::``)
+        is found, or ``None`` otherwise.
     """
     if "Examples" not in sections:
         return None
@@ -1235,7 +1266,9 @@ def _check_prefer_fenced_code_blocks(
 
     kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
 
-    for line in content.splitlines():
+    lines = content.splitlines()
+
+    for line in lines:
         if _DOCTEST_PATTERN.match(line):
             return Finding(
                 file=file_path,
@@ -1245,6 +1278,21 @@ def _check_prefer_fenced_code_blocks(
                 message=(
                     f"Examples: section in {kind_display} '{symbol.name}' "
                     f"uses doctest format (>>>) instead of fenced code blocks"
+                ),
+                category="recommended",
+            )
+
+    for i, line in enumerate(lines):
+        if _RST_BLOCK_PATTERN.search(line) and _has_rst_indented_block(lines, i):
+            return Finding(
+                file=file_path,
+                line=symbol.line,
+                symbol=symbol.name,
+                rule="prefer-fenced-code-blocks",
+                message=(
+                    f"Examples: section in {kind_display} '{symbol.name}' "
+                    f"uses reStructuredText indented code block (::) "
+                    f"instead of fenced code blocks"
                 ),
                 category="recommended",
             )

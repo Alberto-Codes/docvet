@@ -126,7 +126,7 @@ These keys go under `[tool.docvet.enrichment]`:
 | `require-attributes` | `bool` | `true` | Require `Attributes:` sections on classes and modules |
 | `require-typed-attributes` | `bool` | `true` | Require typed format in `Attributes:` entries |
 | `require-cross-references` | `bool` | `true` | Require `See Also:` in module docstrings |
-| `prefer-fenced-code-blocks` | `bool` | `true` | Prefer fenced code blocks over doctest `>>>` format |
+| `prefer-fenced-code-blocks` | `bool` | `true` | Prefer fenced code blocks over doctest `>>>` and rST `::` formats |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 ### Example
