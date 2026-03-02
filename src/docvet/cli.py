@@ -12,17 +12,23 @@ Output formatting is delegated to :func:`_emit_findings`, which
 dispatches to the appropriate formatter in :mod:`docvet.reporting`.
 
 Examples:
-    Run all checks on changed files::
+    Run all checks on changed files:
 
-        $ docvet check
+    ```bash
+    $ docvet check
+    ```
 
-    Check specific files::
+    Check specific files:
 
-        $ docvet check src/foo.py src/bar.py
+    ```bash
+    $ docvet check src/foo.py src/bar.py
+    ```
 
-    Run the enrichment check on the entire codebase::
+    Run the enrichment check on the entire codebase:
 
-        $ docvet enrichment --all
+    ```bash
+    $ docvet enrichment --all
+    ```
 
 See Also:
     [`docvet.checks`][]: Public API re-exports for check functions.

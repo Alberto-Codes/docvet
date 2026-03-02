@@ -13,13 +13,17 @@ path-level ``fnmatch`` patterns (``scripts/gen_*.py``), and
 component-level patterns (``tests``).
 
 Examples:
-    Discover staged files via the CLI::
+    Discover staged files via the CLI:
 
-        $ docvet check --staged
+    ```bash
+    $ docvet check --staged
+    ```
 
-    Discover the full codebase::
+    Discover the full codebase:
 
-        $ docvet check --all
+    ```bash
+    $ docvet check --all
+    ```
 
 See Also:
     [`docvet.cli`][]: Subcommands that invoke discovery.

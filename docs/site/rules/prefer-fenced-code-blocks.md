@@ -4,15 +4,17 @@
 
 ## What it detects
 
-This rule flags `Examples:` sections that use doctest `>>>` format instead of triple-backtick fenced code blocks with a `python` language marker.
+This rule flags `Examples:` sections that use doctest `>>>` format or reStructuredText `::` indented code blocks instead of triple-backtick fenced code blocks with a language marker.
 
 ## Why is this a problem?
 
-mkdocs-material renders fenced code blocks with syntax highlighting, copy buttons, and line numbers. Doctest `>>>` format renders as plain, unhighlighted text, resulting in a noticeably worse reading experience on your documentation site. Fenced blocks also support annotations and other material theme features.
+mkdocs-material renders fenced code blocks with syntax highlighting, copy buttons, and line numbers. Doctest `>>>` format and rST `::` indented blocks render as plain, unhighlighted text with no copy button or annotations, resulting in a noticeably worse reading experience on your documentation site. The `::` literal may even render as visible text.
 
 {{ rule_fix() }}
 
-## Example
+## Examples
+
+### Doctest `>>>` format
 
 === "Violation"
 
@@ -56,4 +58,32 @@ mkdocs-material renders fenced code blocks with syntax highlighting, copy button
             ```
         """
         return a + b
+    ```
+
+### rST `::` indented block
+
+=== "Violation"
+
+    ```python
+    """Module for data processing.
+
+    Examples:
+        Run the processing pipeline::
+
+            $ docvet check --all
+    """
+    ```
+
+=== "Fix"
+
+    ```python hl_lines="4 5 6 7"
+    """Module for data processing.
+
+    Examples:
+        Run the processing pipeline:
+
+        ```bash
+        $ docvet check --all
+        ```
+    """
     ```

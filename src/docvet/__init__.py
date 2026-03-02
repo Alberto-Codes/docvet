@@ -8,13 +8,17 @@ Attributes:
     Finding: Re-exported from ``docvet.checks`` for convenience.
 
 Examples:
-    Run all checks on changed files::
+    Run all checks on changed files:
 
-        $ docvet check
+    ```bash
+    $ docvet check
+    ```
 
-    Run all checks on the entire codebase::
+    Run all checks on the entire codebase:
 
-        $ docvet check --all
+    ```bash
+    $ docvet check --all
+    ```
 
 See Also:
     [`docvet.checks`][]: Check modules and the Finding dataclass.

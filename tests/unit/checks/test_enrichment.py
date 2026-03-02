@@ -3928,3 +3928,207 @@ class Foo:
     # Per dev notes edge case 13: fire anyway even if >>> is in fenced block
     assert result is not None
     assert result.rule == "prefer-fenced-code-blocks"
+
+
+# --- :: (rST indented block) detection tests ---
+
+
+def test_fenced_blocks_when_rst_indented_block_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        Typical usage::
+
+            foo = Foo()
+            print(foo)
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert isinstance(result, Finding)
+    assert result.rule == "prefer-fenced-code-blocks"
+    assert result.category == "recommended"
+    assert "::" in result.message
+    assert "reStructuredText" in result.message
+
+
+def test_fenced_blocks_when_rst_no_indented_follow_returns_none():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        Not a code block::
+
+        This is not indented more.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_fenced_blocks_when_rst_trailing_whitespace_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        Typical usage::   \n\n            foo = Foo()
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "prefer-fenced-code-blocks"
+    assert "::" in result.message
+
+
+def test_fenced_blocks_when_mixed_doctest_and_rst_returns_doctest_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        >>> foo = Foo()
+
+        Another example::
+
+            print(foo)
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert ">>>" in result.message
+    assert "::" not in result.message
+
+
+def test_fenced_blocks_when_module_rst_block_returns_finding():
+    source = '''\
+"""A module.
+
+Examples:
+    Typical usage::
+
+        import foo
+        foo.bar()
+"""
+'''
+    from docvet.ast_utils import get_documented_symbols
+
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    node_index = _build_node_index(tree)
+    symbol = [s for s in symbols if s.kind == "module"][0]
+    assert symbol.docstring is not None
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "prefer-fenced-code-blocks"
+    assert "module" in result.message
+    assert "::" in result.message
+
+
+def test_fenced_blocks_when_bare_double_colon_line_with_indent_returns_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        ::
+
+            foo = Foo()
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_prefer_fenced_code_blocks(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is not None
+    assert result.rule == "prefer-fenced-code-blocks"
+    assert "::" in result.message
+
+
+def test_fenced_blocks_when_rst_block_config_disabled_returns_no_finding():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        Typical usage::
+
+            foo = Foo()
+    """
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(prefer_fenced_code_blocks=False)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    fenced_findings = [f for f in findings if f.rule == "prefer-fenced-code-blocks"]
+    assert fenced_findings == []
+
+
+def test_fenced_blocks_when_rst_block_orchestrator_fires_when_enabled():
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        Typical usage::
+
+            foo = Foo()
+    """
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig(prefer_fenced_code_blocks=True)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    fenced_findings = [f for f in findings if f.rule == "prefer-fenced-code-blocks"]
+    assert len(fenced_findings) == 1
+    assert fenced_findings[0].symbol == "Foo"

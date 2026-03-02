@@ -17,13 +17,17 @@ Attributes:
     server: The pygls ``LanguageServer`` instance.
 
 Examples:
-    Start the server on stdio (typically invoked by an editor)::
+    Start the server on stdio (typically invoked by an editor):
 
-        $ docvet lsp
+    ```bash
+    $ docvet lsp
+    ```
 
-    Install with the ``[lsp]`` extra::
+    Install with the ``[lsp]`` extra:
 
-        $ pip install docvet[lsp]
+    ```bash
+    $ pip install docvet[lsp]
+    ```
 
 See Also:
     [`docvet.checks`][]: Check modules that produce Finding objects.
@@ -262,11 +266,13 @@ def start_server() -> None:
     then starts the pygls server in stdio mode.
 
     Examples:
-        Typically invoked by the ``docvet lsp`` CLI command::
+        Typically invoked by the ``docvet lsp`` CLI command:
 
-            from docvet.lsp import start_server
+        ```python
+        from docvet.lsp import start_server
 
-            start_server()
+        start_server()
+        ```
     """
     server.docvet_config = load_config()  # type: ignore[attr-defined]
     server.start_io()

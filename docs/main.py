@@ -4,16 +4,20 @@ Loads rule metadata from docs/rules.yml and provides Jinja macros
 for rendering consistent rule page headers and fix guidance sections.
 
 Examples:
-    Configure in ``mkdocs.yml``::
+    Configure in ``mkdocs.yml``:
 
-        plugins:
-          - macros:
-              module_name: docs/main
+    ```yaml
+    plugins:
+      - macros:
+          module_name: docs/main
+    ```
 
-    Use in a rule page::
+    Use in a rule page:
 
-        {{rule_header()}}
-        {{rule_fix()}}
+    ```jinja2
+    {{rule_header()}}
+    {{rule_fix()}}
+    ```
 
 See Also:
     :doc:`docs/rules.yml`: Rule metadata catalog consumed by this module.

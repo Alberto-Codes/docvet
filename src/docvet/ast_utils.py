@@ -6,12 +6,14 @@ Used by the enrichment and freshness check modules to map source
 locations to semantic symbols.
 
 Examples:
-    Extract documented symbols from a source file::
+    Extract documented symbols from a source file:
 
-        from docvet.ast_utils import get_documented_symbols
+    ```python
+    from docvet.ast_utils import get_documented_symbols
 
-        tree = ast.parse(source)
-        symbols = get_documented_symbols(tree)
+    tree = ast.parse(source)
+    symbols = get_documented_symbols(tree)
+    ```
 
 See Also:
     [`docvet.checks.enrichment`][]: Enrichment rules that consume symbols.

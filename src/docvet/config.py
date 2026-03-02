@@ -9,12 +9,14 @@ composable validation helpers (``_validate_string_list``,
 defaults for all check modules.
 
 Examples:
-    Load configuration from the project root::
+    Load configuration from the project root:
 
-        from docvet.config import load_config
+    ```python
+    from docvet.config import load_config
 
-        config = load_config()
-        enrichment = config.enrichment
+    config = load_config()
+    enrichment = config.enrichment
+    ```
 
 See Also:
     [`docvet.cli`][]: CLI entry point that loads config on startup.
