@@ -180,7 +180,7 @@ class DocvetConfig:
         fail_on (list[str]): Check names that cause exit code 1.
             Defaults to ``[]``.
         warn_on (list[str]): Check names reported without failing.
-            Defaults to all four checks.
+            Defaults to all five checks.
         freshness (FreshnessConfig): Freshness check settings.
         enrichment (EnrichmentConfig): Enrichment check settings.
         presence (PresenceConfig): Presence check settings.
@@ -208,6 +208,7 @@ class DocvetConfig:
     fail_on: list[str] = field(default_factory=list)
     warn_on: list[str] = field(
         default_factory=lambda: [
+            "presence",
             "freshness",
             "enrichment",
             "griffe",

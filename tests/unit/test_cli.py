@@ -12,6 +12,7 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from docvet.checks.presence import PresenceStats
 from docvet.cli import (
     FreshnessMode,
     _merge_file_args,
@@ -19,9 +20,10 @@ from docvet.cli import (
     _run_enrichment,
     _run_freshness,
     _run_griffe,
+    _run_presence,
     app,
 )
-from docvet.config import DocvetConfig, load_config
+from docvet.config import DocvetConfig, PresenceConfig, load_config
 from docvet.discovery import DiscoveryMode
 
 pytestmark = pytest.mark.unit
@@ -49,6 +51,10 @@ def _non_timing_lines(output: str) -> list[str]:
 def _mock_config_and_discovery(mocker):
     mocker.patch("docvet.cli.load_config", return_value=DocvetConfig())
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
+    mocker.patch(
+        "docvet.cli._run_presence",
+        return_value=([], PresenceStats(documented=0, total=0)),
+    )
     mocker.patch("docvet.cli._run_enrichment", return_value=[])
     mocker.patch("docvet.cli._run_freshness", return_value=[])
     mocker.patch("docvet.cli._run_coverage", return_value=[])
@@ -1728,7 +1734,7 @@ class TestOutputAndExit:
         code = self._call(ctx, {"enrichment": [finding]}, config, 1, ["enrichment"])
         assert code == 1
         self.mock_determine_exit_code.assert_called_once_with(
-            {"enrichment": [finding]}, config
+            {"enrichment": [finding]}, config, presence_stats=None
         )
 
     def test_exit_code_0_when_fail_on_check_has_no_findings(self):
@@ -1738,7 +1744,9 @@ class TestOutputAndExit:
         findings_by_check = {"enrichment": []}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
+        self.mock_determine_exit_code.assert_called_once_with(
+            findings_by_check, config, presence_stats=None
+        )
 
     def test_exit_code_0_when_fail_on_is_empty(self, make_finding):
         self.mock_determine_exit_code.return_value = 0
@@ -1748,7 +1756,9 @@ class TestOutputAndExit:
         findings_by_check = {"enrichment": [finding]}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
+        self.mock_determine_exit_code.assert_called_once_with(
+            findings_by_check, config, presence_stats=None
+        )
 
     def test_no_color_env_var_suppresses_ansi(self, monkeypatch, make_finding):
         monkeypatch.setenv("NO_COLOR", "1")
@@ -1789,14 +1799,18 @@ class TestOutputAndExit:
         findings_by_check = {"enrichment": [finding]}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(findings_by_check, config)
+        self.mock_determine_exit_code.assert_called_once_with(
+            findings_by_check, config, presence_stats=None
+        )
 
     def test_format_json_calls_format_json_with_findings(self, capsys, make_finding):
         """AC#1: --format json routes to format_json and emits to stdout."""
         finding = make_finding()
         ctx = self._make_ctx(fmt="json")
         self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 5, ["enrichment"])
-        self.mock_format_json.assert_called_once_with([finding], 5)
+        self.mock_format_json.assert_called_once_with(
+            [finding], 5, presence_stats=None, min_coverage=0.0
+        )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'
 
@@ -1804,7 +1818,9 @@ class TestOutputAndExit:
         """AC#6: --format json always emits JSON, even with no findings."""
         ctx = self._make_ctx(fmt="json")
         self._call(ctx, {"enrichment": []}, DocvetConfig(), 5, ["enrichment"])
-        self.mock_format_json.assert_called_once_with([], 5)
+        self.mock_format_json.assert_called_once_with(
+            [], 5, presence_stats=None, min_coverage=0.0
+        )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'
 
@@ -2400,3 +2416,328 @@ def test_check_with_format_text_output_unchanged():
     result = runner.invoke(app, ["check"])
     assert result.exit_code == 0
     assert '{"findings"' not in result.output
+
+
+# ---------------------------------------------------------------------------
+# Presence subcommand and integration tests (Story 28.2)
+# ---------------------------------------------------------------------------
+
+
+class TestRunPresence:
+    """Tests for the _run_presence private runner."""
+
+    @pytest.fixture(autouse=True)
+    def _unmock_run_presence(self, mocker):
+        """Restore the real _run_presence for this test class."""
+        mocker.stopall()
+        mocker.patch("docvet.cli.load_config", return_value=DocvetConfig())
+        mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
+        mocker.patch("docvet.cli._run_enrichment", return_value=[])
+        mocker.patch("docvet.cli._run_freshness", return_value=[])
+        mocker.patch("docvet.cli._run_coverage", return_value=[])
+        mocker.patch("docvet.cli._run_griffe", return_value=[])
+
+    def test_returns_findings_and_aggregated_stats(self, mocker, make_finding):
+        """10.1: _run_presence returns findings and aggregated stats."""
+        finding1 = make_finding(rule="missing-docstring", file="a.py")
+        finding2 = make_finding(rule="missing-docstring", file="b.py")
+        stats1 = PresenceStats(documented=3, total=5)
+        stats2 = PresenceStats(documented=2, total=3)
+        mocker.patch(
+            "docvet.cli.check_presence",
+            side_effect=[([finding1], stats1), ([finding2], stats2)],
+        )
+        mocker.patch("pathlib.Path.read_text", return_value="x = 1")
+
+        findings, agg = _run_presence([Path("a.py"), Path("b.py")], DocvetConfig())
+        assert len(findings) == 2
+        assert agg.documented == 5
+        assert agg.total == 8
+
+    def test_catches_syntax_error_and_continues(self, mocker, make_finding):
+        """10.2: _run_presence catches SyntaxError and continues."""
+        finding = make_finding(rule="missing-docstring")
+        stats = PresenceStats(documented=1, total=2)
+        mocker.patch(
+            "docvet.cli.check_presence",
+            return_value=([finding], stats),
+        )
+
+        call_count = 0
+        original_parse = __import__("ast").parse
+
+        def _fake_parse(source, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise SyntaxError("bad")
+            return original_parse(source, **kwargs)
+
+        mocker.patch("docvet.cli.ast.parse", side_effect=_fake_parse)
+        mocker.patch("pathlib.Path.read_text", return_value="x = 1")
+
+        findings, agg = _run_presence([Path("bad.py"), Path("good.py")], DocvetConfig())
+        assert len(findings) == 1
+        assert agg.documented == 1
+        assert agg.total == 2
+
+    def test_empty_file_list_returns_zero_stats(self):
+        """10.3: _run_presence with empty file list returns empty and zero."""
+        findings, agg = _run_presence([], DocvetConfig())
+        assert findings == []
+        assert agg.documented == 0
+        assert agg.total == 0
+
+    def test_all_syntax_errors_returns_zero_stats(self, mocker):
+        """10.28: All files with SyntaxError returns PresenceStats(0, 0)."""
+        mocker.patch("pathlib.Path.read_text", return_value="def (")
+        mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("bad"))
+
+        findings, agg = _run_presence(
+            [Path("bad1.py"), Path("bad2.py")], DocvetConfig()
+        )
+        assert findings == []
+        assert agg.documented == 0
+        assert agg.total == 0
+
+
+class TestPresenceSubcommand:
+    """Tests for the `presence` subcommand."""
+
+    def test_presence_help_shows_correct_description(self):
+        result = runner.invoke(app, ["presence", "--help"])
+        assert "missing docstrings" in result.output
+
+    def test_outputs_findings_and_summary(self, mocker, make_finding):
+        """10.4: presence subcommand outputs findings and summary line."""
+        finding = make_finding(rule="missing-docstring")
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([finding], PresenceStats(documented=3, total=5)),
+        )
+        result = runner.invoke(app, ["presence", "--all"])
+        output = _strip_ansi(result.output)
+        assert "missing-docstring" in output
+
+    def test_exit_code_0_when_no_findings(self, mocker):
+        """10.5: Exit code 0 when no presence findings."""
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=5, total=5)),
+        )
+        result = runner.invoke(app, ["presence", "--all"])
+        assert result.exit_code == 0
+
+    def test_verbose_shows_timing(self, mocker):
+        """10.6: Verbose mode shows timing information."""
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=5, total=5)),
+        )
+        result = runner.invoke(app, ["--verbose", "presence", "--all"])
+        assert "Found" in result.output or "Vetted" in result.output
+
+    def test_quiet_suppresses_summary(self, mocker):
+        """10.7: Quiet mode suppresses summary."""
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=5, total=5)),
+        )
+        result = runner.invoke(app, ["--quiet", "presence", "--all"])
+        assert "Vetted" not in result.output
+
+
+class TestPresenceInCheck:
+    """Tests for presence integration in `check` command."""
+
+    def test_presence_runs_when_enabled(self, mocker):
+        """10.8: Presence runs when enabled and adds to checks list."""
+        mock_run = mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=5, total=5)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once()
+
+    def test_presence_disabled_skips_the_check(self, mocker):
+        """10.9: Presence disabled skips the check."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(enabled=False)),
+        )
+        mock_run = mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=0, total=0)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 0
+        mock_run.assert_not_called()
+
+    def test_summary_includes_coverage_percentage(self, mocker):
+        """10.10: Summary includes coverage percentage."""
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=87, total=100)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert "87.0% coverage" in result.output
+
+    def test_summary_no_coverage_when_presence_disabled(self, mocker):
+        """10.18: Summary line has no coverage when presence not in checks."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(enabled=False)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert "coverage" not in result.output or "% coverage" not in result.output
+
+
+class TestCoverageThreshold:
+    """Tests for min_coverage threshold enforcement."""
+
+    def test_exit_code_1_when_below_min_coverage(self, mocker):
+        """10.11: Exit code 1 when below min_coverage."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=95.0)),
+        )
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=87, total=100)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 1
+
+    def test_exit_code_0_when_at_or_above_min_coverage(self, mocker):
+        """10.12: Exit code 0 when at or above min_coverage."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=95.0)),
+        )
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=96, total=100)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 0
+
+    def test_no_enforcement_when_min_coverage_zero(self, mocker):
+        """10.13: No enforcement when min_coverage = 0.0."""
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=10, total=100)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 0
+
+    def test_exact_100_percent_passes_with_threshold_100(self, mocker):
+        """10.25: Exact 100% with min_coverage=100 passes (>= not >)."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=100.0)),
+        )
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=100, total=100)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 0
+
+    def test_float_precision_just_below_threshold(self, mocker):
+        """10.26: Float precision edge — just below threshold fails."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=95.0)),
+        )
+        # 94/99 = 94.9494... < 95.0
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=94, total=99)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 1
+
+    def test_float_precision_just_above_threshold(self, mocker):
+        """10.26: Float precision edge — just above threshold passes."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=95.0)),
+        )
+        # 96/101 = 95.0495... >= 95.0
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=96, total=101)),
+        )
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 0
+
+
+class TestPresenceVerbose:
+    """Tests for presence verbose coverage output."""
+
+    def test_verbose_shows_coverage_line(self, mocker):
+        """10.19: Verbose shows 'Docstring coverage: N/M symbols' line."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=95.0)),
+        )
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=96, total=100)),
+        )
+        result = runner.invoke(app, ["--verbose", "check", "--all"])
+        assert "Docstring coverage: 96/100 symbols (96.0%)" in result.output
+
+    def test_verbose_shows_passes_threshold(self, mocker):
+        """10.19: Verbose shows 'passes' when above threshold."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=95.0)),
+        )
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=96, total=100)),
+        )
+        result = runner.invoke(app, ["--verbose", "check", "--all"])
+        assert "passes 95.0% threshold" in result.output
+
+    def test_verbose_shows_below_threshold(self, mocker):
+        """10.19: Verbose shows 'below' when under threshold."""
+        mocker.patch(
+            "docvet.cli.load_config",
+            return_value=DocvetConfig(presence=PresenceConfig(min_coverage=95.0)),
+        )
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=87, total=100)),
+        )
+        result = runner.invoke(app, ["--verbose", "check", "--all"])
+        assert "below 95.0% threshold" in result.output
+
+    def test_verbose_no_threshold_shows_percentage_only(self, mocker):
+        """10.19: Verbose with no threshold shows percentage only."""
+        mocker.patch(
+            "docvet.cli._run_presence",
+            return_value=([], PresenceStats(documented=87, total=100)),
+        )
+        result = runner.invoke(app, ["--verbose", "check", "--all"])
+        assert "Docstring coverage: 87/100 symbols (87.0%)" in result.output
+        assert "threshold" not in result.output
+
+
+class TestPresenceConfigDefault:
+    """Tests for config default changes."""
+
+    def test_presence_in_default_warn_on(self):
+        """10.23: 'presence' in default warn_on."""
+        config = DocvetConfig()
+        assert "presence" in config.warn_on
+
+    def test_autouse_fixture_mocks_run_presence(self):
+        """10.24: _run_presence mock prevents existing test regression."""
+        # If the autouse fixture doesn't mock _run_presence, this test
+        # would break because check() now calls _run_presence which
+        # returns a tuple, not a list.
+        result = runner.invoke(app, ["check", "--all"])
+        assert result.exit_code == 0

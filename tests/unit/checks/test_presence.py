@@ -646,3 +646,50 @@ class C:
         assert stats.documented == 3
         assert len(findings) == 2
         assert stats.documented + len(findings) == stats.total
+
+
+class TestNoDoubleCounting:
+    """Regression guard: enrichment skips undocumented symbols (AC 3)."""
+
+    def test_enrichment_produces_zero_findings_for_undocumented_symbols(self):
+        """10.20: Both check_presence and check_enrichment on the same source.
+
+        Verify that check_enrichment produces zero findings for symbols
+        that have no docstring (enrichment skips `symbol.docstring is None`
+        at enrichment.py:1354). This is a unit-level test, NOT a CLI mock.
+        """
+        import ast
+
+        from docvet.checks.enrichment import check_enrichment
+        from docvet.config import EnrichmentConfig
+
+        source = '''\
+def documented_func():
+    """Has a docstring."""
+    pass
+
+def undocumented_func():
+    pass
+
+class UndocumentedClass:
+    pass
+'''
+        tree = ast.parse(source)
+        config = PresenceConfig()
+        enrichment_config = EnrichmentConfig()
+
+        # Presence: should find the undocumented symbols
+        presence_findings, stats = check_presence(source, "test.py", config)
+        undocumented_symbols = {f.symbol for f in presence_findings}
+        assert "undocumented_func" in undocumented_symbols
+        assert "UndocumentedClass" in undocumented_symbols
+
+        # Enrichment: must produce zero findings for those undocumented symbols
+        enrichment_findings = check_enrichment(
+            source, tree, enrichment_config, "test.py"
+        )
+        enrichment_symbols = {f.symbol for f in enrichment_findings}
+        for sym in undocumented_symbols:
+            assert sym not in enrichment_symbols, (
+                f"Enrichment should not flag undocumented symbol '{sym}'"
+            )

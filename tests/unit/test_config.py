@@ -124,6 +124,7 @@ def test_docvet_defaults_fail_on_is_empty():
 def test_docvet_defaults_warn_on_has_all_checks():
     cfg = DocvetConfig()
     assert cfg.warn_on == [
+        "presence",
         "freshness",
         "enrichment",
         "griffe",
@@ -300,6 +301,7 @@ def test_load_config_missing_section_returns_defaults(
     cfg = load_config()
     assert cfg.fail_on == []
     assert cfg.warn_on == [
+        "presence",
         "freshness",
         "enrichment",
         "griffe",
@@ -662,7 +664,7 @@ def test_load_config_fail_on_all_four_no_warn_on_zero_warnings(
     cfg = load_config()
     err = capsys.readouterr().err
     assert "appears in both" not in err
-    assert cfg.warn_on == []
+    assert cfg.warn_on == ["presence"]
 
 
 def test_load_config_fail_on_partial_no_warn_on_zero_warnings(
@@ -673,7 +675,7 @@ def test_load_config_fail_on_partial_no_warn_on_zero_warnings(
     cfg = load_config()
     err = capsys.readouterr().err
     assert "appears in both" not in err
-    assert cfg.warn_on == ["freshness", "griffe", "coverage"]
+    assert cfg.warn_on == ["presence", "freshness", "griffe", "coverage"]
 
 
 def test_load_config_both_explicit_overlap_warns_for_overlapping_only(
@@ -871,7 +873,7 @@ def test_resolve_fail_warn_both_from_defaults():
     defaults = DocvetConfig()
     fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
     assert fail_on == []
-    assert warn_on == ["freshness", "enrichment", "griffe", "coverage"]
+    assert warn_on == ["presence", "freshness", "enrichment", "griffe", "coverage"]
 
 
 def test_resolve_fail_warn_overlap_explicit_warn_emits_warning(capsys):

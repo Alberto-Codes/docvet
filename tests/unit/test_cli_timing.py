@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from docvet.checks.presence import PresenceStats
 from docvet.cli import app
 from docvet.config import DocvetConfig
 
@@ -18,7 +19,8 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 
 TIMING_LINE_RE = re.compile(
-    r"^(enrichment|freshness|coverage|griffe): \d+ files in \d+\.\d+s$", re.MULTILINE
+    r"^(presence|enrichment|freshness|coverage|griffe): \d+ files in \d+\.\d+s$",
+    re.MULTILINE,
 )
 SUMMARY_LINE_RE = re.compile(
     r"^Vetted \d+ files \[.+\] \u2014 .+\. \(\d+\.\d+s\)$", re.MULTILINE
@@ -50,6 +52,10 @@ def _mock_check_internals(mocker):
 
     mocker.patch("docvet.cli._resolve_discovery_mode")
     mocker.patch("docvet.cli._discover_and_handle", return_value=fake_files)
+    mocker.patch(
+        "docvet.cli._run_presence",
+        return_value=([], PresenceStats(documented=0, total=0)),
+    )
     mocker.patch("docvet.cli._run_enrichment", return_value=[])
     mocker.patch("docvet.cli._run_freshness", return_value=[])
     mocker.patch("docvet.cli._run_coverage", return_value=[])
@@ -82,6 +88,7 @@ class TestCheckVerbosePerCheckTiming:
         result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
         output = result.output
 
+        assert "presence:" in output
         assert "enrichment:" in output
         assert "freshness:" in output
         assert "coverage:" in output
@@ -93,7 +100,7 @@ class TestCheckVerbosePerCheckTiming:
         result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
 
         matches = TIMING_LINE_RE.findall(result.output)
-        assert len(matches) == 4
+        assert len(matches) == 5
 
 
 # ---------------------------------------------------------------------------
@@ -206,11 +213,12 @@ class TestTimingFormat:
     @pytest.mark.usefixtures("_mock_check_internals")
     def test_per_check_elapsed_value_reflects_mock_gap(self, cli_runner, mocker):
         """Verify the subtraction is correct, not just the format."""
-        # Two calls per check: start (100.0) and end (100.5) → 0.5s
+        # Calls: total_start, presence_start, presence_end,
+        # enrichment_start (100.0), enrichment_end (100.5) → 0.5s
         # Then remaining calls for subsequent checks and total.
         mocker.patch(
             "docvet.cli.time.perf_counter",
-            side_effect=[100.0, 100.0, 100.5] + [200.0] * 50,
+            side_effect=[100.0, 100.0, 100.0, 100.0, 100.5] + [200.0] * 50,
         )
 
         result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
@@ -259,15 +267,13 @@ class TestGriffeTimingSuppressed:
         assert len(griffe_timing) == 1
 
     @pytest.mark.usefixtures("_mock_check_internals", "_mock_perf_counter")
-    def test_only_three_timing_lines_when_griffe_not_installed(
-        self, cli_runner, mocker
-    ):
+    def test_only_four_timing_lines_when_griffe_not_installed(self, cli_runner, mocker):
         mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
 
         result = cli_runner.invoke(app, ["--verbose", "check", "--all"])
 
         matches = TIMING_LINE_RE.findall(result.output)
-        assert len(matches) == 3
+        assert len(matches) == 4
 
 
 # ---------------------------------------------------------------------------
@@ -297,7 +303,7 @@ class TestSummaryConditionalGriffe:
         ]
         assert len(summary) == 1
         assert "griffe" not in summary[0]
-        assert "[enrichment, freshness, coverage]" in summary[0]
+        assert "[presence, enrichment, freshness, coverage]" in summary[0]
 
 
 # ---------------------------------------------------------------------------
