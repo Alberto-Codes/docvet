@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.3](https://github.com/Alberto-Codes/docvet/compare/v1.6.2...v1.6.3) (2026-03-02)
+
+
+### Bug Fixes
+
+* **enrichment:** detect rST :: indented code blocks in prefer-fenced-code-blocks rule ([21e3567](https://github.com/Alberto-Codes/docvet/commit/21e35677cfbc70f63406874c8c052e16ad18a08c)), closes [#225](https://github.com/Alberto-Codes/docvet/issues/225)
+
 ## [1.6.2](https://github.com/Alberto-Codes/docvet/compare/v1.6.1...v1.6.2) (2026-03-01)
 
 
