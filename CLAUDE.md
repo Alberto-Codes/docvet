@@ -65,43 +65,22 @@ The product vision (`docs/product-vision.md`) defines the full design. The codeb
 | 5. Rendering | `griffe_compat` | Griffe parser warning capture for mkdocs compatibility |
 | 6. Visibility | `coverage` | Missing `__init__.py` detection for mkdocs discoverability |
 
-### Module Layout
+### Key Modules
 
-```
-src/docvet/
-    __init__.py
-    cli.py                # typer CLI: config loading, file discovery, check dispatch
-    config.py             # reads [tool.docvet] from pyproject.toml
-    discovery.py          # file discovery via git diff, git diff --cached, --all, positional args, or --files
-    ast_utils.py          # shared AST helpers (docstring ranges, node walking, symbol mapping)
-    reporting.py          # markdown/terminal report generation
-    checks/
-        __init__.py
-        enrichment.py     # missing sections detection (AST-based)
-        freshness.py      # git-blame drift + git-diff immediate staleness
-        coverage.py       # missing __init__.py for mkdocs
-        griffe_compat.py  # griffe parser warning capture
-```
+- **`cli.py`** — typer CLI: config loading, file discovery, check dispatch, unified output pipeline (`_output_and_exit`)
+- **`config.py`** — reads `[tool.docvet]` from pyproject.toml
+- **`discovery.py`** — file discovery via git diff, git diff --cached, --all, positional args, or --files
+- **`ast_utils.py`** — shared AST helpers (docstring ranges, node walking, symbol mapping)
+- **`reporting.py`** — markdown/terminal/JSON report generation
+- **`lsp.py`** — LSP server for real-time editor diagnostics
+- **`checks/`** — one module per check layer (enrichment, freshness, coverage, griffe_compat)
 
-### Test Structure
+### Test Conventions
 
-```
-tests/
-    conftest.py           # Shared fixtures (source factories, AST helpers)
-    unit/
-        checks/           # One test file per check module
-        test_ast_utils.py
-        test_config.py
-        test_discovery.py
-    integration/
-        conftest.py       # Git repo fixtures (tmp_path-based)
-        test_freshness_diff.py
-        test_freshness_drift.py
-    fixtures/             # .py files with known docstring issues
-        missing_raises.py
-        missing_yields.py
-        complete_module.py
-```
+- Two-layer structure: `tests/unit/` (AST + mocks) and `tests/integration/` (temp git repos)
+- One test file per source module; check tests live in `tests/unit/checks/`
+- Fixtures in `tests/fixtures/` — .py files with known docstring issues
+- Markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.slow`
 
 ## Key Design Decisions
 
