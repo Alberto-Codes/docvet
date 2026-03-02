@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.4](https://github.com/Alberto-Codes/docvet/compare/v1.6.3...v1.6.4) (2026-03-02)
+
+
+### Bug Fixes
+
+* **ci:** add TestPyPI staging to publish pipeline ([63267ff](https://github.com/Alberto-Codes/docvet/commit/63267fff92a213b0b945c7d5fab60e6eb6f31bd4))
+
 ## [1.6.3](https://github.com/Alberto-Codes/docvet/compare/v1.6.2...v1.6.3) (2026-03-02)
 
 
