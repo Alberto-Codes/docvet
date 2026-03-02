@@ -16,7 +16,7 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
       upload_url: ${{ steps.release.outputs.upload_url }}
       prs_created: ${{ steps.release.outputs.prs_created }}
-      pr_branch: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+      pr_branch: ${{ steps.release.outputs.prs_created == 'true' && fromJSON(steps.release.outputs.pr).headBranchName || '' }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
