@@ -30,6 +30,11 @@ class TestCheckSubmoduleExports:
         assert hasattr(mod, "__all__")
         assert mod.__all__ == ["check_coverage"]
 
+    def test_presence_all_contains_presence_stats_and_check_presence(self):
+        mod = importlib.import_module("docvet.checks.presence")
+        assert hasattr(mod, "__all__")
+        assert sorted(mod.__all__) == ["PresenceStats", "check_presence"]
+
 
 class TestChecksPackageReExports:
     def test_checks_all_contains_finding_and_all_check_functions(self):
@@ -37,14 +42,16 @@ class TestChecksPackageReExports:
         assert hasattr(mod, "__all__")
         expected = [
             "Finding",
+            "PresenceStats",
             "check_coverage",
             "check_enrichment",
             "check_freshness_diff",
             "check_freshness_drift",
             "check_griffe_compat",
+            "check_presence",
         ]
         assert sorted(mod.__all__) == expected
-        assert len(mod.__all__) == 6
+        assert len(mod.__all__) == 8
 
     def test_checks_package_exposes_check_functions_as_attributes(self):
         mod = importlib.import_module("docvet.checks")
@@ -53,11 +60,14 @@ class TestChecksPackageReExports:
         assert hasattr(mod, "check_freshness_diff")
         assert hasattr(mod, "check_freshness_drift")
         assert hasattr(mod, "check_griffe_compat")
+        assert hasattr(mod, "check_presence")
+        assert hasattr(mod, "PresenceStats")
         assert callable(mod.check_coverage)
         assert callable(mod.check_enrichment)
         assert callable(mod.check_freshness_diff)
         assert callable(mod.check_freshness_drift)
         assert callable(mod.check_griffe_compat)
+        assert callable(mod.check_presence)
 
 
 class TestTopLevelExports:
@@ -76,10 +86,11 @@ class TestConfigExports:
             "DocvetConfig",
             "EnrichmentConfig",
             "FreshnessConfig",
+            "PresenceConfig",
             "load_config",
         ]
         assert sorted(mod.__all__) == expected
-        assert len(mod.__all__) == 4
+        assert len(mod.__all__) == 5
 
 
 class TestInternalModulesExportNothing:
@@ -108,6 +119,7 @@ _ALL_DOCVET_MODULES = [
     "docvet.checks.enrichment",
     "docvet.checks.freshness",
     "docvet.checks.griffe_compat",
+    "docvet.checks.presence",
     "docvet.cli",
     "docvet.config",
     "docvet.discovery",
