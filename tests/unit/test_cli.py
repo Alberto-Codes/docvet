@@ -76,6 +76,7 @@ def test_app_when_invoked_with_help_shows_all_subcommands():
     result = runner.invoke(app, ["--help"])
     output = result.output
     assert "check" in output
+    assert "presence" in output
     assert "enrichment" in output
     assert "freshness" in output
     assert "coverage" in output
@@ -2535,7 +2536,8 @@ class TestPresenceSubcommand:
             return_value=([], PresenceStats(documented=5, total=5)),
         )
         result = runner.invoke(app, ["--verbose", "presence", "--all"])
-        assert "Found" in result.output or "Vetted" in result.output
+        assert "Found" in result.output
+        assert "Vetted" in result.output
 
     def test_quiet_suppresses_summary(self, mocker):
         """10.7: Quiet mode suppresses summary."""
@@ -2545,6 +2547,11 @@ class TestPresenceSubcommand:
         )
         result = runner.invoke(app, ["--quiet", "presence", "--all"])
         assert "Vetted" not in result.output
+
+    def test_presence_when_invoked_with_staged_and_all_fails_with_error(self):
+        result = runner.invoke(app, ["presence", "--staged", "--all"])
+        assert result.exit_code != 0
+        assert "only one of" in result.output.lower()
 
 
 class TestPresenceInCheck:
@@ -2558,7 +2565,11 @@ class TestPresenceInCheck:
         )
         result = runner.invoke(app, ["check", "--all"])
         assert result.exit_code == 0
-        mock_run.assert_called_once()
+        mock_run.assert_called_once_with(
+            [Path("/fake/file.py")],
+            DocvetConfig(),
+            show_progress=False,
+        )
 
     def test_presence_disabled_skips_the_check(self, mocker):
         """10.9: Presence disabled skips the check."""
@@ -2590,7 +2601,7 @@ class TestPresenceInCheck:
             return_value=DocvetConfig(presence=PresenceConfig(enabled=False)),
         )
         result = runner.invoke(app, ["check", "--all"])
-        assert "coverage" not in result.output or "% coverage" not in result.output
+        assert "% coverage" not in result.output
 
 
 class TestCoverageThreshold:

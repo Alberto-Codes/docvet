@@ -304,6 +304,8 @@ def _emit_findings(
 def _format_coverage_line(stats: PresenceStats, threshold: float) -> str:
     """Format the verbose coverage status line for stderr.
 
+    Uses :attr:`PresenceStats.percentage` for the coverage calculation.
+
     Args:
         stats: Aggregate presence coverage stats.
         threshold: Minimum coverage threshold (0.0 means no threshold).
@@ -311,7 +313,7 @@ def _format_coverage_line(stats: PresenceStats, threshold: float) -> str:
     Returns:
         Formatted coverage line ending with a newline.
     """
-    pct = (stats.documented / stats.total * 100.0) if stats.total > 0 else 100.0
+    pct = stats.percentage
     if threshold > 0.0:
         status = "passes" if pct >= threshold else "below"
         return (
@@ -814,8 +816,9 @@ def check(
     """Run all enabled checks.
 
     Runs presence (if enabled), enrichment, freshness, coverage, and
-    griffe checks in sequence. Displays a progress bar on stderr when
-    connected to a TTY. Uses three-tier verbosity: ``--quiet``
+    griffe checks in sequence. Coverage percentage is derived from
+    :attr:`PresenceStats.percentage`. Displays a progress bar on stderr
+    when connected to a TTY. Uses three-tier verbosity: ``--quiet``
     suppresses all non-finding stderr output, default shows the summary
     line with coverage percentage, ``--verbose`` adds per-check timing,
     file discovery count, and detailed coverage status.
@@ -896,11 +899,7 @@ def check(
 
     coverage_pct: float | None = None
     if agg_stats is not None:
-        coverage_pct = (
-            (agg_stats.documented / agg_stats.total * 100.0)
-            if agg_stats.total > 0
-            else 100.0
-        )
+        coverage_pct = agg_stats.percentage
 
     all_findings_flat = (
         presence_findings
@@ -959,6 +958,7 @@ def presence(
 ) -> None:
     """Check for missing docstrings.
 
+    Coverage percentage is derived from :attr:`PresenceStats.percentage`.
     Displays a progress bar on stderr when connected to a TTY.
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
@@ -987,11 +987,7 @@ def presence(
         discovered, config, show_progress=sys.stderr.isatty()
     )
     elapsed = time.perf_counter() - start
-    coverage_pct = (
-        (agg_stats.documented / agg_stats.total * 100.0)
-        if agg_stats.total > 0
-        else 100.0
-    )
+    coverage_pct = agg_stats.percentage
     if not quiet:
         sys.stderr.write(
             format_summary(

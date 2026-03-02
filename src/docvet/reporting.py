@@ -162,7 +162,8 @@ def format_json(
     object. Each finding includes all six ``Finding`` fields plus a
     derived ``severity`` field (``"high"`` for required, ``"low"`` for
     recommended). When *presence_stats* is provided, a
-    ``presence_coverage`` object is added with documented/total counts,
+    ``presence_coverage`` object is added using
+    :attr:`PresenceStats.percentage` for documented/total counts,
     percentage, threshold, and pass/fail status. Always returns a valid
     JSON object, even when there are no findings.
 
@@ -214,11 +215,7 @@ def format_json(
         },
     }
     if presence_stats is not None:
-        pct = (
-            (presence_stats.documented / presence_stats.total * 100.0)
-            if presence_stats.total > 0
-            else 100.0
-        )
+        pct = presence_stats.percentage
         obj["presence_coverage"] = {
             "documented": presence_stats.documented,
             "total": presence_stats.total,
@@ -344,8 +341,9 @@ def determine_exit_code(
     """Determine the CLI exit code based on findings and fail_on config.
 
     Returns 1 if any ``fail_on`` check has findings, or if the
-    presence coverage threshold is configured and not met. Returns
-    0 otherwise.
+    presence coverage threshold (compared via
+    :attr:`PresenceStats.percentage`) is configured and not met.
+    Returns 0 otherwise.
 
     Args:
         findings_by_check: Findings grouped by check name.
@@ -361,11 +359,6 @@ def determine_exit_code(
         if findings_by_check.get(check, []):
             return 1
     if presence_stats is not None and config.presence.min_coverage > 0.0:
-        pct = (
-            (presence_stats.documented / presence_stats.total * 100.0)
-            if presence_stats.total > 0
-            else 100.0
-        )
-        if pct < config.presence.min_coverage:
+        if presence_stats.percentage < config.presence.min_coverage:
             return 1
     return 0
