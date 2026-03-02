@@ -68,9 +68,6 @@ uv run ty check
 # Tests with coverage
 uv run pytest --cov=docvet --cov-report=term-missing --cov-fail-under=85
 
-# Docstring presence (95% threshold)
-uv run interrogate -v .
-
 # Auto-fix linting issues
 uv run ruff check --fix .
 
@@ -209,7 +206,7 @@ GitHub Actions runs on PRs and pushes to main:
 | lint | `ruff check .` + `ruff format --check .` |
 | type-check | `ty check` |
 | test | `pytest --cov-fail-under=85` on Python 3.12 + 3.13 |
-| interrogate | `interrogate -v .` (95% docstring coverage) |
+| docvet | `docvet check --all` (docstring quality) |
 
 ## Key Constraints
 
