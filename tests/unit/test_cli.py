@@ -2741,3 +2741,51 @@ class TestPresenceConfigDefault:
         # returns a tuple, not a list.
         result = runner.invoke(app, ["check", "--all"])
         assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# Direct unit tests for _format_coverage_line
+# ---------------------------------------------------------------------------
+
+
+class TestFormatCoverageLine:
+    """Direct unit tests for the _format_coverage_line helper.
+
+    Pure function — no mocks, no CLI invocation. Tests the division-by-zero
+    guard, threshold comparison semantics (>=), and conditional text output.
+    """
+
+    def test_above_threshold_shows_passes(self):
+        from docvet.cli import _format_coverage_line
+
+        result = _format_coverage_line(PresenceStats(documented=96, total=100), 95.0)
+        assert "96/100 symbols (96.0%)" in result
+        assert "passes 95.0% threshold" in result
+        assert result.endswith("\n")
+
+    def test_below_threshold_shows_below(self):
+        from docvet.cli import _format_coverage_line
+
+        result = _format_coverage_line(PresenceStats(documented=87, total=100), 95.0)
+        assert "87/100 symbols (87.0%)" in result
+        assert "below 95.0% threshold" in result
+
+    def test_no_threshold_omits_status(self):
+        from docvet.cli import _format_coverage_line
+
+        result = _format_coverage_line(PresenceStats(documented=87, total=100), 0.0)
+        assert "87/100 symbols (87.0%)" in result
+        assert "threshold" not in result
+
+    def test_zero_total_shows_100_percent(self):
+        from docvet.cli import _format_coverage_line
+
+        result = _format_coverage_line(PresenceStats(documented=0, total=0), 0.0)
+        assert "0/0 symbols (100.0%)" in result
+
+    def test_exact_threshold_boundary_passes(self):
+        """Exact match uses >= so it passes, not fails."""
+        from docvet.cli import _format_coverage_line
+
+        result = _format_coverage_line(PresenceStats(documented=95, total=100), 95.0)
+        assert "passes 95.0% threshold" in result
