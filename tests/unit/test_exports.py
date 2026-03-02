@@ -82,6 +82,14 @@ class TestConfigExports:
         assert len(mod.__all__) == 4
 
 
+class TestLspExports:
+    def test_lsp_all_contains_start_server(self):
+        mod = importlib.import_module("docvet.lsp")
+        assert hasattr(mod, "__all__")
+        assert mod.__all__ == ["start_server"]
+        assert len(mod.__all__) == 1
+
+
 class TestInternalModulesExportNothing:
     @pytest.mark.parametrize(
         "module_path",
@@ -111,6 +119,7 @@ _ALL_DOCVET_MODULES = [
     "docvet.cli",
     "docvet.config",
     "docvet.discovery",
+    "docvet.lsp",
     "docvet.reporting",
 ]
 
