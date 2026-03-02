@@ -122,18 +122,6 @@ docstring-code-line-length = "dynamic"
 fail-on = ["enrichment", "freshness", "coverage", "griffe"]
 
 # --------------------------------------------------------------------------- #
-# Interrogate
-# --------------------------------------------------------------------------- #
-[tool.interrogate]
-verbose = 1
-fail-under = 95
-ignore-init-method = true
-ignore-init-module = false
-ignore-magic = true
-ignore-private = true
-exclude = ["tests", "scripts"]
-
-# --------------------------------------------------------------------------- #
 # Ty (type checker)
 # --------------------------------------------------------------------------- #
 [tool.ty.src]
@@ -164,7 +152,6 @@ dev = [
     "griffe>=1.0",
     "pygls>=2.0,<3",
     "griffelib>=2.0",
-    "interrogate>=1.5",
     "pyyaml>=6.0",
     "pytest>=9.0",
     "pytest-cov>=7.0",
