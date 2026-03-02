@@ -12,9 +12,6 @@ wheels/
 # Virtual environments
 .venv
 
-# uv
-uv.lock
-
 # Testing
 .pytest_cache/
 htmlcov/

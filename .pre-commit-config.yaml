@@ -11,10 +11,20 @@ repos:
       - id: actionlint
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.12
+    rev: v0.15.4
     hooks:
       - id: ruff-check
       - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.10.7
+    hooks:
+      - id: uv-lock
+
+  - repo: https://github.com/owenlamont/uv-secure
+    rev: 0.17.0
+    hooks:
+      - id: uv-secure
 
   - repo: local
     hooks:

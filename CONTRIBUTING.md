@@ -69,7 +69,7 @@ All hooks must pass before the commit succeeds. The docvet hook runs `docvet che
 
 ## Quality Gates
 
-All six gates must pass before opening a PR. Run them locally:
+All five gates must pass before opening a PR. Run them locally:
 
 ```bash
 uv run ruff check .                  # Linting
@@ -77,7 +77,6 @@ uv run ruff format --check .         # Format check
 uv run ty check                      # Type checking
 uv run pytest                        # Tests (CI enforces 85% coverage)
 uv run docvet check --all            # Docstring quality (all 4 checks)
-uv run interrogate -v .              # Docstring presence (95% threshold)
 ```
 
 To auto-fix linting and formatting issues:
@@ -157,7 +156,6 @@ GitHub Actions runs these checks on every PR:
 | lint | `ruff check` + `ruff format --check` |
 | type-check | `ty check` |
 | test | `pytest` on Python 3.12 + 3.13 (85% coverage) |
-| interrogate | Docstring presence (95% threshold) |
 | docvet | `docvet check --all` (all 4 checks) |
 | CodeQL | Static security analysis |
 
