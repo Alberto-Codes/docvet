@@ -5,7 +5,7 @@ issues. Each check module returns a list of Finding objects representing
 detected issues.
 
 The Finding dataclass is the shared API contract between all check modules
-(enrichment, freshness, griffe, coverage) and the CLI layer.
+(enrichment, freshness, griffe, coverage, presence) and the CLI layer.
 
 Attributes:
     Finding: Immutable dataclass representing a docstring quality finding.
@@ -25,6 +25,7 @@ See Also:
     [`docvet.checks.freshness`][]: Stale docstring detection via git.
     [`docvet.checks.coverage`][]: Missing ``__init__.py`` detection.
     [`docvet.checks.griffe_compat`][]: Griffe rendering compatibility.
+    [`docvet.checks.presence`][]: Missing docstring presence detection.
 """
 
 from __future__ import annotations
@@ -34,12 +35,15 @@ from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
 from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
 from docvet.checks.griffe_compat import check_griffe_compat
+from docvet.checks.presence import PresenceStats, check_presence
 
 __all__ = [
     "Finding",
+    "PresenceStats",
     "check_coverage",
     "check_enrichment",
     "check_freshness_diff",
     "check_freshness_drift",
     "check_griffe_compat",
+    "check_presence",
 ]

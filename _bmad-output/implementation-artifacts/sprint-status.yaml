@@ -1,4 +1,4 @@
-# generated: 2026-02-28
+# generated: 2026-03-02
 # project: docvet
 # project_key: NOKEY
 # tracking_system: both
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-28
+generated: 2026-03-02
 project: docvet
 project_key: NOKEY
 tracking_system: both
@@ -230,3 +230,17 @@ development_status:
   epic-27: done
   27-1-fix-hunk-to-symbol-false-positives: done
   epic-27-retrospective: done  # 2026-02-28
+
+  # Epic 28: Docstring Presence Check
+  epic-28: in-progress
+  28-1-core-presence-detection-and-configuration: done
+  28-2-cli-wiring-and-pipeline-integration: backlog
+  28-3-documentation-and-migration-guide: backlog
+  epic-28-retrospective: optional
+
+  # Epic 29: MCP Server & Agentic Integration
+  epic-29: backlog
+  29-1-core-mcp-server-implementation: backlog
+  29-2-cli-wiring-and-tests: backlog
+  29-3-documentation-and-marketplace-publishing: backlog
+  epic-29-retrospective: optional

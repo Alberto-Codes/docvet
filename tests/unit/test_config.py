@@ -12,6 +12,7 @@ from docvet.config import (
     DocvetConfig,
     EnrichmentConfig,
     FreshnessConfig,
+    PresenceConfig,
     _find_pyproject,
     _resolve_fail_warn,
     _validate_string_list,
@@ -904,3 +905,166 @@ def test_resolve_fail_warn_filtered_warn_excludes_fail_items():
     fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
     assert fail_on == ["freshness", "coverage"]
     assert warn_on == ["enrichment"]
+
+
+# ---------------------------------------------------------------------------
+# PresenceConfig defaults (Story 28.1)
+# ---------------------------------------------------------------------------
+
+
+def test_presence_defaults_enabled_is_true():
+    cfg = PresenceConfig()
+    assert cfg.enabled is True
+
+
+def test_presence_defaults_min_coverage_is_zero():
+    cfg = PresenceConfig()
+    assert cfg.min_coverage == 0.0
+
+
+def test_presence_defaults_ignore_init_is_true():
+    cfg = PresenceConfig()
+    assert cfg.ignore_init is True
+
+
+def test_presence_defaults_ignore_magic_is_true():
+    cfg = PresenceConfig()
+    assert cfg.ignore_magic is True
+
+
+def test_presence_defaults_ignore_private_is_true():
+    cfg = PresenceConfig()
+    assert cfg.ignore_private is True
+
+
+def test_presence_when_mutated_raises_frozen_error():
+    cfg = PresenceConfig()
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        cfg.enabled = False  # type: ignore[misc]
+
+
+def test_docvet_presence_is_presence_config():
+    cfg = DocvetConfig()
+    assert isinstance(cfg.presence, PresenceConfig)
+
+
+# ---------------------------------------------------------------------------
+# PresenceConfig loading (Story 28.1)
+# ---------------------------------------------------------------------------
+
+
+def test_load_config_presence_custom_values(tmp_path, monkeypatch, write_pyproject):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.presence]
+enabled = false
+min-coverage = 95.0
+ignore-init = false
+ignore-magic = false
+ignore-private = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.presence.enabled is False
+    assert cfg.presence.min_coverage == 95.0
+    assert cfg.presence.ignore_init is False
+    assert cfg.presence.ignore_magic is False
+    assert cfg.presence.ignore_private is False
+
+
+def test_load_config_presence_partial_uses_defaults(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.presence]
+ignore-init = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.presence.enabled is True
+    assert cfg.presence.min_coverage == 0.0
+    assert cfg.presence.ignore_init is False
+    assert cfg.presence.ignore_magic is True
+
+
+def test_load_config_presence_absent_uses_defaults(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\n")
+    cfg = load_config()
+    assert cfg.presence.enabled is True
+    assert cfg.presence.min_coverage == 0.0
+
+
+def test_load_config_presence_min_coverage_int_coerced_to_float(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.presence]
+min-coverage = 80
+"""
+    )
+    cfg = load_config()
+    assert cfg.presence.min_coverage == 80.0
+    assert isinstance(cfg.presence.min_coverage, float)
+
+
+# ---------------------------------------------------------------------------
+# PresenceConfig validation (Story 28.1)
+# ---------------------------------------------------------------------------
+
+
+def test_load_config_unknown_presence_key_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet.presence]\nbad-key = true\n")
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "bad-key" in capsys.readouterr().err
+
+
+def test_load_config_presence_wrong_type_boolean_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet.presence]\nenabled = "yes"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "bool" in capsys.readouterr().err
+
+
+def test_load_config_presence_wrong_type_min_coverage_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet.presence]\nmin-coverage = "high"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "float" in capsys.readouterr().err
+
+
+def test_load_config_presence_bool_as_min_coverage_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet.presence]\nmin-coverage = true\n")
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "float" in capsys.readouterr().err
+
+
+def test_load_config_presence_is_valid_check_name(
+    tmp_path, monkeypatch, write_pyproject
+):
+    """Presence is accepted in fail-on/warn-on lists."""
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["presence"]\n')
+    cfg = load_config()
+    assert cfg.fail_on == ["presence"]

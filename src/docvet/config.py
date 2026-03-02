@@ -5,8 +5,8 @@ Loads and validates the ``[tool.docvet]`` configuration table from
 merging on top of defaults or an explicit ``exclude`` list. Uses
 composable validation helpers (``_validate_string_list``,
 ``_resolve_fail_warn``) to keep individual parsers focused. Exposes
-``EnrichmentConfig`` and ``FreshnessConfig`` dataclasses with sensible
-defaults for all check modules.
+``EnrichmentConfig``, ``FreshnessConfig``, and ``PresenceConfig``
+dataclasses with sensible defaults for all check modules.
 
 Examples:
     Load configuration from the project root:
@@ -30,7 +30,13 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-__all__ = ["DocvetConfig", "EnrichmentConfig", "FreshnessConfig", "load_config"]
+__all__ = [
+    "DocvetConfig",
+    "EnrichmentConfig",
+    "FreshnessConfig",
+    "PresenceConfig",
+    "load_config",
+]
 
 # ---------------------------------------------------------------------------
 # Frozen dataclasses
@@ -121,6 +127,46 @@ class EnrichmentConfig:
 
 
 @dataclass(frozen=True)
+class PresenceConfig:
+    """Configuration for the presence check.
+
+    Attributes:
+        enabled (bool): Whether the presence check is active.
+            Defaults to ``True``.
+        min_coverage (float): Minimum docstring coverage percentage
+            (0.0–100.0). Enforced by the CLI layer (Story 28.2).
+            Defaults to ``0.0`` (no threshold).
+        ignore_init (bool): Skip ``__init__`` methods when checking
+            for missing docstrings. Defaults to ``True``.
+        ignore_magic (bool): Skip dunder methods (except
+            ``__init__``) when checking for missing docstrings.
+            Defaults to ``True``.
+        ignore_private (bool): Skip single-underscore-prefixed
+            symbols when checking for missing docstrings. Defaults
+            to ``True``.
+
+    Examples:
+        Use defaults (all ignore flags on, no threshold):
+
+        ```python
+        cfg = PresenceConfig()
+        ```
+
+        Require 95% coverage and check ``__init__`` methods:
+
+        ```python
+        cfg = PresenceConfig(min_coverage=95.0, ignore_init=False)
+        ```
+    """
+
+    enabled: bool = True
+    min_coverage: float = 0.0
+    ignore_init: bool = True
+    ignore_magic: bool = True
+    ignore_private: bool = True
+
+
+@dataclass(frozen=True)
 class DocvetConfig:
     """Top-level docvet configuration.
 
@@ -137,6 +183,7 @@ class DocvetConfig:
             Defaults to all four checks.
         freshness (FreshnessConfig): Freshness check settings.
         enrichment (EnrichmentConfig): Enrichment check settings.
+        presence (PresenceConfig): Presence check settings.
         project_root (Path): Resolved project root directory.
 
     Examples:
@@ -169,6 +216,7 @@ class DocvetConfig:
     )
     freshness: FreshnessConfig = field(default_factory=FreshnessConfig)
     enrichment: EnrichmentConfig = field(default_factory=EnrichmentConfig)
+    presence: PresenceConfig = field(default_factory=PresenceConfig)
     project_root: Path = field(default_factory=Path.cwd)
 
 
@@ -186,6 +234,7 @@ _VALID_TOP_KEYS: frozenset[str] = frozenset(
         "warn-on",
         "freshness",
         "enrichment",
+        "presence",
     }
 )
 
@@ -207,7 +256,11 @@ _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
 )
 
 _VALID_CHECK_NAMES: frozenset[str] = frozenset(
-    {"enrichment", "freshness", "coverage", "griffe"}
+    {"enrichment", "freshness", "coverage", "griffe", "presence"}
+)
+
+_VALID_PRESENCE_KEYS: frozenset[str] = frozenset(
+    {"enabled", "min-coverage", "ignore-init", "ignore-magic", "ignore-private"}
 )
 
 _TOOL_SECTION = "[tool.docvet]"
@@ -427,14 +480,46 @@ def _parse_enrichment(data: dict[str, object]) -> EnrichmentConfig:
     return EnrichmentConfig(**kwargs)  # type: ignore[arg-type]
 
 
+def _parse_presence(data: dict[str, object]) -> PresenceConfig:
+    """Parse and validate ``[tool.docvet.presence]``.
+
+    Args:
+        data: Raw TOML dict for the presence section.
+
+    Returns:
+        A validated :class:`PresenceConfig`.
+    """
+    _validate_keys(data, _VALID_PRESENCE_KEYS, "[tool.docvet.presence]")
+    section = "[tool.docvet.presence]"
+    kwargs: dict[str, object] = {}
+    for key, value in data.items():
+        if key == "min-coverage":
+            if isinstance(value, bool):
+                msg = f"docvet: 'min-coverage' in {section} must be float, got bool"
+                print(msg, file=sys.stderr)
+                sys.exit(1)
+            if isinstance(value, int | float):
+                kwargs[_kebab_to_snake(key)] = float(value)
+            else:
+                actual = type(value).__name__
+                msg = f"docvet: 'min-coverage' in {section} must be float, got {actual}"
+                print(msg, file=sys.stderr)
+                sys.exit(1)
+        else:
+            _validate_type(value, bool, key, section)
+            kwargs[_kebab_to_snake(key)] = value
+    return PresenceConfig(**kwargs)  # type: ignore[arg-type]
+
+
 def _parse_docvet_section(
     data: dict[str, object],
 ) -> dict[str, object]:
     """Validate and parse a non-empty ``[tool.docvet]`` dict.
 
     Converts kebab-case keys to snake_case, validates types for all
-    top-level keys, and delegates nested sections to their respective
-    parsers. List-of-string fields (``exclude``, ``extend-exclude``,
+    top-level keys, and delegates nested sections (``freshness``,
+    ``enrichment``, ``presence``) to their respective parsers.
+    List-of-string fields (``exclude``, ``extend-exclude``,
     ``fail-on``, ``warn-on``) are validated via
     :func:`_validate_string_list`.
 
@@ -450,6 +535,7 @@ def _parse_docvet_section(
 
     freshness_data = converted.pop("freshness", None)
     enrichment_data = converted.pop("enrichment", None)
+    presence_data = converted.pop("presence", None)
 
     if freshness_data is not None:
         _validate_type(freshness_data, dict, "freshness", _TOOL_SECTION)
@@ -458,6 +544,10 @@ def _parse_docvet_section(
     if enrichment_data is not None:
         _validate_type(enrichment_data, dict, "enrichment", _TOOL_SECTION)
         converted["enrichment"] = _parse_enrichment(enrichment_data)  # type: ignore[arg-type]
+
+    if presence_data is not None:
+        _validate_type(presence_data, dict, "presence", _TOOL_SECTION)
+        converted["presence"] = _parse_presence(presence_data)  # type: ignore[arg-type]
 
     if "src_root" in converted:
         _validate_type(converted["src_root"], str, "src-root", _TOOL_SECTION)
@@ -591,7 +681,8 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     exclude list (explicit ``exclude`` or defaults) before constructing
     the final :class:`DocvetConfig`. Delegates ``fail-on``/``warn-on``
     resolution (including overlap detection and filtering) to
-    :func:`_resolve_fail_warn`.
+    :func:`_resolve_fail_warn`. Nested ``presence`` section is parsed
+    via :func:`_parse_presence`.
 
     Args:
         path: Explicit path to a ``pyproject.toml``. When *None*,
@@ -628,6 +719,7 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     raw_extend_exclude = parsed.get("extend_exclude")
     raw_freshness = parsed.get("freshness")
     raw_enrichment = parsed.get("enrichment")
+    raw_presence = parsed.get("presence")
 
     base_exclude: list[str] = (
         [str(x) for x in raw_exclude]
@@ -652,6 +744,11 @@ def load_config(path: Path | None = None) -> DocvetConfig:
             raw_enrichment
             if isinstance(raw_enrichment, EnrichmentConfig)
             else EnrichmentConfig()
+        ),
+        presence=(
+            raw_presence
+            if isinstance(raw_presence, PresenceConfig)
+            else PresenceConfig()
         ),
         project_root=project_root,
     )
