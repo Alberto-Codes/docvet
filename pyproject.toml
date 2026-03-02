@@ -160,4 +160,5 @@ dev = [
     "readme-renderer[md]>=44.0",
     "ruff>=0.11",
     "ty>=0.0.1a33",
+    "uv-secure>=0.17.0",
 ]
