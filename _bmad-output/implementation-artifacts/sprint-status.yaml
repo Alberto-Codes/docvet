@@ -232,11 +232,11 @@ development_status:
   epic-27-retrospective: done  # 2026-02-28
 
   # Epic 28: Docstring Presence Check
-  epic-28: in-progress
+  epic-28: done
   28-1-core-presence-detection-and-configuration: done
   28-2-cli-wiring-and-pipeline-integration: done
   28-3-documentation-and-migration-guide: done
-  epic-28-retrospective: optional
+  epic-28-retrospective: done  # 2026-03-02
 
   # Epic 29: MCP Server & Agentic Integration
   epic-29: backlog
