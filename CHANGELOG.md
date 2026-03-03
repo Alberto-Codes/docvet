@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.7.0](https://github.com/Alberto-Codes/docvet/compare/v1.6.4...v1.7.0) (2026-03-03)
+
+
+### Features
+
+* **presence:** add core presence detection and configuration ([#240](https://github.com/Alberto-Codes/docvet/issues/240)) ([a48edd3](https://github.com/Alberto-Codes/docvet/commit/a48edd3863674dc7a803bcdb0dff4380f9a3cc3a)), closes [#239](https://github.com/Alberto-Codes/docvet/issues/239)
+* **presence:** wire presence check into CLI pipeline and reporting ([#244](https://github.com/Alberto-Codes/docvet/issues/244)) ([067fbbd](https://github.com/Alberto-Codes/docvet/commit/067fbbde52ec52638f2a413211e36ff4e3e10dd3)), closes [#243](https://github.com/Alberto-Codes/docvet/issues/243)
+
+
+### Bug Fixes
+
+* **ci:** remove unsafe-best-match index strategy from smoke test ([f7cf9d3](https://github.com/Alberto-Codes/docvet/commit/f7cf9d3353ec54fdfe81186a8205982c22dc9a9f))
+* **config:** pin griffe &lt;2 for broken 2.0.0 release ([#251](https://github.com/Alberto-Codes/docvet/issues/251)) ([d408b7f](https://github.com/Alberto-Codes/docvet/commit/d408b7f80cc3dc4dbbd224850d7402c685f273cc))
+* **presence:** extract PresenceStats.percentage and strengthen tests ([067fbbd](https://github.com/Alberto-Codes/docvet/commit/067fbbde52ec52638f2a413211e36ff4e3e10dd3))
+* **release:** guard fromJSON with short-circuit to prevent empty parse ([#242](https://github.com/Alberto-Codes/docvet/issues/242)) ([6a944d0](https://github.com/Alberto-Codes/docvet/commit/6a944d037029e54e580b905a3d6fab62ef97ab1a))
+
+
+### Documentation
+
+* **presence:** add presence check and rule documentation with migration guide ([#249](https://github.com/Alberto-Codes/docvet/issues/249)) ([bef4fd5](https://github.com/Alberto-Codes/docvet/commit/bef4fd5c86bd04dc159cdb43934f568991f38752)), closes [#245](https://github.com/Alberto-Codes/docvet/issues/245)
+
 ## [1.6.4](https://github.com/Alberto-Codes/docvet/compare/v1.6.3...v1.6.4) (2026-03-02)
 
 
