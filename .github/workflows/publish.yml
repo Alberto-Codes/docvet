@@ -144,9 +144,11 @@ jobs:
   # ---------------------------------------------------------------------------
   # Publish to PyPI — production release.
   # Uses OIDC trusted publishing (no stored tokens).
+  # TestPyPI is informational only — a TestPyPI outage must never block a
+  # production release (see issue #252).
   # ---------------------------------------------------------------------------
   publish-pypi:
-    needs: [smoke-test]
+    needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: pypi
