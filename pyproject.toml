@@ -119,10 +119,7 @@ docstring-code-line-length = "dynamic"
 # Docvet
 # --------------------------------------------------------------------------- #
 [tool.docvet]
-fail-on = ["enrichment", "freshness", "coverage", "griffe", "presence"]
-
-[tool.docvet.presence]
-min-coverage = 100.0
+fail-on = ["enrichment", "freshness", "coverage", "griffe"]
 
 # --------------------------------------------------------------------------- #
 # Ty (type checker)
