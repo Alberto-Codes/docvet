@@ -59,9 +59,9 @@ Example output:
 
 ```
 src/mypackage/helpers.py:1: missing-docstring Module has no docstring [required]
-src/mypackage/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises section
-src/mypackage/models.py:15: stale-signature Function 'process' signature changed but docstring not updated
-src/mypackage/api.py:1: missing-init Package directory missing __init__.py (invisible to mkdocs)
+src/mypackage/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises section [required]
+src/mypackage/models.py:15: stale-signature Function 'process' signature changed but docstring not updated [required]
+src/mypackage/api.py:1: missing-init Package directory missing __init__.py (invisible to mkdocs) [required]
 ```
 
 ## Configuration

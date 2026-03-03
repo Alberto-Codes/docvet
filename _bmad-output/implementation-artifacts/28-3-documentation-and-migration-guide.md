@@ -1,6 +1,6 @@
 # Story 28.3: Documentation and Migration Guide
 
-Status: review
+Status: done
 Branch: `feat/docs-28-3-documentation-and-migration-guide`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/245
 
@@ -225,6 +225,7 @@ Claude Opus 4.6
 
 - 2026-03-02: Story 28.3 implementation — documented presence check across docs site, README, configuration reference, and mkdocs nav. Added interrogate migration guide.
 - 2026-03-02: Cross-cutting improvement — added docs infrastructure tests (rules.yml schema, macro compat, nav consistency). 13 new tests, 1106 total.
+- 2026-03-02: Code review — fixed 3 findings (H1: wrong check list in presence.md examples, M1: inconsistent [required] suffix in README, M2: config section ordering). L1 (architecture diagram) skipped by consensus.
 
 ### File List
 
@@ -247,15 +248,23 @@ Claude Opus 4.6
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow + party mode consensus)
+
 ### Outcome
+
+Approved with fixes applied (3 findings fixed, 1 skipped by consensus)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | `checks/presence.md` example output showed `[presence, enrichment, freshness, coverage]` instead of `[presence]` — wrong check list for single-check subcommand | Fixed: changed both Default and Verbose summary lines to `[presence]` |
+| M1 | MEDIUM | README example output inconsistent — new `missing-docstring` line had `[required]` suffix but pre-existing lines did not | Fixed: added `[required]` suffix to all three pre-existing example lines |
+| M2 | MEDIUM | Configuration section ordering (Freshness → Enrichment → Presence) didn't match pipeline order or Complete Example TOML | Fixed: moved Presence Options section before Freshness Options |
+| L1 | LOW | Architecture pipeline diagram shows checks as flat subgraph without sequential ordering arrows | Skipped: party mode consensus — diagram accurately reflects architectural independence; CLI order is implementation detail, not architecture |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

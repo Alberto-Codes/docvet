@@ -95,6 +95,26 @@ fail-on = ["enrichment", "freshness"]
 warn-on = ["griffe", "coverage"]
 ```
 
+## Presence Options
+
+These keys go under `[tool.docvet.presence]`:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | `bool` | `true` | Enable or disable the presence check |
+| `min-coverage` | `float` | `0.0` | Minimum docstring coverage percentage (0.0–100.0). When set above 0, the summary includes a pass/fail indicator. |
+| `ignore-init` | `bool` | `true` | Skip `__init__` methods when checking for missing docstrings |
+| `ignore-magic` | `bool` | `true` | Skip dunder methods (`__repr__`, `__str__`, etc.) |
+| `ignore-private` | `bool` | `true` | Skip single-underscore-prefixed symbols (`_helper`, `_internal`) |
+
+### Example
+
+```toml
+[tool.docvet.presence]
+min-coverage = 95.0
+ignore-init = false
+```
+
 ## Freshness Options
 
 These keys go under `[tool.docvet.freshness]`:
@@ -136,26 +156,6 @@ These keys go under `[tool.docvet.enrichment]`:
 require-warns = false
 require-other-parameters = false
 require-examples = ["class", "dataclass"]
-```
-
-## Presence Options
-
-These keys go under `[tool.docvet.presence]`:
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `enabled` | `bool` | `true` | Enable or disable the presence check |
-| `min-coverage` | `float` | `0.0` | Minimum docstring coverage percentage (0.0–100.0). When set above 0, the summary includes a pass/fail indicator. |
-| `ignore-init` | `bool` | `true` | Skip `__init__` methods when checking for missing docstrings |
-| `ignore-magic` | `bool` | `true` | Skip dunder methods (`__repr__`, `__str__`, etc.) |
-| `ignore-private` | `bool` | `true` | Skip single-underscore-prefixed symbols (`_helper`, `_internal`) |
-
-### Example
-
-```toml
-[tool.docvet.presence]
-min-coverage = 95.0
-ignore-init = false
 ```
 
 ## Complete Example

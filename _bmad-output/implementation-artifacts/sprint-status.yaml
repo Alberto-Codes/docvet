@@ -235,7 +235,7 @@ development_status:
   epic-28: in-progress
   28-1-core-presence-detection-and-configuration: done
   28-2-cli-wiring-and-pipeline-integration: done
-  28-3-documentation-and-migration-guide: review
+  28-3-documentation-and-migration-guide: done
   epic-28-retrospective: optional
 
   # Epic 29: MCP Server & Agentic Integration
