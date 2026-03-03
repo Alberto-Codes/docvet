@@ -579,6 +579,48 @@ class TestLoadConfigForPath:
         assert config.presence.min_coverage == 0.0
 
 
+class TestDocvetCheckDefaultChecks:
+    def test_default_checks_run_without_error(self, py_file: Path):
+        result = json.loads(docvet_check(str(py_file)))
+
+        assert "error" not in result
+        assert "findings" in result
+        assert "summary" in result
+
+    def test_default_checks_exclude_freshness(self, py_file: Path):
+        result = json.loads(docvet_check(str(py_file)))
+
+        by_check = result["summary"]["by_check"]
+        assert "freshness" not in by_check
+
+    def test_default_checks_include_presence_and_enrichment(self, py_file: Path):
+        result = json.loads(docvet_check(str(py_file)))
+
+        by_check = result["summary"]["by_check"]
+        assert "presence" in by_check
+        assert "enrichment" in by_check
+
+
+# ---------------------------------------------------------------------------
+# L2 — griffe exception handling path
+# ---------------------------------------------------------------------------
+
+
+class TestGriffeExceptionHandling:
+    def test_griffe_check_exception_returns_error_message(self, py_file: Path):
+        with (
+            patch("docvet.mcp._GRIFFE_AVAILABLE", True),
+            patch(
+                "docvet.mcp.check_griffe_compat",
+                side_effect=OSError("griffe loader failed"),
+            ),
+        ):
+            result = json.loads(docvet_check(str(py_file), checks=["griffe"]))
+
+        assert "errors" in result
+        assert any("griffe check failed" in e for e in result["errors"])
+
+
 class TestDocvetCheckDirectory:
     def test_directory_discovers_files(self, py_dir: Path):
         result = json.loads(
@@ -587,3 +629,19 @@ class TestDocvetCheckDirectory:
 
         assert result["summary"]["files_checked"] >= 1
         assert "error" not in result
+
+    def test_directory_scoped_to_target(self, isolated_tmp: Path):
+        """Files outside the target directory are excluded."""
+        target = isolated_tmp / "inner"
+        target.mkdir()
+        (target / "in_scope.py").write_text("def a(): pass\n", encoding="utf-8")
+
+        outer = isolated_tmp / "outer"
+        outer.mkdir()
+        (outer / "out_scope.py").write_text("def b(): pass\n", encoding="utf-8")
+
+        result = json.loads(docvet_check(str(target), checks=["presence"]))
+
+        files_in_findings = {f["file"] for f in result["findings"]}
+        for f in files_in_findings:
+            assert "out_scope" not in f

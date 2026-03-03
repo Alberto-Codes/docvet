@@ -13,6 +13,8 @@ context that may not be available in MCP client environments.
 
 Attributes:
     mcp_server: The FastMCP server instance.
+    _RULE_TO_CHECK: Dict mapping rule names to their check module for
+        O(1) lookup in summary aggregation.
 
 Examples:
     Start the server on stdio (typically invoked by ``docvet mcp``):
@@ -200,6 +202,8 @@ _RULE_CATALOG: list[dict[str, str]] = [
         "category": "recommended",
     },
 ]
+
+_RULE_TO_CHECK: dict[str, str] = {r["name"]: r["check"] for r in _RULE_CATALOG}
 
 
 # ---------------------------------------------------------------------------
@@ -427,8 +431,9 @@ def _build_summary(
 ) -> dict[str, object]:
     """Build the summary section of the MCP response.
 
-    Counts total findings, groups by category and by check module, and
-    records the number of files checked.
+    Counts total findings, groups by category and by check module using
+    the :data:`_RULE_TO_CHECK` lookup dict, and records the number of
+    files checked.
 
     Args:
         findings: All findings from the check run.
@@ -443,13 +448,10 @@ def _build_summary(
     by_check: dict[str, int] = {c: 0 for c in sorted(checks)}
 
     for f in findings:
-        by_category[f.category] = by_category.get(f.category, 0) + 1
-        # Map rule to check module
-        for rule_entry in _RULE_CATALOG:
-            if rule_entry["name"] == f.rule:
-                check_name = rule_entry["check"]
-                by_check[check_name] = by_check.get(check_name, 0) + 1
-                break
+        by_category[f.category] += 1
+        check_name = _RULE_TO_CHECK.get(f.rule)
+        if check_name and check_name in by_check:
+            by_check[check_name] += 1
 
     return {
         "total": len(findings),
@@ -499,8 +501,10 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
 
     Analyzes Python source files for docstring quality issues. Runs all
     enabled checks except freshness by default (freshness requires git
-    context). Returns a JSON object with findings, summary statistics,
-    and optional presence coverage data.
+    context). When *path* is a directory, only files within that
+    directory tree are checked (not the entire project). Returns a JSON
+    object with findings, summary statistics, and optional presence
+    coverage data.
 
     Args:
         path: Path to a Python file or directory to check.
@@ -539,7 +543,8 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
     if target.is_file() and target.suffix == ".py":
         discovered = discover_files(config, DiscoveryMode.FILES, files=[target])
     elif target.is_dir():
-        discovered = discover_files(config, DiscoveryMode.ALL)
+        all_files = discover_files(config, DiscoveryMode.ALL)
+        discovered = [f for f in all_files if f.is_relative_to(target)]
     else:
         return json.dumps({"error": f"Path is not a Python file or directory: {path}"})
 
