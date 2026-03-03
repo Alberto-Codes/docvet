@@ -1,6 +1,6 @@
 # Story 28.3: Documentation and Migration Guide
 
-Status: ready-for-dev
+Status: review
 Branch: `feat/docs-28-3-documentation-and-migration-guide`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/245
 
@@ -36,34 +36,34 @@ so that I can discover, configure, and adopt the presence check without reading 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `missing-docstring` to `docs/rules.yml` (AC: 9)
-  - [ ] 1.1 Add entry with id, name, check=presence, category=required, applies_to, summary, since="1.7.0", fix
-- [ ] Task 2: Create `docs/site/checks/presence.md` (AC: 1, 3)
-  - [ ] 2.1 Write check page following `checks/coverage.md` pattern (intro, rules table, example output, configuration table)
-  - [ ] 2.2 Add "Migrating from interrogate" section with 4-step guide
-  - [ ] 2.3 Document relationship to ruff D100–D107
-- [ ] Task 3: Create `docs/site/rules/missing-docstring.md` (AC: 2)
-  - [ ] 3.1 Write rule page following `rules/missing-init.md` pattern (`{{ rule_header() }}`, What it detects, Why, `{{ rule_fix() }}`, Example tabs)
-- [ ] Task 4: Update `docs/site/configuration.md` (AC: 4)
-  - [ ] 4.1 Add `[tool.docvet.presence]` section with fields table and example TOML
-  - [ ] 4.2 Update `warn-on` default value and valid check names to include `"presence"`
-- [ ] Task 5: Update `README.md` (AC: 5)
-  - [ ] 5.1 Update comparison table Layer 1 row to show docvet as "Yes" and mark interrogate as "(unmaintained)"
-  - [ ] 5.2 Add **Presence** line to "What It Checks" section with `missing-docstring` rule
-  - [ ] 5.3 Update quickstart example output to include a presence finding
-- [ ] Task 6: Update `docs/site/index.md` (AC: 6)
-  - [ ] 6.1 Update quality model table: Layer 2 → "docvet presence / interrogate" or similar
-  - [ ] 6.2 Add Presence card to Checks grid
-- [ ] Task 7: Update `docs/site/cli-reference.md` (AC: 7)
-  - [ ] 7.1 Add `docvet presence` subcommand section with flags and output examples
-  - [ ] 7.2 Document coverage percentage in default/verbose summary output
-- [ ] Task 8: Update `docs/site/architecture.md` (AC: 8)
-  - [ ] 8.1 Update pipeline diagram to show presence first
-- [ ] Task 9: Update `mkdocs.yml` nav (AC: 10)
-  - [ ] 9.1 Add `checks/presence.md` to Checks section
-  - [ ] 9.2 Add `rules/missing-docstring.md` under Presence in Rules section
-- [ ] Task 10: Verify `mkdocs build --strict` (AC: 10)
-  - [ ] 10.1 Run `mkdocs build --strict` and confirm zero warnings
+- [x] Task 1: Add `missing-docstring` to `docs/rules.yml` (AC: 9)
+  - [x] 1.1 Add entry with id, name, check=presence, category=required, applies_to, summary, since="1.7.0", fix
+- [x] Task 2: Create `docs/site/checks/presence.md` (AC: 1, 3)
+  - [x] 2.1 Write check page following `checks/coverage.md` pattern (intro, rules table, example output, configuration table)
+  - [x] 2.2 Add "Migrating from interrogate" section with 4-step guide
+  - [x] 2.3 Document relationship to ruff D100–D107
+- [x] Task 3: Create `docs/site/rules/missing-docstring.md` (AC: 2)
+  - [x] 3.1 Write rule page following `rules/missing-init.md` pattern (`{{ rule_header() }}`, What it detects, Why, `{{ rule_fix() }}`, Example tabs)
+- [x] Task 4: Update `docs/site/configuration.md` (AC: 4)
+  - [x] 4.1 Add `[tool.docvet.presence]` section with fields table and example TOML
+  - [x] 4.2 Update `warn-on` default value and valid check names to include `"presence"`
+- [x] Task 5: Update `README.md` (AC: 5)
+  - [x] 5.1 Update comparison table Layer 1 row to show docvet as "Yes" and mark interrogate as "(unmaintained)"
+  - [x] 5.2 Add **Presence** line to "What It Checks" section with `missing-docstring` rule
+  - [x] 5.3 Update quickstart example output to include a presence finding
+- [x] Task 6: Update `docs/site/index.md` (AC: 6)
+  - [x] 6.1 Update quality model table: Layer 1 now shows docvet presence (bold)
+  - [x] 6.2 Add Presence card to Checks grid
+- [x] Task 7: Update `docs/site/cli-reference.md` (AC: 7)
+  - [x] 7.1 Add `docvet presence` subcommand section with flags and output examples
+  - [x] 7.2 Document coverage percentage in default/verbose summary output
+- [x] Task 8: Update `docs/site/architecture.md` (AC: 8)
+  - [x] 8.1 Update pipeline diagram to show presence first
+- [x] Task 9: Update `mkdocs.yml` nav (AC: 10)
+  - [x] 9.1 Add `checks/presence.md` to Checks section
+  - [x] 9.2 Add `rules/missing-docstring.md` under Presence in Rules section
+- [x] Task 10: Verify `mkdocs build --strict` (AC: 10)
+  - [x] 10.1 Run `mkdocs build --strict` and confirm zero warnings
 
 ## AC-to-Test Mapping
 
@@ -71,16 +71,16 @@ so that I can discover, configure, and adopt the presence check without reading 
 
 | AC | Test(s) | Status |
 |----|---------|--------|
-| 1 | `mkdocs build --strict` + manual page review | |
-| 2 | `mkdocs build --strict` + `{{ rule_header() }}` renders | |
-| 3 | Migration section present on presence check page | |
-| 4 | Configuration page includes `[tool.docvet.presence]` | |
-| 5 | README comparison table updated | |
-| 6 | Index page quality model and card updated | |
-| 7 | CLI reference includes presence subcommand | |
-| 8 | Architecture diagram includes presence | |
-| 9 | `docs/rules.yml` includes `missing-docstring` entry | |
-| 10 | `mkdocs build --strict` passes with zero warnings | |
+| 1 | `mkdocs build --strict` + `docs/site/checks/presence.md` exists with config table, output examples, ruff comparison | PASS |
+| 2 | `mkdocs build --strict` + `{{ rule_header() }}` / `{{ rule_fix() }}` render on `rules/missing-docstring.md` | PASS |
+| 3 | "Migrating from interrogate" section in `checks/presence.md` with 4-step guide | PASS |
+| 4 | `docs/site/configuration.md` has `[tool.docvet.presence]` section with fields table; `warn-on` default and valid names updated | PASS |
+| 5 | `README.md` comparison table Layer 1 shows docvet "Yes" + interrogate "(unmaintained)"; What It Checks has Presence line | PASS |
+| 6 | `docs/site/index.md` quality model Layer 1 bold with docvet presence; Presence card in grid | PASS |
+| 7 | `docs/site/cli-reference.md` has `docvet presence` section with default/verbose output examples | PASS |
+| 8 | `docs/site/architecture.md` pipeline diagram includes Presence before Enrichment | PASS |
+| 9 | `docs/rules.yml` has `missing-docstring` entry with all required fields (since="1.7.0") | PASS |
+| 10 | `mkdocs build --strict` passes with zero warnings, nav includes presence pages | PASS |
 
 ## Dev Notes
 
@@ -190,24 +190,56 @@ Key insight: PR #235 dropped interrogate from CI. The migration guide should ref
 
 <!-- Dev agent MUST run all gates before marking story done. All gates are mandatory — no exceptions. -->
 
-- [ ] `uv run ruff check .` — zero lint violations
-- [ ] `uv run ruff format --check .` — zero format issues
-- [ ] `uv run ty check` — zero type errors
-- [ ] `uv run pytest` — all tests pass, no regressions
-- [ ] `uv run docvet check --all` — zero docvet findings (full-strength dogfooding)
-- [ ] `uv run interrogate -v` — docstring coverage >= 95%
+- [x] `uv run ruff check .` — zero lint violations
+- [x] `uv run ruff format --check .` — zero format issues
+- [x] `uv run ty check` — zero type errors
+- [x] `uv run pytest` — 1093 passed, no regressions
+- [x] `uv run docvet check --all` — zero findings, 100.0% coverage
+- [x] `mkdocs build --strict` — zero warnings (replaces interrogate gate for docs-only story)
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- Verified LSP does NOT include presence check before documenting architecture — reverted incorrect claim.
+- `interrogate -v` quality gate N/A — interrogate was dropped in PR #235. Replaced with `mkdocs build --strict` for this docs-only story.
 
 ### Completion Notes List
 
+- Added `missing-docstring` rule entry to `docs/rules.yml` (20 total rules now)
+- Created `docs/site/checks/presence.md` with check page, config table, output examples, ruff comparison, and 4-step interrogate migration guide
+- Created `docs/site/rules/missing-docstring.md` with `{{ rule_header() }}` / `{{ rule_fix() }}` macros, violation/fix tabs, suppression docs
+- Updated `docs/site/configuration.md` with `[tool.docvet.presence]` section and updated `warn-on` defaults to include `"presence"` (5 checks)
+- Updated `README.md`: Layer 1 row now shows docvet "Yes" + interrogate "(unmaintained)", added Presence line to What It Checks, updated rule count to 20, added presence finding to example output, added `docvet presence` to subcommand table
+- Updated `docs/site/index.md`: quality model table Layer 1 now bold (docvet presence), added Presence card to grid
+- Updated `docs/site/cli-reference.md`: added `docvet presence` subcommand section with default/verbose output examples, updated command count to 6
+- Updated `docs/site/architecture.md`: pipeline diagram includes Presence as first check, modules table includes `checks/presence.py`
+- Updated `mkdocs.yml` nav: added `checks/presence.md` and `rules/missing-docstring.md` under new Presence group
+- **Cross-cutting**: Added `tests/unit/test_docs_infrastructure.py` — 13 tests validating `docs/rules.yml` schema integrity, bidirectional rule-page consistency, and mkdocs.yml nav file existence (TEA-identified P1 risk gap)
+
 ### Change Log
 
+- 2026-03-02: Story 28.3 implementation — documented presence check across docs site, README, configuration reference, and mkdocs nav. Added interrogate migration guide.
+- 2026-03-02: Cross-cutting improvement — added docs infrastructure tests (rules.yml schema, macro compat, nav consistency). 13 new tests, 1106 total.
+
 ### File List
+
+- `docs/rules.yml` (modified)
+- `tests/unit/test_docs_infrastructure.py` (new — cross-cutting)
+- `docs/site/checks/presence.md` (new)
+- `docs/site/rules/missing-docstring.md` (new)
+- `docs/site/configuration.md` (modified)
+- `docs/site/index.md` (modified)
+- `docs/site/cli-reference.md` (modified)
+- `docs/site/architecture.md` (modified)
+- `README.md` (modified)
+- `mkdocs.yml` (modified)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
+- `_bmad-output/implementation-artifacts/28-3-documentation-and-migration-guide.md` (modified)
 
 ## Code Review
 

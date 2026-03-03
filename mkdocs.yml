@@ -90,11 +90,14 @@ nav:
   - Editor Integration: editor-integration.md
   - AI Agent Integration: ai-integration.md
   - Checks:
+    - checks/presence.md
     - checks/enrichment.md
     - checks/freshness.md
     - checks/coverage.md
     - checks/griffe.md
   - Rules:
+    - Presence:
+      - missing-docstring: rules/missing-docstring.md
     - Enrichment:
       - missing-raises: rules/missing-raises.md
       - missing-yields: rules/missing-yields.md

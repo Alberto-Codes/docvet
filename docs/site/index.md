@@ -11,7 +11,7 @@ title: Getting Started
 [![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE)
 [![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
 
-docvet vets your Python docstrings for **completeness**, **accuracy**, and **rendering compatibility** — the layers beyond style and presence that tools like ruff and interrogate don't cover.
+docvet vets your Python docstrings for **presence**, **completeness**, **accuracy**, and **rendering compatibility** — the layers beyond style that tools like ruff don't cover.
 
 ## Quick Start
 
@@ -21,12 +21,12 @@ pip install docvet && docvet check --all
 
 ## The Quality Model
 
-Most tools stop at style and presence. docvet picks up where they leave off:
+Most tools stop at style. docvet covers everything else:
 
 | Layer | Check | What It Catches | Tool |
 |:-----:|-------|-----------------|------|
-| 1 | Style | Formatting, conventions | ruff D rules |
-| 2 | Presence | Missing docstrings | interrogate |
+| **1** | **Presence** | **Missing docstrings** | **docvet presence** |
+| 2 | Style | Formatting, conventions | ruff D rules |
 | **3** | **Completeness** | **Missing sections (Raises, Yields, Attributes)** | **docvet enrichment** |
 | **4** | **Accuracy** | **Stale docstrings after code changes** | **docvet freshness** |
 | **5** | **Rendering** | **Broken mkdocs output** | **docvet griffe** |
@@ -35,6 +35,14 @@ Most tools stop at style and presence. docvet picks up where they leave off:
 ## Checks
 
 <div class="grid cards" markdown>
+
+-   :material-text-box-check-outline:{ .lg .middle } **Presence**
+
+    ---
+
+    Detects public symbols without docstrings and reports coverage metrics. 1 rule. Built-in replacement for interrogate.
+
+    [:octicons-arrow-right-24: Learn more](checks/presence.md)
 
 -   :material-check-all:{ .lg .middle } **Enrichment**
 
@@ -78,7 +86,7 @@ Most tools stop at style and presence. docvet picks up where they leave off:
     pip install docvet
     ```
 
-    Includes enrichment, freshness, and coverage checks.
+    Includes presence, enrichment, freshness, and coverage checks.
 
 === "With griffe"
 

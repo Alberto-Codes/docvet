@@ -13,9 +13,9 @@ These keys go directly under `[tool.docvet]`:
 | `exclude` | `list[str]` | `["tests", "scripts"]` | Directory names to exclude from checks |
 | `extend-exclude` | `list[str]` | `[]` | Additional patterns appended to `exclude` |
 | `fail-on` | `list[str]` | `[]` | Check names that cause exit code 1 |
-| `warn-on` | `list[str]` | `["freshness", "enrichment", "griffe", "coverage"]` | Check names reported without failing |
+| `warn-on` | `list[str]` | `["presence", "freshness", "enrichment", "griffe", "coverage"]` | Check names reported without failing |
 
-Valid check names for `fail-on` and `warn-on`: `enrichment`, `freshness`, `coverage`, `griffe`.
+Valid check names for `fail-on` and `warn-on`: `presence`, `enrichment`, `freshness`, `coverage`, `griffe`.
 
 ### `src-root` auto-detection
 
@@ -138,6 +138,26 @@ require-other-parameters = false
 require-examples = ["class", "dataclass"]
 ```
 
+## Presence Options
+
+These keys go under `[tool.docvet.presence]`:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | `bool` | `true` | Enable or disable the presence check |
+| `min-coverage` | `float` | `0.0` | Minimum docstring coverage percentage (0.0–100.0). When set above 0, the summary includes a pass/fail indicator. |
+| `ignore-init` | `bool` | `true` | Skip `__init__` methods when checking for missing docstrings |
+| `ignore-magic` | `bool` | `true` | Skip dunder methods (`__repr__`, `__str__`, etc.) |
+| `ignore-private` | `bool` | `true` | Skip single-underscore-prefixed symbols (`_helper`, `_internal`) |
+
+### Example
+
+```toml
+[tool.docvet.presence]
+min-coverage = 95.0
+ignore-init = false
+```
+
 ## Complete Example
 
 Here is a full `pyproject.toml` configuration showing all sections together:
@@ -153,8 +173,12 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     fail-on = ["enrichment", "freshness"] # (4)!
     warn-on = ["griffe", "coverage"]
 
+    [tool.docvet.presence]
+    min-coverage = 95.0 # (5)!
+    ignore-init = false
+
     [tool.docvet.freshness]
-    drift-threshold = 14 # (5)!
+    drift-threshold = 14 # (6)!
     age-threshold = 60
 
     [tool.docvet.enrichment]
@@ -167,15 +191,16 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     require-typed-attributes = true
     require-cross-references = true
     prefer-fenced-code-blocks = true
-    require-examples = ["class", "dataclass"] # (6)!
+    require-examples = ["class", "dataclass"] # (7)!
     ```
 
     1. Auto-detected if you have a `src/` directory — only set this if your layout is non-standard.
     2. These directories are excluded from all checks. Add `migrations` for Django projects.
     3. Appended to the `exclude` list above — useful when you want to keep defaults and add more.
     4. Checks in `fail-on` cause exit code 1 — ideal for CI gates.
-    5. Flag drift after just 2 weeks instead of the default 30 days.
-    6. Only require `Examples:` on classes and dataclasses, not protocols or enums.
+    5. Require 95% docstring coverage — presence check reports percentage and pass/fail.
+    6. Flag drift after just 2 weeks instead of the default 30 days.
+    7. Only require `Examples:` on classes and dataclasses, not protocols or enums.
 
 === "Minimal Configuration"
 
