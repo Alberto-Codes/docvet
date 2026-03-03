@@ -18,7 +18,7 @@ jobs:
       - name: Build package
         run: uv build --no-sources
 
-      - name: Smoke test wheel
+      - name: Smoke test wheel contents
         run: |
           WHEEL=$(ls dist/*.whl)
           SIZE=$(stat --format=%s "$WHEEL")
@@ -38,6 +38,14 @@ jobs:
             exit 1
           fi
           echo "Wheel contents clean — OK"
+
+      - name: Install and verify wheel
+        run: |
+          uv venv /tmp/smoke --python 3.12
+          SMOKE=/tmp/smoke/bin
+          uv pip install --python "$SMOKE/python" dist/*.whl
+          "$SMOKE/docvet" --version
+          "$SMOKE/docvet" check --help
 
       - name: Publish to TestPyPI
         run: |

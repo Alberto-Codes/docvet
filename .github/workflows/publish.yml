@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Build — produce sdist + wheel, validate contents, upload as artifact.
+  # Build — produce sdist + wheel, validate contents, smoke test install.
   # ---------------------------------------------------------------------------
   build:
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
       - name: Build package
         run: uv build --no-sources
 
-      - name: Smoke test wheel
+      - name: Smoke test wheel contents
         run: |
           WHEEL=$(ls dist/*.whl)
           SIZE=$(stat --format=%s "$WHEEL")
@@ -63,6 +63,22 @@ jobs:
           fi
           echo "Version ${TAG_VERSION} matches — OK"
 
+      - name: Install and verify wheel
+        run: |
+          uv venv /tmp/smoke --python 3.12
+          SMOKE=/tmp/smoke/bin
+          uv pip install --python "$SMOKE/python" dist/*.whl
+          INSTALLED=$("$SMOKE/docvet" --version)
+          echo "Installed version: $INSTALLED"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$INSTALLED" != *"$TAG_VERSION"* ]]; then
+            echo "::error::Installed version '$INSTALLED' doesn't contain tag version '$TAG_VERSION'"
+            exit 1
+          fi
+          echo "Version match — OK"
+          "$SMOKE/docvet" check --help > /dev/null
+          echo "CLI entry point — OK"
+
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -75,77 +91,8 @@ jobs:
         continue-on-error: true
 
   # ---------------------------------------------------------------------------
-  # Publish to TestPyPI — validates the package on the staging index first.
-  # Uses OIDC trusted publishing (no stored tokens).
-  # ---------------------------------------------------------------------------
-  publish-testpypi:
-    needs: [build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: testpypi
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: false
-          ignore-empty-workdir: true
-      - name: Download dist artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to TestPyPI
-        run: uv publish --trusted-publishing always --check-url https://test.pypi.org/simple/
-        env:
-          UV_PUBLISH_URL: "https://test.pypi.org/legacy/"
-
-  # ---------------------------------------------------------------------------
-  # Smoke test — install from TestPyPI and verify the package works.
-  # Catches packaging mistakes before they reach production PyPI.
-  # ---------------------------------------------------------------------------
-  smoke-test:
-    needs: [publish-testpypi]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: false
-          ignore-empty-workdir: true
-      - run: uv python install 3.12
-
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Wait for TestPyPI index
-        run: sleep 30
-
-      - name: Create virtual environment
-        run: uv venv
-
-      - name: Install from TestPyPI
-        run: |
-          uv pip install \
-            --index-url https://pypi.org/simple/ \
-            --extra-index-url https://test.pypi.org/simple/ \
-            --refresh \
-            "docvet==${{ steps.version.outputs.version }}"
-
-      - name: Verify docvet --version
-        run: uv run --no-project docvet --version
-
-      - name: Verify docvet check --help
-        run: uv run --no-project docvet check --help
-
-  # ---------------------------------------------------------------------------
   # Publish to PyPI — production release.
   # Uses OIDC trusted publishing (no stored tokens).
-  # TestPyPI is informational only — a TestPyPI outage must never block a
-  # production release (see issue #252).
   # ---------------------------------------------------------------------------
   publish-pypi:
     needs: [build]
