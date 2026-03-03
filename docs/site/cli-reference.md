@@ -137,15 +137,15 @@ Detects public symbols (modules, classes, functions, methods) that lack a docstr
 ```
 src/myapp/utils.py:12: missing-docstring Public function has no docstring [required]
 src/myapp/models.py:5: missing-docstring Public class has no docstring [required]
-Vetted 10 files [presence] — 2 findings (2 required, 0 recommended), 87.0% coverage. (0.2s)
+Vetted 10 files [presence] — 2 findings (2 required, 0 recommended), 98.0% coverage. (0.2s)
 ```
 
 **Verbose output** (with coverage detail):
 
 ```
 src/myapp/utils.py:12: missing-docstring Public function has no docstring [required]
-Docstring coverage: 87/100 symbols (87.0%) — below 95.0% threshold
-Vetted 10 files [presence] — 1 finding (1 required, 0 recommended), 87.0% coverage. (0.2s)
+Docstring coverage: 99/100 symbols (99.0%) — below 100.0% threshold
+Vetted 10 files [presence] — 1 finding (1 required, 0 recommended), 99.0% coverage. (0.2s)
 ```
 
 The verbose summary shows documented/total symbols, percentage, and threshold comparison when `min-coverage` is set.

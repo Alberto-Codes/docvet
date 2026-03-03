@@ -85,7 +85,7 @@ class TestRulesYamlSchema:
             )
 
     def test_no_duplicate_ids(self) -> None:
-        """No two rules share the same id (YAML silently overwrites)."""
+        """No two rules share the same id (duplicates cause ambiguous lookups)."""
         rules = _load_rules()
         ids = [r["id"] for r in rules]
         duplicates = [rid for rid in ids if ids.count(rid) > 1]
