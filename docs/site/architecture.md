@@ -18,6 +18,7 @@ flowchart TD
     CLI --> Config --> Discovery
 
     subgraph Checks
+        Presence["Presence"]
         Enrichment["Enrichment"]
         Freshness["Freshness"]
         Coverage["Coverage"]
@@ -49,6 +50,7 @@ The **LSP path** receives files directly from the editor via `textDocument/didOp
 | `cli.py` | Typer CLI — config loading, file discovery, check dispatch, output |
 | `config.py` | Reads `[tool.docvet]` from `pyproject.toml` |
 | `discovery.py` | Finds target files via git diff, staged, `--all`, or positional args |
+| `checks/presence.py` | Missing docstring detection — 1 rule (AST analysis) |
 | `checks/enrichment.py` | Missing sections detection — 10 rules (AST analysis) |
 | `checks/freshness.py` | Stale docstring detection — 5 rules (git diff + git blame) |
 | `checks/coverage.py` | Missing `__init__.py` detection — 1 rule (directory scan) |

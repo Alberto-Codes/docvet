@@ -11,22 +11,25 @@
 
 ## Why docvet?
 
-ruff checks how your docstrings look. interrogate checks if they exist. docvet checks if they're right. Existing tools cover presence and style — docvet delivers the layers they miss:
+ruff checks how your docstrings look. interrogate checks if they exist (but is unmaintained). docvet checks if they're right — and now covers presence too. Existing tools cover style; docvet delivers the layers they miss:
 
 | Layer | Check | ruff | interrogate | pydoclint | **docvet** |
 |-------|-------|------|-------------|-----------|------------|
-| 1. Presence | "Does a docstring exist?" | -- | Yes | -- | -- |
+| 1. Presence | "Does a docstring exist?" | -- | Yes (unmaintained) | -- | **Yes** |
 | 2. Style | "Is it formatted correctly?" | Yes | -- | -- | -- |
 | 3. Completeness | "Does it have all required sections?" | -- | -- | Partial | **Yes** |
 | 4. Accuracy | "Does it match the current code?" | -- | -- | -- | **Yes** |
 | 5. Rendering | "Will mkdocs render it correctly?" | -- | -- | -- | **Yes** |
 | 6. Visibility | "Will mkdocs even see the file?" | -- | -- | -- | **Yes** |
 
-**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 10 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, and cross-references. Add freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 19 rules across 4 checks, in territory no other tool touches.
+**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 10 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, and cross-references. Add presence (coverage metrics + threshold enforcement), freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 20 rules across 5 checks, in territory no other tool touches.
 
 **[Quickstart](#quickstart)** | **[GitHub Action](#github-action)** | **[Pre-commit](#pre-commit)** | **[Configuration](#configuration)** | **[AI Agent Integration](#ai-agent-integration)** | **[Docs](https://alberto-codes.github.io/docvet/)**
 
 ## What It Checks
+
+**Presence** (existence) -- 1 rule:
+`missing-docstring`
 
 **Enrichment** (completeness) -- 10 rules:
 `missing-raises` `missing-yields` `missing-receives` `missing-warns` `missing-other-parameters` `missing-attributes` `missing-typed-attributes` `missing-examples` `missing-cross-references` `prefer-fenced-code-blocks`
@@ -55,9 +58,10 @@ pip install docvet[griffe]
 Example output:
 
 ```
-src/mypackage/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises section
-src/mypackage/models.py:15: stale-signature Function 'process' signature changed but docstring not updated
-src/mypackage/api.py:1: missing-init Package directory missing __init__.py (invisible to mkdocs)
+src/mypackage/helpers.py:1: missing-docstring Module has no docstring [required]
+src/mypackage/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises section [required]
+src/mypackage/models.py:15: stale-signature Function 'process' signature changed but docstring not updated [required]
+src/mypackage/api.py:1: missing-init Package directory missing __init__.py (invisible to mkdocs) [required]
 ```
 
 ## Configuration
@@ -152,6 +156,7 @@ fail-on = ["enrichment", "freshness", "coverage", "griffe"]
 | `docvet check` | Run all enabled checks (default: git diff files) |
 | `docvet check --all` | Run all checks on entire codebase |
 | `docvet check --staged` | Run all checks on staged files only |
+| `docvet presence` | Check for missing docstrings with coverage metrics |
 | `docvet enrichment` | Check for missing docstring sections |
 | `docvet freshness` | Detect stale docstrings via git |
 | `docvet coverage` | Find files invisible to mkdocs |

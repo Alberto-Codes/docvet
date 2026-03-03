@@ -1,6 +1,6 @@
 # CLI Reference
 
-docvet provides five subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
+docvet provides six subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
 
 ```
 docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
@@ -120,7 +120,35 @@ docvet check --all                    # entire codebase
 docvet check src/foo.py src/bar.py    # specific files
 ```
 
-This runs enrichment, freshness, coverage, and griffe (if installed) in sequence and produces a unified report.
+This runs presence, enrichment, freshness, coverage, and griffe (if installed) in sequence and produces a unified report.
+
+### `docvet presence`
+
+Check for missing docstrings and report coverage.
+
+```bash
+docvet presence --all
+```
+
+Detects public symbols (modules, classes, functions, methods) that lack a docstring. Reports per-file findings and aggregate coverage statistics.
+
+**Default output** (with findings):
+
+```
+src/myapp/utils.py:12: missing-docstring Public function has no docstring [required]
+src/myapp/models.py:5: missing-docstring Public class has no docstring [required]
+Vetted 10 files [presence] — 2 findings (2 required, 0 recommended), 98.0% coverage. (0.2s)
+```
+
+**Verbose output** (with coverage detail):
+
+```
+src/myapp/utils.py:12: missing-docstring Public function has no docstring [required]
+Docstring coverage: 99/100 symbols (99.0%) — below 100.0% threshold
+Vetted 10 files [presence] — 1 finding (1 required, 0 recommended), 99.0% coverage. (0.2s)
+```
+
+The verbose summary shows documented/total symbols, percentage, and threshold comparison when `min-coverage` is set.
 
 ### `docvet enrichment`
 
