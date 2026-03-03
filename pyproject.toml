@@ -49,7 +49,7 @@ dependencies = [
 
 [project.optional-dependencies]
 griffe = [
-    "griffe>=1.0",
+    "griffe>=1.0,<2",
 ]
 lsp = [
     "pygls>=2.0,<3",
@@ -149,9 +149,8 @@ addopts = [
 # --------------------------------------------------------------------------- #
 [dependency-groups]
 dev = [
-    "griffe>=1.0",
+    "griffe>=1.0,<2",
     "pygls>=2.0,<3",
-    "griffelib>=2.0",
     "pyyaml>=6.0",
     "pytest>=9.0",
     "pytest-cov>=7.0",
