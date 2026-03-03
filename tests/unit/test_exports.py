@@ -101,6 +101,15 @@ class TestLspExports:
         assert len(mod.__all__) == 1
 
 
+class TestMcpExports:
+    def test_mcp_all_contains_start_server(self):
+        pytest.importorskip("mcp")
+        mod = importlib.import_module("docvet.mcp")
+        assert hasattr(mod, "__all__")
+        assert mod.__all__ == ["start_server"]
+        assert len(mod.__all__) == 1
+
+
 class TestInternalModulesExportNothing:
     @pytest.mark.parametrize(
         "module_path",
@@ -132,6 +141,7 @@ _ALL_DOCVET_MODULES = [
     "docvet.config",
     "docvet.discovery",
     "docvet.lsp",
+    "docvet.mcp",
     "docvet.reporting",
 ]
 
