@@ -3,6 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/docvet)](https://pypi.org/project/docvet/)
 [![Python](https://img.shields.io/pypi/pyversions/docvet)](https://pypi.org/project/docvet/)
 [![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
 
 # docvet
