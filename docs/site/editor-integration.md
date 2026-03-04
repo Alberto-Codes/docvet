@@ -117,7 +117,7 @@ By default, freshness is excluded because it requires git context, and griffe is
 }
 ```
 
-The `presence_coverage` key only appears when the presence check runs.
+The `presence_coverage` key only appears when the presence check runs. An `errors` key appears if any check encounters an internal error (e.g., griffe not installed, git unavailable).
 
 #### `docvet_rules`
 

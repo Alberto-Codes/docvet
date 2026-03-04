@@ -1,6 +1,6 @@
 # Story 29.3: Documentation and Marketplace Publishing
 
-Status: review
+Status: done
 Branch: `feat/mcp-29-3-docs-and-marketplace`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/268
 
@@ -53,6 +53,10 @@ so that I can discover and set up docvet integration with minimal friction.
 - [x] Task 5: Verify docs build (AC: 4)
   - [x] 5.1 Run `mkdocs build --strict` and verify zero warnings
   - [x] 5.2 Verify all internal links resolve correctly
+- [x] Task 7: Automate server.json and plugin.json version tracking via release-please (AC: 3)
+  - [x] 7.1 Add `extra-files` entries to `release-please-config.json` for `server.json` top-level and package version fields
+  - [x] 7.2 Add `extra-files` entry for `.claude-plugin/plugin.json` version field
+  - [x] 7.3 Bump `.claude-plugin/plugin.json` version from 1.0.0 to 1.7.0 to match current release
 - [x] Task 6: Run quality gates (AC: all)
   - [x] 6.1 Run `uv run ruff check .` and `uv run ruff format --check .`
   - [x] 6.2 Run `uv run pytest` -- all tests pass, no regressions
@@ -335,6 +339,7 @@ None — docs-only story, no debugging needed.
 ### Change Log
 
 - 2026-03-03: Story 29.3 implemented — MCP documentation, server.json manifest, README mcp-name marker
+- 2026-03-03: Code review — 3 findings (1 MEDIUM, 2 LOW). All fixed: File List updated, Task 7 added, errors field documented
 
 ### File List
 
@@ -343,6 +348,8 @@ None — docs-only story, no debugging needed.
 - `server.json` — NEW: MCP Registry manifest at project root
 - `README.md` — MODIFIED: added `mcp-name:` marker at bottom
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED: story status updated
+- `release-please-config.json` — MODIFIED: added `extra-files` entries for server.json and plugin.json version tracking
+- `.claude-plugin/plugin.json` — MODIFIED: version bumped from 1.0.0 to 1.7.0 to match current release
 - `_bmad-output/implementation-artifacts/29-3-documentation-and-marketplace-publishing.md` — MODIFIED: story file updated
 
 ## Code Review
@@ -351,15 +358,22 @@ None — docs-only story, no debugging needed.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Approved with fixes applied
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| 1 | MEDIUM | File List incomplete — `.claude-plugin/plugin.json` and `release-please-config.json` changed in git but not documented | Added both files to File List |
+| 2 | LOW | Out-of-scope release-please automation implemented without task entry (downgraded from MEDIUM via party mode consensus) | Added retroactive Task 7 with subtasks |
+| 3 | LOW | Undocumented `errors` field in `docvet_check` response schema in editor-integration docs | Added one-sentence note to editor-integration.md |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
