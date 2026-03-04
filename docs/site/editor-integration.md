@@ -249,7 +249,8 @@ docvet ships as a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude
 ### Install
 
 ```bash
-claude plugin install github:Alberto-Codes/docvet
+claude plugin marketplace add Alberto-Codes/docvet
+claude plugin install docvet-lsp@docvet
 ```
 
 **Prerequisites:** `pip install docvet[lsp]` (the plugin calls `docvet lsp` under the hood).

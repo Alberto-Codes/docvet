@@ -1,0 +1,24 @@
+{
+  "name": "docvet",
+  "owner": {
+    "name": "Alberto-Codes"
+  },
+  "metadata": {
+    "description": "Docvet Python docstring quality tools for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "docvet-lsp",
+      "source": {
+        "source": "github",
+        "repo": "Alberto-Codes/docvet"
+      },
+      "description": "Real-time docstring quality diagnostics for Python files",
+      "homepage": "https://alberto-codes.github.io/docvet/",
+      "repository": "https://github.com/Alberto-Codes/docvet",
+      "license": "MIT",
+      "keywords": ["python", "docstrings", "linting", "code-quality", "lsp"],
+      "category": "code-intelligence"
+    }
+  ]
+}
