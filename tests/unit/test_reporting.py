@@ -716,6 +716,24 @@ class TestDetermineExitCodeWithPresence:
         result = determine_exit_code({}, config, presence_stats=stats)
         assert result == 0
 
+    def test_returns_0_when_coverage_exactly_at_threshold(self):
+        """Boundary: coverage == threshold passes (uses < not <=)."""
+        from docvet.checks.presence import PresenceStats
+
+        config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
+        stats = PresenceStats(documented=95, total=100)
+        result = determine_exit_code({}, config, presence_stats=stats)
+        assert result == 0
+
+    def test_returns_1_when_coverage_just_below_threshold(self):
+        """Boundary: coverage just below threshold fails."""
+        from docvet.checks.presence import PresenceStats
+
+        config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
+        stats = PresenceStats(documented=94, total=100)
+        result = determine_exit_code({}, config, presence_stats=stats)
+        assert result == 1
+
     def test_returns_0_when_no_threshold(self):
         """No threshold (0.0) means coverage is not enforced."""
         from docvet.checks.presence import PresenceStats
