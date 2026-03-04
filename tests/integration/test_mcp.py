@@ -333,4 +333,9 @@ class TestCleanShutdown:
             # If we get here without error, the server shut down cleanly
             return True
 
-        assert asyncio.run(_run()) is True
+        # Outer timeout covers context-manager exit (subprocess teardown),
+        # which has no per-operation wait_for.  Use 2x to avoid false kills
+        # when initialize() + call_tool() each consume part of _SERVER_TIMEOUT.
+        assert (
+            asyncio.run(asyncio.wait_for(_run(), timeout=2 * _SERVER_TIMEOUT)) is True
+        )
