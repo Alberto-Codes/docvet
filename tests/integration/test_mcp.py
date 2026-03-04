@@ -29,7 +29,14 @@ mcp_pkg = pytest.importorskip("mcp")
 from mcp import ClientSession  # noqa: E402
 from mcp.client.stdio import StdioServerParameters, stdio_client  # noqa: E402
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.slow,
+    pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="MCP stdio_client subprocess cleanup unreliable on Windows",
+    ),
+]
 
 # ---------------------------------------------------------------------------
 # Fixtures
