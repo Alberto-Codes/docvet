@@ -125,6 +125,7 @@ nav:
   - Architecture: architecture.md
   - CLI Reference: cli-reference.md
   - Glossary: glossary.md
+  - Privacy Policy: privacy.md
   - Reference: reference/
 
 markdown_extensions:
