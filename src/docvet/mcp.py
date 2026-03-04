@@ -9,7 +9,10 @@ Follows the same architectural pattern as :mod:`docvet.lsp`: a
 module-level server instance, a single public ``start_server()``
 function, and internal helpers for check dispatch and serialization.
 Freshness checks are excluded by default because they require git
-context that may not be available in MCP client environments.
+context; griffe is excluded when not installed. Per-file git diffs
+prevent cross-file hunk contamination in freshness mode, and
+``SystemExit`` from invalid configuration is caught and returned as
+a structured error rather than crashing the server.
 
 Attributes:
     mcp_server: The FastMCP server instance.
@@ -73,8 +76,13 @@ __all__ = ["start_server"]
 
 logger = logging.getLogger(__name__)
 
-# Default checks for MCP (freshness excluded — requires git context)
-_DEFAULT_MCP_CHECKS: frozenset[str] = _VALID_CHECK_NAMES - {"freshness"}
+# Default checks for MCP (freshness excluded — requires git context;
+# griffe excluded when not installed to avoid spurious error entries)
+_DEFAULT_MCP_CHECKS: frozenset[str] = frozenset(
+    name
+    for name in _VALID_CHECK_NAMES
+    if name != "freshness" and (_GRIFFE_AVAILABLE or name != "griffe")
+)
 
 # ---------------------------------------------------------------------------
 # Rule catalog
@@ -148,37 +156,37 @@ _RULE_CATALOG: list[dict[str, str]] = [
         "category": "recommended",
     },
     {
-        "name": "stale-docstring-high",
+        "name": "stale-signature",
         "check": "freshness",
         "description": "Function signature changed without docstring update.",
         "category": "required",
     },
     {
-        "name": "stale-docstring-medium",
+        "name": "stale-body",
         "check": "freshness",
         "description": "Function body changed without docstring update.",
-        "category": "required",
-    },
-    {
-        "name": "stale-docstring-low",
-        "check": "freshness",
-        "description": "Minor code change near symbol without docstring update.",
         "category": "recommended",
     },
     {
-        "name": "docstring-drift",
+        "name": "stale-import",
         "check": "freshness",
-        "description": "Docstring has not been updated since significant code changes.",
-        "category": "required",
+        "description": "Import changed near symbol without docstring update.",
+        "category": "recommended",
     },
     {
-        "name": "docstring-age",
+        "name": "stale-drift",
+        "check": "freshness",
+        "description": "Docstring has not been updated since significant code changes.",
+        "category": "recommended",
+    },
+    {
+        "name": "stale-age",
         "check": "freshness",
         "description": "Docstring has not been updated for an extended period.",
         "category": "recommended",
     },
     {
-        "name": "missing-init-py",
+        "name": "missing-init",
         "check": "coverage",
         "description": "Directory with Python files lacks __init__.py for mkdocs discovery.",
         "category": "required",
@@ -307,9 +315,10 @@ def _run_freshness(
 ) -> tuple[list[Finding], str | None]:
     """Run the freshness diff check on files with git context.
 
-    Verifies git is available, retrieves the current diff, and runs
-    freshness checks on each file. Returns findings and an optional
-    error message when git is unavailable.
+    Verifies git is available, then retrieves a per-file diff for each
+    file and runs freshness checks. Per-file diffs prevent cross-file
+    hunk contamination. Returns findings and an optional error message
+    when git is unavailable.
 
     Args:
         files: List of absolute paths to Python files.
@@ -332,14 +341,6 @@ def _run_freshness(
             "not a git repository or git is not installed"
         )
 
-    result = subprocess.run(
-        ["git", "diff", "HEAD"],
-        capture_output=True,
-        text=True,
-        check=False,
-        cwd=str(config.project_root),
-    )
-    diff_output = result.stdout
     findings: list[Finding] = []
     for file_path in files:
         try:
@@ -347,7 +348,15 @@ def _run_freshness(
             tree = ast.parse(source)
         except (OSError, SyntaxError):
             continue
-        findings.extend(check_freshness_diff(str(file_path), diff_output, tree))
+        # Per-file diff to avoid cross-file hunk contamination
+        result = subprocess.run(
+            ["git", "diff", "HEAD", "--", str(file_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(config.project_root),
+        )
+        findings.extend(check_freshness_diff(str(file_path), result.stdout, tree))
     return findings, None
 
 
@@ -501,10 +510,12 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
 
     Analyzes Python source files for docstring quality issues. Runs all
     enabled checks except freshness by default (freshness requires git
-    context). When *path* is a directory, only files within that
-    directory tree are checked (not the entire project). Returns a JSON
-    object with findings, summary statistics, and optional presence
-    coverage data.
+    context; griffe also excluded when not installed). When *path* is a
+    directory, only files within that directory tree are checked (not the
+    entire project). Returns a JSON object with findings, summary
+    statistics, and optional presence coverage data. Invalid
+    configuration triggers a structured error response instead of
+    crashing the server.
 
     Args:
         path: Path to a Python file or directory to check.
@@ -514,7 +525,8 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
 
     Returns:
         JSON string with ``findings``, ``summary``, and optionally
-        ``presence_coverage`` keys.
+        ``presence_coverage`` keys. Returns an ``error`` key on
+        invalid path, unknown check name, or malformed configuration.
     """
     target = Path(path).resolve()
 
@@ -523,7 +535,10 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
         return json.dumps({"error": f"Path does not exist: {path}"})
 
     # Find pyproject.toml by walking up from target
-    config = _load_config_for_path(target)
+    try:
+        config = _load_config_for_path(target)
+    except SystemExit:
+        return json.dumps({"error": "Invalid docvet configuration in pyproject.toml"})
 
     # Resolve checks
     if checks is not None:
@@ -596,8 +611,9 @@ def docvet_rules() -> str:
 def start_server() -> None:
     """Start the MCP server on stdio.
 
-    Loads docvet configuration and starts the FastMCP server in stdio
-    mode. This function blocks until the client disconnects.
+    Starts the FastMCP server in stdio mode. Configuration is loaded
+    per-request by each tool handler. This function blocks until the
+    client disconnects.
 
     Examples:
         Typically invoked by the ``docvet mcp`` CLI command:

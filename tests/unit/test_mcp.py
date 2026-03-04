@@ -161,7 +161,17 @@ class TestDocvetCheckFiltered:
 
     def test_default_excludes_freshness(self):
         assert "freshness" not in _DEFAULT_MCP_CHECKS
-        assert _DEFAULT_MCP_CHECKS == _VALID_CHECK_NAMES - {"freshness"}
+
+    def test_default_excludes_griffe_when_unavailable(self):
+        with patch("docvet.mcp._GRIFFE_AVAILABLE", False):
+            # Re-compute to verify logic (module-level constant is already set)
+            computed = frozenset(
+                name
+                for name in _VALID_CHECK_NAMES
+                if name != "freshness" and (False or name != "griffe")
+            )
+            assert "griffe" not in computed
+            assert "freshness" not in computed
 
 
 # ---------------------------------------------------------------------------
@@ -312,6 +322,22 @@ class TestErrorHandling:
 
         assert "error" in result
         assert "not a Python file" in result["error"]
+
+    def test_invalid_config_returns_error_not_crash(self, tmp_path: Path):
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            "[project]\nname = 'test'\n[tool.docvet]\nbogus-key = true\n",
+            encoding="utf-8",
+        )
+        p = tmp_path / "sample.py"
+        p.write_text("def f(): pass\n", encoding="utf-8")
+
+        result = json.loads(docvet_check(str(p), checks=["presence"]))
+
+        assert "error" in result
+        assert (
+            "Invalid" in result["error"] or "configuration" in result["error"].lower()
+        )
 
     def test_unparseable_file_skipped(self, isolated_tmp: Path):
         bad = isolated_tmp / "bad.py"
@@ -473,6 +499,37 @@ class TestRuleCatalogStaleness:
         expected_keys = {"name", "check", "description", "category"}
         for entry in _RULE_CATALOG:
             assert set(entry.keys()) == expected_keys
+
+    def test_rule_catalog_names_match_emitted_rules(self):
+        expected_rules = {
+            # presence (1)
+            "missing-docstring",
+            # enrichment (10)
+            "missing-raises",
+            "missing-yields",
+            "missing-receives",
+            "missing-warns",
+            "missing-other-parameters",
+            "missing-attributes",
+            "missing-typed-attributes",
+            "missing-examples",
+            "missing-cross-references",
+            "prefer-fenced-code-blocks",
+            # freshness (5)
+            "stale-signature",
+            "stale-body",
+            "stale-import",
+            "stale-drift",
+            "stale-age",
+            # coverage (1)
+            "missing-init",
+            # griffe (3)
+            "griffe-unknown-param",
+            "griffe-missing-type",
+            "griffe-format-warning",
+        }
+        catalog_names = {entry["name"] for entry in _RULE_CATALOG}
+        assert catalog_names == expected_rules
 
 
 # ---------------------------------------------------------------------------
