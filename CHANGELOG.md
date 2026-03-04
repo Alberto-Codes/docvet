@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/Alberto-Codes/docvet/compare/v1.8.0...v1.8.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* **mcp:** correct server.json for MCP Registry compatibility ([ca3a212](https://github.com/Alberto-Codes/docvet/commit/ca3a212208f94a4b604ac1d5f82f6174d8102c14))
+
 ## [1.8.0](https://github.com/Alberto-Codes/docvet/compare/v1.7.0...v1.8.0) (2026-03-04)
 
 
