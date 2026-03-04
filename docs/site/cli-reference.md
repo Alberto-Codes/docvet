@@ -1,6 +1,6 @@
 # CLI Reference
 
-docvet provides six subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
+docvet provides eight subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
 
 ```
 docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
@@ -199,6 +199,32 @@ Loads packages with the griffe parser and captures warnings that would cause bro
 
 !!! note
     Requires the optional `griffe` extra: `pip install docvet[griffe]`
+
+### `docvet lsp`
+
+Start the LSP server for real-time diagnostics.
+
+```bash
+docvet lsp
+```
+
+Launches a Language Server Protocol server on stdio that publishes docstring quality diagnostics on file open and save events.
+
+!!! note
+    Requires the optional `lsp` extra: `pip install docvet[lsp]`
+
+### `docvet mcp`
+
+Start the MCP server for agentic integration.
+
+```bash
+docvet mcp
+```
+
+Launches a Model Context Protocol server on stdio that exposes docstring quality checks as MCP tools for AI agents. Agents can call `docvet_check` to run checks on files or directories, and `docvet_rules` to retrieve the full rule catalog.
+
+!!! note
+    Requires the optional `mcp` extra: `pip install docvet[mcp]`
 
 ## Configuration
 

@@ -81,6 +81,7 @@ def test_app_when_invoked_with_help_shows_all_subcommands():
     assert "freshness" in output
     assert "coverage" in output
     assert "griffe" in output
+    assert "mcp" in output
 
 
 def test_check_help_when_invoked_shows_discovery_flags():
@@ -2800,3 +2801,36 @@ class TestFormatCoverageLine:
 
         result = _format_coverage_line(PresenceStats(documented=95, total=100), 95.0)
         assert "passes 95.0% threshold" in result
+
+
+# ---------------------------------------------------------------------------
+# MCP subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_mcp_help_when_invoked_shows_correct_description():
+    result = runner.invoke(app, ["mcp", "--help"])
+    assert "MCP server" in result.output
+
+
+class TestMcpSubcommand:
+    """Tests for the `mcp` CLI subcommand."""
+
+    def test_missing_dependency_shows_error_and_exits_1(self, mocker):
+        """Missing mcp package shows error message and exits with code 1."""
+        mocker.patch.dict("sys.modules", {"docvet.mcp": None})
+        result = runner.invoke(app, ["mcp"])
+        assert result.exit_code == 1
+        assert "pip install docvet[mcp]" in result.output
+
+    def test_successful_invocation_calls_start_server(self, mocker):
+        """Successful import calls start_server once."""
+        mock_start = mocker.patch("docvet.mcp.start_server")
+        result = runner.invoke(app, ["mcp"])
+        assert result.exit_code == 0
+        mock_start.assert_called_once()
+
+    def test_mcp_registered_as_typer_command(self):
+        """Structural: 'mcp' is a registered command on the typer app."""
+        click_app = typer.main.get_command(app)
+        assert "mcp" in click_app.list_commands(ctx=None)  # type: ignore[arg-type]
