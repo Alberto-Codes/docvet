@@ -192,4 +192,4 @@ Are you using docvet? Open a pull request to add your project here.
 
 MIT -- see [LICENSE](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE) for details.
 
-mcp-name: io.github.alberto-codes/docvet
+mcp-name: io.github.Alberto-Codes/docvet

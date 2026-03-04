@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
-  "name": "io.github.alberto-codes/docvet",
-  "description": "Docstring quality vetting -- enrichment, freshness, coverage, presence, and griffe checks for Python projects",
+  "name": "io.github.Alberto-Codes/docvet",
+  "description": "Docstring quality vetting for Python -- enrichment, freshness, coverage, and presence checks",
   "version": "1.8.0",
   "status": "active",
   "repository": {
@@ -11,7 +11,7 @@
   "website_url": "https://alberto-codes.github.io/docvet/",
   "packages": [
     {
-      "registry_type": "pypi",
+      "registryType": "pypi",
       "identifier": "docvet",
       "version": "1.8.0",
       "transport": {
