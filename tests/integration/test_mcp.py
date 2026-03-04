@@ -290,6 +290,12 @@ class TestResponseParity:
         )
         assert mcp_data["summary"]["total"] == cli_non_freshness_total
 
+        # Verify summary.by_check is present and internally consistent
+        # (CLI JSON doesn't include by_check, so validate against findings)
+        mcp_by_check = mcp_data["summary"]["by_check"]
+        assert isinstance(mcp_by_check, dict)
+        assert sum(mcp_by_check.values()) == mcp_data["summary"]["total"]
+
 
 class TestCleanShutdown:
     """Verify server shuts down cleanly when client disconnects."""
