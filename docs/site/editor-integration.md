@@ -64,13 +64,102 @@ pip install docvet[mcp]
 
 This installs `docvet` and the [`mcp`](https://pypi.org/project/mcp/) protocol library.
 
-### Start the Server
+### Client Configuration
 
-```bash
-docvet mcp
-```
+Your MCP client starts the server automatically. Configure it for your tool:
 
-The server runs on stdio. You do not run this manually — your MCP client (Claude Code, Cursor, etc.) starts it automatically using its configuration.
+=== "Claude Code (CLI)"
+
+    The fastest way — no JSON editing needed:
+
+    ```bash
+    claude mcp add --transport stdio --scope project docvet -- uvx "docvet[mcp]" mcp
+    ```
+
+    Use `--scope user` instead to make it available across all projects.
+
+=== "Claude Code (JSON)"
+
+    Add to `.mcp.json` in your project root:
+
+    ```json
+    {
+      "mcpServers": {
+        "docvet": {
+          "command": "uvx",
+          "args": ["docvet[mcp]", "mcp"]
+        }
+      }
+    }
+    ```
+
+=== "VS Code"
+
+    Add to `.vscode/mcp.json`:
+
+    ```json
+    {
+      "servers": {
+        "docvet": {
+          "type": "stdio",
+          "command": "uvx",
+          "args": ["docvet[mcp]", "mcp"]
+        }
+      }
+    }
+    ```
+
+    !!! warning
+        VS Code uses `"servers"` as the top-level key, not `"mcpServers"`.
+
+=== "Cursor"
+
+    Add to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
+
+    ```json
+    {
+      "mcpServers": {
+        "docvet": {
+          "command": "uvx",
+          "args": ["docvet[mcp]", "mcp"]
+        }
+      }
+    }
+    ```
+
+=== "Windsurf"
+
+    Add to `~/.codeium/windsurf/mcp_config.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "docvet": {
+          "command": "uvx",
+          "args": ["docvet[mcp]", "mcp"]
+        }
+      }
+    }
+    ```
+
+=== "Claude Desktop"
+
+    Add to `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`):
+
+    ```json
+    {
+      "mcpServers": {
+        "docvet": {
+          "command": "uvx",
+          "args": ["docvet[mcp]", "mcp"]
+        }
+      }
+    }
+    ```
+
+    Restart Claude Desktop after editing.
+
+docvet is also listed on the [MCP Registry](https://registry.modelcontextprotocol.io) — search for `docvet` to find it.
 
 ### Available Tools
 
