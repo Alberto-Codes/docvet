@@ -2,7 +2,7 @@
 
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``presence``, ``enrichment``, ``freshness``, ``coverage``, ``griffe``,
-``lsp``) and the combined ``check`` entry point. All subcommands accept positional file
+``lsp``, ``mcp``) and the combined ``check`` entry point. All subcommands accept positional file
 arguments (``docvet check src/foo.py``) and the ``--files`` option,
 share three-tier verbosity control (quiet/default/verbose) via
 dual-registered ``--verbose`` and ``-q``/``--quiet`` flags, emit
@@ -1263,3 +1263,25 @@ def lsp() -> None:
         )
         raise typer.Exit(code=1)
     start_server()
+
+
+@app.command()
+def mcp() -> None:
+    """Start the MCP server for agentic integration.
+
+    Launches a Model Context Protocol server on stdio that exposes
+    docstring quality checks as MCP tools for AI agents.
+    Requires the ``[mcp]`` extra (``pip install docvet[mcp]``).
+
+    Raises:
+        typer.Exit: If required MCP dependencies are not installed.
+    """
+    try:
+        from docvet.mcp import start_server as mcp_start_server
+    except ModuleNotFoundError:
+        typer.echo(
+            "MCP server requires the mcp extra: pip install docvet[mcp]",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    mcp_start_server()
