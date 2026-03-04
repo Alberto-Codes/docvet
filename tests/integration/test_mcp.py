@@ -51,9 +51,20 @@ def isolated_project(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def undocumented_file(isolated_project: Path) -> Path:
-    """Create a Python file with an undocumented public function."""
+    """Create a Python file with docstring issues for multi-check coverage."""
     p = isolated_project / "bad.py"
-    p.write_text("def foo():\n    pass\n", encoding="utf-8")
+    p.write_text(
+        textwrap.dedent('''\
+        def foo():
+            pass
+
+
+        def bar():
+            """Do something."""
+            raise ValueError("bad")
+        '''),
+        encoding="utf-8",
+    )
     return p
 
 

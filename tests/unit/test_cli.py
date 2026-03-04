@@ -81,6 +81,7 @@ def test_app_when_invoked_with_help_shows_all_subcommands():
     assert "freshness" in output
     assert "coverage" in output
     assert "griffe" in output
+    assert "lsp" in output
     assert "mcp" in output
 
 
@@ -2828,7 +2829,7 @@ class TestMcpSubcommand:
         mock_start = mocker.patch("docvet.mcp.start_server")
         result = runner.invoke(app, ["mcp"])
         assert result.exit_code == 0
-        mock_start.assert_called_once()
+        mock_start.assert_called_once_with()
 
     def test_mcp_registered_as_typer_command(self):
         """Structural: 'mcp' is a registered command on the typer app."""

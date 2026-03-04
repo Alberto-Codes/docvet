@@ -241,6 +241,6 @@ development_status:
   # Epic 29: MCP Server & Agentic Integration
   epic-29: in-progress
   29-1-core-mcp-server-implementation: done
-  29-2-cli-wiring-and-tests: review
+  29-2-cli-wiring-and-tests: done
   29-3-documentation-and-marketplace-publishing: backlog
   epic-29-retrospective: optional

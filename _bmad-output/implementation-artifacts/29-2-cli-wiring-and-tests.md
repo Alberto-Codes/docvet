@@ -1,6 +1,6 @@
 # Story 29.2: CLI Wiring and Tests
 
-Status: review
+Status: done
 Branch: `feat/mcp-29-2-cli-wiring-and-tests`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/266
 
@@ -204,7 +204,7 @@ Files from 29.1 that are relevant:
 ### Documentation Impact
 
 - Pages: docs/site/cli-reference.md
-- Nature of update: Add `docvet mcp` subcommand entry to CLI reference page. Full MCP documentation (ai-integration page, setup guide) is Story 29.3's scope — this story only documents the CLI subcommand existence.
+- Nature of update: Add `docvet mcp` subcommand entry to CLI reference page. Also backfills missing `docvet lsp` entry (gap from Epic 24) and updates subcommand count from six to eight. Full MCP documentation (ai-integration page, setup guide) is Story 29.3's scope — this story only documents the CLI subcommand existence.
 
 ## Quality Gates
 
@@ -243,6 +243,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-03-03: Implemented story 29.2 — added `docvet mcp` CLI subcommand, 4 CLI unit tests, 6 MCP integration tests, updated CLI reference docs
+- 2026-03-03: Code review — fixed 4 findings (M1: assertion strength, M2: lsp help test gap, M3: Documentation Impact, L1: parity fixture enrichment). Dropped L2 (async boilerplate) by consensus.
 
 ### File List
 
@@ -257,15 +258,24 @@ Claude Opus 4.6
 
 ### Reviewer
 
+Code review (adversarial) — 2026-03-03
+
 ### Outcome
+
+Approved with fixes applied
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | `test_successful_invocation_calls_start_server` uses `assert_called_once()` instead of `assert_called_once_with()` (dev quality checklist violation) | Fixed: `test_cli.py:2831` |
+| M2 | MEDIUM | `test_app_when_invoked_with_help_shows_all_subcommands` missing `lsp` assertion (7/8 subcommands) | Fixed: added `assert "lsp" in output` |
+| M3 | MEDIUM | Documentation Impact section doesn't mention `docvet lsp` docs backfill or subcommand count change | Fixed: updated Documentation Impact |
+| L1 | LOW | Parity test fixture only exercises presence check (single `def foo(): pass`) — no enrichment findings | Fixed: added `bar()` with `raise ValueError` to exercise enrichment |
+| L2 | LOW | Integration test async boilerplate duplicated 6 times | Dropped: test isolation > DRY for subprocess-spawning integration tests |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
