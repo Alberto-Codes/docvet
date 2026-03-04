@@ -52,6 +52,107 @@ The LSP server reads `[tool.docvet]` from `pyproject.toml` in your project root 
 
 Each diagnostic includes a link to its rule page on the docs site. Click the link (or hover, depending on your editor) to see an explanation and fix guidance.
 
+## MCP Server
+
+The `docvet mcp` subcommand starts a [Model Context Protocol](https://modelcontextprotocol.io/) server on stdio. AI agents and tools that support MCP (Claude Code, Cursor, etc.) can invoke docvet checks programmatically and receive structured JSON results.
+
+### Install
+
+```bash
+pip install docvet[mcp]
+```
+
+This installs `docvet` and the [`mcp`](https://pypi.org/project/mcp/) protocol library.
+
+### Start the Server
+
+```bash
+docvet mcp
+```
+
+The server runs on stdio. You do not run this manually — your MCP client (Claude Code, Cursor, etc.) starts it automatically using its configuration.
+
+### Available Tools
+
+The MCP server exposes two tools:
+
+#### `docvet_check`
+
+Run docvet checks on Python files.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `path` | `str` | Yes | Path to a Python file or directory |
+| `checks` | `list[str]` | No | Check names to run. Valid: `presence`, `enrichment`, `freshness`, `coverage`, `griffe`. Defaults to all except freshness. |
+
+By default, freshness is excluded because it requires git context, and griffe is excluded when not installed.
+
+**Response schema:**
+
+```json
+{
+  "findings": [
+    {
+      "file": "src/mypackage/utils.py",
+      "line": 42,
+      "symbol": "parse_config",
+      "rule": "missing-raises",
+      "message": "Function 'parse_config' raises ValueError but has no Raises section",
+      "category": "required"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "by_category": {"required": 3, "recommended": 2},
+    "files_checked": 10,
+    "by_check": {"enrichment": 3, "presence": 2}
+  },
+  "presence_coverage": {
+    "documented": 8,
+    "total": 10,
+    "percentage": 80.0,
+    "threshold": 95.0,
+    "passed": false
+  }
+}
+```
+
+The `presence_coverage` key only appears when the presence check runs. An `errors` key appears if any check encounters an internal error (e.g., griffe not installed, git unavailable). If the request itself is invalid (nonexistent path, unknown check name, or malformed configuration), the response contains only an `error` string instead of findings.
+
+#### `docvet_rules`
+
+List all available docvet rules. Takes no parameters.
+
+**Response schema:**
+
+```json
+{
+  "rules": [
+    {
+      "name": "missing-raises",
+      "check": "enrichment",
+      "description": "Function raises an exception not documented in Raises section.",
+      "category": "required"
+    }
+  ]
+}
+```
+
+### MCP vs LSP
+
+Both servers run on stdio, but they serve different use cases:
+
+| Feature | LSP Server | MCP Server |
+|---------|-----------|------------|
+| Protocol | Language Server Protocol | Model Context Protocol |
+| Use case | Real-time editor diagnostics (inline squiggles) | Programmatic agent access (structured JSON) |
+| Checks | 3 (Enrichment, Coverage, Griffe) | 4 by default (Presence, Enrichment, Coverage, Griffe); freshness on request |
+| Output | Inline diagnostics | Structured JSON response |
+| Install | `pip install docvet[lsp]` | `pip install docvet[mcp]` |
+| Command | `docvet lsp` | `docvet mcp` |
+
+**Choose LSP** when you want diagnostics in your editor as you type. **Choose MCP** when an AI agent needs to invoke checks and process results programmatically.
+
 ## Claude Code
 
 docvet ships as a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) with minimal setup.

@@ -6,6 +6,11 @@
       "release-type": "python",
       "package-name": "docvet",
       "include-component-in-tag": false,
+      "extra-files": [
+        {"type": "json", "path": "server.json", "jsonpath": "$.version"},
+        {"type": "json", "path": "server.json", "jsonpath": "$.packages[0].version"},
+        {"type": "json", "path": ".claude-plugin/plugin.json", "jsonpath": "$.version"}
+      ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
