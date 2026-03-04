@@ -9,6 +9,40 @@ Add docvet to your AI coding workflow. Drop a snippet into your agent's instruct
 !!! tip "Looking for real-time diagnostics?"
     If you want inline findings as you type (LSP server, Claude Code plugin, Neovim, VS Code), see [Editor Integration](editor-integration.md).
 
+## MCP Server (Programmatic Access)
+
+For the richest AI agent integration, use docvet's [MCP server](editor-integration.md#mcp-server). Instead of parsing CLI text output, agents receive structured JSON results with findings, summaries, and coverage data.
+
+### Claude Code Configuration
+
+Add to your `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "docvet": {
+      "command": "docvet",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Or use `uvx` to run without pre-installing:
+
+```json
+{
+  "mcpServers": {
+    "docvet": {
+      "command": "uvx",
+      "args": ["docvet[mcp]", "mcp"]
+    }
+  }
+}
+```
+
+Once configured, the agent can call `docvet_check` and `docvet_rules` tools directly. See the [MCP Server tool reference](editor-integration.md#mcp-server) for parameters and response schemas.
+
 ## Which File Should I Use?
 
 | Your AI Tool | Add This File |
