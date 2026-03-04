@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.8.0](https://github.com/Alberto-Codes/docvet/compare/v1.7.0...v1.8.0) (2026-03-04)
+
+
+### Features
+
+* **mcp:** add core MCP server with docvet_check and docvet_rules tools ([#261](https://github.com/Alberto-Codes/docvet/issues/261)) ([36b3dde](https://github.com/Alberto-Codes/docvet/commit/36b3dde24d1b919f59577fac3ad7aad5723cd3d9)), closes [#260](https://github.com/Alberto-Codes/docvet/issues/260)
+* **mcp:** add docvet mcp CLI subcommand and integration tests ([#267](https://github.com/Alberto-Codes/docvet/issues/267)) ([c223a63](https://github.com/Alberto-Codes/docvet/commit/c223a63107b86a62c8c0f8e27629778374f8ad9e)), closes [#266](https://github.com/Alberto-Codes/docvet/issues/266)
+
+
+### Bug Fixes
+
+* **ci:** replace TestPyPI gate with local wheel smoke test ([574aa74](https://github.com/Alberto-Codes/docvet/commit/574aa74f2e167058c23830699b2f9127bcf2378c))
+* **ci:** replace TestPyPI gate with local wheel smoke test ([#255](https://github.com/Alberto-Codes/docvet/issues/255)) ([574aa74](https://github.com/Alberto-Codes/docvet/commit/574aa74f2e167058c23830699b2f9127bcf2378c)), closes [#252](https://github.com/Alberto-Codes/docvet/issues/252)
+* **mcp:** address code review findings for directory scoping and test ([36b3dde](https://github.com/Alberto-Codes/docvet/commit/36b3dde24d1b919f59577fac3ad7aad5723cd3d9))
+* **mcp:** address code review findings for story 29.2 ([c223a63](https://github.com/Alberto-Codes/docvet/commit/c223a63107b86a62c8c0f8e27629778374f8ad9e))
+
+
+### Documentation
+
+* **mcp:** add MCP server docs, registry manifest, and version tracking ([4823bf0](https://github.com/Alberto-Codes/docvet/commit/4823bf0765087779134fbdff4f1c8c9213acefd9)), closes [#268](https://github.com/Alberto-Codes/docvet/issues/268)
+* **readme:** reorder badges to industry standard convention ([574aa74](https://github.com/Alberto-Codes/docvet/commit/574aa74f2e167058c23830699b2f9127bcf2378c))
+
 ## [1.7.0](https://github.com/Alberto-Codes/docvet/compare/v1.6.4...v1.7.0) (2026-03-03)
 
 
