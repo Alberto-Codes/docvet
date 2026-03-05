@@ -151,6 +151,15 @@
       5. **Test Quality**: Are tests real assertions or placeholders?
     </action>
 
+    <!-- Test Maturity Piggyback Verification -->
+    <action>Check if the story's Dev Notes contains a "### Test Maturity Piggyback" item</action>
+    <check if="piggyback item exists in story">
+      <action>Verify whether the piggyback item was addressed in the implementation</action>
+      <check if="piggyback item NOT addressed">
+        <action>Add a LOW finding: "Test maturity piggyback item was not addressed: {item description}"</action>
+      </check>
+    </check>
+
     <!-- SonarQube Analysis (if MCP server available) -->
     <action>For EACH modified src/ file in the comprehensive review list:
       1. Read the file content
