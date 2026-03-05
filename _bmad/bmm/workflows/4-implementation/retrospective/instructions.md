@@ -1400,6 +1400,30 @@ EOF
 
 </step>
 
+<step n="11b" goal="Refresh Test Maturity Baseline">
+
+<action>After saving the retrospective, rerun the test-review workflow to produce a fresh test-review.md baseline for the next development cycle</action>
+
+<action>Invoke the TEA test-review workflow (`/bmad-tea-testarch-test-review`) targeting the full test suite</action>
+<action>The output overwrites {test_artifacts}/test-review.md with an updated snapshot</action>
+<action>This ensures create-story and code-review workflows reference current test quality data in the next epic</action>
+
+<output>
+Bob (Scrum Master): "One last thing — let's refresh our test maturity baseline before we move on."
+
+Dana (QA Engineer): "Running test-review now to capture the current state of our test suite."
+</output>
+
+<action>Execute test-review workflow and save output to {test_artifacts}/test-review.md</action>
+
+<output>
+Dana (QA Engineer): "Test maturity baseline updated. Create-story and code-review will pick up these findings automatically in Epic {{next_epic_num}}."
+
+Bob (Scrum Master): "Good — continuous improvement baked into the process."
+</output>
+
+</step>
+
 <step n="12" goal="Final Summary and Handoff">
 
 <output>

@@ -325,6 +325,20 @@ Consider these when planning this epic's stories.
     <template-output file="{default_output_file}">
     story_completion_status</template-output>
 
+    <!-- Test Maturity Piggyback (from test-review.md) -->
+    <action>Check if {test_artifacts}/test-review.md exists</action>
+    <check if="test-review.md exists">
+      <action>Load {test_artifacts}/test-review.md</action>
+      <action>Select ONE recommendation to piggyback on this story — prefer items related to the story's target files, but any item is fine</action>
+      <action>Add a "### Test Maturity Piggyback" subsection to Dev Notes with:
+        - The single selected item (severity, location, brief description)
+        - Note: "Sourced from test-review.md — address alongside this story's work"
+      </action>
+    </check>
+    <check if="test-review.md does NOT exist">
+      <action>Add to Dev Notes: "### Test Maturity Piggyback\n\nNo test-review.md found — run `/bmad-tea-testarch-test-review` to establish baseline."</action>
+    </check>
+
     <!-- Documentation Impact Assessment (GATING — requires explicit page names or "None") -->
     <template-output file="{default_output_file}">documentation_impact_assessment
 
