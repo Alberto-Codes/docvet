@@ -1769,8 +1769,7 @@ class TestOutputAndExit:
         self._call(
             ctx, {"enrichment": [make_finding()]}, DocvetConfig(), 1, ["enrichment"]
         )
-        self.mock_format_terminal.assert_called_once()
-        assert self.mock_format_terminal.call_args[1]["no_color"] is True
+        self.mock_format_terminal.assert_called_once_with(ANY, no_color=True)
 
     def test_non_tty_stdout_suppresses_ansi(self, monkeypatch, make_finding):
         monkeypatch.delenv("NO_COLOR", raising=False)
@@ -1779,8 +1778,7 @@ class TestOutputAndExit:
         self._call(
             ctx, {"enrichment": [make_finding()]}, DocvetConfig(), 1, ["enrichment"]
         )
-        self.mock_format_terminal.assert_called_once()
-        assert self.mock_format_terminal.call_args[1]["no_color"] is True
+        self.mock_format_terminal.assert_called_once_with(ANY, no_color=True)
 
     def test_output_flag_forces_no_color_true(self, make_finding):
         finding = make_finding()
