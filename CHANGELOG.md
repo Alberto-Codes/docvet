@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.0](https://github.com/Alberto-Codes/docvet/compare/v1.8.1...v1.9.0) (2026-03-05)
+
+
+### Features
+
+* **mcp:** add guidance and fix_example to rule catalog ([#277](https://github.com/Alberto-Codes/docvet/issues/277)) ([5108e73](https://github.com/Alberto-Codes/docvet/commit/5108e732f91f6a217fc7f26ef974e70d61b55bdb))
+
+
+### Bug Fixes
+
+* **plugin:** add marketplace.json and update install instructions ([79887fa](https://github.com/Alberto-Codes/docvet/commit/79887fa6be4cf9e132d824e52894c25c19b5368e))
+
+
+### Documentation
+
+* add privacy policy page ([fa5b977](https://github.com/Alberto-Codes/docvet/commit/fa5b977d5d633aaf6e2a0ef8ec43edfedfea205b))
+* **mcp:** add per-client MCP config snippets ([a4bbbbf](https://github.com/Alberto-Codes/docvet/commit/a4bbbbf7eee12eb9587aaced1213fcadf1fc3501))
+
 ## [1.8.1](https://github.com/Alberto-Codes/docvet/compare/v1.8.0...v1.8.1) (2026-03-04)
 
 
