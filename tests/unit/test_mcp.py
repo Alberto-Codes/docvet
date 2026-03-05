@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
 import textwrap
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,8 +15,12 @@ import pytest
 
 mcp_pkg = pytest.importorskip("mcp")
 
-from docvet.checks import Finding, PresenceStats  # noqa: E402
-from docvet.config import _VALID_CHECK_NAMES, DocvetConfig  # noqa: E402
+from docvet.checks import Finding, PresenceStats, check_enrichment  # noqa: E402
+from docvet.config import (  # noqa: E402
+    _VALID_CHECK_NAMES,
+    DocvetConfig,
+    EnrichmentConfig,
+)
 from docvet.mcp import (  # noqa: E402
     _DEFAULT_MCP_CHECKS,
     _RULE_CATALOG,
@@ -222,7 +228,14 @@ class TestDocvetRules:
     def test_rules_have_all_required_fields(self):
         result = json.loads(docvet_rules())
 
-        expected_keys = {"name", "check", "description", "category"}
+        expected_keys = {
+            "name",
+            "check",
+            "description",
+            "category",
+            "guidance",
+            "fix_example",
+        }
         for rule in result["rules"]:
             assert set(rule.keys()) == expected_keys
 
@@ -496,7 +509,14 @@ class TestRuleCatalogStaleness:
         assert len(_RULE_CATALOG) == 20
 
     def test_rule_catalog_entries_have_required_keys(self):
-        expected_keys = {"name", "check", "description", "category"}
+        expected_keys = {
+            "name",
+            "check",
+            "description",
+            "category",
+            "guidance",
+            "fix_example",
+        }
         for entry in _RULE_CATALOG:
             assert set(entry.keys()) == expected_keys
 
@@ -702,3 +722,463 @@ class TestDocvetCheckDirectory:
         files_in_findings = {f["file"] for f in result["findings"]}
         for f in files_in_findings:
             assert "out_scope" not in f
+
+
+# ---------------------------------------------------------------------------
+# Task 5 — catalog guidance completeness tests
+# ---------------------------------------------------------------------------
+
+_FORMAT_FIXABLE_CHECKS = {"enrichment", "griffe", "presence"}
+_ACTION_CHECKS = {"freshness", "coverage"}
+
+
+class TestRuleCatalogGuidance:
+    def test_check_sets_are_exhaustive(self):
+        catalog_checks = {entry["check"] for entry in _RULE_CATALOG}
+        assert _FORMAT_FIXABLE_CHECKS | _ACTION_CHECKS == catalog_checks
+
+    def test_all_entries_have_guidance_string(self):
+        for entry in _RULE_CATALOG:
+            assert isinstance(entry["guidance"], str), entry["name"]
+            assert len(entry["guidance"]) > 0, entry["name"]
+
+    def test_format_fixable_rules_have_fix_example(self):
+        for entry in _RULE_CATALOG:
+            if entry["check"] in _FORMAT_FIXABLE_CHECKS:
+                assert entry["fix_example"] is not None, entry["name"]
+
+    def test_action_rules_have_null_fix_example(self):
+        for entry in _RULE_CATALOG:
+            if entry["check"] in _ACTION_CHECKS:
+                assert entry["fix_example"] is None, entry["name"]
+
+    def test_cross_references_description_covers_both_branches(self):
+        xref = next(e for e in _RULE_CATALOG if e["name"] == "missing-cross-references")
+        desc = xref["description"]
+        assert isinstance(desc, str)
+        assert "missing" in desc.lower()
+        assert "lack" in desc.lower()
+
+    # ------------------------------------------------------------------
+    # Task 6 — structural validation for fix_example content
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize(
+        "entry",
+        [
+            e
+            for e in _RULE_CATALOG
+            if e["fix_example"] is not None and e["check"] != "presence"
+        ],
+        ids=lambda e: e["name"],
+    )
+    def test_fix_example_structural_validity(self, entry: dict[str, str | None]):
+        example = entry["fix_example"]
+        assert example is not None
+        assert "\t" not in example, f"{entry['name']} contains tabs"
+        # Matching fenced block delimiters (even count of ```)
+        fence_count = example.count("```")
+        assert fence_count % 2 == 0, (
+            f"{entry['name']} has unmatched fenced block delimiters"
+        )
+        # Non-header lines use 4-space indentation
+        lines = example.split("\n")
+        for line in lines[1:]:
+            if line.strip():
+                assert line.startswith("    "), (
+                    f"{entry['name']}: non-header line missing 4-space indent: {line!r}"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Task 7 — round-trip tests for enrichment rules
+# ---------------------------------------------------------------------------
+
+
+def _isolated_config(rule_name: str) -> EnrichmentConfig:
+    """Return an EnrichmentConfig with only the target rule enabled."""
+    base = EnrichmentConfig(
+        require_raises=False,
+        require_yields=False,
+        require_receives=False,
+        require_warns=False,
+        require_other_parameters=False,
+        require_attributes=False,
+        require_typed_attributes=False,
+        require_examples=[],
+        require_cross_references=False,
+        prefer_fenced_code_blocks=False,
+    )
+    match rule_name:
+        case "missing-raises":
+            return replace(base, require_raises=True)
+        case "missing-yields":
+            return replace(base, require_yields=True)
+        case "missing-receives":
+            return replace(base, require_receives=True)
+        case "missing-warns":
+            return replace(base, require_warns=True)
+        case "missing-other-parameters":
+            return replace(base, require_other_parameters=True)
+        case "missing-attributes":
+            return replace(base, require_attributes=True)
+        case "missing-typed-attributes":
+            return replace(base, require_typed_attributes=True)
+        case "missing-examples":
+            return replace(base, require_examples=["class"])
+        case "missing-cross-references":
+            return replace(base, require_cross_references=True)
+        case "prefer-fenced-code-blocks":
+            return replace(base, prefer_fenced_code_blocks=True)
+        case _:
+            msg = f"Unknown enrichment rule: {rule_name}"
+            raise ValueError(msg)
+
+
+_ENRICHMENT_ROUND_TRIP_CASES = [
+    (
+        "missing-raises",
+        textwrap.dedent('''\
+        def explode(x):
+            """Explode the value.
+
+            Args:
+                x: The value.
+            """
+            if x < 0:
+                raise ValueError("negative")
+        '''),
+        textwrap.dedent('''\
+        def explode(x):
+            """Explode the value.
+
+            Args:
+                x: The value.
+
+            Raises:
+                ValueError: If x is negative.
+            """
+            if x < 0:
+                raise ValueError("negative")
+        '''),
+    ),
+    (
+        "missing-yields",
+        textwrap.dedent('''\
+        def gen():
+            """Generate values."""
+            yield 1
+        '''),
+        textwrap.dedent('''\
+        def gen():
+            """Generate values.
+
+            Yields:
+                Integer values.
+            """
+            yield 1
+        '''),
+    ),
+    (
+        "missing-receives",
+        textwrap.dedent('''\
+        def coro():
+            """Coroutine."""
+            value = yield
+            print(value)
+        '''),
+        textwrap.dedent('''\
+        def coro():
+            """Coroutine.
+
+            Receives:
+                Value to print.
+
+            Yields:
+                Nothing meaningful.
+            """
+            value = yield
+            print(value)
+        '''),
+    ),
+    (
+        "missing-warns",
+        textwrap.dedent('''\
+        import warnings
+        def check(timeout):
+            """Check timeout.
+
+            Args:
+                timeout: Timeout in seconds.
+            """
+            if timeout < 5:
+                warnings.warn("too short", stacklevel=2)
+        '''),
+        textwrap.dedent('''\
+        import warnings
+        def check(timeout):
+            """Check timeout.
+
+            Args:
+                timeout: Timeout in seconds.
+
+            Warns:
+                UserWarning: If timeout is less than 5 seconds.
+            """
+            if timeout < 5:
+                warnings.warn("too short", stacklevel=2)
+        '''),
+    ),
+    (
+        "missing-other-parameters",
+        textwrap.dedent('''\
+        def run(**kwargs):
+            """Run something."""
+            pass
+        '''),
+        textwrap.dedent('''\
+        def run(**kwargs):
+            """Run something.
+
+            Other Parameters:
+                **kwargs: Arbitrary keyword arguments.
+            """
+            pass
+        '''),
+    ),
+    (
+        "missing-attributes",
+        textwrap.dedent('''\
+        class User:
+            """A user."""
+            def __init__(self):
+                self.name = "alice"
+        '''),
+        textwrap.dedent('''\
+        class User:
+            """A user.
+
+            Attributes:
+                name (str): The user name.
+            """
+            def __init__(self):
+                self.name = "alice"
+        '''),
+    ),
+    (
+        "missing-typed-attributes",
+        textwrap.dedent('''\
+        class Server:
+            """A server.
+
+            Attributes:
+                host: The hostname.
+            """
+            def __init__(self):
+                self.host = "localhost"
+        '''),
+        textwrap.dedent('''\
+        class Server:
+            """A server.
+
+            Attributes:
+                host (str): The hostname.
+            """
+            def __init__(self):
+                self.host = "localhost"
+        '''),
+    ),
+    (
+        "missing-examples",
+        textwrap.dedent('''\
+        class Widget:
+            """A widget."""
+            pass
+        '''),
+        textwrap.dedent('''\
+        class Widget:
+            """A widget.
+
+            Examples:
+                Create a widget:
+
+                ```python
+                w = Widget()
+                ```
+            """
+            pass
+        '''),
+    ),
+    (
+        "missing-cross-references",
+        textwrap.dedent('''\
+        """Module without see also."""
+        '''),
+        textwrap.dedent('''\
+        """Module without see also.
+
+        See Also:
+            [`os.path`][]: Path utilities.
+        """
+        '''),
+    ),
+    (
+        "prefer-fenced-code-blocks",
+        textwrap.dedent('''\
+        def check(data):
+            """Check data.
+
+            Examples:
+                >>> check(1)
+            """
+            pass
+        '''),
+        textwrap.dedent('''\
+        def check(data):
+            """Check data.
+
+            Examples:
+                Run a check:
+
+                ```python
+                check(1)
+                ```
+            """
+            pass
+        '''),
+    ),
+]
+
+
+class TestRuleCatalogGuidanceRoundTrip:
+    @pytest.mark.parametrize(
+        ("rule_name", "before_source", "after_source"),
+        _ENRICHMENT_ROUND_TRIP_CASES,
+        ids=[name for name, _, _ in _ENRICHMENT_ROUND_TRIP_CASES],
+    )
+    def test_round_trip(self, rule_name: str, before_source: str, after_source: str):
+        config = _isolated_config(rule_name)
+
+        # Before: should trigger the rule
+        tree_before = ast.parse(before_source)
+        findings_before = check_enrichment(
+            before_source, tree_before, config, "test.py"
+        )
+        matching_before = [f for f in findings_before if f.rule == rule_name]
+        assert len(matching_before) >= 1, (
+            f"Expected {rule_name} finding in before source"
+        )
+
+        # After: should have zero findings for this rule
+        tree_after = ast.parse(after_source)
+        findings_after = check_enrichment(after_source, tree_after, config, "test.py")
+        matching_after = [f for f in findings_after if f.rule == rule_name]
+        assert len(matching_after) == 0, (
+            f"Expected zero {rule_name} findings in after source, got:"
+            f" {[f.message for f in matching_after]}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Task 8 — round-trip tests for griffe rules (gated)
+# ---------------------------------------------------------------------------
+
+
+class TestRuleCatalogGuidanceRoundTripGriffe:
+    @pytest.mark.parametrize(
+        ("rule_name", "before_source", "after_source"),
+        [
+            (
+                "griffe-unknown-param",
+                textwrap.dedent('''\
+                def greet(name):
+                    """Greet someone.
+
+                    Args:
+                        nme (str): The name.
+                    """
+                    print(name)
+                '''),
+                textwrap.dedent('''\
+                def greet(name):
+                    """Greet someone.
+
+                    Args:
+                        name (str): The name.
+                    """
+                    print(name)
+                '''),
+            ),
+            (
+                "griffe-missing-type",
+                textwrap.dedent('''\
+                def greet(name):
+                    """Greet someone.
+
+                    Args:
+                        name: The name.
+                    """
+                    print(name)
+                '''),
+                textwrap.dedent('''\
+                def greet(name):
+                    """Greet someone.
+
+                    Args:
+                        name (str): The name.
+                    """
+                    print(name)
+                '''),
+            ),
+            (
+                "griffe-format-warning",
+                textwrap.dedent('''\
+                def greet(name):
+                    """Greet someone.
+
+                    Args:
+                        name - The name.
+                    """
+                    print(name)
+                '''),
+                textwrap.dedent('''\
+                def greet(name):
+                    """Greet someone.
+
+                    Args:
+                        name (str): The name.
+                    """
+                    print(name)
+                '''),
+            ),
+        ],
+        ids=["griffe-unknown-param", "griffe-missing-type", "griffe-format-warning"],
+    )
+    def test_round_trip(
+        self, rule_name: str, before_source: str, after_source: str, tmp_path: Path
+    ):
+        pytest.importorskip("griffe")
+        from docvet.checks.griffe_compat import check_griffe_compat
+
+        # Griffe requires a package layout (dir with __init__.py)
+        pkg = tmp_path / "mypkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        py_file = pkg / "mod.py"
+
+        # Before: should trigger the rule
+        py_file.write_text(before_source, encoding="utf-8")
+        findings_before = list(check_griffe_compat(tmp_path, [py_file]))
+        matching_before = [f for f in findings_before if f.rule == rule_name]
+        assert len(matching_before) >= 1, (
+            f"Expected {rule_name} finding in before source"
+        )
+
+        # After: overwrite and re-check
+        py_file.write_text(after_source, encoding="utf-8")
+        findings_after = list(check_griffe_compat(tmp_path, [py_file]))
+        matching_after = [f for f in findings_after if f.rule == rule_name]
+        assert len(matching_after) == 0, (
+            f"Expected zero {rule_name} findings in after source, got:"
+            f" {[f.message for f in matching_after]}"
+        )
