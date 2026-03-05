@@ -3,7 +3,7 @@
 Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
-to retrieve the full rule catalog.
+to retrieve the full rule catalog with per-rule fix guidance.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
 module-level server instance, a single public ``start_server()``
@@ -88,130 +88,249 @@ _DEFAULT_MCP_CHECKS: frozenset[str] = frozenset(
 # Rule catalog
 # ---------------------------------------------------------------------------
 
-_RULE_CATALOG: list[dict[str, str]] = [
+_RULE_CATALOG: list[dict[str, str | None]] = [
     {
         "name": "missing-docstring",
         "check": "presence",
         "description": "Public symbol lacks a docstring.",
         "category": "required",
+        "guidance": (
+            "Add a Google-style docstring with a one-line summary ending in a"
+            " period, followed by a detailed description."
+        ),
+        "fix_example": '"""One-line summary.\n\nDetailed description.\n"""',
     },
     {
         "name": "missing-raises",
         "check": "enrichment",
         "description": "Function raises an exception not documented in Raises section.",
         "category": "required",
+        "guidance": (
+            "Add a Raises: section listing each exception type and the"
+            " condition that triggers it."
+        ),
+        "fix_example": "Raises:\n    ValueError: If the input is negative.",
     },
     {
         "name": "missing-yields",
         "check": "enrichment",
         "description": "Generator function lacks a Yields section.",
         "category": "required",
+        "guidance": (
+            "Add a Yields: section describing what values the generator produces."
+        ),
+        "fix_example": (
+            "Yields:\n    Row data as a dictionary with column names as keys."
+        ),
     },
     {
         "name": "missing-receives",
         "check": "enrichment",
         "description": "Generator function using send() lacks a Receives section.",
         "category": "required",
+        "guidance": (
+            "Add a Receives: section documenting values accepted via .send()."
+        ),
+        "fix_example": ("Receives:\n    Numeric value to add to the running total."),
     },
     {
         "name": "missing-warns",
         "check": "enrichment",
         "description": "Function issues warnings not documented in Warns section.",
         "category": "required",
+        "guidance": (
+            "Add a Warns: section listing each warning category and the condition."
+        ),
+        "fix_example": ("Warns:\n    UserWarning: If timeout is less than 5 seconds."),
     },
     {
         "name": "missing-other-parameters",
         "check": "enrichment",
         "description": "Function has *args or **kwargs not documented in Other Parameters.",
         "category": "required",
+        "guidance": (
+            "Add an Other Parameters: section documenting *args and/or **kwargs."
+        ),
+        "fix_example": (
+            "Other Parameters:\n    **kwargs: Arbitrary keyword arguments"
+            " passed to the\n        underlying handler."
+        ),
     },
     {
         "name": "missing-attributes",
         "check": "enrichment",
         "description": "Class or module has undocumented public attributes.",
         "category": "required",
+        "guidance": (
+            "Add an Attributes: section listing all public instance attributes"
+            " with types and descriptions."
+        ),
+        "fix_example": (
+            "Attributes:\n    name (str): The user's display name.\n"
+            "    email (str): The user's email address."
+        ),
     },
     {
         "name": "missing-typed-attributes",
         "check": "enrichment",
         "description": "Attributes section uses untyped style instead of typed.",
         "category": "recommended",
+        "guidance": "Use typed attribute format: name (type): description.",
+        "fix_example": (
+            "Attributes:\n    host (str): The server hostname.\n"
+            "    port (int): The server port number."
+        ),
     },
     {
         "name": "missing-examples",
         "check": "enrichment",
         "description": "Public symbol lacks an Examples section.",
         "category": "recommended",
+        "guidance": (
+            "Add an Examples: section with a brief description followed by a"
+            " fenced code block using ```python."
+        ),
+        "fix_example": (
+            "Examples:\n    Create a widget with default settings:\n\n"
+            "    ```python\n    widget = Widget()\n"
+            "    assert widget.is_active\n    ```"
+        ),
     },
     {
         "name": "missing-cross-references",
         "check": "enrichment",
-        "description": "Docstring references other symbols without cross-reference links.",
+        "description": (
+            "Module missing See Also section, or existing See Also entries"
+            " lack cross-reference link syntax."
+        ),
         "category": "recommended",
+        "guidance": (
+            "Add a See Also: section using mkdocstrings cross-reference"
+            " syntax: [`fully.qualified.Name`][]. Each entry uses"
+            " bracket-backtick-bracket format for linkable references."
+        ),
+        "fix_example": (
+            "See Also:\n    [`mypackage.Config`][]: Application"
+            " configuration.\n    [`mypackage.utils`][]: Utility functions."
+        ),
     },
     {
         "name": "prefer-fenced-code-blocks",
         "check": "enrichment",
         "description": "Docstring uses indented code blocks instead of fenced.",
         "category": "recommended",
+        "guidance": (
+            "Replace >>> doctest or :: reST indented code blocks with fenced"
+            " ```python blocks."
+        ),
+        "fix_example": (
+            "Examples:\n    Run the check:\n\n    ```python\n"
+            "    result = check(data)\n    ```"
+        ),
     },
     {
         "name": "stale-signature",
         "check": "freshness",
         "description": "Function signature changed without docstring update.",
         "category": "required",
+        "guidance": (
+            "Update the docstring Args, Returns, and Raises sections to match"
+            " the changed function signature."
+        ),
+        "fix_example": None,
     },
     {
         "name": "stale-body",
         "check": "freshness",
         "description": "Function body changed without docstring update.",
         "category": "recommended",
+        "guidance": (
+            "Review and update the docstring description and sections to"
+            " reflect the changed function behavior."
+        ),
+        "fix_example": None,
     },
     {
         "name": "stale-import",
         "check": "freshness",
         "description": "Import changed near symbol without docstring update.",
         "category": "recommended",
+        "guidance": (
+            "Review the docstring for references to changed imports and update"
+            " accordingly."
+        ),
+        "fix_example": None,
     },
     {
         "name": "stale-drift",
         "check": "freshness",
         "description": "Docstring has not been updated since significant code changes.",
         "category": "recommended",
+        "guidance": (
+            "Review and refresh the docstring to reflect cumulative code"
+            " changes since the last docstring edit."
+        ),
+        "fix_example": None,
     },
     {
         "name": "stale-age",
         "check": "freshness",
         "description": "Docstring has not been updated for an extended period.",
         "category": "recommended",
+        "guidance": (
+            "Review and confirm the docstring still accurately describes the"
+            " symbol's current behavior."
+        ),
+        "fix_example": None,
     },
     {
         "name": "missing-init",
         "check": "coverage",
         "description": "Directory with Python files lacks __init__.py for mkdocs discovery.",
         "category": "required",
+        "guidance": (
+            "Create an __init__.py file with a module docstring in the directory."
+        ),
+        "fix_example": None,
     },
     {
         "name": "griffe-unknown-param",
         "check": "griffe",
         "description": "Griffe reports a parameter not matching the function signature.",
         "category": "required",
+        "guidance": (
+            "Remove or rename the documented parameter in the Args: section to"
+            " match the actual function signature."
+        ),
+        "fix_example": "Args:\n    name (str): The user's display name.",
     },
     {
         "name": "griffe-missing-type",
         "check": "griffe",
         "description": "Griffe reports a missing type annotation in docstring.",
         "category": "recommended",
+        "guidance": (
+            "Add parenthesized type annotations to parameter entries:"
+            " name (type): description."
+        ),
+        "fix_example": "Args:\n    name (str): The user's display name.",
     },
     {
         "name": "griffe-format-warning",
         "check": "griffe",
         "description": "Griffe reports a formatting issue in the docstring.",
         "category": "recommended",
+        "guidance": (
+            "Fix docstring formatting: ensure proper indentation (4 spaces),"
+            " correct section headers, and valid Google-style syntax."
+        ),
+        "fix_example": "Args:\n    data (dict): The input data to process.",
     },
 ]
 
-_RULE_TO_CHECK: dict[str, str] = {r["name"]: r["check"] for r in _RULE_CATALOG}
+_RULE_TO_CHECK: dict[str, str] = {
+    str(r["name"]): str(r["check"]) for r in _RULE_CATALOG
+}
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +646,7 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
         JSON string with ``findings``, ``summary``, and optionally
         ``presence_coverage`` keys. Returns an ``error`` key on
         invalid path, unknown check name, or malformed configuration.
+        Call docvet_rules() for per-rule fix guidance and format examples.
     """
     target = Path(path).resolve()
 
@@ -590,15 +710,16 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
 
 @mcp_server.tool()
 def docvet_rules() -> str:
-    """List all available docvet rules.
+    """List all available docvet rules with fix guidance.
 
     Returns the complete rule catalog with rule name, associated check
-    module, human-readable description, and category (required or
-    recommended).
+    module, human-readable description, category (required or
+    recommended), prescriptive fix guidance, and a format example.
 
     Returns:
         JSON string with a ``rules`` array containing objects with
-        ``name``, ``check``, ``description``, and ``category`` keys.
+        ``name``, ``check``, ``description``, ``category``,
+        ``guidance``, and ``fix_example`` keys.
     """
     return json.dumps({"rules": _RULE_CATALOG})
 
