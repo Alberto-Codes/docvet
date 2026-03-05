@@ -292,7 +292,12 @@ class TestDidOpen:
             "x = 1\n",
             mock_server.docvet_config,
         )
-        mock_server.text_document_publish_diagnostics.assert_called_once()
+        mock_server.text_document_publish_diagnostics.assert_called_once_with(
+            types.PublishDiagnosticsParams(
+                uri="file:///fake/project/src/app.py",
+                diagnostics=[],
+            )
+        )
 
 
 class TestDidSave:
@@ -312,7 +317,12 @@ class TestDidSave:
                 params.text_document.uri,
                 params.text,
             )
-        mock_server.text_document_publish_diagnostics.assert_called_once()
+        mock_server.text_document_publish_diagnostics.assert_called_once_with(
+            types.PublishDiagnosticsParams(
+                uri="file:///fake/project/src/app.py",
+                diagnostics=[],
+            )
+        )
 
     def test_falls_back_to_workspace_doc_when_text_none(
         self, mock_server: MagicMock
@@ -345,10 +355,15 @@ class TestDidSave:
         uri = "file:///fake/project/README.md"
         with patch("docvet.lsp._check_file", return_value=[]) as mock_check:
             _publish_diagnostics(mock_server, uri, "# Title")
-        mock_check.assert_called_once()
-        call_args = mock_server.text_document_publish_diagnostics.call_args
-        params = call_args[0][0]
-        assert params.diagnostics == []
+        mock_check.assert_called_once_with(
+            mock_server, uri, "# Title", mock_server.docvet_config
+        )
+        mock_server.text_document_publish_diagnostics.assert_called_once_with(
+            types.PublishDiagnosticsParams(
+                uri=uri,
+                diagnostics=[],
+            )
+        )
 
 
 class TestCliLspCommand:
