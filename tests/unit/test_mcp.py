@@ -731,11 +731,12 @@ class TestDocvetCheckDirectory:
 _FORMAT_FIXABLE_CHECKS = {"enrichment", "griffe", "presence"}
 _ACTION_CHECKS = {"freshness", "coverage"}
 
-# Guard against new checks being added without updating these sets
-assert _FORMAT_FIXABLE_CHECKS | _ACTION_CHECKS == {r["check"] for r in _RULE_CATALOG}
-
 
 class TestRuleCatalogGuidance:
+    def test_check_sets_are_exhaustive(self):
+        catalog_checks = {entry["check"] for entry in _RULE_CATALOG}
+        assert _FORMAT_FIXABLE_CHECKS | _ACTION_CHECKS == catalog_checks
+
     def test_all_entries_have_guidance_string(self):
         for entry in _RULE_CATALOG:
             assert isinstance(entry["guidance"], str), entry["name"]
@@ -1084,8 +1085,6 @@ class TestRuleCatalogGuidanceRoundTrip:
 
 
 class TestRuleCatalogGuidanceRoundTripGriffe:
-    griffe = pytest.importorskip("griffe")
-
     @pytest.mark.parametrize(
         ("rule_name", "before_source", "after_source"),
         [
@@ -1158,6 +1157,7 @@ class TestRuleCatalogGuidanceRoundTripGriffe:
     def test_round_trip(
         self, rule_name: str, before_source: str, after_source: str, tmp_path: Path
     ):
+        pytest.importorskip("griffe")
         from docvet.checks.griffe_compat import check_griffe_compat
 
         # Griffe requires a package layout (dir with __init__.py)
