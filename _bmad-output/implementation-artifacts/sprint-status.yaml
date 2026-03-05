@@ -1,4 +1,4 @@
-# generated: 2026-03-02
+# generated: 2026-03-05
 # project: docvet
 # project_key: NOKEY
 # tracking_system: both
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-03-02
+generated: 2026-03-05
 project: docvet
 project_key: NOKEY
 tracking_system: both
@@ -244,3 +244,15 @@ development_status:
   29-2-cli-wiring-and-tests: done
   29-3-documentation-and-marketplace-publishing: done
   epic-29-retrospective: done  # 2026-03-04
+
+  # Epic 30: Distribution & Adoption
+  epic-30: in-progress
+  30-1-scheduled-uv-lock-upgrade-workflow: review
+  30-2-typeddict-for-rule-catalog: backlog
+  30-3-license-attribution-on-docs-site: backlog
+  30-4-github-action-for-pr-inline-docstring-comments: backlog
+  30-5-concepts-page: backlog
+  30-6-glossary-expansion-and-layer-fix: backlog
+  30-7-docvet-init-command: backlog
+  30-8-multi-finding-prefer-fenced-code-blocks: backlog
+  epic-30-retrospective: optional
