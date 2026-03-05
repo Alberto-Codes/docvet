@@ -40,6 +40,9 @@ social-preview.png
 .DS_Store
 Thumbs.db
 
+# MCP registry (local publish tokens)
+.mcpregistry_*
+
 # Environment
 .env
 .env.local
