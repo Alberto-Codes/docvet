@@ -247,8 +247,8 @@ development_status:
 
   # Epic 30: Distribution & Adoption
   epic-30: in-progress
-  30-1-scheduled-uv-lock-upgrade-workflow: review
-  30-2-typeddict-for-rule-catalog: backlog
+  30-1-scheduled-uv-lock-upgrade-workflow: done  # 2026-03-05 — pivoted to Renovate migration
+  30-2-typeddict-for-rule-catalog: review
   30-3-license-attribution-on-docs-site: backlog
   30-4-github-action-for-pr-inline-docstring-comments: backlog
   30-5-concepts-page: backlog

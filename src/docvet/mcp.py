@@ -17,7 +17,8 @@ a structured error rather than crashing the server.
 Attributes:
     mcp_server: The FastMCP server instance.
     _RULE_TO_CHECK: Dict mapping rule names to their check module for
-        O(1) lookup in summary aggregation.
+        O(1) lookup in summary aggregation. Derived from
+        :data:`_RULE_CATALOG` entries typed as :class:`RuleCatalogEntry`.
 
 Examples:
     Start the server on stdio (typically invoked by ``docvet mcp``):
@@ -47,6 +48,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
+from typing import TypedDict
 
 from docvet.checks import (
     Finding,
@@ -88,7 +90,28 @@ _DEFAULT_MCP_CHECKS: frozenset[str] = frozenset(
 # Rule catalog
 # ---------------------------------------------------------------------------
 
-_RULE_CATALOG: list[dict[str, str | None]] = [
+
+class RuleCatalogEntry(TypedDict):
+    """A single entry in the docvet rule catalog.
+
+    Attributes:
+        name (str): The rule identifier (e.g. ``missing-raises``).
+        check (str): The check module that owns this rule.
+        description (str): Human-readable description of what the rule detects.
+        category (str): Severity category (``required`` or ``recommended``).
+        guidance (str): Prescriptive fix guidance for the rule.
+        fix_example (str | None): Optional code example showing the fix.
+    """
+
+    name: str
+    check: str
+    description: str
+    category: str
+    guidance: str
+    fix_example: str | None
+
+
+_RULE_CATALOG: list[RuleCatalogEntry] = [
     {
         "name": "missing-docstring",
         "check": "presence",
@@ -328,9 +351,7 @@ _RULE_CATALOG: list[dict[str, str | None]] = [
     },
 ]
 
-_RULE_TO_CHECK: dict[str, str] = {
-    str(r["name"]): str(r["check"]) for r in _RULE_CATALOG
-}
+_RULE_TO_CHECK: dict[str, str] = {r["name"]: r["check"] for r in _RULE_CATALOG}
 
 
 # ---------------------------------------------------------------------------
