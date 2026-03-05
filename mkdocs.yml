@@ -3,6 +3,7 @@ site_description: Comprehensive docstring quality vetting for Python projects
 site_url: https://alberto-codes.github.io/docvet/
 repo_url: https://github.com/Alberto-Codes/docvet
 repo_name: Alberto-Codes/docvet
+copyright: "Copyright &copy; 2026 Alberto-Codes &mdash; MIT License"
 
 docs_dir: docs/site
 
@@ -126,6 +127,7 @@ nav:
   - CLI Reference: cli-reference.md
   - Glossary: glossary.md
   - Privacy Policy: privacy.md
+  - License: license.md
   - Reference: reference/
 
 markdown_extensions:
