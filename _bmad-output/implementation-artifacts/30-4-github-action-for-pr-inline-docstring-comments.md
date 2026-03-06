@@ -453,6 +453,14 @@ Key insight: `actions/setup-python@v6` is the current version (bumped by Renovat
 - [Research: jq pre-installed on all runners](https://github.com/actions/runner-images)
 - [Research: Checks API tradeoffs vs workflow commands](https://github.com/orgs/community/discussions/26703)
 
+### Future Ideas (Party-Mode Consensus, 2026-03-06)
+
+Captured in epic file under "Epic 31 candidates" for future prioritization:
+
+1. **`src-root` or `files` action input** — monorepo support + eliminates `cp` fixture hack. Precedent: ruff-action's `src` input.
+2. **`docvet-source: local` action input** — `pip install .` for pre-release integration testing. Only needed if JSON contract changes.
+3. **Three test boundaries documented** — library (pytest) / action wrapper (test-action.yml) / dogfood (ci.yml) are intentionally separate. Action installs from PyPI = tests the released contract.
+
 ### Test Maturity Piggyback
 
 - **M1**: 3/948 tests use `@pytest.mark.parametrize` — massive deduplication opportunity in `test_enrichment.py` (4,134 lines, 227 tests)

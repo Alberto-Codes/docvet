@@ -94,6 +94,10 @@ NFR10: (#262) License attribution changes shall be verified by `mkdocs build --s
 - From party-mode: Stories 30.1-30.3 are quick specs suitable for parallel execution. Story 30.4 is critical path. Stories 30.5-30.8 are independent. Existing `v1` floating tag reused for Action versioning. `docvet init` uses zero-prompt defaults with `--interactive` for agent config selection.
 - Deferred from this wave: #148 (negation patterns), #160 (VS Code extension), #163 (SARIF), #265 (architecture diagrams), #72 (WebMCP).
 - Epic 31 candidates: #164 (flagship runs), #158 (example project), #256 (dynamic badge).
+- Future action improvements (from 30.4 party-mode consensus, 2026-03-06):
+  - `src-root` or `files` action input — enables monorepo consumers to target subdirectories; eliminates the `cp` fixture hack in test-action.yml. Pattern precedent: ruff-action's `src` input.
+  - `docvet-source: local` action input — `pip install .` instead of PyPI for integration testing. Catches JSON format incompatibilities before release. Only needed if the JSON output contract changes.
+  - Action self-test architecture: the action installs docvet from PyPI (tests the released contract), not the branch code. Three test boundaries are intentionally separated: library (pytest), action wrapper (test-action.yml with `uses: ./`), dogfood (ci.yml with `@v1`). This is correct for v1 — document in ADR if it ever causes confusion.
 
 ### FR Coverage Map
 
