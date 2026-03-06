@@ -96,7 +96,7 @@ explicit = true
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-exclude = [".venv", "__pycache__", "*.egg-info"]
+exclude = [".venv", "__pycache__", "*.egg-info", ".github/test-fixtures"]
 
 [tool.ruff.lint]
 extend-select = ["E501", "I", "D"]
@@ -123,6 +123,7 @@ docstring-code-line-length = "dynamic"
 # --------------------------------------------------------------------------- #
 [tool.docvet]
 fail-on = ["enrichment", "freshness", "coverage", "griffe", "presence"]
+extend-exclude = [".github/test-fixtures/"]
 
 [tool.docvet.presence]
 min-coverage = 100.0

@@ -1,0 +1,75 @@
+name: Test Action
+on:
+  pull_request:
+    paths: ['action.yml', '.github/test-fixtures/**', '.github/workflows/test-action.yml']
+
+jobs:
+  test-annotations:
+    name: Test annotations (findings expected)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # Copy fixture into src/ so docvet --all discovers it
+      - name: Stage test fixture for discovery
+        run: cp .github/test-fixtures/bad_docstrings.py src/docvet/_test_fixture.py
+        shell: bash
+      - uses: ./
+        continue-on-error: true
+        id: docvet-run
+      - name: Verify non-zero exit (findings expected)
+        run: test "${{ steps.docvet-run.outcome }}" = "failure"
+        shell: bash
+
+  test-selective:
+    name: Test selective checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Stage test fixture for discovery
+        run: cp .github/test-fixtures/bad_docstrings.py src/docvet/_test_fixture.py
+        shell: bash
+      - uses: ./
+        with:
+          checks: "enrichment"
+        continue-on-error: true
+        id: docvet-run
+      - name: Verify non-zero exit (enrichment findings expected)
+        run: test "${{ steps.docvet-run.outcome }}" = "failure"
+        shell: bash
+
+  test-clean:
+    name: Test clean run (zero findings)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # coverage check on a well-structured repo = 0 findings
+      # extend-exclude is intact, so fixture is excluded
+      - uses: ./
+        with:
+          checks: "coverage"
+
+  test-version-pin:
+    name: Test version pinning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./
+        with:
+          docvet-version: "1.9.0"
+          checks: "coverage"
+      - name: Verify installed version
+        run: docvet --version | grep -q "1.9.0"
+        shell: bash
+
+  test-python-version:
+    name: Test Python version selection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./
+        with:
+          python-version: "3.13"
+          checks: "coverage"
+      - name: Verify Python version
+        run: python --version | grep -q "3.13"
+        shell: bash

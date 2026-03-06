@@ -8,14 +8,21 @@ Add docvet to your CI pipeline to enforce docstring quality on every push and pu
 
 ## GitHub Action
 
-The `Alberto-Codes/docvet` action installs docvet and runs it in a single step.
+The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. Findings appear as inline annotations on your pull request and as a step summary table.
 
 ### Inputs
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `version` | No | `latest` | docvet version to install |
-| `args` | No | `check` | Arguments passed to the `docvet` CLI |
+| `checks` | No | `all` | Checks to run: `"all"` or comma-separated list (e.g., `"enrichment,freshness"`) |
+| `docvet-version` | No | `latest` | docvet version to install |
+| `python-version` | No | `3.12` | Python version to set up |
+
+??? info "Deprecated inputs (v1 backward compatibility)"
+    | Input | Default | Description |
+    |-------|---------|-------------|
+    | `version` | `latest` | Renamed to `docvet-version`. Will be removed in v2. |
+    | `args` | _(empty)_ | Replaced by `checks`. When set, runs docvet in legacy mode (raw passthrough, no annotations). Will be removed in v2. |
 
 ### Usage
 
@@ -28,8 +35,21 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step.
         steps:
           - uses: actions/checkout@v6
           - uses: Alberto-Codes/docvet@v1
+    ```
+
+=== "Selective checks"
+
+    Run only specific checks:
+
+    ```yaml
+    jobs:
+      docvet:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v6
+          - uses: Alberto-Codes/docvet@v1
             with:
-              args: 'check --all'
+              checks: 'enrichment,freshness'
     ```
 
 === "Version-pinned"
@@ -42,8 +62,7 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step.
           - uses: actions/checkout@v6
           - uses: Alberto-Codes/docvet@v1
             with:
-              version: '1.2.0'
-              args: 'check --all'
+              docvet-version: '1.9.0'
     ```
 
 === "With griffe"
@@ -56,14 +75,21 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step.
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v6
-          - uses: actions/setup-python@v5
+          - uses: actions/setup-python@v6
             with:
               python-version: '3.12'
           - run: pip install griffe
           - uses: Alberto-Codes/docvet@v1
-            with:
-              args: 'check --all'
     ```
+
+### Annotation behavior
+
+Findings are reported in two places:
+
+- **Inline annotations** — up to 10 findings appear as `::warning` annotations directly on the pull request diff (GitHub's per-step limit). Annotations on lines outside the diff appear in the Checks tab instead.
+- **Step summary** — all findings appear in a Markdown table in the step summary, with no cap. This is the authoritative complete list.
+
+The step summary always includes a count disclosure: `"Found N findings (up to 10 shown as inline annotations)."` so reviewers know when findings exceed the annotation cap.
 
 !!! tip "Freshness checks need git history"
     The freshness check uses `git blame` to detect stale docstrings. If your checkout step uses a shallow clone (the default), add `fetch-depth: 0` for full blame support:
@@ -149,7 +175,9 @@ Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet
     ```yaml
     - uses: Alberto-Codes/docvet@v1
       with:
-        args: 'check --all -q'
+        checks: 'enrichment'
     ```
+
+    The action uses `--format json` internally, so terminal output is already suppressed.
 
 See [Configuration](configuration.md) for the full list of options including freshness thresholds, enrichment toggles, and exclusion patterns.

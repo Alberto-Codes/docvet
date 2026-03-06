@@ -4,25 +4,44 @@ branding:
   icon: 'shield'
   color: 'purple'
 inputs:
-  version:
+  checks:
+    description: 'Checks to run: "all" or comma-separated list (enrichment,freshness,coverage,griffe,presence)'
+    required: false
+    default: 'all'
+  docvet-version:
     description: 'docvet version to install (use "latest" for newest)'
     required: false
     default: 'latest'
-  args:
-    description: 'Arguments to pass to docvet (e.g., "check --all")'
+  python-version:
+    description: 'Python version to set up'
     required: false
-    default: 'check'
+    default: '3.12'
+  # Deprecated — kept for backward compatibility within v1
+  version:
+    description: 'docvet version to install'
+    deprecationMessage: 'The "version" input is deprecated. Use "docvet-version" instead. "version" will be removed in v2.'
+    required: false
+    default: 'latest'
+  args:
+    description: 'Raw arguments passed to docvet CLI'
+    deprecationMessage: 'The "args" input is deprecated. Use "checks" instead for annotation support. "args" will be removed in v2.'
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: '3.12'
+        python-version: ${{ inputs.python-version }}
     - name: Install docvet
-      env:
-        DOCVET_VERSION: ${{ inputs.version }}
       run: |
+        # Resolve version: docvet-version takes precedence over deprecated version
+        DOCVET_VERSION="${{ inputs.docvet-version }}"
+        if [ "$DOCVET_VERSION" = "latest" ] && [ "${{ inputs.version }}" != "latest" ]; then
+          DOCVET_VERSION="${{ inputs.version }}"
+        fi
+
         if [ "$DOCVET_VERSION" = "latest" ]; then
           pip install docvet
         else
@@ -30,7 +49,114 @@ runs:
         fi
       shell: bash
     - name: Run docvet
-      env:
-        DOCVET_ARGS: ${{ inputs.args }}
-      run: docvet $DOCVET_ARGS
+      run: |
+        # Detect legacy mode: args is set and checks is still default
+        ARGS="${{ inputs.args }}"
+        CHECKS="${{ inputs.checks }}"
+
+        if [ -n "$ARGS" ] && [ "$CHECKS" = "all" ]; then
+          # Legacy mode: raw passthrough, no JSON/annotations
+          docvet $ARGS
+          exit $?
+        fi
+
+        # New mode: JSON output with annotations and step summary
+        MERGED_OUTPUT=$(mktemp)
+        STDERR_FILE=$(mktemp)
+
+        if [ "$CHECKS" = "all" ]; then
+          # Run all checks at once
+          set +e
+          docvet --format json check --all > "$MERGED_OUTPUT" 2>"$STDERR_FILE"
+          EXIT_CODE=$?
+          set -e
+
+          if [ "$EXIT_CODE" -gt 1 ]; then
+            echo "::error::docvet encountered an error (exit code $EXIT_CODE)"
+            cat "$STDERR_FILE"
+            exit "$EXIT_CODE"
+          fi
+        else
+          # Selective checks: run each as a separate subcommand
+          IFS=',' read -ra CHECK_LIST <<< "$CHECKS"
+          PARTIAL_FILES=()
+          PARTIAL_STDERR_FILES=()
+          OVERALL_EXIT=0
+
+          for CHECK in "${CHECK_LIST[@]}"; do
+            CHECK=$(echo "$CHECK" | xargs)  # trim whitespace
+            [ -z "$CHECK" ] && continue
+            PARTIAL=$(mktemp)
+            PARTIAL_STDERR=$(mktemp)
+
+            set +e
+            docvet --format json "$CHECK" --all > "$PARTIAL" 2>"$PARTIAL_STDERR"
+            CHECK_EXIT=$?
+            set -e
+
+            if [ "$CHECK_EXIT" -gt 1 ]; then
+              echo "::error::docvet ${CHECK} encountered an error (exit code $CHECK_EXIT)"
+              cat "$PARTIAL_STDERR"
+              exit "$CHECK_EXIT"
+            fi
+
+            if [ "$CHECK_EXIT" -eq 1 ]; then
+              OVERALL_EXIT=1
+            fi
+
+            PARTIAL_FILES+=("$PARTIAL")
+            PARTIAL_STDERR_FILES+=("$PARTIAL_STDERR")
+          done
+
+          # Merge JSON outputs
+          if [ "${#PARTIAL_FILES[@]}" -eq 1 ]; then
+            cp "${PARTIAL_FILES[0]}" "$MERGED_OUTPUT"
+          else
+            jq -s '{
+              findings: (map(.findings) | add // []),
+              summary: {
+                total: (map(.summary.total) | add),
+                by_category: {
+                  required: (map(.summary.by_category.required) | add),
+                  recommended: (map(.summary.by_category.recommended) | add)
+                },
+                files_checked: (map(.summary.files_checked) | max)
+              }
+            }' "${PARTIAL_FILES[@]}" > "$MERGED_OUTPUT"
+          fi
+
+          EXIT_CODE=$OVERALL_EXIT
+        fi
+
+        # Emit annotations (GitHub shows up to 10 warning annotations per step)
+        if [ ! -s "$MERGED_OUTPUT" ]; then
+          TOTAL=0
+        else
+          TOTAL=$(jq '.summary.total' "$MERGED_OUTPUT")
+        fi
+
+        if [ "$TOTAL" -gt 0 ]; then
+          jq -r '.findings[] | "::warning file=\(.file | gsub(":";"%3A") | gsub(",";"%2C")),line=\(.line),title=\(.rule)::\(.message | gsub("%";"%25") | gsub("\n";"%0A") | gsub("\r";"%0D"))"' "$MERGED_OUTPUT"
+        fi
+
+        # Write step summary
+        {
+          echo "### Docvet Findings"
+          echo ""
+          if [ "$TOTAL" -gt 0 ]; then
+            echo "Found **${TOTAL}** findings (up to 10 shown as inline annotations)."
+            echo ""
+            echo "| File | Line | Rule | Message | Severity |"
+            echo "|------|------|------|---------|----------|"
+            jq -r '.findings[] | "| `\(.file)` | \(.line) | `\(.rule)` | \(.message | gsub("\\|";"\\\\|")) | \(.severity) |"' "$MERGED_OUTPUT"
+          else
+            echo "No findings. All docstrings pass quality checks."
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        # Clean up temp files
+        rm -f "$MERGED_OUTPUT" "$STDERR_FILE" "${PARTIAL_FILES[@]}" "${PARTIAL_STDERR_FILES[@]}"
+
+        # Propagate docvet exit code (non-zero when fail-on checks have findings)
+        exit "$EXIT_CODE"
       shell: bash
