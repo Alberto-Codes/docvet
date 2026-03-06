@@ -89,8 +89,8 @@ highlighted terms on any page to see their tooltip definitions.
 :   Docvet's conceptual framework for docstring quality, progressing from
     presence (layer 1) through style (layer 2), completeness (layer 3),
     accuracy (layer 4), rendering (layer 5), and visibility (layer 6). Docvet
-    implements layers 1 and 3–6. Layers 1–2 can alternatively be handled by
-    interrogate and ruff.
+    implements layers 1 and 3–6. Layer 1 can alternatively be handled by
+    interrogate; layer 2 by ruff.
 
 **Finding**
 :   A single issue detected by a docvet check, containing the file path, line

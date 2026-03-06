@@ -198,8 +198,9 @@ None — clean implementation, no debugging needed.
 
 - Added 16 new glossary definitions across 5 sections (Docstring Concepts, Check Types, Quality Model, Infrastructure & Tooling, new CLI & Configuration)
 - Updated 3 existing entries: six-layer model (layers 1, 3–6), drift mode (thresholds), hunk (AST line ranges)
-- Added 28 new abbreviation entries for tooltip support (both capitalizations, plurals where applicable)
-- Updated 3 existing abbreviation entries to match glossary changes
+- Added 24 new abbreviation entries for tooltip support (both capitalizations, plurals where applicable)
+- Updated 3 existing abbreviation entries to match glossary changes (drift mode, six-layer model, hunk)
+- Intentionally skipped abbreviation entries for "mode", "suppress/ignore", and "pyproject.toml": "mode" and "suppress"/"ignore" are generic English words that appear 40+ times across docs in unrelated contexts (e.g., "verbose mode", "LSP mode", "suppress summary output") — adding them would cause incorrect tooltips site-wide; "pyproject.toml" almost exclusively appears in backtick code spans where tooltips don't fire
 - Created new "CLI & Configuration" glossary section for operational terms
 - All quality gates pass; `mkdocs build --strict` zero warnings
 - Subtask 5.2 (manual tooltip verification via `mkdocs serve`) left for maintainer
@@ -207,6 +208,7 @@ None — clean implementation, no debugging needed.
 ### Change Log
 
 - 2026-03-06: Implemented glossary expansion and layer fix (all tasks)
+- 2026-03-06: Code review — fixed six-layer model wording ambiguity, corrected abbreviation entry count, documented intentional skips
 
 ### File List
 
@@ -219,15 +221,24 @@ None — clean implementation, no debugging needed.
 
 ### Reviewer
 
+Code review (adversarial) with party mode consensus — 2026-03-06
+
 ### Outcome
+
+Approved with fixes applied
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | Six-layer model wording ambiguous — implied interrogate handles both L1+L2 | Fixed: clarified interrogate->L1, ruff->L2 in glossary.md and abbreviations.md |
+| L1 | LOW | Completion Notes claimed 28 new entries, actual count 24; missing rationale for skipped terms | Fixed: corrected count and added explanation for intentional skips |
+| — | DISMISSED | 3 Tier 1 terms missing abbreviation entries (mode, suppress/ignore, pyproject.toml) | Generic-word collision — correct decision to skip |
+| — | DISMISSED | Tier 2 terms missing abbreviation entries | AC2 doesn't require them |
+| — | DISMISSED | Test maturity piggyback not addressed | Not applicable to docs-only story |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

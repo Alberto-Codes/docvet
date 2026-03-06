@@ -43,8 +43,8 @@
 *[Sweep]: Freshness drift mode's full-codebase scan via git blame to detect docstrings drifted out of sync.
 
 <!-- Quality Model -->
-*[six-layer model]: Docvet's framework for docstring quality: presence, style, completeness, accuracy, rendering, and visibility. Docvet implements layers 1 and 3–6.
-*[Six-layer model]: Docvet's framework for docstring quality: presence, style, completeness, accuracy, rendering, and visibility. Docvet implements layers 1 and 3–6.
+*[six-layer model]: Docvet's framework for docstring quality: presence, style, completeness, accuracy, rendering, and visibility. Docvet implements layers 1 and 3–6; layer 2 is handled by ruff.
+*[Six-layer model]: Docvet's framework for docstring quality: presence, style, completeness, accuracy, rendering, and visibility. Docvet implements layers 1 and 3–6; layer 2 is handled by ruff.
 *[finding]: A single issue detected by a docvet check, containing file path, line number, symbol name, rule ID, message, and category.
 *[Finding]: A single issue detected by a docvet check, containing file path, line number, symbol name, rule ID, message, and category.
 *[findings]: Issues detected by docvet checks, each containing file path, line number, symbol name, rule ID, message, and category.
