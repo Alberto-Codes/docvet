@@ -9,21 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      # Temporarily remove extend-exclude so the fixture is scanned
-      - name: Enable test fixture scanning
-        run: |
-          python -c "
-          import pathlib, re
-          p = pathlib.Path('pyproject.toml')
-          text = p.read_text()
-          # Add extend-exclude that includes the fixture path
-          text = re.sub(
-              r'extend-exclude\s*=\s*\[[^\]]*\]',
-              'extend-exclude = []',
-              text,
-          )
-          p.write_text(text)
-          "
+      # Copy fixture into src/ so docvet --all discovers it
+      - name: Stage test fixture for discovery
+        run: cp .github/test-fixtures/bad_docstrings.py src/docvet/_test_fixture.py
         shell: bash
       - uses: ./
         continue-on-error: true
@@ -37,19 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Enable test fixture scanning
-        run: |
-          python -c "
-          import pathlib, re
-          p = pathlib.Path('pyproject.toml')
-          text = p.read_text()
-          text = re.sub(
-              r'extend-exclude\s*=\s*\[[^\]]*\]',
-              'extend-exclude = []',
-              text,
-          )
-          p.write_text(text)
-          "
+      - name: Stage test fixture for discovery
+        run: cp .github/test-fixtures/bad_docstrings.py src/docvet/_test_fixture.py
         shell: bash
       - uses: ./
         with:
