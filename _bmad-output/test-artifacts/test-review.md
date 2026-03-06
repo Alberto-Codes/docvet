@@ -282,6 +282,26 @@ Note: Playwright-specific fragments (fixture-architecture, network-first, select
    - Priority: P3
    - Target: Next relevant config story
 
+### CI Workflow Tests (Story 30.4)
+
+Story 30.4 introduced `.github/workflows/test-action.yml` (5 jobs, 76 lines) testing the composite action via `uses: ./`. These are not pytest tests but GitHub Actions integration tests with a fixed fixture (`.github/test-fixtures/bad_docstrings.py`).
+
+**Strengths**: Perfect determinism/isolation (fresh runners, fixed fixture), correct `continue-on-error` + outcome verification pattern, input verification tests close the loop (installed version matches requested).
+
+**Gaps**:
+
+4. **Add multi-check merge test job** - `checks: "enrichment,coverage"` exercises the `jq -s` merge path (action.yml:112-122) which has no CI test
+   - Priority: P2
+   - Target: Epic 31 (action improvements)
+
+5. **Add annotation content verification** - Jobs verify exit code but not that `::warning` annotations were actually emitted
+   - Priority: P2
+   - Target: Epic 31 (action improvements)
+
+6. **Add test boundary rationale comment** - Document why action installs from PyPI (not local) in test-action.yml header
+   - Priority: P3
+   - Target: Next action-related story
+
 ### Re-Review Needed?
 
 No re-review needed -- approve as-is. All recommendations are P2/P3 improvements for future work.
