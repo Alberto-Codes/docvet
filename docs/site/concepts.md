@@ -89,7 +89,7 @@ Is the docstring formatted consistently? Google-style, NumPy-style, or Sphinx-st
 Does the docstring cover what the code actually does? A function that raises exceptions needs a `Raises` section. A class with attributes needs an `Attributes` section. A generator needs `Yields`. docvet's [`enrichment`](checks/enrichment.md) check uses AST analysis to detect these gaps — [10 rules](checks/enrichment.md) covering Raises, Yields, Receives, Warns, Attributes, Examples, and more.
 
 **Layer 4 — Accuracy.**
-Does the docstring still match the code? This is the most dangerous layer when it fails — research shows misleading documentation reduces LLM fault localization accuracy to 24.55% across 750,000 tasks ([Haroon et al., 2025](https://arxiv.org/abs/2504.04372)). docvet's [`freshness`](checks/freshness.md) check uses git diff and git blame to flag code that changed without a corresponding docstring update.
+Does the docstring still match the code? This is the most dangerous layer when it fails — research shows misleading documentation reduces LLM fault localization accuracy to 25.63% across 750,000 tasks ([Haroon et al., 2025](https://arxiv.org/abs/2504.04372)). docvet's [`freshness`](checks/freshness.md) check uses git diff and git blame to flag code that changed without a corresponding docstring update.
 
 **Layer 5 — Rendering.**
 Will the docstring render correctly in mkdocs? Griffe parser warnings indicate structural problems that produce broken or missing documentation on your site. docvet's [`griffe`](checks/griffe.md) check captures these warnings before they reach production.
@@ -103,11 +103,11 @@ Layer 1 was historically handled by tools like interrogate. docvet's `presence` 
 
 | Check | Use when... | Learn more |
 |-------|-------------|------------|
-| [`presence`](checks/presence.md) | You want every public symbol to have a docstring, with coverage metrics | [Presence check](checks/presence.md) |
-| [`enrichment`](checks/enrichment.md) | You want complete docstrings — Raises, Attributes, Examples, and more | [Enrichment check](checks/enrichment.md) |
-| [`freshness`](checks/freshness.md) | Code changed but docstrings didn't get updated | [Freshness check](checks/freshness.md) |
-| [`coverage`](checks/coverage.md) | Your mkdocs site is missing modules because of absent `__init__.py` files | [Coverage check](checks/coverage.md) |
-| [`griffe`](checks/griffe.md) | mkdocstrings can't parse your docstrings correctly | [Griffe check](checks/griffe.md) |
+| `presence` | You want every public symbol to have a docstring, with coverage metrics | [Presence check](checks/presence.md) |
+| `enrichment` | You want complete docstrings — Raises, Attributes, Examples, and more | [Enrichment check](checks/enrichment.md) |
+| `freshness` | Code changed but docstrings didn't get updated | [Freshness check](checks/freshness.md) |
+| `coverage` | Your mkdocs site is missing modules because of absent `__init__.py` files | [Coverage check](checks/coverage.md) |
+| `griffe` | mkdocstrings can't parse your docstrings correctly | [Griffe check](checks/griffe.md) |
 
 Running `docvet check` executes all enabled checks in a single pass. You can also run individual checks when you need focused feedback — for example, `docvet freshness` during development to catch stale docstrings before they reach CI.
 

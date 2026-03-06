@@ -1,6 +1,6 @@
 # Story 30.5: Concepts Page
 
-Status: review
+Status: done
 Branch: `feat/docs-30-5-concepts-page`
 GitHub Issue: https://github.com/Alberto-Codes/docvet/issues/296
 
@@ -265,6 +265,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-03-05: Implemented story 30.5 — Concepts page with research-backed narrative and party-mode consensus structure.
+- 2026-03-05: Code review — fixed Paper 3 stat (24.55% → 25.63%) and removed redundant table links. 3 findings rejected via party-mode consensus.
 
 ### File List
 
@@ -277,15 +278,24 @@ Claude Opus 4.6
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review + party-mode consensus)
+
 ### Outcome
+
+Changes Requested — 2 fixes applied, 3 findings rejected with rationale
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | Inconsistent statistic: line 92 said 24.55% but paper and Further Reading say 25.63% | Fixed — corrected to 25.63% |
+| M1 | MEDIUM | Paper 4 opener quote missing from The Problem section | Rejected — section reads better with 2 inline citations; 3rd would over-densify a 7-line hook |
+| M2 | MEDIUM | Redundant linking in "When to Use Each Check" table (column 1 and column 3 both linked same page) | Fixed — removed links from column 1, kept "Learn more" column as sole link per original spec |
+| L1 | LOW | Prose at line 42 implies docvet catches missing parameters | Rejected — prose correctly separates human observation from tool output |
+| L2 | LOW | AC2 names interrogate but The Problem section doesn't | Rejected — anti-patterns correctly override literal AC wording; interrogate named at line 100 instead |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
