@@ -250,8 +250,8 @@ development_status:
   30-1-scheduled-uv-lock-upgrade-workflow: done  # 2026-03-05 — pivoted to Renovate migration
   30-2-typeddict-for-rule-catalog: done  # 2026-03-05 — code review approved
   30-3-license-attribution-on-docs-site: done  # 2026-03-05 — code review approved
-  30-4-github-action-for-pr-inline-docstring-comments: review
-  30-5-concepts-page: backlog
+  30-4-github-action-for-pr-inline-docstring-comments: done
+  30-5-concepts-page: review
   30-6-glossary-expansion-and-layer-fix: backlog
   30-7-docvet-init-command: backlog
   30-8-multi-finding-prefer-fenced-code-blocks: backlog
