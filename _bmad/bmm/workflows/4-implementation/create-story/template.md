@@ -2,7 +2,6 @@
 
 Status: ready-for-dev
 Branch: `feat/{{scope}}-{{epic_num}}-{{story_num}}-{{description}}`
-GitHub Issue: {{github_issue_url}}
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
