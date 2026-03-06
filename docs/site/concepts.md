@@ -39,12 +39,11 @@ def fetch_user(user_id: int, *, include_deleted: bool = False) -> User:
     return result
 ```
 
-This docstring exists and is Google-style formatted. ruff sees no issues. But it's missing documentation for the `include_deleted` parameter, and it raises two exceptions (`ValueError`, `LookupError`) without a `Raises` section. Run docvet:
+This docstring exists and is Google-style formatted. ruff sees no issues. A human reviewer can spot the missing `include_deleted` parameter, but docvet focuses on structural gaps that AST analysis can detect automatically — like the two `raise` statements with no `Raises` section:
 
 ```text
-src/myapp/users.py:4: missing-raises     Function 'fetch_user' raises ValueError, LookupError but Raises section is missing [required]
-src/myapp/users.py:4: missing-examples   Function 'fetch_user' is a public function with parameters but has no Examples section [recommended]
-Vetted 1 file [enrichment] — 2 findings (1 required, 1 recommended). (0.1s)
+src/myapp/users.py:4: missing-raises     Function 'fetch_user' raises LookupError, ValueError but has no Raises: section [required]
+Vetted 1 files [enrichment] — 1 finding (1 required, 0 recommended). (0.1s)
 ```
 
 Now fix the docstring:
