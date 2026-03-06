@@ -93,7 +93,8 @@ NFR10: (#262) License attribution changes shall be verified by `mkdocs build --s
 - From PRD: GitHub Action (FR111-FR113), `docvet init` (FR114-FR116) already specified in v1.0 Publish phase of PRD.
 - From party-mode: Stories 30.1-30.3 are quick specs suitable for parallel execution. Story 30.4 is critical path. Stories 30.5-30.8 are independent. Existing `v1` floating tag reused for Action versioning. `docvet init` uses zero-prompt defaults with `--interactive` for agent config selection.
 - Deferred from this wave: #148 (negation patterns), #160 (VS Code extension), #163 (SARIF), #265 (architecture diagrams), #72 (WebMCP).
-- Epic 31 candidates: #164 (flagship runs), #158 (example project), #256 (dynamic badge).
+- Epic 31 candidates: #164 (flagship runs), #158 (example project), #256 (dynamic badge), `docvet config --show-defaults` (dump effective config to stdout — useful for debugging and onboarding; replaces cut `docvet init` story).
+- Story 30.7 (`docvet init`) cut via party-mode consensus (2026-03-06, 11/12 agents): thin value proposition (2-line config paste), TOML string-append corruption risk, market signal (simple tools don't ship init), better solved by improved quick-start docs. `--interactive` agent snippets were differentiated but low-demand.
 - Future action improvements (from 30.4 party-mode consensus, 2026-03-06):
   - `src-root` or `files` action input — enables monorepo consumers to target subdirectories; eliminates the `cp` fixture hack in test-action.yml. Pattern precedent: ruff-action's `src` input.
   - `docvet-source: local` action input — `pip install .` instead of PyPI for integration testing. Catches JSON format incompatibilities before release. Only needed if the JSON output contract changes.
