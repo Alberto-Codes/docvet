@@ -2,8 +2,9 @@
 
 Detects missing docstring sections (Raises, Yields, Attributes, etc.),
 validates cross-reference syntax in See Also sections, and checks for
-non-fenced code block patterns by combining AST analysis with section
-header parsing. Implements Layer 3 of the docstring quality model.
+non-fenced code block patterns (reporting both doctest and rST findings
+per symbol) by combining AST analysis with section header parsing.
+Implements Layer 3 of the docstring quality model.
 
 Examples:
     Run the enrichment check on a source file:
@@ -26,6 +27,7 @@ from __future__ import annotations
 import ast
 import re
 from collections.abc import Callable
+from typing import Literal
 
 from docvet.ast_utils import Symbol, get_documented_symbols
 from docvet.checks._finding import Finding
@@ -1302,11 +1304,8 @@ def _check_prefer_fenced_code_blocks(
 
 def _check_fenced_code_blocks_extra(
     symbol: Symbol,
-    sections: set[str],
-    node_index: dict[int, _NodeT],
-    config: EnrichmentConfig,
     file_path: str,
-    first_finding: Finding,
+    pattern_type: Literal["doctest", "rst"],
 ) -> Finding | None:
     """Check for the *other* non-fenced pattern after the first was found.
 
@@ -1318,14 +1317,9 @@ def _check_fenced_code_blocks_extra(
 
     Args:
         symbol: The documented symbol to inspect.
-        sections: Parsed section headers from the symbol's docstring.
-        node_index: Line-number-to-node mapping for the module.
-        config: Enrichment configuration (unused — config gating is in
-            the orchestrator).
         file_path: Source file path for the finding record.
-        first_finding: The finding already produced by
-            ``_check_prefer_fenced_code_blocks``, used to determine
-            which pattern was already reported.
+        pattern_type: Which pattern was already reported by the
+            dispatch function (``"doctest"`` or ``"rst"``).
 
     Returns:
         A ``Finding`` for the other pattern type, or ``None`` if only
@@ -1341,7 +1335,7 @@ def _check_fenced_code_blocks_extra(
     kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
     lines = content.splitlines()
 
-    if ">>>" in first_finding.message:
+    if pattern_type == "doctest":
         # First finding was doctest — check for rST
         for i, line in enumerate(lines):
             if _RST_BLOCK_PATTERN.search(line) and _has_rst_indented_block(lines, i):
@@ -1409,9 +1403,10 @@ def check_enrichment(
 
     Iterates over documented symbols, parses their docstring sections,
     and dispatches to each enabled rule function via ``_RULE_DISPATCH``.
-    For ``prefer_fenced_code_blocks``, a second-pass helper checks for
-    the other pattern type so both doctest and rST findings surface in
-    one run. Symbols without a docstring are skipped (FR20). Config
+    For ``prefer_fenced_code_blocks``, a second-pass helper receives an
+    explicit pattern type and checks for the other pattern so both
+    doctest and rST findings surface in one run. Symbols without a
+    docstring are skipped (FR20). Config
     gating controls which rules run.
 
     Args:
@@ -1438,8 +1433,9 @@ def check_enrichment(
                 if f := check_fn(symbol, sections, node_index, config, file_path):
                     findings.append(f)
                     if attr == "prefer_fenced_code_blocks":
+                        pt = "doctest" if ">>>" in f.message else "rst"
                         if extra := _check_fenced_code_blocks_extra(
-                            symbol, sections, node_index, config, file_path, f
+                            symbol, file_path, pt
                         ):
                             findings.append(extra)
 

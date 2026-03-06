@@ -9,6 +9,7 @@ import pytest
 from docvet.checks import Finding
 from docvet.checks.enrichment import (
     _build_node_index,
+    _check_fenced_code_blocks_extra,
     _check_prefer_fenced_code_blocks,
     _parse_sections,
     check_enrichment,
@@ -527,6 +528,9 @@ class Baz:
     baz_findings = [f for f in fenced if f.symbol == "Baz"]
 
     assert len(foo_findings) == 2  # both >>> and ::
+    foo_messages = {f.message for f in foo_findings}
+    assert any(">>>" in m for m in foo_messages)
+    assert any("::" in m for m in foo_messages)
     assert len(bar_findings) == 1  # only >>>
     assert len(baz_findings) == 1  # only ::
 
@@ -624,3 +628,53 @@ class Foo:
     messages = {f.message for f in fenced}
     assert any(">>>" in m for m in messages)
     assert any("::" in m for m in messages)
+
+
+# ---------------------------------------------------------------------------
+# Direct helper tests (_check_fenced_code_blocks_extra)
+# ---------------------------------------------------------------------------
+
+
+def test_extra_helper_rst_pattern_type_finds_doctest():
+    """L2: Exercise the else branch — rst first, check for doctest."""
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        >>> foo = Foo()
+
+        Another example::
+
+            print(foo)
+    """
+    pass
+'''
+    symbol, _, _ = _make_symbol_and_index(source)
+
+    result = _check_fenced_code_blocks_extra(symbol, "test.py", "rst")
+
+    assert result is not None
+    assert result.rule == "prefer-fenced-code-blocks"
+    assert ">>>" in result.message
+    assert "doctest format" in result.message
+
+
+def test_extra_helper_rst_pattern_type_no_doctest_returns_none():
+    """Else branch returns None when only rST exists."""
+    source = '''\
+class Foo:
+    """A class.
+
+    Examples:
+        Typical usage::
+
+            foo = Foo()
+    """
+    pass
+'''
+    symbol, _, _ = _make_symbol_and_index(source)
+
+    result = _check_fenced_code_blocks_extra(symbol, "test.py", "rst")
+
+    assert result is None

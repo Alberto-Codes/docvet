@@ -1,6 +1,6 @@
 # Story 30.8: Multi-finding prefer-fenced-code-blocks
 
-Status: review
+Status: done
 Branch: `feat/enrichment-30-8-multi-finding-fenced-code-blocks`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -221,6 +221,7 @@ No debug issues encountered. Clean implementation.
 ### Change Log
 
 - 2026-03-06: Implemented multi-finding prefer-fenced-code-blocks (all 4 tasks + test extraction piggyback)
+- 2026-03-06: Code review fixes — M1 (explicit pattern_type param), M2 (simplified helper signature), L2 (else branch test coverage), L3 (stronger multi-symbol assertions)
 
 ### File List
 
@@ -234,15 +235,24 @@ No debug issues encountered. Clean implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review) — 2026-03-06
+
 ### Outcome
+
+Changes Requested → Fixed in-place
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | Fragile message-based pattern discrimination in `_check_fenced_code_blocks_extra` — inspects `">>>" in first_finding.message` | Fixed: replaced with explicit `pattern_type: Literal["doctest", "rst"]` parameter |
+| M2 | MEDIUM | Unused `sections`, `node_index`, `config` params with no interface contract | Fixed: simplified signature to `(symbol, file_path, pattern_type)` |
+| L1 | LOW | Redundant `_extract_section_content` call | Dismissed: micro-optimization not worth the coupling trade-off (party-mode consensus) |
+| L2 | LOW | `else` branch (rst→doctest) zero positive-case test coverage | Fixed: added `test_extra_helper_rst_pattern_type_finds_doctest` + negative case |
+| L3 | LOW | Weak assertion in `test_orchestrator_multi_symbol_mixed_patterns_independent` | Fixed: added distinct-message assertions for Foo's 2 findings |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
