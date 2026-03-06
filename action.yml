@@ -80,10 +80,12 @@ runs:
           # Selective checks: run each as a separate subcommand
           IFS=',' read -ra CHECK_LIST <<< "$CHECKS"
           PARTIAL_FILES=()
+          PARTIAL_STDERR_FILES=()
           OVERALL_EXIT=0
 
           for CHECK in "${CHECK_LIST[@]}"; do
             CHECK=$(echo "$CHECK" | xargs)  # trim whitespace
+            [ -z "$CHECK" ] && continue
             PARTIAL=$(mktemp)
             PARTIAL_STDERR=$(mktemp)
 
@@ -103,6 +105,7 @@ runs:
             fi
 
             PARTIAL_FILES+=("$PARTIAL")
+            PARTIAL_STDERR_FILES+=("$PARTIAL_STDERR")
           done
 
           # Merge JSON outputs
@@ -125,8 +128,12 @@ runs:
           EXIT_CODE=$OVERALL_EXIT
         fi
 
-        # Emit annotations (GitHub caps at 10 per step)
-        TOTAL=$(jq '.summary.total' "$MERGED_OUTPUT")
+        # Emit annotations (GitHub shows up to 10 warning annotations per step)
+        if [ ! -s "$MERGED_OUTPUT" ]; then
+          TOTAL=0
+        else
+          TOTAL=$(jq '.summary.total' "$MERGED_OUTPUT")
+        fi
 
         if [ "$TOTAL" -gt 0 ]; then
           jq -r '.findings[] | "::warning file=\(.file | gsub(":";"%3A") | gsub(",";"%2C")),line=\(.line),title=\(.rule)::\(.message | gsub("%";"%25") | gsub("\n";"%0A") | gsub("\r";"%0D"))"' "$MERGED_OUTPUT"
@@ -148,8 +155,8 @@ runs:
         } >> "$GITHUB_STEP_SUMMARY"
 
         # Clean up temp files
-        rm -f "$MERGED_OUTPUT" "$STDERR_FILE"
+        rm -f "$MERGED_OUTPUT" "$STDERR_FILE" "${PARTIAL_FILES[@]}" "${PARTIAL_STDERR_FILES[@]}"
 
-        # Exit non-zero when findings exist
+        # Propagate docvet exit code (non-zero when fail-on checks have findings)
         exit "$EXIT_CODE"
       shell: bash
