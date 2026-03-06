@@ -11,6 +11,7 @@ user_skill_level: "{config_source}:user_skill_level"
 date: system-generated
 planning_artifacts: "{config_source}:planning_artifacts"
 implementation_artifacts: "{config_source}:implementation_artifacts"
+test_artifacts: "{config_source}:test_artifacts"
 output_folder: "{implementation_artifacts}"
 story_dir: "{implementation_artifacts}"
 

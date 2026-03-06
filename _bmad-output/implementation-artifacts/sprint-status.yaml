@@ -252,7 +252,7 @@ development_status:
   30-3-license-attribution-on-docs-site: done  # 2026-03-05 — code review approved
   30-4-github-action-for-pr-inline-docstring-comments: done
   30-5-concepts-page: done
-  30-6-glossary-expansion-and-layer-fix: review
-  30-7-docvet-init-command: backlog
-  30-8-multi-finding-prefer-fenced-code-blocks: backlog
+  30-6-glossary-expansion-and-layer-fix: done
+  # 30-7-docvet-init-command: cut (party-mode consensus 2026-03-06 — thin value, TOML corruption risk, better solved by docs)
+  30-8-multi-finding-prefer-fenced-code-blocks: done
   epic-30-retrospective: optional

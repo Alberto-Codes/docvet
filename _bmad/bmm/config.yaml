@@ -7,6 +7,7 @@ project_name: docvet
 user_skill_level: intermediate
 planning_artifacts: "{project-root}/_bmad-output/planning-artifacts"
 implementation_artifacts: "{project-root}/_bmad-output/implementation-artifacts"
+test_artifacts: "{project-root}/_bmad-output/test-artifacts"
 project_knowledge: "{project-root}/docs"
 
 # Core Configuration Values
