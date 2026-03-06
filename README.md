@@ -105,31 +105,30 @@ repos:
 
 ## GitHub Action
 
-Add docvet to your GitHub Actions workflow:
+Add docvet to your GitHub Actions workflow — findings appear as inline annotations on your PR:
 
 ```yaml
 - uses: Alberto-Codes/docvet@v1
 ```
 
-With version pinning and custom arguments:
+Select specific checks or pin a version:
 
 ```yaml
 - uses: Alberto-Codes/docvet@v1
   with:
-    version: '1.2.0'
-    args: 'check --all'
+    checks: 'enrichment,freshness'
+    docvet-version: '1.9.0'
+    python-version: '3.13'
 ```
 
 For griffe rendering checks, install griffe before running docvet:
 
 ```yaml
-- uses: actions/setup-python@v5
+- uses: actions/setup-python@v6
   with:
     python-version: '3.12'
 - run: pip install griffe
 - uses: Alberto-Codes/docvet@v1
-  with:
-    args: 'check --all'
 ```
 
 ## AI Agent Integration
