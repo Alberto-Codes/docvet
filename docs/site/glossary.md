@@ -22,7 +22,9 @@ highlighted terms on any page to see their tooltip definitions.
 **Public symbol**
 :   A symbol without a leading underscore, expected to have a docstring.
     Docvet's presence check counts public symbols to calculate docstring
-    coverage.
+    coverage. By default, `__init__`, magic methods, and private symbols are
+    excluded — configure via `ignore-init`, `ignore-magic`, and
+    `ignore-private`.
 
 **Magic method**
 :   A method with double underscores (e.g., `__init__`, `__str__`), also called

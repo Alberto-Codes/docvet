@@ -14,10 +14,10 @@
 *[recommended]: A docvet severity level indicating a docstring section that should be present but is not strictly required.
 *[Recommended]: A docvet severity level indicating a docstring section that should be present but is not strictly required.
 
-*[public symbol]: A symbol without a leading underscore, expected to have a docstring.
-*[Public symbol]: A symbol without a leading underscore, expected to have a docstring.
-*[public symbols]: Symbols without leading underscores, expected to have docstrings.
-*[Public symbols]: Symbols without leading underscores, expected to have docstrings.
+*[public symbol]: A symbol without a leading underscore, expected to have a docstring. Scope is configurable via ignore-init, ignore-magic, and ignore-private.
+*[Public symbol]: A symbol without a leading underscore, expected to have a docstring. Scope is configurable via ignore-init, ignore-magic, and ignore-private.
+*[public symbols]: Symbols without leading underscores, expected to have docstrings. Scope is configurable via ignore-init, ignore-magic, and ignore-private.
+*[Public symbols]: Symbols without leading underscores, expected to have docstrings. Scope is configurable via ignore-init, ignore-magic, and ignore-private.
 *[magic method]: A method with double underscores (e.g., __init__, __str__), also called a dunder method.
 *[Magic method]: A method with double underscores (e.g., __init__, __str__), also called a dunder method.
 *[magic methods]: Methods with double underscores (e.g., __init__, __str__), also called dunder methods.
