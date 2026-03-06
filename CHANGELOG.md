@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.10.0](https://github.com/Alberto-Codes/docvet/compare/v1.9.0...v1.10.0) (2026-03-06)
+
+
+### Features
+
+* **ci:** add structured inputs, annotations, and step summary to GitHub Action ([#295](https://github.com/Alberto-Codes/docvet/issues/295)) ([e932356](https://github.com/Alberto-Codes/docvet/commit/e932356a9d579e385b2458eea9decbc4aca08b2f)), closes [#294](https://github.com/Alberto-Codes/docvet/issues/294)
+
+
+### Documentation
+
+* **planning:** add Epic 30 sprint status and story artifacts ([1def643](https://github.com/Alberto-Codes/docvet/commit/1def643b0c7770b7ebbe5889c54c0346ce9f314d))
+* **site:** add license attribution page and copyright footer ([#293](https://github.com/Alberto-Codes/docvet/issues/293)) ([780cb91](https://github.com/Alberto-Codes/docvet/commit/780cb912e251eab4bea14e3d2d649cd6a7e5a4b6)), closes [#292](https://github.com/Alberto-Codes/docvet/issues/292)
+
 ## [1.9.0](https://github.com/Alberto-Codes/docvet/compare/v1.8.1...v1.9.0) (2026-03-05)
 
 
