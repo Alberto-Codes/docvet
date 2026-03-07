@@ -94,6 +94,7 @@ The action sets step outputs that downstream steps can consume:
 
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
+{% raw %}
 ```yaml
 - uses: Alberto-Codes/docvet@v1
   id: docvet
@@ -101,6 +102,7 @@ To consume outputs, give the docvet step an `id` and reference its outputs in la
     checks: "all"
 - run: echo "docvet found ${{ steps.docvet.outputs.total_findings }} issues"
 ```
+{% endraw %}
 
 Outputs are only set in new mode (`checks` input). Legacy mode (`args` input) does not produce outputs.
 
@@ -237,6 +239,7 @@ For teams that want a live badge showing pass/fail status from the latest CI run
 
 3. **Add the badge step** to your workflow after the docvet action:
 
+    {% raw %}
     ```yaml
     jobs:
       docvet:
@@ -259,6 +262,7 @@ For teams that want a live badge showing pass/fail status from the latest CI run
               message: ${{ steps.docvet.outputs.badge_message || 'error' }}
               color: ${{ steps.docvet.outputs.badge_color || 'lightgrey' }}
     ```
+    {% endraw %}
 
 4. **Add the badge to your README**:
 
