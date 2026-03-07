@@ -1696,3 +1696,31 @@ class TestCheckFreshnessDrift:
         assert len(findings) >= 2
         lines = [f.line for f in findings]
         assert lines == sorted(lines)
+
+
+class TestModuleDisplayNameInFindings:
+    """Module-level findings use display name, not ``<module>`` sentinel."""
+
+    def test_diff_mode_module_body_change_uses_display_name(self) -> None:
+        source = '''\
+"""Module docstring."""
+
+import os
+
+x = 1
+'''
+        tree = ast.parse(source)
+        diff = (
+            "diff --git a/test.py b/test.py\n"
+            "--- a/test.py\n"
+            "+++ b/test.py\n"
+            "@@ -4,1 +4,1 @@\n"
+            "-import os\n"
+            "+import sys\n"
+        )
+        findings = check_freshness_diff("src/pkg/test.py", diff, tree)
+        assert len(findings) == 1
+        assert findings[0].symbol == "pkg.test"
+        assert "Module 'pkg.test'" in findings[0].message
+        assert "<module>" not in findings[0].symbol
+        assert "<module>" not in findings[0].message

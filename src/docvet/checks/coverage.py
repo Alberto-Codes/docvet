@@ -68,7 +68,8 @@ def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
 
     Walks from each file's parent directory up to *src_root*, checking
     for ``__init__.py`` existence at each level.  Produces one finding per
-    missing directory, deduplicated, with deterministic ordering.
+    missing directory with a dotted package name as the symbol, deduplicated,
+    with deterministic ordering.
 
     Args:
         src_root: Root directory of the source tree (e.g., ``src/``).
@@ -104,7 +105,7 @@ def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
             Finding(
                 file=representative,
                 line=1,
-                symbol="<module>",
+                symbol=dir_rel.replace("/", "."),
                 rule="missing-init",
                 message=message,
                 category="required",

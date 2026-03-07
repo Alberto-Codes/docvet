@@ -1064,7 +1064,7 @@ def test_run_coverage_when_files_have_missing_init_prints_formatted_output(mocke
         Finding(
             file="src/pkg/sub/module.py",
             line=1,
-            symbol="<module>",
+            symbol="pkg.sub",
             rule="missing-init",
             message="Directory 'pkg/sub' lacks __init__.py (1 file affected)",
             category="required",
@@ -1130,7 +1130,7 @@ def test_check_command_includes_coverage_findings(mocker):
         Finding(
             file="src/pkg/mod.py",
             line=1,
-            symbol="<module>",
+            symbol="pkg",
             rule="missing-init",
             message="Directory 'pkg' lacks __init__.py (1 file affected)",
             category="required",
@@ -1518,7 +1518,7 @@ def test_run_coverage_direct_returns_list_of_findings(mocker):
         Finding(
             file="src/pkg/mod.py",
             line=1,
-            symbol="<module>",
+            symbol="pkg",
             rule="missing-init",
             message="Directory 'pkg' lacks __init__.py (1 file affected)",
             category="required",
@@ -1531,7 +1531,7 @@ def test_run_coverage_direct_returns_list_of_findings(mocker):
     assert result[0].rule == "missing-init"
     assert result[0].file == "src/pkg/mod.py"
     assert result[0].line == 1
-    assert result[0].symbol == "<module>"
+    assert result[0].symbol == "pkg"
     assert result[0].message == "Directory 'pkg' lacks __init__.py (1 file affected)"
     assert result[0].category == "required"
     assert pkg_count == 1
