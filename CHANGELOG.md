@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.12.0](https://github.com/Alberto-Codes/docvet/compare/v1.11.0...v1.12.0) (2026-03-07)
+
+
+### Features
+
+* **ci:** add badge outputs to GitHub Action and dynamic badge docs ([#313](https://github.com/Alberto-Codes/docvet/issues/313)) ([4e4a09a](https://github.com/Alberto-Codes/docvet/commit/4e4a09a1b8af3e3d81aecff5f81a54b3218f3b67))
+* **cli:** add --summary flag for per-check quality percentages ([#314](https://github.com/Alberto-Codes/docvet/issues/314)) ([3a225d3](https://github.com/Alberto-Codes/docvet/commit/3a225d31102f70f163a062b7c421bd05153dd926))
+* **cli:** add `docvet config` command and remove interrogate ([#316](https://github.com/Alberto-Codes/docvet/issues/316)) ([b4f4789](https://github.com/Alberto-Codes/docvet/commit/b4f47899781fa23bf84712e96ba3d5bc6b2c51f5))
+
+
+### Bug Fixes
+
+* **checks:** replace &lt;module&gt; sentinel with display names in findings ([#315](https://github.com/Alberto-Codes/docvet/issues/315)) ([6f52258](https://github.com/Alberto-Codes/docvet/commit/6f5225890a0fe71e1b76efd149f99fb6bc173468))
+* **cli:** fix compute_quality key iteration and griffe guard ([3a225d3](https://github.com/Alberto-Codes/docvet/commit/3a225d31102f70f163a062b7c421bd05153dd926))
+
+
+### Documentation
+
+* **bmad:** add Growth phase PRD, architecture, and epics for Epics 31-33 ([#311](https://github.com/Alberto-Codes/docvet/issues/311)) ([8ec1abd](https://github.com/Alberto-Codes/docvet/commit/8ec1abd36ce819c09b3b9b194ff3c4a8ce50d272))
+
 ## [1.11.0](https://github.com/Alberto-Codes/docvet/compare/v1.10.0...v1.11.0) (2026-03-06)
 
 
