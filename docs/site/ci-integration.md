@@ -259,5 +259,8 @@ For teams that want a live badge showing pass/fail status from the latest CI run
 | Only recommended findings | `N findings` | ![yellow](https://img.shields.io/badge/-yellow-yellow) |
 | Required findings present | `N findings` | ![red](https://img.shields.io/badge/-red-red) |
 
+!!! tip "Freshness checks need git history"
+    If your workflow includes the `freshness` check (or `checks: "all"`), add `fetch-depth: 0` to your checkout step for full `git blame` support. See [Annotation behavior](#annotation-behavior) above for details.
+
 !!! note "Branch guard and fork safety"
     The `if: always() && github.ref == 'refs/heads/main'` condition ensures the badge only updates on pushes to `main`, not on pull request branches. The `continue-on-error: true` prevents badge failures (e.g., from forks without Gist access) from failing the overall workflow.

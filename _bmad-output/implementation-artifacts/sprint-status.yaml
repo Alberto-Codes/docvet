@@ -259,7 +259,7 @@ development_status:
 
   # Epic 31: Project Health Visibility
   epic-31: in-progress
-  31-1-dynamic-badge-endpoint: review
+  31-1-dynamic-badge-endpoint: done
   31-2-summary-flag-for-quality-percentages: backlog
   31-3-config-show-defaults-command: backlog
   epic-31-retrospective: optional
