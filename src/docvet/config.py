@@ -6,9 +6,12 @@ merging on top of defaults or an explicit ``exclude`` list. Uses
 composable validation helpers (``_validate_string_list``,
 ``_resolve_fail_warn``) to keep individual parsers focused. Exposes
 ``EnrichmentConfig``, ``FreshnessConfig``, and ``PresenceConfig``
-dataclasses with sensible defaults for all check modules. Provides
-``format_config_toml`` and ``format_config_json`` for rendering
-the effective configuration with source annotations.
+dataclasses with sensible defaults for all check modules.
+
+Provides ``format_config_toml`` and ``format_config_json`` for rendering
+the effective configuration with source annotations. TOML formatting
+is decomposed into ``_fmt_toml_value``, ``_get_annotation``, and
+``_format_toml_section`` helpers to keep individual functions focused.
 
 Examples:
     Load configuration from the project root:
@@ -718,14 +721,134 @@ def get_user_keys(
     return _read_docvet_toml(pyproject_path), pyproject_path
 
 
+# ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
+
+
+def _fmt_toml_value(value: object) -> str:
+    """Format a Python value as a TOML literal.
+
+    Args:
+        value: The Python value to format.
+
+    Returns:
+        A TOML-compatible string representation.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return f'"{value}"'
+    if isinstance(value, int | float):
+        return str(value)
+    if isinstance(value, list):
+        items = ", ".join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
+        return f"[{items}]"
+    return str(value)
+
+
+def _get_annotation(
+    kebab_key: str,
+    user_keys: dict[str, object],
+    section_keys: dict[str, object] | None = None,
+) -> str:
+    """Return a source annotation comment for a config key.
+
+    Args:
+        kebab_key: The kebab-case key to annotate.
+        user_keys: Top-level raw user config dict.
+        section_keys: Nested section user keys, or *None* for
+            top-level lookup.
+
+    Returns:
+        An inline TOML comment: ``"# (user)"`` or ``"# (default)"``.
+    """
+    if section_keys is not None:
+        return "# (user)" if kebab_key in section_keys else "# (default)"
+    return "# (user)" if kebab_key in user_keys else "# (default)"
+
+
+def _get_section_user_keys(
+    user_keys: dict[str, object],
+    key: str,
+) -> dict[str, object] | None:
+    """Extract user-configured keys for a nested config section.
+
+    Args:
+        user_keys: Top-level raw user config dict.
+        key: Section name (e.g., ``"freshness"``).
+
+    Returns:
+        A dict of user-set keys within the section, or *None*.
+    """
+    raw = user_keys.get(key)
+    if isinstance(raw, dict):
+        return {str(k): v for k, v in raw.items()}
+    return None
+
+
+def _format_toml_section(
+    header: str,
+    fields: list[tuple[str, str]],
+    config_obj: object,
+    user_keys: dict[str, object],
+    section_keys: dict[str, object] | None,
+) -> list[str]:
+    """Render a TOML section with annotated key-value pairs.
+
+    Args:
+        header: TOML section header (e.g.,
+            ``"[tool.docvet.freshness]"``).
+        fields: List of ``(attr_name, kebab_key)`` pairs to render.
+        config_obj: Config dataclass instance to read values from.
+        user_keys: Top-level raw user config dict.
+        section_keys: Nested section user keys for annotation.
+
+    Returns:
+        Lines for this section, starting with a blank separator.
+    """
+    lines = ["", header]
+    for attr, kebab in fields:
+        value = getattr(config_obj, attr)
+        annotation = _get_annotation(kebab, user_keys, section_keys)
+        lines.append(f"{kebab} = {_fmt_toml_value(value)}  {annotation}")
+    return lines
+
+
+def _convert_keys_to_kebab(d: dict[str, object]) -> dict[str, object]:
+    """Recursively convert snake_case dict keys to kebab-case.
+
+    Args:
+        d: Dictionary with snake_case keys.
+
+    Returns:
+        New dictionary with all keys converted to kebab-case.
+    """
+    result: dict[str, object] = {}
+    for k, v in d.items():
+        kebab = _snake_to_kebab(k)
+        if isinstance(v, dict):
+            result[kebab] = _convert_keys_to_kebab(v)  # type: ignore[arg-type]
+        else:
+            result[kebab] = v
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Public formatters
+# ---------------------------------------------------------------------------
+
+
 def format_config_toml(
     config: DocvetConfig,
     user_keys: dict[str, object],
 ) -> str:
     """Format effective config as copy-paste-ready TOML.
 
-    Produces a ``[tool.docvet]`` block with ``# (user)`` annotations on
-    keys present in *user_keys* and ``# (default)`` on all others.
+    Renders the top-level ``[tool.docvet]`` keys inline, then delegates
+    each nested section (freshness, enrichment, presence) to
+    :func:`_format_toml_section`. Values are formatted via
+    :func:`_fmt_toml_value` and annotated via :func:`_get_annotation`.
     Omits ``package-name`` when its value is ``None`` and ``project_root``
     (runtime-only). When ``extend-exclude`` appears in *user_keys*, the
     merged ``exclude`` list is annotated accordingly.
@@ -737,30 +860,8 @@ def format_config_toml(
     Returns:
         A TOML-formatted string suitable for ``pyproject.toml``.
     """
-    lines: list[str] = []
+    lines: list[str] = ["[tool.docvet]"]
     has_extend = "extend-exclude" in user_keys
-
-    def _annotation(
-        kebab_key: str, section_keys: dict[str, object] | None = None
-    ) -> str:
-        if section_keys is not None:
-            return "# (user)" if kebab_key in section_keys else "# (default)"
-        return "# (user)" if kebab_key in user_keys else "# (default)"
-
-    def _fmt_value(value: object) -> str:
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        if isinstance(value, str):
-            return f'"{value}"'
-        if isinstance(value, int | float):
-            return str(value)
-        if isinstance(value, list):
-            items = ", ".join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
-            return f"[{items}]"
-        return str(value)
-
-    # Top-level section
-    lines.append("[tool.docvet]")
     top_fields = [
         ("src_root", "src-root"),
         ("package_name", "package-name"),
@@ -772,68 +873,58 @@ def format_config_toml(
         value = getattr(config, attr)
         if attr == "package_name" and value is None:
             continue
-        annotation = _annotation(kebab)
+        annotation = _get_annotation(kebab, user_keys)
         if attr == "exclude" and has_extend:
             annotation = "# (merged from exclude + extend-exclude)"
-        lines.append(f"{kebab} = {_fmt_value(value)}  {annotation}")
+        lines.append(f"{kebab} = {_fmt_toml_value(value)}  {annotation}")
 
-    def _sub_keys(key: str) -> dict[str, object] | None:
-        raw = user_keys.get(key)
-        if isinstance(raw, dict):
-            return {str(k): v for k, v in raw.items()}
-        return None
-
-    # Freshness section
-    freshness_section = _sub_keys("freshness")
-    lines.append("")
-    lines.append("[tool.docvet.freshness]")
-    for attr, kebab in [
-        ("drift_threshold", "drift-threshold"),
-        ("age_threshold", "age-threshold"),
-    ]:
-        value = getattr(config.freshness, attr)
-        lines.append(
-            f"{kebab} = {_fmt_value(value)}  {_annotation(kebab, freshness_section)}"
+    lines.extend(
+        _format_toml_section(
+            "[tool.docvet.freshness]",
+            [
+                ("drift_threshold", "drift-threshold"),
+                ("age_threshold", "age-threshold"),
+            ],
+            config.freshness,
+            user_keys,
+            _get_section_user_keys(user_keys, "freshness"),
         )
-
-    # Enrichment section
-    enrichment_section = _sub_keys("enrichment")
-    lines.append("")
-    lines.append("[tool.docvet.enrichment]")
-    enrichment_fields = [
-        ("require_raises", "require-raises"),
-        ("require_yields", "require-yields"),
-        ("require_warns", "require-warns"),
-        ("require_receives", "require-receives"),
-        ("require_other_parameters", "require-other-parameters"),
-        ("require_typed_attributes", "require-typed-attributes"),
-        ("require_cross_references", "require-cross-references"),
-        ("prefer_fenced_code_blocks", "prefer-fenced-code-blocks"),
-        ("require_attributes", "require-attributes"),
-        ("require_examples", "require-examples"),
-    ]
-    for attr, kebab in enrichment_fields:
-        value = getattr(config.enrichment, attr)
-        lines.append(
-            f"{kebab} = {_fmt_value(value)}  {_annotation(kebab, enrichment_section)}"
+    )
+    lines.extend(
+        _format_toml_section(
+            "[tool.docvet.enrichment]",
+            [
+                ("require_raises", "require-raises"),
+                ("require_yields", "require-yields"),
+                ("require_warns", "require-warns"),
+                ("require_receives", "require-receives"),
+                ("require_other_parameters", "require-other-parameters"),
+                ("require_typed_attributes", "require-typed-attributes"),
+                ("require_cross_references", "require-cross-references"),
+                ("prefer_fenced_code_blocks", "prefer-fenced-code-blocks"),
+                ("require_attributes", "require-attributes"),
+                ("require_examples", "require-examples"),
+            ],
+            config.enrichment,
+            user_keys,
+            _get_section_user_keys(user_keys, "enrichment"),
         )
-
-    # Presence section
-    presence_section = _sub_keys("presence")
-    lines.append("")
-    lines.append("[tool.docvet.presence]")
-    presence_fields = [
-        ("enabled", "enabled"),
-        ("min_coverage", "min-coverage"),
-        ("ignore_init", "ignore-init"),
-        ("ignore_magic", "ignore-magic"),
-        ("ignore_private", "ignore-private"),
-    ]
-    for attr, kebab in presence_fields:
-        value = getattr(config.presence, attr)
-        lines.append(
-            f"{kebab} = {_fmt_value(value)}  {_annotation(kebab, presence_section)}"
+    )
+    lines.extend(
+        _format_toml_section(
+            "[tool.docvet.presence]",
+            [
+                ("enabled", "enabled"),
+                ("min_coverage", "min-coverage"),
+                ("ignore_init", "ignore-init"),
+                ("ignore_magic", "ignore-magic"),
+                ("ignore_private", "ignore-private"),
+            ],
+            config.presence,
+            user_keys,
+            _get_section_user_keys(user_keys, "presence"),
         )
+    )
 
     lines.append("")
     return "\n".join(lines)
@@ -848,7 +939,9 @@ def format_config_json(
     Produces a JSON object with ``"config"`` (all effective values,
     kebab-case keys, ``project_root`` excluded) and
     ``"user_configured"`` (list of dot-separated kebab-case paths for
-    user-set keys). Omits ``package-name`` when its value is ``None``.
+    user-set keys). Key conversion is handled by
+    :func:`_convert_keys_to_kebab`. Omits ``package-name`` when its
+    value is ``None``.
 
     Args:
         config: The effective :class:`DocvetConfig`.
@@ -859,18 +952,7 @@ def format_config_json(
     """
     raw = dataclasses.asdict(config)
     raw.pop("project_root", None)
-
-    def _convert_keys(d: dict[str, object]) -> dict[str, object]:
-        result: dict[str, object] = {}
-        for k, v in d.items():
-            kebab = _snake_to_kebab(k)
-            if isinstance(v, dict):
-                result[kebab] = _convert_keys(v)  # type: ignore[arg-type]
-            else:
-                result[kebab] = v
-        return result
-
-    converted = _convert_keys(raw)
+    converted = _convert_keys_to_kebab(raw)
 
     if converted.get("package-name") is None:
         converted.pop("package-name", None)

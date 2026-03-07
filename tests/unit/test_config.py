@@ -1289,3 +1289,28 @@ def test_format_config_json_includes_package_name_when_set():
     parsed = json.loads(output)
     assert parsed["config"]["package-name"] == "mypkg"
     assert "package-name" in parsed["user_configured"]
+
+
+def test_format_config_json_extend_exclude_excluded_from_user_configured():
+    config = DocvetConfig(exclude=["tests", "scripts", "vendor"])
+    user_keys: dict[str, object] = {"extend-exclude": ["vendor"]}
+    output = format_config_json(config, user_keys)
+    parsed = json.loads(output)
+    assert "extend-exclude" not in parsed["user_configured"]
+
+
+def test_format_config_toml_roundtrip_with_user_keys():
+    """Roundtrip correctness with user-configured values and annotations."""
+    config = DocvetConfig(
+        fail_on=["enrichment"],
+        enrichment=EnrichmentConfig(require_raises=False),
+    )
+    user_keys: dict[str, object] = {
+        "fail-on": ["enrichment"],
+        "enrichment": {"require-raises": False},
+    }
+    output = format_config_toml(config, user_keys)
+    parsed = tomllib.loads(output)
+    docvet = parsed["tool"]["docvet"]
+    assert docvet["fail-on"] == ["enrichment"]
+    assert docvet["enrichment"]["require-raises"] is False

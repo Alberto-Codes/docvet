@@ -259,7 +259,7 @@ ignore-private = true  # (default)
 - [x] `uv run ruff check .` — zero lint violations
 - [x] `uv run ruff format --check .` — zero format issues
 - [x] `uv run ty check` — zero type errors
-- [x] `uv run pytest` — 1288 passed, no regressions
+- [x] `uv run pytest` — 1290 passed, no regressions
 - [x] `uv run docvet check --all` — zero docvet findings (full-strength dogfooding)
 
 ## Dev Agent Record
@@ -279,25 +279,34 @@ None — zero-debug implementation.
 - Added `format_config_toml()` with source annotations (`# (user)` / `# (default)` / `# (merged from exclude + extend-exclude)`)
 - Added `format_config_json()` with `user_configured` key listing user-set paths
 - Added `@app.command("config")` with `--show-defaults` no-op alias
-- 25 new tests (19 unit in test_config.py, 6 CLI in test_cli.py)
+- 27 new tests (21 unit in test_config.py, 6 CLI in test_cli.py)
 - Updated exports test to include 3 new public symbols
 - Updated cli-reference.md with full `docvet config` docs
 - Added cross-reference admonition in configuration.md
 - Updated module docstrings for both config.py and cli.py
+- Removed stale interrogate references from AGENTS.md, CLAUDE.md, project-context.md, story template, pyproject.toml keywords, and enrichment.py comment (interrogate superseded by docvet presence check)
+- Deferred P3 test maturity piggyback (consolidate test_mcp.py single-test classes) — low priority, better suited to a housekeeping ticket
 
 ### Change Log
 
 - 2026-03-07: Implemented `docvet config` command (Tasks 1-6). All ACs satisfied.
+- 2026-03-07: Code review — refactored formatters to reduce CC (H1: 33→0, H2: 16→0), added 2 tests (M2, L2), documented interrogate cleanup and piggyback deferral (M1, L1).
 
 ### File List
 
-- src/docvet/config.py — added `get_user_keys`, `_snake_to_kebab`, `format_config_toml`, `format_config_json`
+- src/docvet/config.py — added `get_user_keys`, `_snake_to_kebab`, `format_config_toml`, `format_config_json`; refactored formatters to extract `_fmt_toml_value`, `_get_annotation`, `_get_section_user_keys`, `_format_toml_section`, `_convert_keys_to_kebab` helpers (code review CC fix)
 - src/docvet/cli.py — added `config` command, updated imports and module docstring
-- tests/unit/test_config.py — 19 new tests for formatters and get_user_keys
+- tests/unit/test_config.py — 21 new tests for formatters and get_user_keys (incl. 2 from code review)
 - tests/unit/test_cli.py — 6 new tests for config command, updated help subcommand test
 - tests/unit/test_exports.py — updated __all__ assertion for config module
 - docs/site/cli-reference.md — added `docvet config` section
 - docs/site/configuration.md — added cross-reference admonition
+- pyproject.toml — removed stale "interrogate" keyword
+- src/docvet/checks/enrichment.py — updated comment to remove interrogate reference
+- AGENTS.md — updated quality model to reflect docvet presence check (replaces interrogate)
+- CLAUDE.md — updated project overview and architecture table
+- _bmad-output/project-context.md — replaced interrogate references with docvet
+- _bmad/bmm/workflows/4-implementation/create-story/template.md — removed interrogate quality gate
 
 ## Code Review
 
@@ -305,15 +314,25 @@ None — zero-debug implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review workflow)
+
 ### Outcome
+
+Changes Requested → Fixed (all HIGH/MEDIUM resolved)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | `format_config_toml` CC 33 (threshold 15) — nested closures | Fixed: extracted `_fmt_toml_value`, `_get_annotation`, `_get_section_user_keys`, `_format_toml_section` to module level |
+| H2 | HIGH | `format_config_json` CC 16 (threshold 15) — nested `_convert_keys` | Fixed: extracted `_convert_keys_to_kebab` to module level |
+| M1 | MEDIUM | Out-of-scope interrogate removal not in File List | Fixed: updated File List and Completion Notes |
+| M2 | MEDIUM | Missing test for `extend-exclude` exclusion from JSON `user_configured` | Fixed: added `test_format_config_json_extend_exclude_excluded_from_user_configured` |
+| L1 | LOW | P3 test maturity piggyback not addressed | Documented deferral in Completion Notes |
+| L2 | LOW | TOML roundtrip test only covers defaults | Fixed: added `test_format_config_toml_roundtrip_with_user_keys` |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
