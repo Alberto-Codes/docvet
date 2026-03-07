@@ -118,8 +118,8 @@ class TestRunEnrichmentProgressBar:
         )
         mocker.patch("docvet.cli.check_enrichment", return_value=[finding])
 
-        findings_with = _run_enrichment([simple_py_file], config, show_progress=True)
-        findings_without = _run_enrichment(
+        findings_with, _ = _run_enrichment([simple_py_file], config, show_progress=True)
+        findings_without, _ = _run_enrichment(
             [simple_py_file], config, show_progress=False
         )
 
@@ -127,7 +127,9 @@ class TestRunEnrichmentProgressBar:
         assert len(findings_with) == 1
 
     def test_enrichment_empty_files_returns_empty_list(self, config):
-        assert _run_enrichment([], config, show_progress=True) == []
+        findings, count = _run_enrichment([], config, show_progress=True)
+        assert findings == []
+        assert count == 0
 
 
 # ---------------------------------------------------------------------------
@@ -250,14 +252,14 @@ class TestRunFreshnessProgressBar:
         mocker.patch("docvet.cli.check_freshness_diff", return_value=[finding])
         mocker.patch("docvet.cli._get_git_diff", return_value="fake diff")
 
-        findings_with = _run_freshness(
+        findings_with, _ = _run_freshness(
             [simple_py_file],
             config,
             freshness_mode=FreshnessMode.DIFF,
             discovery_mode=DiscoveryMode.DIFF,
             show_progress=True,
         )
-        findings_without = _run_freshness(
+        findings_without, _ = _run_freshness(
             [simple_py_file],
             config,
             freshness_mode=FreshnessMode.DIFF,
@@ -282,14 +284,14 @@ class TestRunFreshnessProgressBar:
         mocker.patch("docvet.cli.check_freshness_drift", return_value=[finding])
         mocker.patch("docvet.cli._get_git_blame", return_value="fake blame")
 
-        findings_with = _run_freshness(
+        findings_with, _ = _run_freshness(
             [simple_py_file],
             config,
             freshness_mode=FreshnessMode.DRIFT,
             discovery_mode=DiscoveryMode.DIFF,
             show_progress=True,
         )
-        findings_without = _run_freshness(
+        findings_without, _ = _run_freshness(
             [simple_py_file],
             config,
             freshness_mode=FreshnessMode.DRIFT,
@@ -301,4 +303,6 @@ class TestRunFreshnessProgressBar:
         assert len(findings_with) == 1
 
     def test_freshness_empty_files_returns_empty_list(self, config):
-        assert _run_freshness([], config, show_progress=True) == []
+        findings, count = _run_freshness([], config, show_progress=True)
+        assert findings == []
+        assert count == 0

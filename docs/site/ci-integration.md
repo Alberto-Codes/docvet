@@ -214,6 +214,13 @@ Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet
 
     The action uses `--format json` internally, so terminal output is already suppressed.
 
+!!! tip "Machine-readable quality metrics"
+    Use `--summary --format json` to include per-check quality percentages in the JSON output. The `quality` object is additive — it appears alongside the existing `summary` object only when `--summary` is active:
+
+    ```bash
+    docvet check --all --summary --format json
+    ```
+
 See [Configuration](configuration.md) for the full list of options including freshness thresholds, enrichment toggles, and exclusion patterns.
 
 ## Advanced: Dynamic Badge

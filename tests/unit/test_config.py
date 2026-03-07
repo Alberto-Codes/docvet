@@ -823,7 +823,7 @@ def test_load_config_unknown_key_extend_excludes_typo_exits(
 
 def test_validate_string_list_valid_list_passes():
     data: dict[str, object] = {"exclude": ["tests", "scripts"]}
-    _validate_string_list(data, "exclude", "exclude")
+    _validate_string_list(data, "exclude", "exclude")  # Should not raise
 
 
 def test_validate_string_list_non_list_exits(capsys):
@@ -849,7 +849,9 @@ def test_validate_string_list_check_names_true_invalid_exits(capsys):
 
 def test_validate_string_list_check_names_false_skips_name_validation():
     data: dict[str, object] = {"exclude": ["anything-goes"]}
-    _validate_string_list(data, "exclude", "exclude", check_names=False)
+    _validate_string_list(
+        data, "exclude", "exclude", check_names=False
+    )  # Should not raise
 
 
 # ---------------------------------------------------------------------------

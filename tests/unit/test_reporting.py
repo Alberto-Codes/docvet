@@ -10,9 +10,12 @@ import typer
 from docvet.checks import Finding
 from docvet.config import DocvetConfig, PresenceConfig
 from docvet.reporting import (
+    CheckQuality,
+    compute_quality,
     determine_exit_code,
     format_json,
     format_markdown,
+    format_quality_summary,
     format_summary,
     format_terminal,
     format_verbose_header,
@@ -748,3 +751,268 @@ class TestDetermineExitCodeWithPresence:
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         result = determine_exit_code({}, config)
         assert result == 0
+
+
+# ---------------------------------------------------------------------------
+# compute_quality tests (Task 3 / AC 5, 6)
+# ---------------------------------------------------------------------------
+
+
+class TestComputeQuality:
+    """Tests for compute_quality."""
+
+    def test_zero_findings_all_100(self):
+        """All checks with zero findings produce 100%."""
+        findings_by_check: dict[str, list[Finding]] = {
+            "enrichment": [],
+            "freshness": [],
+            "coverage": [],
+            "griffe": [],
+        }
+        check_counts = {
+            "enrichment": 200,
+            "freshness": 200,
+            "coverage": 12,
+            "griffe": 15,
+        }
+        result = compute_quality(findings_by_check, check_counts)
+        assert len(result) == 4
+        for cq in result.values():
+            assert cq.percentage == 100
+            assert cq.items_with_findings == 0
+
+    def test_mixed_findings(self, make_finding):
+        """Enrichment with findings produces correct percentage."""
+        findings_by_check = {
+            "enrichment": [
+                make_finding(file="a.py", symbol="foo", rule="missing-raises"),
+                make_finding(file="a.py", symbol="foo", rule="missing-yields"),
+                make_finding(file="b.py", symbol="bar", rule="missing-raises"),
+            ],
+        }
+        check_counts = {"enrichment": 50}
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["enrichment"].items_checked == 50
+        assert result["enrichment"].items_with_findings == 2  # unique (file, symbol)
+        assert result["enrichment"].percentage == 96  # round((50-2)/50*100)
+        assert result["enrichment"].unit == "symbols"
+
+    def test_single_check_only(self, make_finding):
+        """Only checks present in findings_by_check appear in result."""
+        findings_by_check = {"coverage": [make_finding(file="pkg/")]}
+        check_counts = {"coverage": 10}
+        result = compute_quality(findings_by_check, check_counts)
+        assert "coverage" in result
+        assert "enrichment" not in result
+
+    def test_zero_items_edge_case(self):
+        """Zero items checked produces 100%."""
+        findings_by_check: dict[str, list[Finding]] = {"enrichment": []}
+        check_counts = {"enrichment": 0}
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["enrichment"].percentage == 100
+        assert result["enrichment"].items_checked == 0
+
+    def test_enrichment_deduplicates_by_file_symbol(self, make_finding):
+        """Same (file, symbol) with multiple findings counts as 1."""
+        findings_by_check = {
+            "enrichment": [
+                make_finding(file="a.py", symbol="f", rule="missing-raises"),
+                make_finding(file="a.py", symbol="f", rule="missing-yields"),
+                make_finding(file="a.py", symbol="f", rule="missing-examples"),
+            ],
+        }
+        check_counts = {"enrichment": 10}
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["enrichment"].items_with_findings == 1
+
+    def test_freshness_uses_symbols_unit(self, make_finding):
+        """Freshness check uses 'symbols' as unit."""
+        findings_by_check = {
+            "freshness": [make_finding(file="a.py", symbol="f")],
+        }
+        check_counts = {"freshness": 20}
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["freshness"].unit == "symbols"
+        assert result["freshness"].items_with_findings == 1
+
+    def test_coverage_uses_packages_unit(self, make_finding):
+        """Coverage check uses 'packages' as unit."""
+        findings_by_check = {
+            "coverage": [
+                make_finding(file="pkg1/"),
+                make_finding(file="pkg2/"),
+            ],
+        }
+        check_counts = {"coverage": 5}
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["coverage"].unit == "packages"
+        assert result["coverage"].items_with_findings == 2
+
+    def test_griffe_uses_files_unit(self, make_finding):
+        """Griffe check uses 'files' as unit."""
+        findings_by_check = {
+            "griffe": [make_finding(file="a.py"), make_finding(file="a.py")],
+        }
+        check_counts = {"griffe": 10}
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["griffe"].unit == "files"
+        assert result["griffe"].items_with_findings == 1  # unique files
+
+    def test_coverage_zero_directories(self):
+        """Coverage with zero directories produces 100%."""
+        findings_by_check: dict[str, list[Finding]] = {"coverage": []}
+        check_counts = {"coverage": 0}
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["coverage"].percentage == 100
+
+    def test_all_checks_combined(self, make_finding):
+        """All four checks produce correct results together."""
+        findings_by_check = {
+            "enrichment": [make_finding(file="a.py", symbol="f")],
+            "freshness": [],
+            "coverage": [make_finding(file="pkg/")],
+            "griffe": [make_finding(file="x.py")],
+        }
+        check_counts = {
+            "enrichment": 100,
+            "freshness": 100,
+            "coverage": 10,
+            "griffe": 20,
+        }
+        result = compute_quality(findings_by_check, check_counts)
+        assert result["enrichment"].percentage == 99
+        assert result["freshness"].percentage == 100
+        assert result["coverage"].percentage == 90
+        assert result["griffe"].percentage == 95
+
+
+# ---------------------------------------------------------------------------
+# format_quality_summary tests (Task 4 / AC 1, 3, 4)
+# ---------------------------------------------------------------------------
+
+
+class TestFormatQualitySummary:
+    """Tests for format_quality_summary."""
+
+    def test_single_check_format(self):
+        """Single check produces one-line output."""
+        quality = {
+            "enrichment": CheckQuality(
+                items_checked=200, items_with_findings=8, percentage=96, unit="symbols"
+            ),
+        }
+        result = format_quality_summary(quality)
+        assert "enrichment" in result
+        assert "96%" in result
+        assert "8 findings" in result
+
+    def test_only_ran_checks_appear(self):
+        """Only checks present in quality dict appear."""
+        quality = {
+            "enrichment": CheckQuality(
+                items_checked=50, items_with_findings=0, percentage=100, unit="symbols"
+            ),
+        }
+        result = format_quality_summary(quality)
+        assert "enrichment" in result
+        assert "freshness" not in result
+        assert "coverage" not in result
+
+    def test_multiple_checks_output(self):
+        """Multiple checks each get their own line."""
+        quality = {
+            "enrichment": CheckQuality(
+                items_checked=100, items_with_findings=5, percentage=95, unit="symbols"
+            ),
+            "freshness": CheckQuality(
+                items_checked=100, items_with_findings=0, percentage=100, unit="symbols"
+            ),
+            "coverage": CheckQuality(
+                items_checked=10, items_with_findings=1, percentage=90, unit="packages"
+            ),
+        }
+        result = format_quality_summary(quality)
+        lines = [line for line in result.strip().splitlines() if line.strip()]
+        assert len(lines) == 3
+
+    def test_100_percent_shows_zero_findings(self):
+        """100% check shows 0 findings."""
+        quality = {
+            "freshness": CheckQuality(
+                items_checked=50, items_with_findings=0, percentage=100, unit="symbols"
+            ),
+        }
+        result = format_quality_summary(quality)
+        assert "100%" in result
+        assert "0 findings" in result
+
+    def test_trailing_newline(self):
+        """Output ends with a newline."""
+        quality = {
+            "enrichment": CheckQuality(
+                items_checked=10, items_with_findings=0, percentage=100, unit="symbols"
+            ),
+        }
+        result = format_quality_summary(quality)
+        assert result.endswith("\n")
+
+
+# ---------------------------------------------------------------------------
+# format_json with quality tests (Task 5 / AC 2)
+# ---------------------------------------------------------------------------
+
+
+class TestFormatJsonQuality:
+    """Tests for format_json with quality parameter."""
+
+    def test_quality_key_present_when_provided(self, make_finding):
+        """Quality object appears in JSON when quality dict is provided."""
+        quality = {
+            "enrichment": CheckQuality(
+                items_checked=200, items_with_findings=8, percentage=96, unit="symbols"
+            ),
+        }
+        result = json.loads(format_json([], 10, quality=quality))
+        assert "quality" in result
+        assert result["quality"]["enrichment"]["items_checked"] == 200
+        assert result["quality"]["enrichment"]["items_with_findings"] == 8
+        assert result["quality"]["enrichment"]["percentage"] == 96
+        assert result["quality"]["enrichment"]["unit"] == "symbols"
+
+    def test_quality_key_absent_when_none(self):
+        """No quality key in JSON when quality is not provided."""
+        result = json.loads(format_json([], 10))
+        assert "quality" not in result
+
+    def test_existing_summary_unchanged(self, make_finding):
+        """Existing summary object is not modified by quality."""
+        quality = {
+            "enrichment": CheckQuality(
+                items_checked=50, items_with_findings=1, percentage=98, unit="symbols"
+            ),
+        }
+        findings = [make_finding(category="required")]
+        result = json.loads(format_json(findings, 5, quality=quality))
+        assert result["summary"]["total"] == 1
+        assert result["summary"]["files_checked"] == 5
+        assert "quality" in result
+
+    def test_multiple_checks_in_quality(self):
+        """Multiple checks appear in quality object."""
+        quality = {
+            "enrichment": CheckQuality(
+                items_checked=100, items_with_findings=2, percentage=98, unit="symbols"
+            ),
+            "coverage": CheckQuality(
+                items_checked=10, items_with_findings=1, percentage=90, unit="packages"
+            ),
+        }
+        result = json.loads(format_json([], 10, quality=quality))
+        assert "enrichment" in result["quality"]
+        assert "coverage" in result["quality"]
+
+    def test_backward_compat_no_quality_without_flag(self):
+        """Without quality param, JSON output is identical to existing."""
+        result = json.loads(format_json([], 10))
+        assert set(result.keys()) == {"findings", "summary"}
