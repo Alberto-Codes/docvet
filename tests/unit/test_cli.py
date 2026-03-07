@@ -2849,6 +2849,22 @@ class TestMcpSubcommand:
         assert result.exit_code == 1
         assert "pip install docvet[mcp]" in result.output
 
+    def test_import_error_shows_friendly_message(self, mocker):
+        """ImportError (not just ModuleNotFoundError) is caught gracefully."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "docvet.mcp":
+                raise ImportError("MCP server requires the mcp extra")
+            return real_import(name, *args, **kwargs)
+
+        mocker.patch("builtins.__import__", side_effect=fake_import)
+        result = runner.invoke(app, ["mcp"])
+        assert result.exit_code == 1
+        assert "pip install docvet[mcp]" in result.output
+
     def test_successful_invocation_calls_start_server(self, mocker):
         """Successful import calls start_server once."""
         mock_start = mocker.patch("docvet.mcp.start_server")

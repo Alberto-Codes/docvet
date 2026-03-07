@@ -1372,13 +1372,15 @@ def mcp() -> None:
     Launches a Model Context Protocol server on stdio that exposes
     docstring quality checks as MCP tools for AI agents.
     Requires the ``[mcp]`` extra (``pip install docvet[mcp]``).
+    Catches both ``ModuleNotFoundError`` and ``ImportError`` to
+    handle re-raised import failures gracefully.
 
     Raises:
         typer.Exit: If required MCP dependencies are not installed.
     """
     try:
         from docvet.mcp import start_server as mcp_start_server
-    except ModuleNotFoundError:
+    except ImportError:
         typer.echo(
             "MCP server requires the mcp extra: pip install docvet[mcp]",
             err=True,
