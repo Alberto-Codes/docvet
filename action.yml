@@ -27,6 +27,16 @@ inputs:
     deprecationMessage: 'The "args" input is deprecated. Use "checks" instead for annotation support. "args" will be removed in v2.'
     required: false
     default: ''
+outputs:
+  badge_message:
+    description: 'Badge message for shields.io (e.g., "passing" or "N findings")'
+    value: ${{ steps.run-docvet.outputs.badge_message }}
+  badge_color:
+    description: 'Badge color for shields.io (brightgreen, yellow, or red)'
+    value: ${{ steps.run-docvet.outputs.badge_color }}
+  total_findings:
+    description: 'Total number of findings'
+    value: ${{ steps.run-docvet.outputs.total_findings }}
 runs:
   using: 'composite'
   steps:
@@ -49,6 +59,7 @@ runs:
         fi
       shell: bash
     - name: Run docvet
+      id: run-docvet
       run: |
         # Detect legacy mode: args is set and checks is still default
         ARGS="${{ inputs.args }}"
@@ -153,6 +164,20 @@ runs:
             echo "No findings. All docstrings pass quality checks."
           fi
         } >> "$GITHUB_STEP_SUMMARY"
+
+        # Compute badge outputs (legacy mode exits early at line 71, so this only runs in new mode)
+        BADGE_TOTAL=${TOTAL:-0}
+        echo "total_findings=${BADGE_TOTAL}" >> "$GITHUB_OUTPUT"
+        if [ "$BADGE_TOTAL" -eq 0 ]; then
+          echo "badge_message=passing" >> "$GITHUB_OUTPUT"
+          echo "badge_color=brightgreen" >> "$GITHUB_OUTPUT"
+        elif [ "$(jq '.summary.by_category.required // 0' "$MERGED_OUTPUT")" -eq 0 ]; then
+          echo "badge_message=${BADGE_TOTAL} findings" >> "$GITHUB_OUTPUT"
+          echo "badge_color=yellow" >> "$GITHUB_OUTPUT"
+        else
+          echo "badge_message=${BADGE_TOTAL} findings" >> "$GITHUB_OUTPUT"
+          echo "badge_color=red" >> "$GITHUB_OUTPUT"
+        fi
 
         # Clean up temp files
         rm -f "$MERGED_OUTPUT" "$STDERR_FILE" "${PARTIAL_FILES[@]}" "${PARTIAL_STDERR_FILES[@]}"

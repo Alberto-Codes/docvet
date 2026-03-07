@@ -83,5 +83,17 @@ jobs:
         with:
           fetch-depth: 0
       - uses: Alberto-Codes/docvet@v1
+        id: docvet
         with:
-          args: "check --all"
+          checks: "all"
+      - name: Update docvet badge
+        if: always() && github.ref == 'refs/heads/main' && vars.BADGE_GIST_ID != ''
+        continue-on-error: true
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ vars.BADGE_GIST_ID }}
+          filename: docvet-badge.json
+          label: docvet
+          message: ${{ steps.docvet.outputs.badge_message || 'error' }}
+          color: ${{ steps.docvet.outputs.badge_color || 'lightgrey' }}

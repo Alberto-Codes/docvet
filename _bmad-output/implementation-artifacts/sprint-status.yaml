@@ -1,4 +1,4 @@
-# generated: 2026-03-05
+# generated: 2026-03-07
 # project: docvet
 # project_key: NOKEY
 # tracking_system: both
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-03-05
+generated: 2026-03-07
 project: docvet
 project_key: NOKEY
 tracking_system: both
@@ -256,3 +256,25 @@ development_status:
   # 30-7-docvet-init-command: cut (party-mode consensus 2026-03-06 — thin value, TOML corruption risk, better solved by docs)
   30-8-multi-finding-prefer-fenced-code-blocks: done
   epic-30-retrospective: done  # 2026-03-06
+
+  # Epic 31: Project Health Visibility
+  epic-31: in-progress
+  31-1-dynamic-badge-endpoint: review
+  31-2-summary-flag-for-quality-percentages: backlog
+  31-3-config-show-defaults-command: backlog
+  epic-31-retrospective: optional
+
+  # Epic 32: Linter Lifecycle -- Fix & Suppress
+  epic-32: backlog
+  32-1-fix-feasibility-spike: backlog
+  32-2-fix-core-section-scaffolding-engine: backlog
+  32-3-fix-cli-wiring-subcommand-dry-run-and-discovery: backlog
+  32-4-inline-suppression-comments: backlog
+  epic-32-retrospective: optional
+
+  # Epic 33: Ecosystem Visibility & Editor Integration
+  epic-33: backlog
+  33-1-vs-code-extension: backlog
+  33-2-flagship-oss-runs-and-example-guide: backlog
+  33-3-sarif-output-format: backlog
+  epic-33-retrospective: optional
