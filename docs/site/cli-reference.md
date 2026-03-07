@@ -12,6 +12,7 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 |--------|------|---------|-------------|
 | `--verbose` | flag | off | Show file count, per-check timing, and active checks |
 | `-q` / `--quiet` | flag | off | Suppress non-finding output (summary, timing, verbose details). Config warnings are always shown. |
+| `--summary` | flag | off | Print per-check quality percentages after findings |
 | `--format` | `terminal` \| `markdown` \| `json` | `terminal` | Output format |
 | `--output` | `PATH` | stdout | Write report to file |
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
@@ -49,6 +50,42 @@ The `--format json` option produces a structured JSON object for programmatic co
 - The `summary` object includes `total`, `by_category` (with `required` and `recommended` counts), and `files_checked`.
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
 - Exit codes are unchanged: `0` for no findings, `1` when findings exist in a `fail_on` check.
+
+### Quality Summary (`--summary`)
+
+The `--summary` flag prints per-check quality percentages to stderr after findings:
+
+```bash
+docvet check --all --summary
+```
+
+```
+  enrichment      96%  (8 findings)
+  freshness      100%  (0 findings)
+  coverage        92%  (1 findings)
+  griffe         100%  (0 findings)
+```
+
+Only checks that actually ran appear in the output. When combined with `--format json`, a `quality` object is added to the JSON output:
+
+```bash
+docvet check --all --summary --format json
+```
+
+```json
+{
+  "findings": [...],
+  "summary": {...},
+  "quality": {
+    "enrichment": {"items_checked": 200, "items_with_findings": 8, "percentage": 96, "unit": "symbols"},
+    "freshness": {"items_checked": 200, "items_with_findings": 0, "percentage": 100, "unit": "symbols"},
+    "coverage": {"items_checked": 12, "items_with_findings": 1, "percentage": 92, "unit": "packages"},
+    "griffe": {"items_checked": 15, "items_with_findings": 0, "percentage": 100, "unit": "files"}
+  }
+}
+```
+
+When `--quiet` and `--summary` are both set, the terminal summary is suppressed (`--quiet` wins). The machine-readable path is `--format json --summary`.
 
 `--verbose` and `--quiet` can be placed before **or** after the subcommand name (dual-registered). Both positions are equivalent:
 

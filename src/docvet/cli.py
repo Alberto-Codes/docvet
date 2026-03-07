@@ -2,14 +2,17 @@
 
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``presence``, ``enrichment``, ``freshness``, ``coverage``, ``griffe``,
-``lsp``, ``mcp``) and the combined ``check`` entry point. All subcommands accept positional file
-arguments (``docvet check src/foo.py``) and the ``--files`` option,
-share three-tier verbosity control (quiet/default/verbose) via
-dual-registered ``--verbose`` and ``-q``/``--quiet`` flags, emit
-a unified ``Vetted N files [check] — ...`` summary line on stderr,
-and support ``--format json`` for structured machine-readable output.
-Output formatting is delegated to :func:`_emit_findings`, which
-dispatches to the appropriate formatter in :mod:`docvet.reporting`.
+``lsp``, ``mcp``) and the combined ``check`` entry point. All subcommands
+accept positional file arguments (``docvet check src/foo.py``) and the
+``--files`` option, share three-tier verbosity control
+(quiet/default/verbose) via dual-registered ``--verbose`` and
+``-q``/``--quiet`` flags, emit a unified
+``Vetted N files [check] — ...`` summary line on stderr, and support
+``--format json`` for structured machine-readable output. The
+``--summary`` flag adds per-check quality percentages to stderr
+(terminal) or a ``quality`` object to JSON output. Output formatting is
+delegated to :func:`_emit_findings`, which dispatches to the appropriate
+formatter in :mod:`docvet.reporting`.
 
 Examples:
     Run all checks on changed files:
@@ -51,6 +54,7 @@ from typing import Annotated
 
 import typer
 
+from docvet.ast_utils import get_documented_symbols
 from docvet.checks import Finding
 from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
@@ -60,9 +64,12 @@ from docvet.checks.presence import PresenceStats, check_presence
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import DiscoveryMode, discover_files
 from docvet.reporting import (
+    CheckQuality,
+    compute_quality,
     determine_exit_code,
     format_json,
     format_markdown,
+    format_quality_summary,
     format_summary,
     format_terminal,
     format_verbose_header,
@@ -264,6 +271,7 @@ def _emit_findings(
     *,
     presence_stats: PresenceStats | None = None,
     min_coverage: float = 0.0,
+    quality: dict[str, CheckQuality] | None = None,
 ) -> None:
     """Write findings to stdout or a file in the resolved format.
 
@@ -280,6 +288,7 @@ def _emit_findings(
         file_count: Number of files checked (used by JSON format).
         presence_stats: Aggregate presence coverage stats for JSON output.
         min_coverage: Coverage threshold from config for JSON output.
+        quality: Per-check quality data for JSON output, or *None*.
     """
     if resolved_fmt == "json":
         json_output = format_json(
@@ -287,6 +296,7 @@ def _emit_findings(
             file_count,
             presence_stats=presence_stats,
             min_coverage=min_coverage,
+            quality=quality,
         )
         if output_path:
             Path(output_path).write_text(json_output)
@@ -353,6 +363,7 @@ def _output_and_exit(
     checks: list[str],
     *,
     presence_stats: PresenceStats | None = None,
+    check_counts: dict[str, int] | None = None,
 ) -> None:
     """Resolve output options, emit findings, and exit with proper code.
 
@@ -372,6 +383,8 @@ def _output_and_exit(
         checks: List of check names that were run.
         presence_stats: Aggregate presence coverage stats, or *None*
             when the presence check did not run.
+        check_counts: Per-check item counts for quality computation,
+            or *None* when ``--summary`` is not active.
 
     Raises:
         typer.Exit: With code 0 when no fail-on findings, code 1 otherwise.
@@ -379,6 +392,7 @@ def _output_and_exit(
     output_path = ctx.obj.get("output")
     verbose = ctx.obj.get("verbose", False)
     quiet = ctx.obj.get("quiet", False)
+    summary = ctx.obj.get("summary", False)
     fmt_opt = ctx.obj.get("format")
 
     # 1. Resolve no_color
@@ -403,7 +417,12 @@ def _output_and_exit(
             _format_coverage_line(presence_stats, config.presence.min_coverage)
         )
 
-    # 5. Resolve format, emit findings, exit
+    # 5. Compute quality if --summary and counts available
+    quality = None
+    if summary and check_counts is not None:
+        quality = compute_quality(findings_by_check, check_counts)
+
+    # 6. Resolve format, emit findings, exit
     resolved_fmt = _resolve_format(fmt_opt, output_path)
     _emit_findings(
         resolved_fmt,
@@ -413,7 +432,13 @@ def _output_and_exit(
         file_count,
         presence_stats=presence_stats,
         min_coverage=config.presence.min_coverage,
+        quality=quality if resolved_fmt == "json" else None,
     )
+
+    # 7. Quality summary to stderr (after findings, before exit)
+    if summary and not quiet and quality is not None:
+        sys.stderr.write(format_quality_summary(quality))
+
     raise typer.Exit(
         determine_exit_code(findings_by_check, config, presence_stats=presence_stats)
     )
@@ -517,7 +542,7 @@ def _run_enrichment(
     config: DocvetConfig,
     *,
     show_progress: bool = False,
-) -> list[Finding]:
+) -> tuple[list[Finding], int]:
     """Run the enrichment check on discovered files.
 
     Reads each file, parses its AST, and runs all enabled enrichment
@@ -529,9 +554,11 @@ def _run_enrichment(
         show_progress: Display a progress bar on stderr.
 
     Returns:
-        All enrichment findings across all files.
+        A tuple of ``(findings, symbol_count)`` where *symbol_count*
+        is the total documented symbols analyzed across all files.
     """
     all_findings: list[Finding] = []
+    symbol_count = 0
     with typer.progressbar(
         files, label="enrichment", file=sys.stderr, hidden=not show_progress
     ) as progress:
@@ -542,9 +569,10 @@ def _run_enrichment(
             except SyntaxError:
                 typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
                 continue
+            symbol_count += len(get_documented_symbols(tree))
             findings = check_enrichment(source, tree, config.enrichment, str(file_path))
             all_findings.extend(findings)
-    return all_findings
+    return all_findings, symbol_count
 
 
 def _run_presence(
@@ -596,7 +624,7 @@ def _run_freshness(
     discovery_mode: DiscoveryMode = DiscoveryMode.DIFF,
     *,
     show_progress: bool = False,
-) -> list[Finding]:
+) -> tuple[list[Finding], int]:
     """Run the freshness check on discovered files.
 
     For diff mode, reads each file, parses the AST, obtains its git
@@ -612,10 +640,12 @@ def _run_freshness(
         show_progress: Display a progress bar on stderr.
 
     Returns:
-        All freshness findings across all files.
+        A tuple of ``(findings, symbol_count)`` where *symbol_count*
+        is the total documented symbols analyzed across all files.
     """
     if freshness_mode is not FreshnessMode.DIFF:
         all_findings: list[Finding] = []
+        symbol_count = 0
         with typer.progressbar(
             files, label="freshness", file=sys.stderr, hidden=not show_progress
         ) as progress:
@@ -628,14 +658,16 @@ def _run_freshness(
                         f"warning: {file_path}: failed to parse, skipping", err=True
                     )
                     continue
+                symbol_count += len(get_documented_symbols(tree))
                 blame_output = _get_git_blame(file_path, config.project_root)
                 findings = check_freshness_drift(
                     str(file_path), blame_output, tree, config.freshness
                 )
                 all_findings.extend(findings)
-        return all_findings
+        return all_findings, symbol_count
 
     all_findings: list[Finding] = []
+    symbol_count = 0
     with typer.progressbar(
         files, label="freshness", file=sys.stderr, hidden=not show_progress
     ) as progress:
@@ -646,13 +678,14 @@ def _run_freshness(
             except SyntaxError:
                 typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
                 continue
+            symbol_count += len(get_documented_symbols(tree))
             diff_output = _get_git_diff(file_path, config.project_root, discovery_mode)
             findings = check_freshness_diff(str(file_path), diff_output, tree)
             all_findings.extend(findings)
-    return all_findings
+    return all_findings, symbol_count
 
 
-def _run_coverage(files: list[Path], config: DocvetConfig) -> list[Finding]:
+def _run_coverage(files: list[Path], config: DocvetConfig) -> tuple[list[Finding], int]:
     """Run the coverage check on discovered files.
 
     Resolves the source root from configuration and checks all discovered
@@ -663,10 +696,12 @@ def _run_coverage(files: list[Path], config: DocvetConfig) -> list[Finding]:
         config: Loaded docvet configuration.
 
     Returns:
-        All coverage findings.
+        A tuple of ``(findings, package_count)`` where *package_count*
+        is the number of unique package directories scanned.
     """
     src_root = config.project_root / config.src_root
-    return check_coverage(src_root, files)
+    package_count = len({f.parent for f in files})
+    return check_coverage(src_root, files), package_count
 
 
 def _run_griffe(
@@ -675,7 +710,7 @@ def _run_griffe(
     *,
     verbose: bool = False,
     quiet: bool = False,
-) -> list[Finding]:
+) -> tuple[list[Finding], int]:
     """Run the griffe compatibility check on discovered files.
 
     Checks if griffe is installed, resolves the source root from
@@ -688,18 +723,19 @@ def _run_griffe(
         quiet: Whether quiet mode is enabled.
 
     Returns:
-        All griffe compatibility findings.
+        A tuple of ``(findings, file_count)`` where *file_count*
+        is the number of files checked by griffe.
     """
     if importlib.util.find_spec("griffe") is None:
         if "griffe" in config.fail_on:
             typer.echo("warning: griffe check skipped (griffe not installed)", err=True)
         elif verbose and not quiet:
             typer.echo("griffe: skipped (griffe not installed)", err=True)
-        return []
+        return [], 0
     src_root = config.project_root / config.src_root
     if not src_root.is_dir():
-        return []
-    return check_griffe_compat(src_root, files)
+        return [], 0
+    return check_griffe_compat(src_root, files), len(files)
 
 
 # ---------------------------------------------------------------------------
@@ -737,6 +773,10 @@ def main(
             " Config warnings are always shown.",
         ),
     ] = False,
+    summary: Annotated[
+        bool,
+        typer.Option("--summary", help="Print quality percentages after findings."),
+    ] = False,
     fmt: Annotated[
         OutputFormat | None,
         typer.Option("--format", help="Output format."),
@@ -761,6 +801,7 @@ def main(
         ctx: Typer invocation context.
         verbose: Enable verbose output.
         quiet: Suppress non-finding output on stderr.
+        summary: Print quality percentages after findings.
         fmt: Output format (terminal, markdown, or json).
         output: Optional file path for report output.
         config: Explicit path to a ``pyproject.toml``.
@@ -775,6 +816,7 @@ def main(
 
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
+    ctx.obj["summary"] = summary
     ctx.obj["format"] = fmt.value if fmt is not None else None
     ctx.obj["output"] = str(output) if output is not None else None
 
@@ -816,7 +858,11 @@ def check(
     """Run all enabled checks.
 
     Runs presence (if enabled), enrichment, freshness, coverage, and
-    griffe checks in sequence. Coverage percentage is derived from
+    griffe (if installed) checks in sequence. Each check runner returns
+    a ``(findings, item_count)`` tuple; item counts are collected into
+    ``check_counts`` for per-check quality percentage computation when
+    ``--summary`` is active. Griffe is only included in ``check_counts``
+    when the ``griffe`` package is importable. Coverage percentage is derived from
     :attr:`PresenceStats.percentage`. Displays a progress bar on stderr
     when connected to a TTY. Uses three-tier verbosity: ``--quiet``
     suppresses all non-finding stderr output, default shows the summary
@@ -857,27 +903,29 @@ def check(
         _write_timing("presence", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     start = time.perf_counter()
-    enrichment_findings = _run_enrichment(
+    enrichment_findings, enrichment_count = _run_enrichment(
         discovered, config, show_progress=show_progress
     )
     elapsed = time.perf_counter() - start
     _write_timing("enrichment", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     start = time.perf_counter()
-    freshness_findings = _run_freshness(
+    freshness_findings, freshness_count = _run_freshness(
         discovered, config, discovery_mode=discovery_mode, show_progress=show_progress
     )
     elapsed = time.perf_counter() - start
     _write_timing("freshness", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     start = time.perf_counter()
-    coverage_findings = _run_coverage(discovered, config)
+    coverage_findings, coverage_count = _run_coverage(discovered, config)
     elapsed = time.perf_counter() - start
     _write_timing("coverage", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     griffe_installed = importlib.util.find_spec("griffe") is not None
     start = time.perf_counter()
-    griffe_findings = _run_griffe(discovered, config, verbose=verbose, quiet=quiet)
+    griffe_findings, griffe_count = _run_griffe(
+        discovered, config, verbose=verbose, quiet=quiet
+    )
     elapsed = time.perf_counter() - start
     _write_timing(
         "griffe",
@@ -926,6 +974,13 @@ def check(
         "coverage": coverage_findings,
         "griffe": griffe_findings,
     }
+    check_counts: dict[str, int] = {
+        "enrichment": enrichment_count,
+        "freshness": freshness_count,
+        "coverage": coverage_count,
+    }
+    if griffe_installed:
+        check_counts["griffe"] = griffe_count
     _output_and_exit(
         ctx,
         findings_by_check,
@@ -933,6 +988,7 @@ def check(
         file_count,
         checks,
         presence_stats=agg_stats,
+        check_counts=check_counts,
     )
 
 
@@ -1034,7 +1090,8 @@ def enrichment(
     Displays a progress bar on stderr when connected to a TTY.
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
-    file discovery count.
+    file discovery count. Passes symbol count to ``_output_and_exit``
+    for ``--summary`` quality percentage computation.
 
     Args:
         ctx: Typer invocation context.
@@ -1055,7 +1112,9 @@ def enrichment(
     config = ctx.obj["docvet_config"]
 
     start = time.perf_counter()
-    findings = _run_enrichment(discovered, config, show_progress=sys.stderr.isatty())
+    findings, symbol_count = _run_enrichment(
+        discovered, config, show_progress=sys.stderr.isatty()
+    )
     elapsed = time.perf_counter() - start
     if not quiet:
         sys.stderr.write(
@@ -1063,7 +1122,12 @@ def enrichment(
         )
 
     _output_and_exit(
-        ctx, {"enrichment": findings}, config, len(discovered), ["enrichment"]
+        ctx,
+        {"enrichment": findings},
+        config,
+        len(discovered),
+        ["enrichment"],
+        check_counts={"enrichment": symbol_count},
     )
 
 
@@ -1095,7 +1159,8 @@ def freshness(
     Displays a progress bar on stderr when connected to a TTY.
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
-    file discovery count.
+    file discovery count. Passes symbol count to ``_output_and_exit``
+    for ``--summary`` quality percentage computation.
 
     Args:
         ctx: Typer invocation context.
@@ -1117,7 +1182,7 @@ def freshness(
     config = ctx.obj["docvet_config"]
 
     start = time.perf_counter()
-    findings = _run_freshness(
+    findings, symbol_count = _run_freshness(
         discovered,
         config,
         freshness_mode=mode,
@@ -1131,7 +1196,12 @@ def freshness(
         )
 
     _output_and_exit(
-        ctx, {"freshness": findings}, config, len(discovered), ["freshness"]
+        ctx,
+        {"freshness": findings},
+        config,
+        len(discovered),
+        ["freshness"],
+        check_counts={"freshness": symbol_count},
     )
 
 
@@ -1159,7 +1229,8 @@ def coverage(
 
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
-    file discovery count.
+    file discovery count. Passes package directory count to
+    ``_output_and_exit`` for ``--summary`` quality percentage computation.
 
     Args:
         ctx: Typer invocation context.
@@ -1180,14 +1251,21 @@ def coverage(
     config = ctx.obj["docvet_config"]
 
     start = time.perf_counter()
-    findings = _run_coverage(discovered, config)
+    findings, package_count = _run_coverage(discovered, config)
     elapsed = time.perf_counter() - start
     if not quiet:
         sys.stderr.write(
             format_summary(len(discovered), ["coverage"], findings, elapsed)
         )
 
-    _output_and_exit(ctx, {"coverage": findings}, config, len(discovered), ["coverage"])
+    _output_and_exit(
+        ctx,
+        {"coverage": findings},
+        config,
+        len(discovered),
+        ["coverage"],
+        check_counts={"coverage": package_count},
+    )
 
 
 @app.command()
@@ -1214,7 +1292,8 @@ def griffe(
 
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
-    file discovery count.
+    file discovery count. Passes file count to ``_output_and_exit``
+    for ``--summary`` quality percentage computation.
 
     Args:
         ctx: Typer invocation context.
@@ -1235,12 +1314,21 @@ def griffe(
     config = ctx.obj["docvet_config"]
 
     start = time.perf_counter()
-    findings = _run_griffe(discovered, config, verbose=verbose, quiet=quiet)
+    findings, griffe_file_count = _run_griffe(
+        discovered, config, verbose=verbose, quiet=quiet
+    )
     elapsed = time.perf_counter() - start
     if not quiet:
         sys.stderr.write(format_summary(len(discovered), ["griffe"], findings, elapsed))
 
-    _output_and_exit(ctx, {"griffe": findings}, config, len(discovered), ["griffe"])
+    _output_and_exit(
+        ctx,
+        {"griffe": findings},
+        config,
+        len(discovered),
+        ["griffe"],
+        check_counts={"griffe": griffe_file_count},
+    )
 
 
 @app.command()

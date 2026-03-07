@@ -56,10 +56,10 @@ def _mock_check_internals(mocker):
         "docvet.cli._run_presence",
         return_value=([], PresenceStats(documented=0, total=0)),
     )
-    mocker.patch("docvet.cli._run_enrichment", return_value=[])
-    mocker.patch("docvet.cli._run_freshness", return_value=[])
-    mocker.patch("docvet.cli._run_coverage", return_value=[])
-    mocker.patch("docvet.cli._run_griffe", return_value=[])
+    mocker.patch("docvet.cli._run_enrichment", return_value=([], 0))
+    mocker.patch("docvet.cli._run_freshness", return_value=([], 0))
+    mocker.patch("docvet.cli._run_coverage", return_value=([], 0))
+    mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
     mocker.patch("docvet.cli._output_and_exit")
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
@@ -143,11 +143,11 @@ class TestCheckSummaryLine:
     ):
         mocker.patch(
             "docvet.cli._run_enrichment",
-            return_value=[make_finding(category="required")],
+            return_value=([make_finding(category="required")], 10),
         )
         mocker.patch(
             "docvet.cli._run_freshness",
-            return_value=[make_finding(line=2, category="recommended")],
+            return_value=([make_finding(line=2, category="recommended")], 10),
         )
 
         result = cli_runner.invoke(app, ["check", "--all"])

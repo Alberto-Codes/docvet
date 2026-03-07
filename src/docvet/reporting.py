@@ -1,7 +1,9 @@
 """Markdown, terminal, JSON, and summary report generation for docstring findings.
 
 Renders check findings as terminal output (default), markdown reports, or
-structured JSON for programmatic consumption. Produces an unconditional
+structured JSON for programmatic consumption. Computes per-check quality
+percentages via :func:`compute_quality` and formats them for terminal
+display via :func:`format_quality_summary`. Produces an unconditional
 summary line for stderr (with optional coverage percentage from the
 presence check), groups findings by file, calculates summary statistics,
 and determines the CLI exit code based on finding severity and coverage
@@ -33,6 +35,7 @@ See Also:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from collections import Counter
 from collections.abc import Sequence
@@ -46,6 +49,110 @@ from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
 
 __all__: list[str] = []
+
+# ---------------------------------------------------------------------------
+# Quality summary data
+# ---------------------------------------------------------------------------
+
+_UNIT_BY_CHECK: dict[str, str] = {
+    "enrichment": "symbols",
+    "freshness": "symbols",
+    "coverage": "packages",
+    "griffe": "files",
+}
+
+_SYMBOL_BASED_CHECKS: frozenset[str] = frozenset({"enrichment", "freshness"})
+
+
+@dataclasses.dataclass(frozen=True)
+class CheckQuality:
+    """Per-check quality percentage data.
+
+    Attributes:
+        items_checked (int): Total items analyzed (symbols, packages, or files).
+        items_with_findings (int): Unique items that had at least one finding.
+        percentage (int): Quality percentage (0-100).
+        unit (str): Unit of measurement (``"symbols"``, ``"packages"``,
+            or ``"files"``).
+
+    Examples:
+        Create a quality result for enrichment:
+
+        ```python
+        cq = CheckQuality(
+            items_checked=200,
+            items_with_findings=8,
+            percentage=96,
+            unit="symbols",
+        )
+        ```
+    """
+
+    items_checked: int
+    items_with_findings: int
+    percentage: int
+    unit: str
+
+
+def compute_quality(
+    findings_by_check: dict[str, list[Finding]],
+    check_counts: dict[str, int],
+) -> dict[str, CheckQuality]:
+    """Compute per-check quality percentages.
+
+    For enrichment and freshness, unique items are distinct
+    ``(file, symbol)`` pairs. For coverage and griffe, unique items
+    are distinct ``file`` values.
+
+    Args:
+        findings_by_check: Findings grouped by check name.
+        check_counts: Total items checked per check (e.g. symbol count
+            for enrichment, directory count for coverage).
+
+    Returns:
+        Quality data keyed by check name, only for checks present
+        in *check_counts*.
+    """
+    result: dict[str, CheckQuality] = {}
+    for check_name in check_counts:
+        findings = findings_by_check.get(check_name, [])
+        items_checked = check_counts[check_name]
+        if check_name in _SYMBOL_BASED_CHECKS:
+            items_with_findings = len({(f.file, f.symbol) for f in findings})
+        else:
+            items_with_findings = len({f.file for f in findings})
+        if items_checked == 0:
+            pct = 100
+        else:
+            pct = round((items_checked - items_with_findings) / items_checked * 100)
+        result[check_name] = CheckQuality(
+            items_checked=items_checked,
+            items_with_findings=items_with_findings,
+            percentage=pct,
+            unit=_UNIT_BY_CHECK.get(check_name, "items"),
+        )
+    return result
+
+
+def format_quality_summary(quality: dict[str, CheckQuality]) -> str:
+    """Format quality percentages as a compact terminal summary.
+
+    Produces one line per check showing name, percentage, and finding
+    count. Only checks present in *quality* appear.
+
+    Args:
+        quality: Quality data keyed by check name.
+
+    Returns:
+        Formatted summary string ending with a newline.
+    """
+    lines: list[str] = []
+    for check_name, cq in quality.items():
+        lines.append(
+            f"  {check_name:<14s} {cq.percentage:>3d}%  ({cq.items_with_findings} findings)"
+        )
+    return "\n".join(lines) + "\n"
+
 
 _COLORS: dict[str, str] = {
     "required": typer.colors.RED,
@@ -155,6 +262,7 @@ def format_json(
     *,
     presence_stats: PresenceStats | None = None,
     min_coverage: float = 0.0,
+    quality: dict[str, CheckQuality] | None = None,
 ) -> str:
     """Format findings as a structured JSON object.
 
@@ -164,8 +272,10 @@ def format_json(
     recommended). When *presence_stats* is provided, a
     ``presence_coverage`` object is added using
     :attr:`PresenceStats.percentage` for documented/total counts,
-    percentage, threshold, and pass/fail status. Always returns a valid
-    JSON object, even when there are no findings.
+    percentage, threshold, and pass/fail status. When *quality* is
+    provided, a ``quality`` object is added with per-check percentage
+    breakdowns. Always returns a valid JSON object, even when there
+    are no findings.
 
     Args:
         findings: List of findings to format.
@@ -174,6 +284,8 @@ def format_json(
             when the presence check did not run.
         min_coverage: Coverage threshold from config (0.0 means no
             threshold enforcement).
+        quality: Per-check quality data, or *None* when ``--summary``
+            was not used.
 
     Returns:
         JSON string with ``indent=2`` formatting.
@@ -223,6 +335,8 @@ def format_json(
             "threshold": min_coverage,
             "passed": pct >= min_coverage,
         }
+    if quality is not None:
+        obj["quality"] = {name: dataclasses.asdict(cq) for name, cq in quality.items()}
     return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
 
 
