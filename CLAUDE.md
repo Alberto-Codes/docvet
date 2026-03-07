@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**docvet** is a Python 3.12+ CLI tool for comprehensive docstring quality vetting. It fills the gap between style linting (ruff D rules) and presence checking (interrogate) by verifying docstrings are complete, accurate, and renderable for mkdocs-material + mkdocstrings workflows. Targets PyPI publication as `docvet`.
+**docvet** is a Python 3.12+ CLI tool for comprehensive docstring quality vetting. It goes beyond style linting (ruff D rules) by verifying docstrings are present, complete, accurate, and renderable for mkdocs-material + mkdocstrings workflows. Targets PyPI publication as `docvet`.
 
 ## Build & Development
 
@@ -56,10 +56,11 @@ docvet griffe                  # Run griffe compatibility check only
 
 ## Architecture
 
-The product vision (`docs/product-vision.md`) defines the full design. The codebase implements a **six-layer docstring quality model**, delivering layers 3-6 (layers 1-2 are handled by interrogate and ruff):
+The product vision (`docs/product-vision.md`) defines the full design. The codebase implements a **six-layer docstring quality model** (layer 2 style is handled by ruff):
 
 | Layer | Check | Method |
 |-------|-------|--------|
+| 1. Presence | `presence` | AST detection of missing docstrings + coverage reporting |
 | 3. Completeness | `enrichment` | AST analysis for missing sections (Raises, Yields, Attributes, Examples, etc.) |
 | 4. Accuracy | `freshness` | Git diff (fast) and git blame (sweep) for stale docstrings |
 | 5. Rendering | `griffe_compat` | Griffe parser warning capture for mkdocs compatibility |

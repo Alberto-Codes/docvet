@@ -87,10 +87,13 @@ class TestConfigExports:
             "EnrichmentConfig",
             "FreshnessConfig",
             "PresenceConfig",
+            "format_config_json",
+            "format_config_toml",
+            "get_user_keys",
             "load_config",
         ]
         assert sorted(mod.__all__) == expected
-        assert len(mod.__all__) == 5
+        assert len(mod.__all__) == 8
 
 
 class TestLspExports:

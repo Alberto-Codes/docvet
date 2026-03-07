@@ -5,8 +5,8 @@ validates cross-reference syntax in See Also sections, and checks for
 non-fenced code block patterns (reporting both doctest and rST findings
 per symbol) by combining AST analysis with section header parsing.
 Module-kind findings use :func:`~docvet.ast_utils.module_display_name`
-for human-readable symbol names.  Implements Layer 3 of the docstring
-quality model.
+for human-readable symbol names. Implements Layer 3 (completeness) of
+the docstring quality model.
 
 Examples:
     Run the enrichment check on a source file:
@@ -45,7 +45,7 @@ _SEE_ALSO = "See Also"
 
 # All 10 recognized Google-style section headers.
 # Args and Returns are included for parsing context (FR15) — they are
-# recognized but never checked for absence (layers 1-2 are ruff/interrogate).
+# recognized but never checked for absence (layer 2 style is ruff).
 _SECTION_HEADERS = frozenset(
     {
         "Args",

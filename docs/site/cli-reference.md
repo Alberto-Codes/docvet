@@ -1,6 +1,6 @@
 # CLI Reference
 
-docvet provides eight subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
+docvet provides nine subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
 
 ```
 docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
@@ -236,6 +236,59 @@ Loads packages with the griffe parser and captures warnings that would cause bro
 
 !!! note
     Requires the optional `griffe` extra: `pip install docvet[griffe]`
+
+### `docvet config`
+
+Show effective configuration with source annotations.
+
+```bash
+docvet config                     # TOML output (default)
+docvet --format json config       # JSON output
+docvet config --show-defaults     # same as plain `docvet config`
+```
+
+Prints the merged config (user values + built-in defaults) so you can see exactly which settings are active and where they come from. Each value is annotated with `# (user)` or `# (default)`.
+
+**TOML output** (default):
+
+```toml
+[tool.docvet]
+src-root = "src"  # (default)
+exclude = ["tests", "scripts"]  # (default)
+fail-on = ["enrichment"]  # (user)
+warn-on = ["presence", "freshness", "griffe", "coverage"]  # (default)
+
+[tool.docvet.freshness]
+drift-threshold = 30  # (default)
+age-threshold = 90  # (default)
+
+[tool.docvet.enrichment]
+require-raises = false  # (user)
+require-yields = true  # (default)
+...
+```
+
+The TOML output is copy-paste-ready — you can paste it directly into your `pyproject.toml`.
+
+**JSON output** (`--format json`):
+
+```json
+{
+  "config": {
+    "src-root": "src",
+    "exclude": ["tests", "scripts"],
+    "fail-on": ["enrichment"],
+    "warn-on": ["presence", "freshness", "griffe", "coverage"],
+    "freshness": { "drift-threshold": 30, "age-threshold": 90 },
+    "enrichment": { "require-raises": false, "require-yields": true }
+  },
+  "user_configured": ["fail-on", "enrichment.require-raises"]
+}
+```
+
+The `user_configured` array lists which keys were explicitly set in your `pyproject.toml`.
+
+When no `pyproject.toml` is found, a note is printed to stderr and all built-in defaults are shown.
 
 ### `docvet lsp`
 

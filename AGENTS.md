@@ -1,17 +1,18 @@
 # docvet
 
-docvet is a Python CLI tool that checks whether docstrings are complete, accurate, and renderable. It fills the gap between style linting (ruff) and presence checking (interrogate).
+docvet is a Python CLI tool that checks whether docstrings are present, complete, accurate, and renderable. It covers layers 1 and 3-6 of its quality model; layer 2 (style) is handled by ruff.
 
 ## Quality Model
 
 | Layer | Check | What it catches |
 |-------|-------|-----------------|
+| 1. Presence | `presence` | Public symbols missing docstrings + coverage reporting |
 | 3. Completeness | `enrichment` | Missing Raises, Yields, Attributes, Examples, and 6 more sections |
 | 4. Accuracy | `freshness` | Docstrings that fell out of sync with code (git diff + blame) |
 | 5. Rendering | `griffe` | Warnings that break mkdocs-material + mkdocstrings output |
 | 6. Visibility | `coverage` | Packages missing `__init__.py` (invisible to mkdocs) |
 
-Layers 1-2 (presence and style) are handled by interrogate and ruff.
+Layer 2 (style) is handled by ruff.
 
 ## Install
 

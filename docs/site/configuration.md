@@ -2,6 +2,9 @@
 
 docvet is configured through `[tool.docvet]` in your `pyproject.toml`. The entire section is optional — if missing, all defaults apply.
 
+!!! tip "Inspect your effective config"
+    Run `docvet config` to see every setting with its current value and source (`# (user)` or `# (default)`). The output is valid TOML you can copy-paste into your `pyproject.toml`. See the [CLI reference](cli-reference.md#docvet-config) for details.
+
 ## Top-Level Options
 
 These keys go directly under `[tool.docvet]`:
