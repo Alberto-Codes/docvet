@@ -36,9 +36,18 @@ stepsCompleted:
   - 'v1-publish-6'
   - 'v1-publish-7'
   - 'v1-publish-8'
-lastStep: 'v1-publish-8'
+  - 'growth-2'
+  - 'growth-3-skip'
+  - 'growth-4'
+  - 'growth-5'
+  - 'growth-6'
+  - 'growth-7'
+  - 'growth-8'
+lastStep: 'growth-8'
 status: 'complete'
 completedAt: '2026-02-11'
+growthCompletedAt: '2026-03-07'
+growthStartedAt: '2026-03-06'
 reportingStartedAt: '2026-02-11'
 freshnessStartedAt: '2026-02-09'
 griffeStartedAt: '2026-02-11'
@@ -53,6 +62,7 @@ inputDocuments:
   - 'docs/project-overview.md'
   - 'docs/development-guide.md'
   - 'docs/source-tree-analysis.md'
+  - '_bmad-output/planning-artifacts/epics-quick-wins-lifecycle-visibility.md'
   - 'src/docvet/ast_utils.py'
   - 'src/docvet/config.py'
   - 'src/docvet/checks/__init__.py'
@@ -3960,3 +3970,788 @@ The `src/docvet/` tree gets only `__all__` declarations and a `Finding` re-expor
 1. Decision 1 (Build System) → Decision 6 (API Surface) — foundation layer
 2. Decision 2 (Docs Architecture) → Decision 3 (Rule Pages) — docs layer
 3. Decision 4 (Pre-commit) + Decision 5 (GitHub Action) — integration layer
+
+---
+
+## Growth Phase (Epics 31-33) — Project Context Analysis
+
+### Requirements Overview
+
+The Growth phase adds 30 functional requirements (FR128-FR157) across 7 categories and 10 non-functional requirements (NFR67-NFR76) across 6 categories. The three epics target distinct capability tiers:
+
+| Epic | Theme | FRs | Key Capabilities |
+|------|-------|-----|-----------------|
+| 31 — Quick Wins | Immediate developer value | FR128-FR141 | `docvet fix` (AST scaffolding), inline suppression (`# docvet: ignore[rule-id]`), `--summary` flag, `docvet config show` |
+| 32 — Lifecycle | CI/CD pipeline integration | FR142-FR149 | Dynamic badge (shields.io JSON via GitHub Gist), VS Code extension (thin LSP wrapper), SARIF v2.1.0 output |
+| 33 — Visibility | Ecosystem presence | FR150-FR157 | Flagship OSS runs (FastAPI, Pydantic, typer, httpx), curated results in docs site |
+
+### Technical Constraints & Dependencies
+
+**Existing infrastructure leveraged:**
+
+- **`_output_and_exit`** (cli.py) — 8-step unified output pipeline. All new output formats (SARIF, summary, badge JSON) and filtering (suppression) integrate here.
+- **`Finding` frozen dataclass** — 6-field immutable type (`file`, `line`, `symbol`, `rule`, `message`, `category`). Stable for v1; suppression and fix both consume this type without modification.
+- **`_RULE_DISPATCH`** (enrichment.py) — table-driven dispatch. Fix command needs the same detection logic but with different output (scaffold text vs. Finding).
+- **`format_json`** (reporting.py) — SARIF formatter can reuse ~60% of JSON serialization logic.
+- **`get_documented_symbols()`** — already returns symbol counts per check; `--summary` percentages derive from these without changing check runner return types.
+- **LSP server** (lsp.py) — VS Code extension wraps `docvet lsp --stdio`; no LSP changes needed for the extension itself.
+
+**Hard constraints:**
+
+- No runtime dependencies added (fix uses stdlib `ast` + string ops, no libcst, no LLM)
+- No `Finding` dataclass changes (suppression is a post-filter, fix consumes findings as-is)
+- No check runner return type changes (summary uses parallel `symbols_by_check` dict)
+- SARIF must validate against v2.1.0 JSON schema
+- Badge JSON must conform to shields.io endpoint schema
+- VS Code extension lives in separate `docvet-vscode` repo
+
+### Cross-Cutting Concerns
+
+Five architectural concerns surfaced during party-mode review. These require explicit decisions in subsequent steps:
+
+**1. Fix-Enrichment Coupling — Shared Detection Layer**
+
+The fix command and enrichment check both need to detect missing docstring sections. Currently, `_check_*` functions in enrichment.py produce `Finding` objects. Fix needs the same detection but outputs scaffold text (e.g., `Raises:\n    ValueError: ...\n`).
+
+*Concern:* Duplicating detection logic creates drift risk. The architecture must define a shared `_detect_*` layer consumed by both `_check_*` (returns Finding) and `_scaffold_*` (returns section text).
+
+*Impact:* Enrichment module refactor — extract detection from formatting. This is the highest-risk decision in the Growth phase.
+
+**2. Suppression Pipeline Position — Step 1.5 in `_output_and_exit`**
+
+Inline suppression (`# docvet: ignore[rule-id]`) must filter findings before any output formatting. The natural insertion point is inside `_output_and_exit` as step 1.5: after flatten (step 1), before verbose header (step 3).
+
+*Concern:* Suppression must read source files to find ignore comments, adding I/O to what was previously a pure output pipeline. The architecture must decide whether suppression lives inside `_output_and_exit` or as a pre-filter called before it.
+
+*Impact:* Pipeline architecture — purity vs. cohesion tradeoff.
+
+**3. Symbol Count for `--summary` — Parallel Collection**
+
+`--summary` needs total symbol counts per check to compute percentages (e.g., "enrichment: 42/50 symbols clean = 84%"). The `get_documented_symbols()` function already provides counts, but check runners don't currently return them.
+
+*Concern:* Changing check runner return types would break the existing API. Instead, a parallel `symbols_by_check` dict can be populated during discovery and passed alongside findings.
+
+*Impact:* Discovery module extension — minimal, additive change.
+
+**4. Fix + Suppression Interaction**
+
+When `docvet fix` scaffolds missing sections, it must respect existing suppression comments. If a symbol has `# docvet: ignore[missing-raises]`, the fix command should not scaffold a Raises section for it.
+
+*Concern:* Fix must run suppression filtering on detection results before scaffolding. This creates a dependency: fix → suppression → detection, requiring suppression to be available as a library function, not just a pipeline step.
+
+*Impact:* Suppression must be both a pipeline filter (for output) and a callable function (for fix). Design accordingly.
+
+**5. Badge Data Source — `--badge-json` Flag vs. Parsing**
+
+Dynamic badges need a JSON payload with label/message/color. Two approaches: (a) a dedicated `--badge-json` flag that emits shields.io-compatible JSON, or (b) a CI step that parses `--format json` output and constructs the badge payload.
+
+*Concern:* A dedicated flag is cleaner for CI but adds surface area. Parsing existing JSON output is fragile but requires zero new code.
+
+*Impact:* CLI surface area decision — likely favors dedicated flag for reliability.
+
+## Growth Phase — Core Architectural Decisions
+
+### Decision Priority Analysis
+
+**Critical Decisions (Block Implementation):**
+1. Fix-Enrichment shared detection layer
+2. Suppression architecture (post-filter + callable)
+3. Fix + Suppression interaction
+
+**Important Decisions (Shape Architecture):**
+4. Summary symbol counting
+5. SARIF formatter design
+6. Badge JSON output
+7. Config introspection
+
+**Deferred Decisions (Implementation-time):**
+- VS Code extension packaging (separate repo, thin LSP wrapper — no docvet core changes)
+- Flagship OSS run curation (docs-only, no core changes)
+
+### Decision 1: Fix-Enrichment Shared Detection Layer
+
+**Decision:** Extract `_detect_*` functions for complex rules only (4 of 10), returning rule-specific types. Simpler rules inline detection in the fix scaffolder.
+
+The fix command and enrichment check both detect missing docstring sections. Currently, `_check_*` functions interleave detection and Finding construction. For fix, the same detection must produce scaffold text instead of Findings.
+
+**Extraction scope — 4 complex rules only:**
+
+| Rule | `_detect_*` Return Type | Why Extract |
+|------|------------------------|-------------|
+| `missing-raises` | `list[str]` (exception names) | ~15 lines of exception walking + deduplication + re-raise filtering |
+| `missing-attributes` | `list[str]` (field names) | 5-branch dispatch (dataclass, NamedTuple, TypedDict, plain class, `__init__.py`) |
+| `missing-warns` | `list[str]` (warning category names) | `warnings.warn()` call walking + category extraction |
+| `missing-other-parameters` | `list[str]` (parameter names) | `**kwargs` detection + parameter diffing |
+
+**Not extracted — 3 simple rules (inline in scaffolder):**
+
+| Rule | Detection Complexity | Why Inline |
+|------|---------------------|------------|
+| `missing-yields` | `any(isinstance(n, ast.Yield) for n in ast.walk(body))` — one-liner | Extraction adds ceremony without value |
+| `missing-receives` | Same pattern with `ast.Yield` value check — one-liner | Same |
+| `missing-examples` | Symbol kind check against config list — one-liner | Same |
+
+**Not applicable — 3 docstring-only rules:**
+`missing-typed-attributes`, `missing-cross-references`, `prefer-fenced-code-blocks` — scaffolding is trivial or not applicable for fix.
+
+```python
+# Detection layer (shared) — returns rule-specific evidence
+def _detect_missing_raises(
+    symbol: Symbol,
+    node_index: dict[int, _NodeT],
+) -> list[str]:
+    """Return exception names raised but undocumented."""
+    ...
+
+# Enrichment consumer — wraps detection in a Finding
+def _check_missing_raises(
+    symbol: Symbol, sections: set[str], node_index: dict[int, _NodeT],
+    config: EnrichmentConfig, file_path: str,
+) -> Finding | None:
+    if "Raises" in sections:
+        return None
+    exceptions = _detect_missing_raises(symbol, node_index)
+    if not exceptions:
+        return None
+    return Finding(file_path, symbol.line, symbol.name, "missing-raises", ...)
+
+# Fix consumer — wraps detection in scaffold text
+def _scaffold_raises(
+    symbol: Symbol, node_index: dict[int, _NodeT],
+) -> str | None:
+    exceptions = _detect_missing_raises(symbol, node_index)
+    if not exceptions:
+        return None
+    return "Raises:\n" + "".join(f"    {e}: ...\n" for e in exceptions)
+```
+
+**Test preservation:** Existing enrichment tests (415) remain unchanged. `_check_*` functions are refactored to call `_detect_*` internally but their external behavior is identical — black-box preservation. New `_detect_*` unit tests are additive.
+
+**Where code lives:**
+- `_detect_*` functions stay in `enrichment.py` (private, no new module)
+- `_scaffold_*` functions live in new `checks/fix.py`
+- `_check_*` functions updated to call `_detect_*` internally
+
+**Anti-patterns:**
+- Duplicating detection logic in `fix.py` (drift risk)
+- Extracting one-liner detections into separate functions (unnecessary ceremony)
+- Having `_check_*` return both Finding and scaffold text (responsibility mixing)
+- Using `libcst` or any AST mutation library (violates zero-new-deps constraint)
+
+### Decision 2: Suppression Architecture
+
+**Decision:** Standalone `suppression.py` module with dual interface — batch filter for the pipeline, single-check function for fix. Suppression owns its own file I/O.
+
+Two suppression scopes:
+
+- **Line-level:** `# docvet: ignore[rule-id]` on the line of the symbol definition
+- **File-level:** `# docvet: ignore-file[rule-id]` anywhere in the file
+
+```python
+# New module: src/docvet/suppression.py
+
+def is_suppressed(symbol_line: int, rule_id: str, source: str) -> bool:
+    """Check if a single rule is suppressed for a symbol.
+
+    Used by fix to skip scaffolding for suppressed rules.
+    """
+    ...
+
+def filter_suppressed(findings: list[Finding]) -> list[Finding]:
+    """Remove findings suppressed by inline comments.
+
+    Reads source files using Finding.file paths. Each unique file
+    is read at most once (cached internally for the batch).
+    """
+    ...
+```
+
+**Pipeline position:** Called in `_output_and_exit` between step 2 (flatten) and step 3 (verbose header). Suppression reads files itself using `Finding.file` paths — no `file_sources` parameter threaded through the pipeline. This keeps `_output_and_exit`'s signature stable.
+
+**Edge case positions:**
+- **Unknown rule IDs:** Silently ignored (safe direction — `# docvet: ignore[typo-rule]` does nothing, no warning). This matches ruff/pylint behavior.
+- **Bare `ignore` without brackets:** Supported. `# docvet: ignore` (no brackets) suppresses all rules for that line. `# docvet: ignore-file` suppresses all rules for that file. This matches ruff's `# noqa` convention (no code = all rules). FR17's verbose reporting mitigates accidental blanket suppression.
+- **Multiple rules:** `# docvet: ignore[rule-a,rule-b]` supported via comma-separated list inside brackets.
+
+**Why a separate module:** Both `_output_and_exit` (pipeline) and `fix.py` (library) need suppression. A function in `cli.py` would force `fix.py` to import from the CLI module. A standalone `suppression.py` is importable from both.
+
+**Anti-patterns:**
+- Suppression inside individual `_check_*` functions (violates separation of concerns)
+- Threading `file_sources` through `_output_and_exit` (signature bloat, callers must change)
+- `.docvetignore` file-based suppression (out of scope, no FR for it)
+- Bare `# docvet: ignore` suppressing all rules (implicit > explicit)
+
+### Decision 3: Fix + Suppression Interaction
+
+**Decision:** Fix runs detection → suppression filter → scaffold on unsuppressed results.
+
+```python
+# In fix.py orchestrator
+for symbol in symbols:
+    sections = _parse_sections(symbol.docstring)
+    for rule_id, detect_fn in _FIX_DISPATCH:
+        if is_suppressed(symbol.line, rule_id, source):
+            continue
+        evidence = detect_fn(symbol, node_index)
+        if evidence:
+            scaffold = _scaffold(rule_id, evidence)
+            # ... insert scaffold into docstring
+```
+
+This means `suppression.py` exposes both `is_suppressed` (for fix, per-rule check) and `filter_suppressed` (for pipeline, batch filter).
+
+**Rationale:** A user who writes `# docvet: ignore[missing-raises]` expects fix to not scaffold a Raises section. Suppression intent must be respected by both output and fix paths.
+
+### Decision 4: Summary Symbol Counting
+
+**Decision:** Parallel `symbols_by_check` dict populated during check dispatch, no check runner return type changes.
+
+Each check runner already receives parsed files. The CLI dispatch functions (`_run_enrichment`, etc.) can count total symbols from `get_documented_symbols()` calls already happening. These counts are collected into a `dict[str, int]` and passed to a new `--summary` display.
+
+```python
+# In _run_enrichment (cli.py) — count is a byproduct of existing parsing
+symbols = get_documented_symbols(tree)
+symbol_counts["enrichment"] += len(symbols)
+# ... existing check_enrichment call unchanged
+```
+
+**Summary formula:** `clean_pct = ((total_symbols - finding_count) / total_symbols) * 100`
+
+**Output:** One line per check on stderr, after the existing summary line:
+
+```
+enrichment: 42/50 symbols clean (84.0%)
+freshness: 48/50 symbols clean (96.0%)
+```
+
+**Anti-patterns:**
+- Changing check runner return types to include counts (API break)
+- Re-parsing files just for counting (wasteful)
+- Computing percentages inside check runners (presentation concern)
+
+### Decision 5: SARIF Formatter
+
+**Decision:** New `format_sarif()` in `reporting.py`, reusing severity derivation from `format_json`.
+
+SARIF v2.1.0 is a well-defined JSON schema. The formatter maps Finding fields to SARIF locations and results:
+
+```python
+def format_sarif(
+    findings: list[Finding],
+    file_count: int,
+) -> str:
+    """Format findings as SARIF v2.1.0 JSON for GitHub Code Scanning."""
+    ...
+```
+
+**Finding → SARIF mapping:**
+
+| Finding field | SARIF field |
+|--------------|-------------|
+| `file` | `result.locations[0].physicalLocation.artifactLocation.uri` |
+| `line` | `result.locations[0].physicalLocation.region.startLine` |
+| `rule` | `result.ruleId` + `run.tool.driver.rules[].id` |
+| `message` | `result.message.text` |
+| `category` | `result.level` (`required` → `"warning"`, `recommended` → `"note"`) |
+| `symbol` | `result.locations[0].logicalLocations[0].name` |
+
+**Integration:** New `OutputFormat.SARIF = "sarif"` enum member. `_emit_findings` dispatches to `format_sarif` like other formats. Reuses severity derivation logic from `format_json` (extract to shared helper if needed).
+
+### Decision 6: Badge JSON Output
+
+**Decision:** Dedicated `--badge-json PATH` flag on `docvet check` that writes shields.io endpoint-compatible JSON to a file.
+
+```python
+# Output format:
+{
+  "schemaVersion": 1,
+  "label": "docvet",
+  "message": "84% clean",
+  "color": "green"
+}
+```
+
+**Color thresholds (hardcoded):** green >= 90%, yellow >= 70%, orange >= 50%, red < 50%. These are conventions matching shields.io ecosystem norms and are not configurable — simplicity over flexibility for a CI-only feature.
+
+**Why a dedicated flag (not `--format badge`):** `--format` implies stdout formatting for human or machine consumption. Badge JSON is a CI artifact written to a file for `schneegans/dynamic-badges-action` to upload to a GitHub Gist. The write-to-file semantics don't match `--format`'s stdout pattern.
+
+**Implementation:** `--badge-json PATH` runs `--summary` calculation internally to get the percentage, writes JSON to the specified path, then proceeds with normal output. Mutually exclusive with `--output` (not `--format` — badge can coexist with terminal output).
+
+### Decision 7: Config Introspection
+
+**Decision:** `docvet config show` via typer command group pattern.
+
+```python
+# In cli.py
+config_app = typer.Typer(help="Configuration commands.")
+app.add_typer(config_app, name="config")
+
+@config_app.command("show")
+def config_show(config_path: ConfigOption = None) -> None:
+    """Display resolved configuration with defaults."""
+    cfg = load_config(config_path)
+    # ... serialize to readable key-value format
+```
+
+**Output format:** TOML-like display of resolved `[tool.docvet]` config with defaults shown. Uses `dataclasses.asdict()` on `DocvetConfig` and formats as readable key-value pairs.
+
+**Rationale:** Users need to verify which config values are active, especially when debugging why a rule fires or doesn't. Typer command group pattern (`add_typer`) is idiomatic — avoids string-dispatch `if action == "show"` anti-pattern.
+
+### Growth Decision Impact Analysis
+
+**Implementation Sequence:**
+1. **Decision 2** (Suppression module) — standalone, no dependencies on other decisions
+2. **Decision 1** (Detection layer extraction) — refactors enrichment, prerequisite for fix
+3. **Decision 3** (Fix + suppression interaction) — depends on Decisions 1 and 2
+4. **Decision 4** (Summary counting) — independent, can parallel with 1-3
+5. **Decision 5** (SARIF formatter) — independent, can parallel with 1-4
+6. **Decision 6** (Badge JSON) — depends on Decision 4 (summary percentage)
+7. **Decision 7** (Config introspection) — independent, lowest priority
+
+**Cross-Decision Dependencies:**
+- Decision 1 → Decision 3 (fix needs detection layer)
+- Decision 2 → Decision 3 (fix needs suppression)
+- Decision 4 → Decision 6 (badge needs summary percentage)
+- Decisions 5, 7 are fully independent
+
+## Growth Phase — Implementation Patterns & Consistency Rules
+
+### Conflict Points Identified
+
+8 areas where AI agents implementing Growth phase features could make inconsistent choices.
+
+### Naming Patterns
+
+**Detection function naming (Decision 1):**
+- Pattern: `_detect_{rule_id_with_underscores}` — mirrors existing `_check_*` naming but with `_detect_` prefix
+- `missing-raises` → `_detect_missing_raises`
+- `missing-attributes` → `_detect_missing_attributes`
+- These live in `checks/_detection.py` (package-private shared module), not in `enrichment.py`
+- **Anti-pattern:** `_find_raises`, `_get_missing_raises`, `_extract_raises` — any prefix other than `_detect_`
+
+**Scaffold function naming (Decision 1):**
+- Pattern: `_scaffold_{section_name_lowercase}` — named after the section being scaffolded, not the rule
+- `missing-raises` → `_scaffold_raises`
+- `missing-attributes` → `_scaffold_attributes`
+- **Anti-pattern:** `_scaffold_missing_raises`, `_fix_raises`, `_generate_raises_section`
+
+**Suppression function naming (Decision 2):**
+- Public API: `filter_suppressed` (batch), `is_suppressed` (single-check)
+- Internal helpers: `_parse_ignore_comment`, `_parse_ignore_file_comment`
+- **Anti-pattern:** `suppress`, `should_ignore`, `is_ignored` — use project-specific terminology
+
+**Fix dispatch table (Decision 1+3):**
+- Pattern: `_FIX_DISPATCH` — mirrors `_RULE_DISPATCH` naming convention
+- Tuple of `(rule_id_str, detect_fn, scaffold_fn)` triples
+- **Anti-pattern:** Dict-based dispatch, class-based dispatch, dynamic dispatch
+
+### Structure Patterns
+
+**New module placement:**
+
+| Module | Location | Public API | Depends On |
+|--------|----------|------------|------------|
+| `_detection.py` | `src/docvet/checks/_detection.py` | None (package-private) | `ast_utils`, `config` |
+| `suppression.py` | `src/docvet/suppression.py` | `filter_suppressed`, `is_suppressed` | `checks._finding.Finding` |
+| `fix.py` | `src/docvet/checks/fix.py` | `fix_enrichment` | `checks._detection`, `suppression.is_suppressed`, `ast_utils` |
+
+- `_detection.py` lives inside `checks/` with underscore prefix — package-private shared module. Both `enrichment.py` and `fix.py` import from it within the same package. This respects Python's underscore convention (no cross-package private imports).
+- `suppression.py` lives at package root (not inside `checks/`) because it operates on findings from all checks, not just one
+- `fix.py` lives inside `checks/` because it's enrichment-specific (scaffolding enrichment sections)
+
+**File organization within `_detection.py`:**
+1. Module docstring
+2. `from __future__ import annotations`
+3. Stdlib imports (`ast`, `re`)
+4. Local imports (`from docvet.ast_utils import Symbol`)
+5. Type aliases (`_NodeT = ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef`)
+6. `_detect_*` functions (4 complex rules, taxonomy-table order)
+
+**File organization within `fix.py`:**
+1. Module docstring
+2. `from __future__ import annotations`
+3. Stdlib imports (`ast`, `re`)
+4. Local imports (from `_detection` import `_detect_*`, from `suppression` import `is_suppressed`)
+5. `_FIX_DISPATCH` table
+6. `_scaffold_*` functions (same taxonomy-table order as enrichment `_check_*`)
+7. Docstring insertion helpers (`_insert_section`, `_compute_indent`)
+8. `fix_enrichment` public orchestrator (last function)
+
+**File organization within `suppression.py`:**
+1. Module docstring
+2. `from __future__ import annotations`
+3. Stdlib imports (`re`)
+4. Local imports (`from docvet.checks._finding import Finding`)
+5. Comment parsing regex constants (`_IGNORE_PATTERN`, `_IGNORE_FILE_PATTERN`)
+6. `_parse_ignore_comment`, `_parse_ignore_file_comment` helpers
+7. `is_suppressed` (single-check interface)
+8. `filter_suppressed` (batch interface, last function)
+
+**Enrichment refactor impact:**
+- `enrichment.py` `_check_*` functions are updated to import and call `_detect_*` from `_detection.py`
+- `_check_*` signatures remain identical — no caller changes
+- `_build_node_index` stays in `enrichment.py` unless fix needs it directly (implementation-time decision)
+- Consider moving `_parse_sections` and `_extract_section_content` to `_detection.py` if fix needs them — evaluate at implementation time
+
+**Test organization:**
+- `tests/unit/test_suppression.py` — suppression module tests
+- `tests/unit/checks/test_fix.py` — fix module tests
+- `tests/unit/checks/test_detection.py` — detection function tests (additive, independent of enrichment tests)
+- Test naming follows existing convention: `test_{function}_when_{condition}_returns_{expected}`
+
+### Suppression Comment Patterns
+
+**Regex patterns for suppression parsing (Decision 2):**
+
+```python
+# Line-level with rule IDs: # docvet: ignore[rule-id] or # docvet: ignore[rule-a,rule-b]
+_IGNORE_PATTERN = re.compile(
+    r"#\s*docvet:\s*ignore\[([^\]]+)\]"
+)
+
+# Line-level bare (all rules): # docvet: ignore
+_IGNORE_BARE_PATTERN = re.compile(
+    r"#\s*docvet:\s*ignore\s*$"
+)
+
+# File-level with rule IDs: # docvet: ignore-file[rule-id]
+_IGNORE_FILE_PATTERN = re.compile(
+    r"#\s*docvet:\s*ignore-file\[([^\]]+)\]"
+)
+
+# File-level bare (all rules): # docvet: ignore-file
+_IGNORE_FILE_BARE_PATTERN = re.compile(
+    r"#\s*docvet:\s*ignore-file\s*$"
+)
+```
+
+- Whitespace is lenient around `docvet:` (matches `# docvet:` and `#docvet:`)
+- Rule IDs inside brackets are comma-separated, stripped of whitespace
+- **Anti-pattern:** Supporting `# noqa` style (not our syntax), `# type: ignore` style (different tool)
+
+**Line matching for symbol suppression:**
+- Match against the **same line** as the symbol's `def`/`class` keyword only (i.e., `symbol.line`). This is the simplest, least ambiguous rule — the comment must be on the definition line itself.
+- File-level comments (`ignore-file`) match against any line in the file.
+- **Anti-pattern:** Matching against the line above (ambiguous with blank lines), matching against the docstring line, matching against all lines in the function body, scanning decorator lines
+
+### Scaffold Construction Patterns
+
+**Docstring section scaffolding format (Decision 1):**
+
+```python
+# Standard indentation: 4 spaces (matches Google style)
+def _scaffold_raises(exceptions: list[str]) -> str:
+    return "Raises:\n" + "".join(f"    {e}: ...\n" for e in exceptions)
+
+def _scaffold_attributes(fields: list[str]) -> str:
+    return "Attributes:\n" + "".join(f"    {f}: ...\n" for f in fields)
+```
+
+- Section header at base indent level (matching surrounding docstring sections)
+- Items indented 4 spaces from the section header
+- Placeholder `...` for descriptions (user fills in)
+- Trailing newline on each item
+- **Anti-pattern:** Using `TODO` as placeholder, guessing descriptions, using 2-space indent
+
+**Docstring insertion position:**
+- New sections are inserted before the closing `"""` triple-quote
+- If existing sections are present, insert **after the last existing section**, regardless of existing section order. Fix scaffolds missing sections — it does not reorder existing ones.
+- **Blank line separator:** If the docstring contains only a summary line (no blank line separator between summary and body), fix inserts `\n\n` before the scaffolded section. This ensures valid Google-style structure: summary → blank line → sections.
+- **Anti-pattern:** Inserting at the top of the docstring, inserting between existing sections out of order, reordering existing sections
+
+### SARIF Construction Patterns
+
+**SARIF v2.1.0 envelope (Decision 5):**
+
+```python
+{
+    "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+    "version": "2.1.0",
+    "runs": [{
+        "tool": {
+            "driver": {
+                "name": "docvet",
+                "version": "...",  # from importlib.metadata
+                "rules": [...]     # unique rules from findings
+            }
+        },
+        "results": [...]  # one per finding
+    }]
+}
+```
+
+- Exactly one run per SARIF document
+- Version string from `importlib.metadata.version("docvet")`
+- Rules array is deduplicated (each unique `rule_id` appears once)
+- **Anti-pattern:** Multiple runs, hardcoded version strings, duplicate rule entries
+
+### Growth Enforcement Guidelines
+
+**All AI agents implementing Growth features MUST:**
+
+1. Place `_detect_*` functions in `checks/_detection.py` — never in `enrichment.py` or `fix.py`
+2. Use `_scaffold_*` prefix for scaffold functions in `fix.py` — named after section, not rule
+3. Never import from `cli.py` in non-CLI modules — `suppression.py` and `fix.py` must be CLI-independent
+4. Maintain taxonomy-table ordering in all dispatch tables (`_RULE_DISPATCH`, `_FIX_DISPATCH`)
+5. Use `Finding.file` for suppression file reads — never accept file paths as a separate parameter to `filter_suppressed`
+6. Preserve all 415 existing enrichment tests unchanged — detection extraction is a refactor, not a rewrite
+7. Suppression line matching: same-line only for `ignore[]`, any-line for `ignore-file[]`
+8. Insert scaffolded sections after the last existing section — never reorder
+
+## Growth Phase — Project Structure & Boundaries
+
+### New Files for Growth Phase
+
+Existing files shown as-is. **New files** marked with `← NEW`, modified files with `← MODIFIED`.
+
+```
+src/docvet/
+├── __init__.py
+├── cli.py                    ← MODIFIED (config subcommand, --summary, --badge-json, SARIF format, fix file write)
+├── config.py
+├── discovery.py
+├── ast_utils.py
+├── reporting.py              ← MODIFIED (format_sarif added)
+├── suppression.py            ← NEW (filter_suppressed, is_suppressed)
+├── lsp.py
+└── checks/
+    ├── __init__.py            ← MODIFIED (re-export fix_enrichment)
+    ├── _finding.py
+    ├── _detection.py          ← NEW (_detect_*, _parse_sections, _build_node_index)
+    ├── enrichment.py          ← MODIFIED (imports _detect_*, _parse_sections, _build_node_index from _detection)
+    ├── fix.py                 ← NEW (fix_enrichment + _scaffold_* functions)
+    ├── freshness.py
+    ├── coverage.py
+    ├── griffe_compat.py
+    └── presence.py
+
+tests/
+├── unit/
+│   ├── test_suppression.py    ← NEW
+│   └── checks/
+│       ├── test_detection.py  ← NEW
+│       ├── test_fix.py        ← NEW
+│       ├── test_enrichment.py # Unchanged (415 tests preserved)
+│       └── ...
+└── fixtures/
+    ├── suppression_*.py       ← NEW (files with ignore comments)
+    └── ...
+```
+
+### Growth Architectural Boundaries
+
+**Public API additions:**
+
+| Module | New Public API | Consumers |
+|--------|---------------|-----------|
+| `suppression.py` | `filter_suppressed(findings)`, `is_suppressed(line, rule, source)` | `cli.py`, `checks/fix.py` |
+| `checks/fix.py` | `fix_enrichment(source, tree, config, file_path) -> str` | `cli.py` |
+| `reporting.py` | `format_sarif(findings, file_count)` | `cli.py` |
+
+**Module dependency additions:**
+
+```
+cli.py
+  → imports fix_enrichment from docvet.checks.fix         ← NEW
+  → imports filter_suppressed from docvet.suppression      ← NEW
+  → imports format_sarif from docvet.reporting             ← NEW
+  → handles file write for fix (reads file, calls fix_enrichment, writes result)
+
+checks/fix.py                                              ← NEW
+  → imports _detect_* from docvet.checks._detection
+  → imports _parse_sections, _build_node_index from docvet.checks._detection
+  → imports is_suppressed from docvet.suppression
+  → imports Symbol, get_documented_symbols from docvet.ast_utils
+  → imports EnrichmentConfig from docvet.config
+  → NEVER imports from docvet.cli
+  → PURE FUNCTION: receives source string, returns modified source string (no file I/O)
+
+checks/_detection.py                                       ← NEW
+  → imports Symbol from docvet.ast_utils
+  → ZERO config dependency — _detect_* functions detect unconditionally; gating is caller's job
+  → NEVER imports from docvet.cli, docvet.config, docvet.checks.enrichment, or docvet.suppression
+
+checks/enrichment.py                                       ← MODIFIED
+  → imports _detect_* from docvet.checks._detection        ← NEW IMPORT
+  → imports _parse_sections, _build_node_index from docvet.checks._detection  ← MOVED
+  → all other imports unchanged
+
+suppression.py                                             ← NEW
+  → imports Finding from docvet.checks._finding
+  → NEVER imports from docvet.cli or any check module
+```
+
+**Dependency graph is tree-shaped (no cycles):**
+
+```
+cli.py → checks/fix.py → checks/_detection.py → ast_utils.py
+                        → suppression.py → checks/_finding.py
+       → checks/enrichment.py → checks/_detection.py → ast_utils.py
+       → suppression.py
+       → reporting.py
+```
+
+**Data boundaries:**
+- `_detection.py` — pure functions, no I/O, no file reads, no config dependency
+- `fix.py` — pure function: receives `source: str`, returns modified `source: str`. No file I/O. CLI handles reading and writing files.
+- `suppression.py` — `is_suppressed` is pure (receives source string). `filter_suppressed` reads files via `Finding.file` paths (batch mode I/O).
+- `enrichment.py` — remains pure (no I/O), unchanged behavior
+
+### Requirements to Structure Mapping
+
+**Epic → File Mapping:**
+
+| Epic | Story Area | Primary Files | Supporting Files |
+|------|-----------|---------------|-----------------|
+| 31 — Quick Wins | Fix command | `checks/fix.py`, `checks/_detection.py` | `enrichment.py` (refactored) |
+| 31 — Quick Wins | Inline suppression | `suppression.py` | `cli.py` (pipeline integration) |
+| 31 — Quick Wins | `--summary` flag | `cli.py` | `reporting.py` |
+| 31 — Quick Wins | `config show` | `cli.py` | `config.py` |
+| 32 — Lifecycle | Dynamic badge | `cli.py` | — |
+| 32 — Lifecycle | SARIF output | `reporting.py` | `cli.py` (format dispatch) |
+| 32 — Lifecycle | VS Code extension | Separate repo (`docvet-vscode`) | No core changes |
+| 33 — Visibility | Flagship OSS runs | Docs site only (`docs/`) | No core changes |
+
+### `_detection.py` Contents
+
+Shared detection infrastructure moved from `enrichment.py`:
+
+| Function | Origin | Used By |
+|----------|--------|---------|
+| `_parse_sections(docstring) -> set[str]` | Was in `enrichment.py` | `enrichment.py`, `fix.py` |
+| `_build_node_index(tree) -> dict[int, _NodeT]` | Was in `enrichment.py` | `enrichment.py`, `fix.py` |
+| `_detect_missing_raises(symbol, node_index) -> list[str]` | Extracted from `_check_missing_raises` | `enrichment.py`, `fix.py` |
+| `_detect_missing_attributes(symbol, node_index, file_path) -> list[str]` | Extracted from `_check_missing_attributes` | `enrichment.py`, `fix.py` |
+| `_detect_missing_warns(symbol, node_index) -> list[str]` | Extracted from `_check_missing_warns` | `enrichment.py`, `fix.py` |
+| `_detect_missing_other_parameters(symbol, node_index) -> list[str]` | Extracted from `_check_missing_other_parameters` | `enrichment.py`, `fix.py` |
+
+Note: Helper functions used only by `_detect_*` (e.g., `_is_dataclass`, `_is_namedtuple`, `_extract_exception_name`) also move to `_detection.py`.
+
+### Growth Data Flow
+
+**Fix command flow:**
+
+```
+CLI (docvet fix)
+  │
+  │  reads file → source: str
+  │  ast.parse(source) → tree: ast.Module
+  │  loads config → config.enrichment: EnrichmentConfig
+  │
+  ▼
+fix_enrichment(source, tree, config, file_path) → modified_source: str
+  │
+  │  get_documented_symbols(tree) → symbols
+  │  _build_node_index(tree) → node_index
+  │
+  │  For each symbol:
+  │    _parse_sections(docstring) → sections
+  │    For each (rule_id, detect_fn, scaffold_fn) in _FIX_DISPATCH:
+  │      is_suppressed(symbol.line, rule_id, source) → skip if True
+  │      detect_fn(symbol, node_index) → evidence
+  │      scaffold_fn(evidence) → section text
+  │      _insert_section(source, symbol, section_text) → modified source
+  │
+  ▼
+CLI writes modified_source back to file
+```
+
+**Suppression pipeline flow:**
+
+```
+_output_and_exit(ctx, findings_by_check, config, ...)
+  │
+  │  1. Resolve no_color
+  │  2. Flatten findings → all_findings
+  │  2.5 filter_suppressed(all_findings) → filtered_findings  ← NEW STEP
+  │  3. Verbose header (if multi-check)
+  │  4. Verbose coverage line
+  │  5. Resolve format, emit findings, exit
+```
+
+## Growth Phase — Architecture Validation
+
+### Coherence Validation
+
+**Decision Compatibility:** All 7 decisions are internally consistent. No technology conflicts (all stdlib Python, no new deps). Decision 1 (detection) feeds Decision 3 (fix+suppression) cleanly via `_detection.py`. Decision 2 (suppression) dual interface serves both pipeline and fix. Decision 4 (summary) → Decision 6 (badge) dependency is one-directional. Decisions 5 (SARIF) and 7 (config) are fully independent.
+
+**Pattern Consistency:** All naming patterns follow existing conventions (`_detect_*`, `_scaffold_*`, `_check_*`). Dispatch table pattern (`_FIX_DISPATCH`) mirrors `_RULE_DISPATCH`. Finding construction pattern unchanged. File organization mirrors v1.0 structure.
+
+**Structure Alignment:** Tree-shaped dependency graph with no cycles. `_detection.py` as package-private shared module respects underscore convention. Pure function pattern preserved for `fix_enrichment`. Suppression at package root (not in `checks/`) — correct for cross-check scope.
+
+### Requirements Coverage Validation
+
+**FR Coverage (25 FRs):**
+
+| FR | Architectural Support | Decision |
+|----|----------------------|----------|
+| FR1 (badge JSON) | `--badge-json PATH` flag | Decision 6 |
+| FR2-3 (--summary) | Parallel `symbols_by_check` dict | Decision 4 |
+| FR4-5 (config show) | `config show` typer command group | Decision 7 |
+| FR6-9, FR12 (fix core) | `_detect_*` → `_scaffold_*` pipeline | Decision 1 |
+| FR10-11 (fix CLI) | CLI flags, reuses `discover_files` | Structure |
+| FR13 (line ignore + rule) | `_IGNORE_PATTERN` regex | Decision 2 |
+| FR14 (line ignore all) | `_IGNORE_BARE_PATTERN` regex | Decision 2 (amended) |
+| FR15 (file ignore + rule) | `_IGNORE_FILE_PATTERN` regex | Decision 2 |
+| FR16 (file ignore all) | `_IGNORE_FILE_BARE_PATTERN` regex | Decision 2 (amended) |
+| FR17 (verbose suppressed) | Pipeline logs filtered count | Decision 2 |
+| FR18 (post-filter) | `filter_suppressed` in step 2.5 | Decision 2 |
+| FR19-20 (VS Code) | Separate repo, deferred | — |
+| FR21-22 (SARIF) | `format_sarif` in reporting.py | Decision 5 |
+| FR23-25 (flagship) | Docs-only, no core changes | — |
+
+**NFR Coverage (10 NFRs):** All covered. NFR5 uses regex instead of tokenize (simpler, equivalent correctness — valid deviation from suggested approach).
+
+### Gap Analysis
+
+**One gap found and resolved:** FR14/FR16 (bare ignore without brackets) conflicted with Decision 2's original position. **Amended** Decision 2 to support bare `# docvet: ignore` and `# docvet: ignore-file` (all rules), matching ruff's `# noqa` convention. Added `_IGNORE_BARE_PATTERN` and `_IGNORE_FILE_BARE_PATTERN` regexes to patterns section.
+
+**No other gaps found.**
+
+### Architecture Completeness Checklist
+
+**Requirements Analysis**
+- [x] Project context analyzed (25 FRs, 10 NFRs from epics document; 30 FRs, 10 NFRs from PRD)
+- [x] Scale and complexity assessed (3 new modules, brownfield)
+- [x] Technical constraints identified (zero deps, no Finding changes, no return type changes)
+- [x] Cross-cutting concerns mapped (5 party-mode findings → 3 party reviews → 21 total findings addressed)
+
+**Architectural Decisions**
+- [x] 7 decisions documented with code examples, rationale, and anti-patterns
+- [x] Per-rule detection return types specified
+- [x] Module boundaries explicit with dependency directions
+- [x] Implementation sequence with cross-decision dependencies
+
+**Implementation Patterns**
+- [x] Naming conventions for `_detect_*`, `_scaffold_*`, suppression functions
+- [x] Structure patterns for `_detection.py`, `fix.py`, `suppression.py`
+- [x] Suppression comment regexes (4 patterns: line+rule, line+bare, file+rule, file+bare)
+- [x] Scaffold construction with edge cases (blank lines, insertion position, section ordering)
+
+**Project Structure**
+- [x] Directory tree with new/modified files marked
+- [x] Module dependency graph (tree-shaped, verified cycle-free)
+- [x] Data boundaries per module (pure vs. I/O)
+- [x] Epic-to-file mapping for all 3 epics
+
+### Growth Architecture Readiness Assessment
+
+**Overall Status:** READY FOR IMPLEMENTATION
+
+**Confidence Level:** High — brownfield project with proven patterns, 3 party-mode reviews surfaced and resolved 21 findings, all existing tests (737) unaffected.
+
+**Key Strengths:**
+- Shared `_detection.py` module cleanly separates detection from formatting
+- Pure function pattern preserved throughout (fix, detection, enrichment)
+- Suppression dual-interface (batch + single) serves both pipeline and fix
+- Tree-shaped dependency graph — zero circular import risk
+- 415 existing enrichment tests preserved unchanged via black-box refactor
+
+**Implementation Sequence:**
+1. Decision 2 (Suppression) — standalone foundation
+2. Decision 1 (Detection extraction + enrichment refactor) — highest risk, isolated
+3. Decision 3 (Fix command) — depends on 1 + 2
+4. Decision 4 (Summary) — independent, can parallel with 1-3
+5. Decision 5 (SARIF) — independent, can parallel with 1-4
+6. Decision 6 (Badge) — depends on 4
+7. Decision 7 (Config show) — independent, lowest priority

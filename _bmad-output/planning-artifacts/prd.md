@@ -13,8 +13,10 @@ stepsCompleted:
   - 'step-11-polish'
   - 'step-12-complete'
 status: 'complete'
-lastEdited: '2026-02-19'
+lastEdited: '2026-03-06'
 editHistory:
+  - date: '2026-03-06'
+    changes: 'Added Growth phase (Epics 31-33) informed by party-mode consensus and competitive analysis (March 2026); added 4 journeys (J15 Fixer, J16 Suppressor, J17 Dashboard Glancer, J18 VS Code Developer), 30 FRs (FR128-FR157) covering fix command/inline suppression/summary flag/config show-defaults/dynamic badge/VS Code extension/SARIF output/flagship OSS runs, 10 NFRs (NFR67-NFR76) covering fix constraints/suppression conventions/VS Code architecture/SARIF reuse/badge schema/summary formula; added Fix Module Specification and Suppression Specification sections; updated Reporting Module with SARIF and summary additions; added Phases 7-9 to Project Scoping; updated Growth & Vision with concrete epic scope; updated Document Roadmap counts'
   - date: '2026-02-19'
     changes: 'Added v1.0 "Polish & Publish" section informed by market research (February 2026); added 3 journeys (J12 Explorer, J13 Integrator, J14 Enforcer), 17 FRs (FR111-FR127) covering packaging/pre-commit/GitHub Action/README/docs site/rule reference/dogfooding/API surface, 12 NFRs (NFR55-NFR66) covering packaging quality/documentation quality/CI integration/compatibility/dogfooding/API stability; updated Executive Summary with v1.0 publication scope; added Adoption Success to Success Criteria; updated Competitive Context with pydoclint/pydocstyle data; renamed Reporting to Complete status; added v1.0 Phase 6 to Project Scoping with 8 deliverables mapped to issues #49-#56; updated Growth & Vision with post-launch marketing tactics'
   - date: '2026-02-11'
@@ -62,14 +64,24 @@ inputDocuments:
   - 'gh-issue-55'
   - 'gh-issue-56'
   - '_bmad-output/planning-artifacts/research/market-python-devtool-presentation-research-2026-02-19.md'
+  - '_bmad-output/planning-artifacts/epics-quick-wins-lifecycle-visibility.md'
+  - 'gh-issue-256'
+  - 'gh-issue-305'
+  - 'gh-issue-306'
+  - 'gh-issue-308'
+  - 'gh-issue-309'
+  - 'gh-issue-310'
+  - 'gh-issue-160'
+  - 'gh-issue-163'
+  - 'gh-issue-164'
 documentCounts:
   briefs: 0
   research: 1
   brainstorming: 0
-  projectDocs: 18
+  projectDocs: 29
 workflowType: 'prd'
 projectName: 'docvet'
-featureScope: 'enrichment-freshness-coverage-griffe-reporting-and-v1-publish'
+featureScope: 'enrichment-freshness-coverage-griffe-reporting-v1-publish-and-growth'
 ---
 
 # Product Requirements Document - docvet
@@ -85,9 +97,11 @@ The enrichment check fills a 4-year ecosystem gap by detecting missing docstring
 
 This PRD also defines the **v1.0 "Polish & Publish"** phase — the packaging, presentation, and integration infrastructure required to ship docvet as a credible, installable, and discoverable Python developer tool. This covers PyPI publication, pre-commit hook, GitHub Action, mkdocs-material documentation site, rule reference pages, README with comparison table, dogfooding on docvet's own codebase, and API surface audit.
 
+This PRD further defines the **Growth phase** — the post-v1.0 feature expansion that completes the linter lifecycle and extends docvet's reach into editors and CI platforms. The Growth phase delivers: `docvet fix` for AST-based docstring section scaffolding (no LLM, no libcst), inline suppression comments (`# docvet: ignore[rule-id]`) for intentional deviations, a `--summary` flag for per-check quality percentages, a dynamic shields.io badge via GitHub Gist, `docvet config --show-defaults` for effective configuration introspection, a VS Code extension wrapping the existing LSP server, SARIF v2.1.0 output for GitHub Code Scanning integration, and flagship runs on major OSS projects for social proof.
+
 **Target users:** Python developers writing Google-style docstrings, teams using mkdocs-material + mkdocstrings.
 
-**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Griffe: 3 rule identifiers for rendering compatibility warnings, optional dependency on griffe library, no per-check configuration. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration. Reporting: terminal formatter (ANSI colors, file grouping, summary line), markdown formatter (table format for CI/PR comments), `--output` file support, exit code logic based on `fail-on` / `warn-on` configuration. v1.0 Publish: PyPI package with classifiers and adjacent-tool tags, `.pre-commit-hooks.yaml` with `id: docvet`, first-party GitHub Action, mkdocs-material docs site with rule reference pages following the What/Why/Example/Fix template, README with layer comparison table and single-command quickstart, dogfooding badge.
+**Scope:** Enrichment: 10 rule identifiers covering 14 detection scenarios, `required` vs `recommended` categorization, full config via `[tool.docvet.enrichment]`. Freshness: 5 rule identifiers across diff mode (3 severity-tiered rules) and drift mode (2 threshold-based rules), full config via `[tool.docvet.freshness]`. Griffe: 3 rule identifiers for rendering compatibility warnings, optional dependency on griffe library, no per-check configuration. Coverage: 1 rule identifier for missing `__init__.py` detection, pure filesystem check with no configuration. Reporting: terminal formatter (ANSI colors, file grouping, summary line), markdown formatter (table format for CI/PR comments), SARIF v2.1.0 formatter for GitHub Code Scanning, `--output` file support, exit code logic based on `fail-on` / `warn-on` configuration, `--summary` flag for per-check quality percentages. v1.0 Publish: PyPI package with classifiers and adjacent-tool tags, `.pre-commit-hooks.yaml` with `id: docvet`, first-party GitHub Action, mkdocs-material docs site with rule reference pages following the What/Why/Example/Fix template, README with layer comparison table and single-command quickstart, dogfooding badge. Growth: `docvet fix` AST-based section scaffolding (8 section types, dry-run, all discovery modes), inline suppression comments (line-level and file-level, post-filter architecture), `docvet config --show-defaults`, dynamic shields.io badge via Gist, VS Code extension (thin LSP wrapper with Language Model Tools), SARIF output for `github/codeql-action/upload-sarif@v3`, flagship OSS runs on 3+ major projects.
 
 ### Key Terms
 
@@ -108,10 +122,10 @@ This PRD also defines the **v1.0 "Polish & Publish"** phase — the packaging, p
 This PRD is organized in 6 parts:
 
 1. **Success Criteria & Scope** (Sections 1-3): Vision, competitive context, MVP boundaries, v1.0 publication scope, and growth roadmap
-2. **User Journeys** (Section 4): 14 scenarios demonstrating all 19 rules in action across 10 developer personas, plus 3 adoption journeys (install, integrate, reference)
-3. **Module Specifications** (Sections 5-9): Technical contracts for enrichment, freshness, coverage, griffe, and reporting — each with integration contract, rule taxonomy, config schema, and implementation guidance
-4. **Phased Development** (Section 10): Epic breakdown with 5 complete phases, v1.0 publish phase, and post-launch growth candidates
-5. **Requirements** (Sections 11-12): 127 FRs and 66 NFRs with traceability to journeys and success criteria
+2. **User Journeys** (Section 4): 18 scenarios demonstrating all 19 rules in action across 10 developer personas, plus 3 adoption journeys (install, integrate, reference) and 4 growth journeys (fix, suppress, dashboard, VS Code)
+3. **Module Specifications** (Sections 5-11): Technical contracts for enrichment, freshness, coverage, griffe, reporting, fix, and suppression — each with integration contract, rule taxonomy, config schema, and implementation guidance
+4. **Phased Development** (Section 12): Epic breakdown with 6 complete phases, 3 growth phases, and post-launch candidates
+5. **Requirements** (Sections 13-14): 157 FRs and 76 NFRs with traceability to journeys and success criteria
 6. **Metadata** (YAML frontmatter): Edit history, input documents, classification, and workflow tracking
 
 For implementation: start with Module Specifications (Sections 5-9) and FRs/NFRs (Sections 11-12).
@@ -159,6 +173,21 @@ For stakeholder review: focus on Success Criteria (Section 1) and User Journeys 
 - Running `docvet check --all` on docvet's own codebase produces zero findings — the tool dogfoods itself, proving the "docs vetted | docvet" badge is earned
 - The docs site is live, loads in under 3 seconds, includes search, and covers Getting Started, all 19 rules, configuration, and CLI reference
 
+### Growth Success
+
+- A developer runs `docvet fix --dry-run` and sees a diff of scaffolded sections before any files are modified — previewing exactly what will change
+- A developer runs `docvet fix` and gets missing Raises, Args, Yields, Attributes, and Examples sections scaffolded with parameter names and `[TODO: describe]` placeholders — a skeleton they fill in, not boilerplate they write from scratch
+- Running `docvet fix` twice on the same file produces no additional changes — the fix is idempotent
+- A developer adds `# docvet: ignore[missing-raises]` to a function's `def` line and that finding is suppressed — intentional deviations are respected without global config changes
+- A developer adds `# docvet: ignore-file[missing-examples]` before the first class/function definition and all `missing-examples` findings in the file are suppressed
+- Suppressed findings appear in `--verbose` output for transparency — nothing is silently hidden
+- A developer runs `docvet check --all --summary` and sees per-check quality percentages (enrichment: 94%, freshness: 100%, coverage: 100%, griffe: 87%) and an overall score — instant project health assessment
+- A project maintainer configures a dynamic badge that updates on each CI run, showing pass/fail status and findings count on their README
+- A developer runs `docvet config --show-defaults` and sees the effective merged configuration with annotations showing which values are user-configured vs built-in defaults
+- A VS Code user opens a Python file and sees docvet diagnostics in the Problems panel without leaving the editor — real-time feedback during development
+- A CI engineer adds `--format sarif` to the workflow and findings appear in GitHub's Security tab as code scanning alerts — zero custom scripting
+- Running `docvet check --all` on FastAPI, Pydantic, or typer produces documented, genuine findings that demonstrate docvet's value on real-world codebases
+
 ### Technical Success
 
 - `check_enrichment(source, tree, config, file_path)` returns `list[Finding]` with zero side effects -- pure function, deterministic output
@@ -198,6 +227,15 @@ For stakeholder review: focus on Success Criteria (Section 1) and User Journeys 
 - `--output report.md` writes the formatted report to a file instead of stdout; `--format markdown` selects the markdown formatter
 - `pip install docvet` installs cleanly in a fresh virtual environment with no compilation step
 - `pip install docvet[griffe]` installs the optional griffe dependency
+- `docvet fix` on a function with missing Raises and Args sections produces a file that passes `docvet check` with zero findings for those sections (roundtrip validation)
+- `docvet fix` run twice on the same file produces identical output on both runs (idempotency)
+- `docvet fix --dry-run` produces a unified diff to stdout without modifying any files on disk
+- A function with `# docvet: ignore[missing-raises]` on its `def` line produces zero `missing-raises` findings; the suppression appears in `--verbose` output
+- A file with `# docvet: ignore-file` before the first class/function definition produces zero findings for all rules in that file
+- `docvet check --all --summary` produces per-check percentages using the formula `(symbols_checked - symbols_with_findings) / symbols_checked * 100`
+- `docvet config --show-defaults` with no `[tool.docvet]` in pyproject.toml prints all built-in defaults in valid TOML format
+- `--format sarif` produces valid SARIF v2.1.0 JSON that passes schema validation and is accepted by `github/codeql-action/upload-sarif@v3`
+- The dynamic badge JSON written to Gist follows shields.io schema v1 (`schemaVersion`, `label`, `message`, `color`)
 - Adding `- repo: https://github.com/Alberto-Codes/docvet` to `.pre-commit-config.yaml` with hook `id: docvet` runs `docvet check` on staged Python files
 - The GitHub Action runs `docvet check` with configurable arguments and exits with the correct code
 - Each of the 19 rule identifiers has a dedicated documentation page with What/Why/Example/Fix sections
@@ -234,9 +272,21 @@ The reporting module delivers the output formatting layer that all check modules
 
 The v1.0 phase delivers the packaging, presentation, and integration infrastructure that makes docvet installable, discoverable, and trustworthy. All check modules and reporting are complete (678 tests, 19 rules); this phase wraps them for public consumption. Market research (February 2026) identified 8 deliverables mapped to GitHub issues #49-#56: dogfooding on own codebase (#49), README with comparison table and quickstart (#50), mkdocs-material documentation site (#51), rule reference pages with What/Why/Example/Fix template (#52), pre-commit hook (#53), GitHub Action and CI badge (#54), PyPI publish with classifiers and adjacent-tool tags (#55), and API surface audit (#56). Competitive analysis of ruff, interrogate, pydoclint, ty, and mypy confirmed these as table-stakes for adoption — 73% of developers demand hands-on value within minutes, documentation quality is the #1 trust signal (34.2%), and pre-commit hooks serve as viral distribution channels. See "Project Scoping & Phased Development > v1.0 Polish & Publish Feature Set" for the authoritative implementation checklist.
 
-### Growth & Vision
+### Growth Phase — Epics 31-33
 
-Growth features include inline suppression, JSON/SARIF output, incomplete section detection (enrichment), hunk-level precision and auto-fix suggestions (freshness), verbose mode with code snippets and suggestions (reporting), and cross-check intelligence (enrichment + freshness + griffe + coverage combined findings). Post-launch growth includes a "Python Docstring Quality Layers" blog post to define the category, submissions to curated lists (vintasoftware/python-linters-and-code-analysis, best-of-python-dev, Slant.co), and early adopter outreach to mkdocs-material projects where griffe_compat is uniquely valuable. Vision includes editor/LSP integration, GitHub Actions annotation format for PR inline comments, and additional docstring style support. See "Project Scoping & Phased Development > Post-Epic Features" for the full Phase 2 and Phase 3 roadmap.
+The Growth phase delivers three epics based on party-mode consensus (17/17 unanimous, March 2026). All v1.0 PRD requirements (FR1-FR127, NFR1-NFR66) are fully satisfied; this phase targets adoption, conversion, and platform expansion.
+
+**Epic 31: Project Health Visibility** — Quick wins (days, not weeks). Dynamic shields.io badge via `schneegans/dynamic-badges-action` writing JSON to GitHub Gist (#256). `--summary` flag printing per-check quality percentages derived from existing `get_documented_symbols()` calls (#306). `docvet config --show-defaults` printing effective merged configuration in TOML format (#309). See "Project Scoping & Phased Development > Phase 7" for deliverables.
+
+**Epic 32: Linter Lifecycle — Fix & Suppress** — Completes the detect→fix→suppress cycle. `docvet fix` generates missing docstring sections from pure AST analysis — no LLM, no libcst, stdlib only (#305). Architecture spike validates insertion strategy before full implementation. Inline suppression comments (`# docvet: ignore[rule-id]`, `# docvet: ignore-file[rule-id]`) implemented as a post-filter on the findings list (#308). See "Project Scoping & Phased Development > Phase 8" for deliverables.
+
+**Epic 33: Ecosystem Visibility & Editor Integration** — Platform expansion. VS Code extension as a thin LSP wrapper launching `docvet lsp --stdio` with Language Model Tools for Copilot agent mode (#160). SARIF v2.1.0 output for GitHub Code Scanning via `github/codeql-action/upload-sarif@v3` (#163). Flagship OSS runs on 3+ major projects (FastAPI, Pydantic, typer) with documented findings published as a docs page (#164). See "Project Scoping & Phased Development > Phase 9" for deliverables.
+
+### Post-Growth Vision
+
+Deferred items reassessed after Epic 33 ships: incomplete section detection (#310, requires exploration spike), architecture Mermaid diagrams (#265), Ruff plugin exploration (#307), negation pattern support in exclude (#148), WebMCP integration (#72). Additional growth candidates: hunk-level precision and auto-fix suggestions (freshness), verbose mode with code snippets and suggestions (reporting), cross-check intelligence (combined findings), per-rule severity override in config, Numpy/Sphinx docstring style support.
+
+Post-launch marketing includes a "Python Docstring Quality Layers" blog post to define the category, submissions to curated lists (vintasoftware/python-linters-and-code-analysis, best-of-python-dev, Slant.co), and early adopter outreach to mkdocs-material projects where griffe_compat is uniquely valuable. Conference lightning talks / blog series on docstring quality automation.
 
 ## User Journeys
 
@@ -647,9 +697,116 @@ The rule name `griffe-unknown-param` links to the docs site.
 
 **Resolution:** Carlos bookmarks the rule reference and starts checking it proactively before PRs. He tells the team that the rule pages are better than reading source code to understand findings.
 
+### Journey 15: The Fixer -- "Scaffolding Over Boilerplate"
+
+**Persona:** Maya (from Journey 1), now a regular docvet user. She runs `docvet enrichment --all` on a new module she wrote and gets 12 findings across 8 functions — all missing Raises, Yields, and Attributes sections. Writing each section from scratch would take 20 minutes.
+
+**Opening Scene:** Maya runs `docvet fix --dry-run` on her module. The terminal shows a unified diff — each function gets scaffolded sections with parameter names pulled from the signature and exception names from the body:
+
+```
+--- src/pipeline/transform.py
++++ src/pipeline/transform.py
+@@ -42,6 +42,10 @@
+     def parse_record(self, raw: dict[str, Any]) -> Record:
+         """Parse a raw API response into a Record.
+
++        Raises:
++            KeyError: [TODO: describe]
++            ValueError: [TODO: describe]
++
+         Args:
+```
+
+12 scaffolded sections across 8 functions. She reviews the diff — everything looks right. No existing content was touched.
+
+**Rising Action:** Maya runs `docvet fix` (no `--dry-run`). The files are modified in-place. She opens her editor and fills in the `[TODO: describe]` placeholders with actual descriptions. She runs `docvet fix` again — no changes. Idempotent.
+
+**Climax:** She runs `docvet check` — zero findings. The scaffolded sections plus her descriptions satisfy all enrichment rules. What would have been 20 minutes of boilerplate writing took 3 minutes of placeholder filling.
+
+**Resolution:** Maya adds `docvet fix --dry-run` to her pre-commit review workflow. Before committing, she previews what's missing, applies the fix, fills in descriptions, and commits with complete docstrings.
+
+### Journey 16: The Suppressor -- "Intentional Deviations"
+
+**Persona:** Raj (from Journey 2), whose team now enforces `docvet check` in CI with enrichment in `fail-on`.
+
+**Opening Scene:** Raj writes an internal utility function `_retry_with_backoff()` that raises `RetryExhausted`. The enrichment check fires `missing-raises`. But this is a private helper — callers are all within the same module, and Raj intentionally does not document the exception in the docstring because it's an implementation detail that should not be part of the public contract.
+
+**Rising Action:** Rather than disabling `require-raises` globally (which would affect all functions), Raj adds a targeted suppression:
+
+```python
+def _retry_with_backoff(fn: Callable, max_retries: int = 3) -> Any:  # docvet: ignore[missing-raises]
+    """Retry a callable with exponential backoff."""
+```
+
+He runs `docvet check` — the `missing-raises` finding for `_retry_with_backoff` is gone. All other functions still enforce `missing-raises`.
+
+**Climax:** The tech lead reviews the PR and asks why the suppression is there. Raj runs `docvet check --verbose` — the suppressed finding appears with a note: `(suppressed by inline comment: # docvet: ignore[missing-raises])`. Full transparency.
+
+**Resolution:** A month later, a colleague adds a file of test fixtures that intentionally has incomplete docstrings. Instead of suppressing each function individually, they add `# docvet: ignore-file` before the first function definition. All findings in the file are suppressed. The suppression comment serves as documentation: "these are intentionally incomplete."
+
+### Journey 17: The Dashboard Glancer -- "Project Health at a Glance"
+
+**Persona:** Carlos (from Journey 4), the tech lead who runs quarterly documentation audits.
+
+**Opening Scene:** Carlos wants a quick health check without reading through individual findings. He runs:
+
+```
+docvet check --all --summary
+```
+
+The output shows:
+
+```
+Enrichment:  94% (127/135 symbols clean)
+Freshness:  100% (0 stale symbols)
+Coverage:   100% (all packages have __init__.py)
+Griffe:      87% (4 symbols with rendering warnings)
+
+Overall: 95%
+
+8 findings (3 required, 5 recommended)
+```
+
+**Rising Action:** Carlos configures a dynamic badge in his CI workflow using `schneegans/dynamic-badges-action`. After each CI run, a shields.io-compatible JSON file is written to a GitHub Gist:
+
+```json
+{"schemaVersion": 1, "label": "docvet", "message": "95% · 8 findings", "color": "yellow"}
+```
+
+His README now shows a live badge that updates with every push to main.
+
+**Climax:** Carlos uses `--summary` with `--format json` to feed metrics into a team dashboard:
+
+```json
+{"summary": {"enrichment": 94, "freshness": 100, "coverage": 100, "griffe": 87, "overall": 95, "total_symbols": 135, "total_findings": 8}}
+```
+
+The team tracks documentation quality alongside test coverage and linting metrics.
+
+**Resolution:** When a developer asks "how good are our docs?", Carlos points at the badge. No explanation needed — the percentage tells the story.
+
+### Journey 18: The VS Code Developer -- "Findings Without Leaving the Editor"
+
+**Persona:** Lina (from Journey 10), who uses VS Code with the Python extension and GitHub Copilot.
+
+**Opening Scene:** Lina installs the `docvet-vscode` extension from the VS Code Marketplace. The extension activates and launches `docvet lsp --stdio` as a subprocess. No configuration needed — it detects docvet in her Python environment automatically.
+
+**Rising Action:** Lina opens `src/data/access.py`. Within a second, yellow squiggles appear under `fetch_records()`. The Problems panel shows:
+
+```
+src/data/access.py:42  missing-raises  Function 'fetch_records' raises ConnectionError but has no Raises: section  [enrichment]
+src/data/access.py:42  griffe-missing-type  Parameter 'limit' has no type annotation  [griffe]
+```
+
+She clicks the first diagnostic — the cursor jumps to line 42. She adds the `Raises:` section, saves, and the squiggle disappears in real time.
+
+**Climax:** Lina opens Copilot chat and asks: "What docstring issues does this file have?" Copilot invokes the `docvet.check` Language Model Tool and returns a contextual summary with fix suggestions. Lina applies the suggestions inline.
+
+**Resolution:** The combination of real-time diagnostics (Problems panel), Copilot integration (Language Model Tools), and terminal commands (for CI/batch) means Lina never leaves her editor for documentation quality. The VS Code extension is the final piece — docvet now covers terminal, CI, editor, and AI assistant workflows.
+
 ### Journey Requirements Traceability
 
-All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). All 3 griffe rule identifiers are demonstrated in Journey 10: `griffe-missing-type` (recommended, main scenario), `griffe-unknown-param` (required, edge case), and `griffe-format-warning` (recommended, implied by griffe's formatting checks). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 19 rule identifiers (10 enrichment + 5 freshness + 3 griffe + 1 coverage) have journey coverage. Journey 11 demonstrates the reporting module: terminal formatting with file grouping and color-coded categories, markdown table output for CI artifacts, summary line, exit code logic based on `fail-on`/`warn-on` configuration, and `--output` file support. Reporting is a cross-cutting capability required by all check module journeys for full journey completion. Journeys 12-14 demonstrate v1.0 adoption infrastructure: Journey 12 (Explorer) covers first install, zero-config trial, and badge adoption (FR111-113, FR118-119, FR125-126). Journey 13 (Integrator) covers pre-commit hook and GitHub Action CI setup (FR114-117, FR120). Journey 14 (Enforcer) covers rule reference navigation and the What/Why/Example/Fix documentation template (FR121-124).
+All 10 enrichment rule identifiers are demonstrated across Journeys 1-5 and 8. Journeys 1-5 cover 6 rules: `missing-raises` (Journey 1), `missing-attributes` (Journey 2), `missing-typed-attributes` (Journey 4), `missing-yields` (Journey 3), `missing-warns` and `missing-examples` (Journeys 4-5). Journey 8 covers the remaining 4: `missing-receives`, `missing-other-parameters`, `missing-cross-references`, and `prefer-fenced-code-blocks`. All 5 freshness rule identifiers are demonstrated: Journey 6 covers diff mode (`stale-signature` HIGH/required, `stale-body` MEDIUM/recommended, `stale-import` LOW/recommended as edge case paragraph) and Journey 7 covers drift mode (`stale-drift` and `stale-age`, both recommended). All 3 griffe rule identifiers are demonstrated in Journey 10: `griffe-missing-type` (recommended, main scenario), `griffe-unknown-param` (required, edge case), and `griffe-format-warning` (recommended, implied by griffe's formatting checks). The 1 coverage rule identifier (`missing-init`) is demonstrated in Journey 9. All 19 rule identifiers (10 enrichment + 5 freshness + 3 griffe + 1 coverage) have journey coverage. Journey 11 demonstrates the reporting module: terminal formatting with file grouping and color-coded categories, markdown table output for CI artifacts, summary line, exit code logic based on `fail-on`/`warn-on` configuration, and `--output` file support. Reporting is a cross-cutting capability required by all check module journeys for full journey completion. Journeys 12-14 demonstrate v1.0 adoption infrastructure: Journey 12 (Explorer) covers first install, zero-config trial, and badge adoption (FR111-113, FR118-119, FR125-126). Journey 13 (Integrator) covers pre-commit hook and GitHub Action CI setup (FR114-117, FR120). Journey 14 (Enforcer) covers rule reference navigation and the What/Why/Example/Fix documentation template (FR121-124). Journeys 15-18 demonstrate Growth phase features: Journey 15 (Fixer) covers `docvet fix` scaffolding, dry-run, and idempotency (FR128-FR139). Journey 16 (Suppressor) covers inline suppression comments at line and file level with verbose transparency (FR140-FR147). Journey 17 (Dashboard Glancer) covers `--summary` flag, dynamic badge, and config introspection (FR148-FR151). Journey 18 (VS Code Developer) covers the VS Code extension with LSP and Language Model Tools (FR152-FR153).
 
 ## Enrichment Module Specification
 
@@ -1130,6 +1287,19 @@ def write_report(
 ) -> None:
     """Write formatted report to a file."""
 
+def format_sarif(
+    findings: list[Finding],
+    *,
+    version: str = "0.0.0",
+) -> str:
+    """Format findings as SARIF v2.1.0 JSON for GitHub Code Scanning."""
+
+def format_summary(
+    findings_by_check: dict[str, list[Finding]],
+    symbols_by_check: dict[str, int],
+) -> str:
+    """Format per-check quality percentages and overall score."""
+
 def determine_exit_code(
     findings_by_check: dict[str, list[Finding]],
     config: DocvetConfig,
@@ -1150,7 +1320,9 @@ def determine_exit_code(
 - **`verbose` mode (MVP)**: when enabled and findings exist, terminal output prefixes the findings block with a header showing the number of files checked and which checks ran (e.g., `Checking 12 files [enrichment, freshness, coverage, griffe]`). When enabled and zero findings exist, prints `No findings.` to stdout instead of silent empty output — confirms the tool ran successfully. Growth candidate: per-finding code snippets and fix suggestions.
 - **`verbose` mode with zero findings**: `format_terminal` with `verbose=True` and an empty finding list returns `"No findings.\n"` instead of empty string. This is the only case where zero findings produces output.
 - **Zero findings (non-verbose)**: formatters return an empty string (no output, no summary line). `determine_exit_code` returns `0`.
-- **Pure functions**: `format_terminal` and `format_markdown` have no side effects. `write_report` performs file I/O only. `determine_exit_code` is pure.
+- **`format_sarif` produces SARIF v2.1.0 JSON**: includes `$schema`, `version: "2.1.0"`, `runs[].tool.driver` with tool name/version/rules array, and `runs[].results[]` with `ruleId`, `message.text`, `locations[].physicalLocation`, and `level`. Each rule in `rules[]` includes `id`, `shortDescription`, `helpUri` (linking to docs site rule page), and `defaultConfiguration.level`. Reuses ~60% of existing JSON formatter code. Empty findings produce valid SARIF with empty `results[]` array.
+- **`format_summary` produces per-check percentages**: formula is `(symbols_checked - symbols_with_findings) / symbols_checked * 100`, rounded to nearest integer. Symbol counts derived from `get_documented_symbols()` calls already in the check pipeline — no separate AST pass. Works with `--format json` (summary as JSON object with numeric fields) and terminal (human-readable percentage lines). When all checks show 100%, overall score is 100%.
+- **Pure functions**: `format_terminal`, `format_markdown`, `format_sarif`, and `format_summary` have no side effects. `write_report` performs file I/O only. `determine_exit_code` is pure.
 
 **Import contract:**
 
@@ -1183,6 +1355,41 @@ Each line is self-contained (`file:line: rule message [category]`) and independe
 | src/models/schema.py | 15 | missing-attributes | SchemaResult | Dataclass 'SchemaResult' has 4 fields but no Attributes: section | required |
 
 **3 findings** (2 required, 1 recommended)
+```
+
+**SARIF format:**
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [{
+    "tool": {
+      "driver": {
+        "name": "docvet",
+        "version": "1.11.0",
+        "informationUri": "https://alberto-codes.github.io/docvet/",
+        "rules": [
+          {"id": "missing-raises", "shortDescription": {"text": "..."}, "helpUri": "https://alberto-codes.github.io/docvet/rules/missing-raises/", "defaultConfiguration": {"level": "warning"}}
+        ]
+      }
+    },
+    "results": [
+      {"ruleId": "missing-raises", "message": {"text": "..."}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": "src/core/engine.py"}, "region": {"startLine": 23}}}], "level": "warning"}
+    ]
+  }]
+}
+```
+
+**Summary format (terminal):**
+
+```
+Enrichment:  94% (127/135 symbols clean)
+Freshness:  100% (0 stale symbols)
+Coverage:   100% (all packages have __init__.py)
+Griffe:      87% (4 symbols with rendering warnings)
+
+Overall: 95%
 ```
 
 ### Exit Code Logic
@@ -1225,6 +1432,170 @@ The exit code depends on which *check names* are in `fail-on`, not on individual
 - No new runtime dependencies: `typer` (already a dependency) for ANSI styling, stdlib `pathlib` for file I/O
 - Imports `Finding` from `checks/__init__.py` and `DocvetConfig` from `config.py`
 - No cross-imports with any check module
+
+## Fix Module Specification
+
+### Project-Type Overview
+
+The fix module generates missing docstring sections from pure AST analysis — no LLM, no libcst, no external dependencies. It operates as a pure function that takes source code and an AST, identifies symbols with missing sections (using the same detection logic as enrichment), and returns modified source code with scaffolded sections inserted at the correct positions. The CLI layer handles file I/O (reading source, writing modified files, dry-run diff output).
+
+The fix command completes the linter lifecycle: `docvet check` detects issues, `docvet fix` scaffolds solutions, inline suppression handles intentional deviations. This mirrors the ruff pattern (`ruff check` → `ruff check --fix`) that developers already expect from modern Python linters.
+
+### Integration Contract
+
+**Public API:**
+
+```python
+def fix_file(
+    source: str,
+    tree: ast.Module,
+    config: EnrichmentConfig,
+    file_path: str,
+) -> str:
+    """Return source with missing docstring sections scaffolded.
+
+    Returns the original source unchanged if no fixes are needed.
+    """
+```
+
+- **Pure function**: takes source string, returns modified source string. No file I/O.
+- **Same inputs as `check_enrichment`**: reuses the enrichment detection logic to identify what's missing, then generates section text instead of findings
+- **Deterministic**: same input always produces same output
+- **Idempotent**: running on already-fixed output returns the input unchanged
+- **Preserves existing content**: existing docstring text is never modified — only new sections are inserted
+- **Returns original source when nothing to fix**: no unnecessary writes
+- **AST line numbers for positioning**: uses `ast.get_docstring()` line information and string operations to insert sections at the correct indentation level after the last existing section (or after the summary line if no sections exist)
+- **No libcst dependency**: stdlib `ast` provides sufficient line number information for insertion. The function operates on the source string directly using line splitting, not CST node manipulation
+
+**Scaffolded section format:**
+
+```python
+# For a function that raises ValueError and KeyError:
+"""Existing summary line.
+
+Raises:
+    ValueError: [TODO: describe]
+    KeyError: [TODO: describe]
+"""
+
+# For a dataclass with fields name and age:
+"""Existing summary line.
+
+Attributes:
+    name (str): [TODO: describe]
+    age (int): [TODO: describe]
+"""
+
+# For a generator:
+"""Existing summary line.
+
+Yields:
+    [TODO: describe]
+"""
+```
+
+**Sections supported:** Args, Returns, Raises, Yields, Receives, Warns, Attributes, Examples (8 section types). `Other Parameters` and `See Also` are not auto-scaffolded (too context-dependent).
+
+### Technical Guidance for Implementation
+
+1. **Detect missing sections**: call the same detection logic used by `check_enrichment` to identify which sections each symbol is missing
+2. **Compute insertion point**: for each symbol, find the end of the existing docstring content. If sections already exist, insert after the last section. If only a summary line exists, insert after a blank line following the summary
+3. **Determine indentation**: match the indentation of the existing docstring (typically 4 spaces + 4 spaces for class methods, 4 spaces for module-level functions)
+4. **Build section text**: for each missing section, generate the header and entries. Raises/Warns: extract exception/warning names from AST. Args: extract parameter names from function signature. Attributes: extract field names from class definition. Yields/Receives/Returns/Examples: use `[TODO: describe]` placeholder
+5. **Apply insertions bottom-up**: process symbols from bottom of file to top (reverse line order) so that line number offsets from earlier insertions don't invalidate later insertion points
+6. **Validate roundtrip**: after all insertions, the modified source should parse as valid Python (`ast.parse()` succeeds)
+
+**Edge cases:**
+
+- **No docstring at all**: skip — presence checking is interrogate's job, and `fix` cannot determine appropriate summary text
+- **One-line docstring**: expand to multi-line format before inserting sections
+- **Existing sections present**: insert new sections after the last existing section, maintaining section ordering convention (Args, Returns, Raises, Yields, Receives, Warns, Attributes, Examples)
+- **Nested classes/functions**: each symbol's indentation is computed independently from its AST node
+- **`__init__.py` modules**: scaffold module-level Attributes and Examples sections
+
+**Dependencies:**
+
+- No new runtime dependencies: stdlib `ast`, `textwrap`, existing `ast_utils`
+- Reuses enrichment detection logic from `checks/enrichment.py`
+- No cross-imports with freshness, coverage, or griffe modules
+
+## Suppression Specification
+
+### Project-Type Overview
+
+Inline suppression allows developers to mark intentional deviations from docvet rules without disabling rules globally. The implementation is a **post-filter** on the findings list — no check module (`_check_*` function) is modified. The suppression filter runs after all checks complete and before reporting, removing findings that match suppression comments in the source code.
+
+This follows the established convention used by ruff (`# noqa`), mypy (`# type: ignore`), and pylint (`# pylint: disable`). The syntax `# docvet: ignore[rule-id]` is intentionally verbose to avoid ambiguity with other tools' suppression comments.
+
+### Suppression Syntax
+
+```python
+# Line-level suppression (on the def/class line):
+def my_function():  # docvet: ignore[missing-raises]
+    """Summary."""
+
+def my_function():  # docvet: ignore[missing-raises,missing-yields]
+    """Summary."""
+
+def my_function():  # docvet: ignore
+    """Summary."""
+
+# File-level suppression (before the first class/function definition):
+# docvet: ignore-file[missing-examples]
+
+# docvet: ignore-file
+```
+
+### Integration Contract
+
+**Public API:**
+
+```python
+def filter_suppressed(
+    findings: list[Finding],
+    sources: dict[str, str],
+) -> tuple[list[Finding], list[Finding]]:
+    """Partition findings into active and suppressed.
+
+    Args:
+        findings: All findings from all checks.
+        sources: Map of file path to source code string.
+
+    Returns:
+        Tuple of (active_findings, suppressed_findings).
+        Active findings are reported normally.
+        Suppressed findings are reported only in verbose mode.
+    """
+```
+
+- **Post-filter architecture**: operates on the final `list[Finding]` after all checks complete. No check module is aware of suppression.
+- **Pure function**: takes findings and source code, returns partitioned lists. No I/O.
+- **Source-based parsing**: reads suppression comments from the source strings that are already loaded by the CLI for AST parsing. No additional file reads.
+- **Line-level matching**: for a finding at `(file, line, symbol, rule)`, checks if the symbol's `def`/`class` line has a matching `# docvet: ignore[rule]` comment
+- **File-level matching**: for a finding at `(file, *, *, rule)`, checks if the file has a `# docvet: ignore-file[rule]` comment before the first class/function definition
+- **Wildcard support**: `# docvet: ignore` (no brackets) suppresses all rules for that symbol. `# docvet: ignore-file` suppresses all rules for the entire file.
+- **Invalid rule warning**: if a suppression comment references a rule ID that doesn't match any known rule, emit a warning to stderr (e.g., `Warning: unknown rule 'nonexistent-rule' in suppression comment at file.py:5`)
+
+### Technical Guidance for Implementation
+
+1. **Parse suppression comments**: use Python's `tokenize` module or regex on source lines to extract `# docvet: ignore[...]` and `# docvet: ignore-file[...]` comments
+2. **Build suppression index**: for each file, build two structures: (a) a map of `def`/`class` line numbers to their suppressed rule sets, and (b) a set of file-level suppressed rules
+3. **Filter findings**: for each finding, check file-level suppressions first (O(1) set lookup), then line-level suppressions (map the finding's symbol back to its definition line via AST)
+4. **Partition output**: return both active and suppressed findings so the CLI can display suppressed findings in verbose mode
+5. **File-level scope**: "before the first class/function definition" means any line before the first `ast.FunctionDef`, `ast.AsyncFunctionDef`, or `ast.ClassDef` node's `lineno`. This allows suppression comments after the module docstring and imports, following the pylint convention.
+
+**Edge cases:**
+
+- **Multiple suppression comments on the same line**: only one `# docvet:` comment per line is supported. If multiple appear, only the first is parsed.
+- **Suppression on a decorated function**: the comment must be on the `def` line, not on a decorator line
+- **Suppression for module-level findings**: module-level findings (e.g., `missing-init`) use file-level suppression, not line-level
+- **Comments inside strings**: the tokenize module correctly distinguishes comments from string content
+
+**Dependencies:**
+
+- No new runtime dependencies: stdlib `tokenize`, `ast`, `re`
+- No cross-imports with any check module
+- Integrates with the CLI between check execution and reporting
 
 ## Project Scoping & Phased Development
 
@@ -1419,14 +1790,108 @@ One internal refactor required before reporting implementation:
 - No internal symbols exported unintentionally
 - Document public API in docs site
 
+### Phase 7: Growth — Project Health Visibility (Epic 31)
+
+**Status:** Not started. Quick wins — days, not weeks.
+
+**Core User Journeys Enabled:** Journey 17 (Dashboard Glancer).
+
+**Deliverables:**
+
+**Dynamic Badge Endpoint (Story 31.1, #256):**
+- GitHub Action step using `schneegans/dynamic-badges-action` writes shields.io-compatible JSON to a GitHub Gist after each CI run
+- JSON follows shields.io schema v1: `{"schemaVersion": 1, "label": "docvet", "message": "passing", "color": "brightgreen"}`
+- Color logic: `brightgreen` (zero findings), `yellow` (warnings only), `red` (failures)
+- README badge via `shields.io/endpoint?url=<gist-raw-url>`
+
+**Summary Flag (Story 31.2, #306):**
+- `--summary` flag on `check` and each subcommand prints per-check quality percentages and overall score
+- Percentage formula: `(symbols_checked - symbols_with_findings) / symbols_checked * 100`
+- Symbol count derived from existing `get_documented_symbols()` calls — no separate AST pass
+- Works with `--format json` (summary as JSON object with numeric fields)
+- Zero findings → all percentages show 100%
+
+**Config Show-Defaults (Story 31.3, #309):**
+- `docvet config --show-defaults` prints effective merged configuration in TOML format
+- Comments annotate which values are user-configured vs built-in defaults
+- Works with `--format json` for machine consumption
+- When no pyproject.toml exists, prints all defaults with a note
+
+### Phase 8: Growth — Linter Lifecycle (Epic 32)
+
+**Status:** Not started. Requires architecture spike before full implementation.
+
+**Core User Journeys Enabled:** Journey 15 (Fixer), Journey 16 (Suppressor).
+
+**Deliverables:**
+
+**Fix Feasibility Spike (Story 32.1, #305):**
+- Proof-of-concept validates AST-based docstring insertion on representative cases
+- Decision document records: chosen insertion strategy, edge cases identified, go/no-go recommendation
+- Tests insertion on one-line docstrings, multi-section docstrings, and idempotency
+
+**Fix Core — Section Scaffolding Engine (Story 32.2, #305):**
+- `fix_file(source, tree, config, file_path) -> str` pure function in `checks/fix.py`
+- Scaffolds 8 section types: Args, Returns, Raises, Yields, Receives, Warns, Attributes, Examples
+- Parameter names from signature, exception names from body, `[TODO: describe]` placeholders
+- Deterministic, idempotent, preserves existing content byte-for-byte
+- No new runtime dependencies — AST-only, no libcst
+
+**Fix CLI Wiring (Story 32.3, #305):**
+- `docvet fix` subcommand with `--dry-run` (unified diff to stdout, no file modification)
+- Supports all discovery modes: diff (default), `--staged`, `--all`, positional args
+- Roundtrip validation: fixed files produce zero enrichment findings for scaffolded sections
+
+**Inline Suppression Comments (Story 32.4, #308):**
+- Line-level: `# docvet: ignore[rule-id]` on def/class line, comma-separated for multiple rules
+- File-level: `# docvet: ignore-file[rule-id]` before first class/function definition
+- Wildcard: `# docvet: ignore` and `# docvet: ignore-file` suppress all rules
+- Post-filter architecture — no `_check_*` functions modified
+- Suppressed findings shown in `--verbose` output with suppression reason
+- Invalid rule IDs in suppression comments produce a warning
+
+### Phase 9: Growth — Ecosystem Visibility & Editor Integration (Epic 33)
+
+**Status:** Not started. Platform expansion.
+
+**Core User Journeys Enabled:** Journey 18 (VS Code Developer).
+
+**Deliverables:**
+
+**VS Code Extension (Story 33.1, #160):**
+- Thin LSP wrapper launching `docvet lsp --stdio` — minimal TypeScript, no bundled Python
+- Diagnostics in Problems panel with rule ID, message, file, and line number
+- Language Model Tools for Copilot agent mode (`docvet.check` as a tool)
+- Published to VS Code Marketplace with proper metadata
+- Separate `docvet-vscode` repo with package.json, extension.ts, and CI for Marketplace publishing
+- Helpful error when docvet is not installed
+
+**Flagship OSS Runs & Example Guide (Story 33.2, #164, #158):**
+- Run `docvet check --all` against FastAPI, Pydantic, typer (or 3+ comparable projects)
+- Document findings: counts by rule, notable examples, false positive assessment
+- Open small PRs (5-10 fixes each) on target projects crediting docvet
+- Publish docs page: "What we found running docvet on the Python ecosystem"
+- Include configuration snippets for docvet + mkdocstrings pipeline replication
+
+**SARIF Output Format (Story 33.3, #163):**
+- `--format sarif` produces SARIF v2.1.0 compliant JSON
+- Tool driver with name, version, rules array (id, shortDescription, helpUri, defaultConfiguration.level)
+- Results with ruleId, message.text, locations[].physicalLocation, level
+- Compatible with `github/codeql-action/upload-sarif@v3`
+- Reuses ~60% of existing JSON formatter code
+- Empty findings produce valid SARIF with empty results array
+
 ### Post-Epic Features
 
-**Growth (sequencing TBD based on early adopter feedback):**
+**Deferred (reassess after Epic 33 ships based on user demand):**
 
-Enrichment growth:
-- Inline suppression: `# docvet: ignore[missing-raises]`
-- Incomplete section detection (e.g., `Raises:` section exists but doesn't cover all raised exceptions)
-- `--fix` suggestions (auto-insert empty section skeletons)
+- Incomplete section detection (#310): `Raises:` exists but doesn't list all exceptions. Requires exploration spike.
+- Architecture Mermaid diagrams (#265): contributor DX only, lowest priority
+- Ruff plugin exploration (#307): evaluate if docvet enrichment rules can ship as a Ruff plugin
+- Negation pattern support in exclude (#148)
+- WebMCP integration (#72): Chrome 146+ Canary feature flag
+
+**Additional growth candidates:**
 
 Freshness growth:
 - Hunk-level precision (show exactly which hunk changed, not just the symbol)
@@ -1436,7 +1901,7 @@ Freshness growth:
 Coverage growth:
 - Namespace package support (PEP 420): config toggle to exclude specific directories from `missing-init` checking
 - `__init__.py` content analysis: detect empty `__init__.py` that should re-export package symbols
-- Auto-fix: create missing `__init__.py` files via `--fix` flag
+- Auto-fix: create missing `__init__.py` files via `docvet fix` flag
 
 Griffe growth:
 - Per-rule disable toggles (e.g., `disable-griffe-missing-type = true`) via `[tool.docvet.griffe]`
@@ -1445,28 +1910,13 @@ Griffe growth:
 
 Reporting growth:
 - Verbose mode: code snippets and fix suggestions per finding
-- JSON output format for CI integration pipelines
-- SARIF output format for GitHub Code Scanning integration
 - GitHub Actions annotation format (`::warning file=...`) for PR inline comments
 - Configurable grouping (by file, by rule, by check, by category)
-- `--fix` dry-run mode showing proposed changes alongside findings
 
 Shared growth:
 - Rule documentation URLs in findings (ruff pattern)
 - Per-rule severity override in config
 - Cross-check intelligence (enrichment + freshness + griffe + coverage combined findings)
-
-**Post-Launch Marketing:**
-
-- "Python Docstring Quality Layers" blog post — define the category, introduce the six-layer model, position docvet as the tool for layers 3-6
-- Curated list submissions: vintasoftware/python-linters-and-code-analysis, best-of-python-dev, Slant.co comparison pages
-- Early adopter outreach to mkdocs-material projects where griffe_compat check is uniquely valuable
-- Conference lightning talks / blog series on docstring quality automation
-
-**Vision:**
-
-- Editor/LSP integration for real-time feedback
-- GitHub Actions annotation format for PR inline comments
 
 ### Risk Mitigation Strategy
 
@@ -1501,6 +1951,30 @@ Shared growth:
 - Terminal color rendering differences across platforms -- mitigated by using `typer.style()` (wraps click's ANSI handling) and respecting `NO_COLOR`; non-TTY detection suppresses colors
 - Exit code logic correctness -- mitigated by simple boolean check (any fail-on check with findings → exit 1); comprehensive unit tests with all combinations of fail-on/warn-on/empty findings
 - CLI refactor scope (replacing 4 inline `typer.echo()` patterns) -- mitigated by the reporting module being a pure consumer of `list[Finding]`; existing tests verify check output, reporting tests verify formatting independently
+
+**Fix Module Technical Risks:**
+
+- AST line number accuracy for insertion points -- mitigated by architecture spike (Story 32.1) validating the approach on representative cases before committing to full implementation
+- One-line to multi-line docstring expansion -- mitigated by testing all docstring formats (one-line, multi-line no sections, multi-line with sections) in the spike
+- Indentation correctness across nested scopes -- mitigated by computing indentation from the AST node's `col_offset` rather than heuristics
+- Bottom-up insertion ordering -- mitigated by processing symbols in reverse line order so earlier insertions don't invalidate later line numbers
+
+**Suppression Technical Risks:**
+
+- Comment parsing accuracy (distinguishing `# docvet:` from string content) -- mitigated by using Python's `tokenize` module which correctly separates comments from strings
+- Performance impact of post-filter -- mitigated by the filter being O(n) over findings with O(1) set lookups per finding; negligible relative to check execution time
+- File-level scope boundary ("before first class/function definition") -- mitigated by using AST node `lineno` for the first `FunctionDef`/`AsyncFunctionDef`/`ClassDef`, following the pylint convention
+
+**VS Code Extension Technical Risks:**
+
+- LSP server stability -- mitigated by the existing `docvet lsp` implementation being already functional; the extension is a thin wrapper, not a new server
+- Language Model Tools API stability -- mitigated by the API being part of VS Code's stable extension API; Copilot tool integration is a bonus feature, not a core requirement
+- Cross-platform extension packaging -- mitigated by VS Code extensions being platform-independent JavaScript bundles
+
+**SARIF Technical Risks:**
+
+- SARIF schema compliance -- mitigated by validating output against the official SARIF v2.1.0 JSON schema in tests
+- CodeQL upload compatibility -- mitigated by testing with `github/codeql-action/upload-sarif@v3` in CI
 
 **Market Risks:** Minimal -- no existing tool maps git diffs to AST symbols for stale docstring detection. No existing linter catches griffe parser warnings before `mkdocs build`. Novel capabilities in the Python ecosystem. Coverage check fills a gap where developers currently discover missing `__init__.py` only after mkdocs builds silently omit modules.
 
@@ -1734,6 +2208,60 @@ Shared growth:
 
 - **FR127:** All public modules define `__all__` exports, ensuring only intentional symbols are part of the stable v1 public API
 
+### Fix Command
+
+- **FR128:** The system can generate missing docstring sections from pure AST analysis, scaffolding Args, Returns, Raises, Yields, Receives, Warns, Attributes, and Examples sections with parameter names from the function signature, exception names from the body, and `[TODO: describe]` placeholders
+- **FR129:** The fix command is deterministic — same source input always produces the same modified output
+- **FR130:** The fix command is idempotent — running fix on already-fixed output produces no additional changes
+- **FR131:** The fix command preserves existing docstring content byte-for-byte — only new sections are inserted, existing text is never modified
+- **FR132:** A developer can preview fix changes via `docvet fix --dry-run`, which prints a unified diff to stdout without modifying any files
+- **FR133:** The fix command supports all file discovery modes: git diff (default), `--staged`, `--all`, and positional file arguments
+- **FR134:** The fix command scaffolds sections for all symbol types: functions, methods, classes (plain, dataclass, NamedTuple, TypedDict), generators, and `__init__.py` modules
+- **FR135:** The fix command skips symbols that have no docstring at all — fix scaffolds sections, not entire docstrings
+- **FR136:** The fix command inserts new sections after the last existing section in a docstring, maintaining the conventional section ordering (Args, Returns, Raises, Yields, Receives, Warns, Attributes, Examples)
+- **FR137:** After fix modifies files, running `docvet check` on those files produces zero enrichment findings for the scaffolded sections (roundtrip validation)
+- **FR138:** The fix command expands one-line docstrings to multi-line format when sections need to be inserted
+- **FR139:** A developer can run the fix command via `docvet fix` as a standalone subcommand
+
+### Inline Suppression
+
+- **FR140:** A developer can suppress a specific finding by adding `# docvet: ignore[rule-id]` on the `def` or `class` line of the symbol
+- **FR141:** A developer can suppress multiple rules on a single symbol by using comma-separated rule IDs: `# docvet: ignore[rule-a,rule-b]`
+- **FR142:** A developer can suppress all rules for a single symbol by using `# docvet: ignore` (no brackets) on the `def` or `class` line
+- **FR143:** A developer can suppress a specific rule for an entire file by adding `# docvet: ignore-file[rule-id]` before the first class or function definition
+- **FR144:** A developer can suppress all rules for an entire file by adding `# docvet: ignore-file` before the first class or function definition
+- **FR145:** The system can report suppressed findings in `--verbose` output, showing the suppressed finding with a note indicating the suppression reason and location
+- **FR146:** The suppression filter operates as a post-filter on the findings list — no check module (`_check_*` function) is aware of or modified for suppression
+- **FR147:** The system can emit a warning when a suppression comment references an unrecognized rule ID (e.g., `# docvet: ignore[nonexistent-rule]`)
+
+### Summary Flag
+
+- **FR148:** A developer can use `--summary` with `docvet check` or any subcommand to see per-check quality percentages (e.g., enrichment: 94%, freshness: 100%) and an overall score alongside normal findings output
+- **FR149:** The `--summary` flag works with `--format json`, producing a `summary` object with numeric fields for each check's percentage, total symbols checked, total findings, and overall score
+
+### Config Introspection
+
+- **FR150:** A developer can run `docvet config --show-defaults` to print the effective merged configuration in TOML format, with comments annotating which values are user-configured vs built-in defaults, and JSON format via `--format json`
+
+### Dynamic Badge
+
+- **FR151:** The system can write a shields.io-compatible JSON file to a GitHub Gist after each CI run, using `schneegans/dynamic-badges-action`, with pass/fail status and findings count as the badge message
+
+### VS Code Extension
+
+- **FR152:** A VS Code extension can launch `docvet lsp --stdio` as a subprocess and publish diagnostics to the Problems panel with rule ID, message, file, and line number, updating in real-time as the user edits and saves
+- **FR153:** The VS Code extension can contribute Language Model Tools for Copilot agent mode, allowing Copilot to invoke `docvet.check` as a tool and return findings contextually
+
+### SARIF Output
+
+- **FR154:** A developer can use `--format sarif` to produce SARIF v2.1.0 compliant JSON output with `$schema`, `version`, `runs[].tool.driver` (name, version, rules array with id, shortDescription, helpUri, defaultConfiguration.level), and `runs[].results[]` (ruleId, message.text, locations[].physicalLocation, level)
+- **FR155:** The SARIF output is compatible with `github/codeql-action/upload-sarif@v3`, causing docvet findings to appear as code scanning alerts on the repository's Security tab
+
+### Flagship OSS Runs
+
+- **FR156:** Running `docvet check --all` against 3+ major Google-style Python projects (e.g., FastAPI, Pydantic, typer) produces documented findings with counts by rule, notable examples, and false positive assessment
+- **FR157:** Flagship findings are published as a docs page or blog post titled "What we found running docvet on the Python ecosystem," including configuration snippets for replication
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -1891,3 +2419,34 @@ Shared growth:
 - **NFR64:** The public API surface (`Finding` dataclass, check functions, CLI command names, CLI option names) is stable for v1 — no breaking changes within the v1.x lifecycle. Additions (new fields, new options) are allowed; removals and renames are not
 - **NFR65:** All public modules define `__all__` exports — importing `from docvet.checks import *` or `from docvet import *` produces only the intended public symbols
 - **NFR66:** The v1 API stability commitment covers: `Finding` (6 fields), `check_enrichment`, `check_freshness_diff`, `check_freshness_drift`, `check_coverage`, `check_griffe_compat`, and all CLI subcommand names (`check`, `enrichment`, `freshness`, `coverage`, `griffe`)
+
+### Fix Command Constraints
+
+- **NFR67:** The fix command adds zero runtime dependencies — AST-only implementation using stdlib `ast`, `textwrap`, and string operations. No libcst, no tree-sitter, no LLM
+- **NFR68:** The fix command uses AST line numbers for insertion positioning — no CST dependency. Insertion operates on the source string via line splitting and joining
+
+### Suppression Conventions
+
+- **NFR69:** Suppression comment parsing uses the `tokenize` module or AST comment extraction to correctly distinguish comments from string content
+- **NFR70:** Suppression syntax follows established Python tooling conventions (`# tool: directive[args]`), consistent with ruff (`# noqa`), mypy (`# type: ignore`), and pylint (`# pylint: disable`)
+
+### VS Code Extension Architecture
+
+- **NFR71:** The VS Code extension is a thin LSP wrapper — minimal TypeScript, no bundled Python runtime, no duplicate analysis logic. The extension's sole responsibility is launching `docvet lsp --stdio` and forwarding diagnostics
+
+### SARIF Reuse
+
+- **NFR72:** The SARIF formatter reuses approximately 60% of the existing JSON formatter code, adding SARIF envelope structure (`$schema`, `version`, `runs`, `tool.driver`) around the existing finding serialization
+
+### Growth General
+
+- **NFR73:** All new features maintain the zero-dependency core — typer remains the only required runtime dependency. No new required packages.
+- **NFR74:** All new subcommands (`fix`, `config`) follow existing CLI patterns, including the `_output_and_exit` unified output pipeline where applicable
+
+### Badge Schema
+
+- **NFR75:** The dynamic badge JSON endpoint uses shields.io schema v1 with fields `schemaVersion` (integer, value 1), `label` (string), `message` (string), and `color` (string)
+
+### Summary Formula
+
+- **NFR76:** Summary percentage calculation uses the formula `(symbols_checked - symbols_with_findings) / symbols_checked * 100`, rounded to the nearest integer. Division by zero (zero symbols checked) produces 100% (no findings possible)
