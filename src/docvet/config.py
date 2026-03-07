@@ -729,6 +729,9 @@ def get_user_keys(
 def _fmt_toml_value(value: object) -> str:
     """Format a Python value as a TOML literal.
 
+    Handles bool, str, int/float, and list types. List elements are
+    formatted recursively to ensure consistent escaping.
+
     Args:
         value: The Python value to format.
 
@@ -742,7 +745,7 @@ def _fmt_toml_value(value: object) -> str:
     if isinstance(value, int | float):
         return str(value)
     if isinstance(value, list):
-        items = ", ".join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
+        items = ", ".join(_fmt_toml_value(v) for v in value)
         return f"[{items}]"
     return str(value)
 

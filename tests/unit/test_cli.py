@@ -3037,6 +3037,17 @@ class TestConfigCommand:
         assert result.exit_code == 0
         assert "no pyproject.toml found" in result.output
 
+    def test_config_forwards_config_path(self, mocker, tmp_path):
+        toml_file = tmp_path / "pyproject.toml"
+        toml_file.write_text("[tool.docvet]\nfail-on = ['enrichment']\n")
+        spy = mocker.patch(
+            "docvet.cli.get_user_keys",
+            return_value=({"fail-on": ["enrichment"]}, toml_file),
+        )
+        result = runner.invoke(app, ["--config", str(toml_file), "config"])
+        assert result.exit_code == 0
+        spy.assert_called_once_with(toml_file)
+
     def test_config_appears_in_help(self):
         result = runner.invoke(app, ["--help"])
         assert "config" in result.output

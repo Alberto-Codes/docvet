@@ -804,6 +804,10 @@ def main(
 ) -> None:
     """Global options for docvet.
 
+    Stores all global options in ``ctx.obj`` so subcommands can access
+    them. The ``config`` path is stored as ``config_path`` for use by
+    subcommands that need the raw pyproject.toml location.
+
     Args:
         ctx: Typer invocation context.
         verbose: Enable verbose output.
@@ -826,6 +830,7 @@ def main(
     ctx.obj["summary"] = summary
     ctx.obj["format"] = fmt.value if fmt is not None else None
     ctx.obj["output"] = str(output) if output is not None else None
+    ctx.obj["config_path"] = config
 
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
@@ -1397,13 +1402,14 @@ def config(
 
     Prints the merged config (user values + defaults) in TOML or JSON
     format. Each value is annotated with ``# (user)`` or
-    ``# (default)`` to show its source.
+    ``# (default)`` to show its source. Respects the global
+    ``--config`` flag via ``ctx.obj["config_path"]``.
 
     Args:
         ctx: Typer invocation context.
         show_defaults: No-op flag accepted for backward compatibility.
     """
-    user_keys, pyproject_path = get_user_keys()
+    user_keys, pyproject_path = get_user_keys(ctx.obj.get("config_path"))
     if pyproject_path is None:
         typer.echo(
             "docvet: no pyproject.toml found — showing built-in defaults",
