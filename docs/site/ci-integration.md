@@ -92,6 +92,16 @@ The action sets step outputs that downstream steps can consume:
 | `badge_color` | shields.io badge color | `brightgreen`, `yellow`, or `red` |
 | `total_findings` | Total findings count | `0`, `3` |
 
+To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
+
+```yaml
+- uses: Alberto-Codes/docvet@v1
+  id: docvet
+  with:
+    checks: "all"
+- run: echo "docvet found ${{ steps.docvet.outputs.total_findings }} issues"
+```
+
 Outputs are only set in new mode (`checks` input). Legacy mode (`args` input) does not produce outputs.
 
 ### Annotation behavior
