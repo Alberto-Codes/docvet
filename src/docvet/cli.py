@@ -858,10 +858,11 @@ def check(
     """Run all enabled checks.
 
     Runs presence (if enabled), enrichment, freshness, coverage, and
-    griffe checks in sequence. Each check runner returns a
-    ``(findings, item_count)`` tuple; item counts are collected into
+    griffe (if installed) checks in sequence. Each check runner returns
+    a ``(findings, item_count)`` tuple; item counts are collected into
     ``check_counts`` for per-check quality percentage computation when
-    ``--summary`` is active. Coverage percentage is derived from
+    ``--summary`` is active. Griffe is only included in ``check_counts``
+    when the ``griffe`` package is importable. Coverage percentage is derived from
     :attr:`PresenceStats.percentage`. Displays a progress bar on stderr
     when connected to a TTY. Uses three-tier verbosity: ``--quiet``
     suppresses all non-finding stderr output, default shows the summary
@@ -977,8 +978,9 @@ def check(
         "enrichment": enrichment_count,
         "freshness": freshness_count,
         "coverage": coverage_count,
-        "griffe": griffe_count,
     }
+    if griffe_installed:
+        check_counts["griffe"] = griffe_count
     _output_and_exit(
         ctx,
         findings_by_check,

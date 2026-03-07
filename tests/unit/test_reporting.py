@@ -886,6 +886,21 @@ class TestComputeQuality:
         assert result["coverage"].percentage == 90
         assert result["griffe"].percentage == 95
 
+    def test_iterates_check_counts_not_findings(self, make_finding):
+        """Regression: keys come from check_counts, not findings_by_check."""
+        findings_by_check = {
+            "presence": [make_finding(file="a.py")],
+            "enrichment": [make_finding(file="b.py", symbol="f")],
+        }
+        check_counts = {"enrichment": 10, "freshness": 20}
+        result = compute_quality(findings_by_check, check_counts)
+        # presence is in findings but not check_counts — must be excluded
+        assert "presence" not in result
+        # freshness is in check_counts but not findings — must be included
+        assert "freshness" in result
+        assert result["freshness"].percentage == 100
+        assert result["freshness"].items_with_findings == 0
+
 
 # ---------------------------------------------------------------------------
 # format_quality_summary tests (Task 4 / AC 1, 3, 4)

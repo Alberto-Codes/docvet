@@ -111,11 +111,12 @@ def compute_quality(
 
     Returns:
         Quality data keyed by check name, only for checks present
-        in *findings_by_check*.
+        in *check_counts*.
     """
     result: dict[str, CheckQuality] = {}
-    for check_name, findings in findings_by_check.items():
-        items_checked = check_counts.get(check_name, 0)
+    for check_name in check_counts:
+        findings = findings_by_check.get(check_name, [])
+        items_checked = check_counts[check_name]
         if check_name in _SYMBOL_BASED_CHECKS:
             items_with_findings = len({(f.file, f.symbol) for f in findings})
         else:

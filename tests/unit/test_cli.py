@@ -2928,8 +2928,12 @@ class TestSummaryFlag:
         assert "check_counts" in kwargs
         assert "enrichment" in kwargs["check_counts"]
 
-    def test_summary_quiet_no_quality_on_stderr(self):
+    def test_summary_quiet_no_quality_on_stderr(self, mocker):
         """7.6: --summary with --quiet produces no quality on stderr."""
+        from docvet.checks import Finding
+
+        findings = [Finding("a.py", 1, "f", "missing-raises", "msg", "required")]
+        mocker.patch("docvet.cli._run_enrichment", return_value=(findings, 10))
         result = runner.invoke(app, ["--summary", "-q", "check"])
         # CliRunner mixes stdout/stderr; check that no quality % lines appear
         for line in result.output.splitlines():
@@ -2966,6 +2970,26 @@ class TestSummaryFlag:
         assert "total" in data["summary"]
         assert "by_category" in data["summary"]
         assert "files_checked" in data["summary"]
+
+    def test_json_quality_only_contains_ran_checks(self):
+        """H1/M1: quality keys match check_counts, not findings_by_check."""
+        result = runner.invoke(app, ["--summary", "--format", "json", "check"])
+        data = _extract_json(result.output)
+        quality = data["quality"]
+        # presence should never appear (it's not in check_counts)
+        assert "presence" not in quality
+        # enrichment, freshness, coverage should always appear
+        assert "enrichment" in quality
+        assert "freshness" in quality
+        assert "coverage" in quality
+
+    def test_json_quality_excludes_griffe_when_not_installed(self, mocker):
+        """H2/M1: griffe excluded from quality when not installed."""
+        mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+        result = runner.invoke(app, ["--summary", "--format", "json", "check"])
+        data = _extract_json(result.output)
+        quality = data["quality"]
+        assert "griffe" not in quality
 
     def test_help_shows_summary_option(self):
         """2.1: --summary appears in help output."""
