@@ -87,9 +87,9 @@ def foo():
 """
         findings, _ = check_presence(source, "mod.py", PresenceConfig())
 
-        module_findings = [f for f in findings if f.symbol == "<module>"]
+        module_findings = [f for f in findings if f.symbol == "mod"]
         assert len(module_findings) == 1
-        assert module_findings[0].message == "Module has no docstring"
+        assert module_findings[0].message == "Module 'mod' has no docstring"
         assert module_findings[0].line == 1
 
     def test_present_module_docstring_no_finding(self) -> None:
@@ -100,7 +100,7 @@ import os
 '''
         findings, _ = check_presence(source, "mod.py", PresenceConfig())
 
-        module_findings = [f for f in findings if f.symbol == "<module>"]
+        module_findings = [f for f in findings if f.symbol == "mod"]
         assert module_findings == []
 
 
@@ -438,9 +438,9 @@ import sys
         findings, stats = check_presence(source, "imports.py", PresenceConfig())
 
         # Module symbol exists but has no docstring
-        module_findings = [f for f in findings if f.symbol == "<module>"]
+        module_findings = [f for f in findings if f.symbol == "imports"]
         assert len(module_findings) == 1
-        assert module_findings[0].message == "Module has no docstring"
+        assert module_findings[0].message == "Module 'imports' has no docstring"
         assert stats.total == 1
         assert stats.documented == 0
 
@@ -523,9 +523,9 @@ class Foo:
         source = "x = 1\n"
         findings, _ = check_presence(source, "app.py", PresenceConfig())
 
-        module_findings = [f for f in findings if f.symbol == "<module>"]
+        module_findings = [f for f in findings if f.symbol == "app"]
         assert len(module_findings) == 1
-        assert module_findings[0].message == "Module has no docstring"
+        assert module_findings[0].message == "Module 'app' has no docstring"
 
 
 # ---------------------------------------------------------------------------
@@ -593,7 +593,7 @@ import os
 """
         findings, _ = check_presence(source, "script.py", PresenceConfig())
 
-        module_findings = [f for f in findings if f.symbol == "<module>"]
+        module_findings = [f for f in findings if f.symbol == "script"]
         assert len(module_findings) == 1
 
     def test_file_with_coding_pragma_and_no_docstring(self) -> None:
@@ -604,7 +604,7 @@ import os
 """
         findings, _ = check_presence(source, "legacy.py", PresenceConfig())
 
-        module_findings = [f for f in findings if f.symbol == "<module>"]
+        module_findings = [f for f in findings if f.symbol == "legacy"]
         assert len(module_findings) == 1
 
     def test_stats_consistency_across_mixed_file(self) -> None:

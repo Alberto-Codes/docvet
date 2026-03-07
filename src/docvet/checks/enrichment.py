@@ -4,7 +4,9 @@ Detects missing docstring sections (Raises, Yields, Attributes, etc.),
 validates cross-reference syntax in See Also sections, and checks for
 non-fenced code block patterns (reporting both doctest and rST findings
 per symbol) by combining AST analysis with section header parsing.
-Implements Layer 3 of the docstring quality model.
+Module-kind findings use :func:`~docvet.ast_utils.module_display_name`
+for human-readable symbol names.  Implements Layer 3 of the docstring
+quality model.
 
 Examples:
     Run the enrichment check on a source file:
@@ -29,7 +31,7 @@ import re
 from collections.abc import Callable
 from typing import Literal
 
-from docvet.ast_utils import Symbol, get_documented_symbols
+from docvet.ast_utils import Symbol, get_documented_symbols, module_display_name
 from docvet.checks._finding import Finding
 from docvet.config import EnrichmentConfig
 
@@ -847,7 +849,7 @@ def _check_missing_attributes(
     2. NamedTuple (base class inspection)
     3. TypedDict (base class inspection)
     4. Plain class with ``__init__`` self-assignments
-    5. ``__init__.py`` module
+    5. ``__init__.py`` module (uses module display name)
 
     Args:
         symbol: The documented symbol to inspect.
@@ -923,12 +925,13 @@ def _check_missing_attributes(
 
     # Branch 5: __init__.py module
     if _is_init_module(file_path):
+        display = module_display_name(file_path)
         return Finding(
             file=file_path,
             line=symbol.line,
-            symbol=symbol.name,
+            symbol=display,
             rule="missing-attributes",
-            message=f"Module '{symbol.name}' has no Attributes: section",
+            message=f"Module '{display}' has no Attributes: section",
             category="required",
         )
 
@@ -1037,8 +1040,8 @@ def _check_missing_examples(
     Classes are gated by list membership — the classified type name
     (``"class"``, ``"dataclass"``, ``"protocol"``, ``"enum"``) must appear
     in ``config.require_examples`` for a finding to be emitted.  Modules
-    trigger whenever ``require_examples`` is non-empty (any non-empty list
-    enables module-level checking).
+    trigger whenever ``require_examples`` is non-empty and use the
+    module display name in findings.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -1060,12 +1063,13 @@ def _check_missing_examples(
     # Module branch: modules trigger when require_examples is non-empty
     # (any type in the list enables module checking).
     if symbol.kind == "module":
+        display = module_display_name(file_path)
         return Finding(
             file=file_path,
             line=symbol.line,
-            symbol=symbol.name,
+            symbol=display,
             rule="missing-examples",
-            message=f"Module '{symbol.name}' has no Examples: section",
+            message=f"Module '{display}' has no Examples: section",
             category="recommended",
         )
 
@@ -1133,11 +1137,12 @@ def _check_missing_cross_references(
     Two detection branches:
 
     - **Branch A:** Any module with no ``See Also:`` section at all — the
-      module should cross-reference related modules.
+      module should cross-reference related modules.  Uses module display
+      name in findings.
     - **Branch B:** Any symbol with a ``See Also:`` section whose content
       lacks linkable cross-reference syntax (Markdown bracket references
-      or Sphinx roles). Plain backtick identifiers do not satisfy the
-      rule because they render as inline code without a hyperlink.
+      or Sphinx roles).  Module-kind symbols use the display name;
+      others use ``symbol.name``.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -1156,12 +1161,13 @@ def _check_missing_cross_references(
     # Branch A: module missing See Also: entirely
     if symbol.kind == "module":
         if _SEE_ALSO not in sections:
+            display = module_display_name(file_path)
             return Finding(
                 file=file_path,
                 line=symbol.line,
-                symbol=symbol.name,
+                symbol=display,
                 rule="missing-cross-references",
-                message=(f"Module '{symbol.name}' has no See Also: section"),
+                message=(f"Module '{display}' has no See Also: section"),
                 category="recommended",
             )
 
@@ -1182,13 +1188,16 @@ def _check_missing_cross_references(
         if _XREF_MD_LINK.search(line) or _XREF_SPHINX.search(line):
             return None
 
+    display_name = (
+        module_display_name(file_path) if symbol.kind == "module" else symbol.name
+    )
     return Finding(
         file=file_path,
         line=symbol.line,
-        symbol=symbol.name,
+        symbol=display_name,
         rule="missing-cross-references",
         message=(
-            f"See Also: section in {kind_display} '{symbol.name}' "
+            f"See Also: section in {kind_display} '{display_name}' "
             f"lacks cross-reference syntax"
         ),
         category="recommended",
@@ -1239,9 +1248,8 @@ def _check_prefer_fenced_code_blocks(
     Checks for ``>>>`` doctest patterns and ``::`` reStructuredText
     indented code blocks in the ``Examples:`` section content.  The
     ``>>>`` scan runs first; ``::`` detection fires only when no
-    doctest pattern is found.  Only applies when the ``Examples:``
-    section exists — absence is handled by the ``missing-examples``
-    rule.
+    doctest pattern is found.  Module-kind symbols use the display
+    name; others use ``symbol.name``.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -1267,6 +1275,9 @@ def _check_prefer_fenced_code_blocks(
         return None
 
     kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
+    display_name = (
+        module_display_name(file_path) if symbol.kind == "module" else symbol.name
+    )
 
     lines = content.splitlines()
 
@@ -1275,10 +1286,10 @@ def _check_prefer_fenced_code_blocks(
             return Finding(
                 file=file_path,
                 line=symbol.line,
-                symbol=symbol.name,
+                symbol=display_name,
                 rule="prefer-fenced-code-blocks",
                 message=(
-                    f"Examples: section in {kind_display} '{symbol.name}' "
+                    f"Examples: section in {kind_display} '{display_name}' "
                     f"uses doctest format (>>>) instead of fenced code blocks"
                 ),
                 category="recommended",
@@ -1289,10 +1300,10 @@ def _check_prefer_fenced_code_blocks(
             return Finding(
                 file=file_path,
                 line=symbol.line,
-                symbol=symbol.name,
+                symbol=display_name,
                 rule="prefer-fenced-code-blocks",
                 message=(
-                    f"Examples: section in {kind_display} '{symbol.name}' "
+                    f"Examples: section in {kind_display} '{display_name}' "
                     f"uses reStructuredText indented code block (::) "
                     f"instead of fenced code blocks"
                 ),
@@ -1312,8 +1323,8 @@ def _check_fenced_code_blocks_extra(
     When ``_check_prefer_fenced_code_blocks`` finds one pattern type
     (doctest ``>>>`` or rST ``::``), this helper checks whether the
     *other* pattern type also exists in the same ``Examples:`` section.
-    This avoids a whack-a-mole cycle where the user fixes one pattern,
-    reruns, and only then discovers the second.
+    Module-kind symbols use the display name; others use
+    ``symbol.name``.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -1333,6 +1344,9 @@ def _check_fenced_code_blocks_extra(
         return None
 
     kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
+    display_name = (
+        module_display_name(file_path) if symbol.kind == "module" else symbol.name
+    )
     lines = content.splitlines()
 
     if pattern_type == "doctest":
@@ -1342,10 +1356,10 @@ def _check_fenced_code_blocks_extra(
                 return Finding(
                     file=file_path,
                     line=symbol.line,
-                    symbol=symbol.name,
+                    symbol=display_name,
                     rule="prefer-fenced-code-blocks",
                     message=(
-                        f"Examples: section in {kind_display} '{symbol.name}' "
+                        f"Examples: section in {kind_display} '{display_name}' "
                         f"uses reStructuredText indented code block (::) "
                         f"instead of fenced code blocks"
                     ),
@@ -1358,10 +1372,10 @@ def _check_fenced_code_blocks_extra(
                 return Finding(
                     file=file_path,
                     line=symbol.line,
-                    symbol=symbol.name,
+                    symbol=display_name,
                     rule="prefer-fenced-code-blocks",
                     message=(
-                        f"Examples: section in {kind_display} '{symbol.name}' "
+                        f"Examples: section in {kind_display} '{display_name}' "
                         f"uses doctest format (>>>) instead of fenced code blocks"
                     ),
                     category="recommended",

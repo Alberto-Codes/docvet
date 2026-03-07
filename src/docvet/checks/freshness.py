@@ -2,7 +2,9 @@
 
 Detects code changes that may have made docstrings stale. Diff mode maps
 git diff hunks to AST symbols; drift mode uses git blame age comparison.
-Implements Layer 4 of the docstring quality model.
+Module-kind findings use :func:`~docvet.ast_utils.module_display_name`
+for human-readable symbol names.  Implements Layer 4 of the docstring
+quality model.
 
 Examples:
     Run the freshness diff check on a file:
@@ -26,7 +28,7 @@ import time
 from datetime import datetime, timezone
 from typing import Literal
 
-from docvet.ast_utils import Symbol, map_lines_to_symbols
+from docvet.ast_utils import Symbol, map_lines_to_symbols, module_display_name
 from docvet.checks._finding import Finding
 from docvet.config import FreshnessConfig
 
@@ -64,6 +66,9 @@ def _build_finding(
 ) -> Finding:
     """Construct a Finding from freshness detection results.
 
+    Module-kind symbols use :func:`~docvet.ast_utils.module_display_name`
+    for the ``symbol`` field; others use ``symbol.name``.
+
     Args:
         file_path: Source file path where the finding was detected.
         symbol: The symbol whose docstring is potentially stale.
@@ -74,10 +79,11 @@ def _build_finding(
     Returns:
         A Finding with fields mapped from the symbol and arguments.
     """
+    display = module_display_name(file_path) if symbol.kind == "module" else symbol.name
     return Finding(
         file=file_path,
         line=symbol.line,
-        symbol=symbol.name,
+        symbol=display,
         rule=rule,
         message=message,
         category=category,
@@ -203,7 +209,8 @@ def check_freshness_diff(
 
     Maps changed lines from the diff to AST symbols, classifies the
     change type, and produces findings for symbols whose docstrings
-    were not updated alongside code changes.
+    were not updated alongside code changes.  Module-kind symbols
+    use the dotted display name in messages.
 
     Args:
         file_path: Source file path for finding attribution.
@@ -241,8 +248,11 @@ def check_freshness_diff(
 
         rule, category = _CLASSIFICATION_MAP[classification]
         kind = symbol.kind.capitalize()
+        display = (
+            module_display_name(file_path) if symbol.kind == "module" else symbol.name
+        )
         message = (
-            f"{kind} '{symbol.name}' {classification} changed but docstring not updated"
+            f"{kind} '{display}' {classification} changed but docstring not updated"
         )
         findings.append(_build_finding(file_path, symbol, rule, message, category))
 
@@ -419,7 +429,7 @@ def _build_drift_finding(
     doc_ts: list[int],
     file_path: str,
 ) -> Finding:
-    """Construct a drift finding for a symbol whose code outpaced its docstring.
+    """Construct a drift finding for a symbol whose code outpaced its docs.
 
     Args:
         sym: The symbol with stale docstring.
@@ -436,8 +446,9 @@ def _build_drift_finding(
     doc_date = datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
     days = (code_max - doc_max) // 86400
     kind = sym.kind.capitalize()
+    display = module_display_name(file_path) if sym.kind == "module" else sym.name
     message = (
-        f"{kind} '{sym.name}' code modified {code_date}, "
+        f"{kind} '{display}' code modified {code_date}, "
         f"docstring last modified {doc_date} ({days} days drift)"
     )
     return _build_finding(file_path, sym, "stale-drift", message, "recommended")
@@ -449,7 +460,7 @@ def _build_age_finding(
     effective_now: int,
     file_path: str,
 ) -> Finding:
-    """Construct an age finding for a symbol with an untouched docstring.
+    """Construct an age finding for a symbol with an unchanged docstring.
 
     Args:
         sym: The symbol with aged docstring.
@@ -464,7 +475,8 @@ def _build_age_finding(
     doc_date = datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
     days = (effective_now - doc_max) // 86400
     kind = sym.kind.capitalize()
-    message = f"{kind} '{sym.name}' docstring untouched since {doc_date} ({days} days)"
+    display = module_display_name(file_path) if sym.kind == "module" else sym.name
+    message = f"{kind} '{display}' docstring untouched since {doc_date} ({days} days)"
     return _build_finding(file_path, sym, "stale-age", message, "recommended")
 
 

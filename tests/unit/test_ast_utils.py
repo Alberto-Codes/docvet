@@ -11,6 +11,7 @@ from docvet.ast_utils import (
     get_documented_symbols,
     get_signature_range,
     map_lines_to_symbols,
+    module_display_name,
 )
 
 pytestmark = pytest.mark.unit
@@ -442,3 +443,29 @@ class TestMapLinesToSymbols:
         line_map = map_lines_to_symbols(tree)
         assert line_map[1].kind == "module"
         assert line_map[3].kind == "module"
+
+
+class TestModuleDisplayName:
+    """Tests for ``module_display_name()``."""
+
+    @pytest.mark.parametrize(
+        ("file_path", "expected"),
+        [
+            ("src/pkg/mod.py", "pkg.mod"),
+            ("pkg/mod.py", "pkg.mod"),
+            ("mod.py", "mod"),
+            ("src/pkg/__init__.py", "pkg"),
+            ("__init__.py", "__init__"),
+            ("lib/pkg/mod.py", "pkg.mod"),
+            ("src/a/b/c.py", "a.b.c"),
+            ("src/pkg/sub/__init__.py", "pkg.sub"),
+            ("src\\pkg\\mod.py", "pkg.mod"),
+            ("/home/user/project/src/pkg/mod.py", "pkg.mod"),
+            ("/opt/lib/pkg/mod.py", "pkg.mod"),
+            ("/home/user/project/pkg/mod.py", "home.user.project.pkg.mod"),
+            ("", "<module>"),
+            ("Makefile", "Makefile"),
+        ],
+    )
+    def test_conversion(self, file_path: str, expected: str) -> None:
+        assert module_display_name(file_path) == expected

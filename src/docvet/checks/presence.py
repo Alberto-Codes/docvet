@@ -2,9 +2,10 @@
 
 Detects public symbols (modules, classes, functions, methods) that lack
 a docstring, and reports per-file coverage statistics via
-:class:`PresenceStats`. Uses stdlib ``ast`` only — no runtime
-dependencies beyond what docvet already requires. Complements ruff
-D100–D107 by adding coverage metrics and pipeline integration.
+:class:`PresenceStats`.  Module-kind findings use
+:func:`~docvet.ast_utils.module_display_name` for human-readable
+symbol names.  Complements ruff D100–D107 by adding coverage metrics
+and pipeline integration.
 
 Examples:
     Run the presence check on a source string:
@@ -26,7 +27,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 
-from docvet.ast_utils import Symbol, get_documented_symbols
+from docvet.ast_utils import Symbol, get_documented_symbols, module_display_name
 from docvet.checks._finding import Finding
 from docvet.config import PresenceConfig
 
@@ -100,9 +101,9 @@ def check_presence(
 
     Parses *source* into an AST, extracts all documentable symbols via
     :func:`~docvet.ast_utils.get_documented_symbols`, applies the
-    filtering rules from *config*, and returns one
-    :class:`~docvet.checks._finding.Finding` per undocumented symbol
-    together with per-file coverage statistics.
+    filtering rules from *config*, and returns one finding per
+    undocumented symbol together with per-file coverage statistics.
+    Module symbols use the dotted display name in findings.
 
     Args:
         source: Raw Python source text.
@@ -142,15 +143,17 @@ def check_presence(
 
         # Build message: module is special, others get "Public" prefix.
         if symbol.kind == "module":
-            message = "Module has no docstring"
+            display = module_display_name(file_path)
+            message = f"Module '{display}' has no docstring"
         else:
+            display = symbol.name
             message = f"Public {symbol.kind} has no docstring"
 
         findings.append(
             Finding(
                 file=file_path,
                 line=symbol.line,
-                symbol=symbol.name,
+                symbol=display,
                 rule="missing-docstring",
                 message=message,
                 category="required",

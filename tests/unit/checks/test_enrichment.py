@@ -2873,9 +2873,9 @@ FOO = 42
     assert result is not None
     assert result.file == "regular.py"
     assert result.line == 1
-    assert result.symbol == "<module>"
+    assert result.symbol == "regular"
     assert result.rule == "missing-examples"
-    assert result.message == "Module '<module>' has no Examples: section"
+    assert result.message == "Module 'regular' has no Examples: section"
     assert result.category == "recommended"
 
 
@@ -3069,9 +3069,9 @@ FOO = 42
     assert len(missing_examples) == 1
     assert missing_examples[0].file == "regular.py"
     assert missing_examples[0].line == 1
-    assert missing_examples[0].symbol == "<module>"
+    assert missing_examples[0].symbol == "regular"
     assert missing_examples[0].rule == "missing-examples"
-    assert missing_examples[0].message == "Module '<module>' has no Examples: section"
+    assert missing_examples[0].message == "Module 'regular' has no Examples: section"
     assert missing_examples[0].category == "recommended"
 
 
@@ -3237,7 +3237,7 @@ FOO = 42
     assert isinstance(result, Finding)
     assert result.rule == "missing-cross-references"
     assert result.category == "recommended"
-    assert result.message == "Module '<module>' has no See Also: section"
+    assert result.message == "Module '__init__' has no See Also: section"
 
 
 def test_cross_refs_when_non_init_module_no_see_also_returns_finding():
@@ -3263,9 +3263,9 @@ FOO = 42
     assert result is not None
     assert result.file == "regular.py"
     assert result.line == 1
-    assert result.symbol == "<module>"
+    assert result.symbol == "regular"
     assert result.rule == "missing-cross-references"
-    assert result.message == "Module '<module>' has no See Also: section"
+    assert result.message == "Module 'regular' has no See Also: section"
     assert result.category == "recommended"
 
 
@@ -3324,7 +3324,7 @@ FOO = 42
 
     assert result is not None
     assert result.rule == "missing-cross-references"
-    assert result.symbol == "<module>"
+    assert result.symbol == "regular"
     assert result.category == "recommended"
     assert "lacks cross-reference syntax" in result.message
 
@@ -3395,7 +3395,7 @@ FOO = 42
     assert result is not None
     assert result.file == "regular.py"
     assert result.line == 1
-    assert result.symbol == "<module>"
+    assert result.symbol == "regular"
     assert result.rule == "missing-cross-references"
     assert "lacks cross-reference syntax" in result.message
     assert result.category == "recommended"
@@ -3595,7 +3595,7 @@ FOO = 42
 
     xref_findings = [f for f in findings if f.rule == "missing-cross-references"]
     assert len(xref_findings) == 1
-    assert xref_findings[0].message == "Module '<module>' has no See Also: section"
+    assert xref_findings[0].message == "Module '__init__' has no See Also: section"
 
 
 def test_cross_refs_when_init_module_has_backtick_see_also_returns_finding():
@@ -3624,7 +3624,7 @@ FOO = 42
 
     assert result is not None
     assert result.rule == "missing-cross-references"
-    assert result.symbol == "<module>"
+    assert result.symbol == "__init__"
     assert result.category == "recommended"
     assert "lacks cross-reference syntax" in result.message
 

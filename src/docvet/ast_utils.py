@@ -1,9 +1,9 @@
 """Shared AST helpers for docstring range extraction and symbol mapping.
 
-Provides the ``Symbol`` dataclass and utilities for walking an AST tree
-to extract documented symbols, their line ranges, and docstring content.
-Used by the enrichment and freshness check modules to map source
-locations to semantic symbols.
+Provides the ``Symbol`` dataclass, utilities for walking an AST tree
+to extract documented symbols, and :func:`module_display_name` for
+converting file paths to dotted Python module names.  Used by all
+check modules to map source locations to semantic symbols.
 
 Examples:
     Extract documented symbols from a source file:
@@ -315,6 +315,62 @@ def get_documented_symbols(tree: ast.Module) -> list[Symbol]:
     _walk_node(tree, symbols, parent_class=None)
     symbols.sort(key=lambda s: s.line)
     return symbols
+
+
+def module_display_name(file_path: str) -> str:
+    """Convert a file path to a dotted Python module display name.
+
+    Strips source root prefixes (``src/`` or ``lib/``), removes the
+    ``.py`` extension, replaces path separators with dots, and collapses
+    trailing ``.__init__`` into the parent package name.  Handles both
+    absolute and relative paths.
+
+    Args:
+        file_path: Absolute or relative path to a Python source file.
+
+    Returns:
+        Dotted module name suitable for display in findings and messages.
+        Returns ``"<module>"`` for empty input.
+
+    Examples:
+        ```python
+        module_display_name("src/pkg/mod.py")  # -> "pkg.mod"
+        module_display_name("/home/user/src/pkg/mod.py")  # -> "pkg.mod"
+        module_display_name("src/pkg/__init__.py")  # -> "pkg"
+        ```
+    """
+    if not file_path:
+        return "<module>"
+
+    name = file_path.replace("\\", "/")
+
+    # Strip source root: absolute paths use rfind, relative use startswith.
+    for marker in ("/src/", "/lib/"):
+        idx = name.rfind(marker)
+        if idx != -1:
+            name = name[idx + len(marker) :]
+            break
+    else:
+        for prefix in ("src/", "lib/"):
+            if name.startswith(prefix):
+                name = name[len(prefix) :]
+                break
+
+    # Strip leading slashes left over from absolute paths without markers.
+    name = name.lstrip("/")
+
+    # Drop .py extension.
+    if name.endswith(".py"):
+        name = name[: -len(".py")]
+
+    # Convert path separators to dots.
+    name = name.replace("/", ".")
+
+    # Collapse trailing .__init__ to package name.
+    if name.endswith(".__init__"):
+        name = name[: -len(".__init__")]
+
+    return name
 
 
 # ---------------------------------------------------------------------------

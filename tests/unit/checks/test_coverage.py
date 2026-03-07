@@ -35,7 +35,7 @@ class TestCheckCoverageBasicDetection:
         assert len(findings) == 1
         assert findings[0].file == str(module).replace("\\", "/")
         assert findings[0].line == 1
-        assert findings[0].symbol == "<module>"
+        assert findings[0].symbol == "pkg.sub"
         assert findings[0].rule == "missing-init"
         assert findings[0].category == "required"
         assert "pkg/sub" in findings[0].message
@@ -326,7 +326,7 @@ class TestCheckCoverageFindingFields:
         assert isinstance(f, Finding)
         assert f.file == str(module).replace("\\", "/")
         assert f.line == 1
-        assert f.symbol == "<module>"
+        assert f.symbol == "pkg"
         assert f.rule == "missing-init"
         assert f.category == "required"
         assert f.message == "Directory 'pkg' lacks __init__.py (1 file affected)"
