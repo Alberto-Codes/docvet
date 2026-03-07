@@ -2994,4 +2994,4 @@ class TestSummaryFlag:
     def test_help_shows_summary_option(self):
         """2.1: --summary appears in help output."""
         result = runner.invoke(app, ["--help"])
-        assert "--summary" in result.output
+        assert "--summary" in _strip_ansi(result.output)
