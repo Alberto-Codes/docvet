@@ -82,6 +82,28 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
           - uses: Alberto-Codes/docvet@v1
     ```
 
+### Outputs
+
+The action sets step outputs that downstream steps can consume:
+
+| Output | Description | Example |
+|--------|-------------|---------|
+| `badge_message` | shields.io badge message | `"passing"` or `"3 findings"` |
+| `badge_color` | shields.io badge color | `brightgreen`, `yellow`, or `red` |
+| `total_findings` | Total findings count | `0`, `3` |
+
+To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
+
+```yaml
+- uses: Alberto-Codes/docvet@v1
+  id: docvet
+  with:
+    checks: "all"
+- run: echo "docvet found ${{ steps.docvet.outputs.total_findings }} issues"
+```
+
+Outputs are only set in new mode (`checks` input). Legacy mode (`args` input) does not produce outputs.
+
 ### Annotation behavior
 
 Findings are reported in two places:
@@ -99,6 +121,18 @@ The step summary always includes a count disclosure: `"Found N findings (up to 1
       with:
         fetch-depth: 0
     ```
+
+## Badge
+
+Add a docvet badge to your README to signal that your project uses docvet for docstring quality:
+
+```markdown
+[![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
+```
+
+This renders as: [![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
+
+For a dynamic badge that updates with your CI results, see [Advanced: Dynamic Badge](#advanced-dynamic-badge) below.
 
 ## Pre-commit
 
@@ -181,3 +215,62 @@ Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet
     The action uses `--format json` internally, so terminal output is already suppressed.
 
 See [Configuration](configuration.md) for the full list of options including freshness thresholds, enrichment toggles, and exclusion patterns.
+
+## Advanced: Dynamic Badge
+
+For teams that want a live badge showing pass/fail status from the latest CI run, you can use the action's outputs with [schneegans/dynamic-badges-action](https://github.com/Schneegans/dynamic-badges-action) to write shields.io-compatible JSON to a GitHub Gist.
+
+### Setup
+
+1. **Create a GitHub Gist** — create a new public Gist (any filename). Copy the Gist ID from the URL.
+
+2. **Add repository secrets and variables** — in your repo's Settings > Secrets and variables > Actions:
+    - Add a **secret** named `GIST_SECRET` containing a [personal access token](https://github.com/settings/tokens) with the `gist` scope.
+    - Add a **variable** named `BADGE_GIST_ID` containing the Gist ID from step 1.
+
+3. **Add the badge step** to your workflow after the docvet action:
+
+    ```yaml
+    jobs:
+      docvet:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v6
+          - uses: Alberto-Codes/docvet@v1
+            id: docvet
+            with:
+              checks: "all"
+          - name: Update docvet badge
+            if: always() && github.ref == 'refs/heads/main'
+            continue-on-error: true
+            uses: schneegans/dynamic-badges-action@v1.7.0
+            with:
+              auth: ${{ secrets.GIST_SECRET }}
+              gistID: ${{ vars.BADGE_GIST_ID }}
+              filename: docvet-badge.json
+              label: docvet
+              message: ${{ steps.docvet.outputs.badge_message || 'error' }}
+              color: ${{ steps.docvet.outputs.badge_color || 'lightgrey' }}
+    ```
+
+4. **Add the badge to your README**:
+
+    ```markdown
+    [![docvet](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/<USER>/<GIST_ID>/raw/docvet-badge.json)](https://github.com/Alberto-Codes/docvet)
+    ```
+
+    Replace `<USER>` with your GitHub username and `<GIST_ID>` with the Gist ID.
+
+### Badge states
+
+| State | Message | Color |
+|-------|---------|-------|
+| All checks pass | `passing` | ![brightgreen](https://img.shields.io/badge/-brightgreen-brightgreen) |
+| Only recommended findings | `N findings` | ![yellow](https://img.shields.io/badge/-yellow-yellow) |
+| Required findings present | `N findings` | ![red](https://img.shields.io/badge/-red-red) |
+
+!!! tip "Freshness checks need git history"
+    If your workflow includes the `freshness` check (or `checks: "all"`), add `fetch-depth: 0` to your checkout step for full `git blame` support. See [Annotation behavior](#annotation-behavior) above for details.
+
+!!! note "Branch guard and fork safety"
+    The `if: always() && github.ref == 'refs/heads/main'` condition ensures the badge only updates on pushes to `main`, not on pull request branches. The `continue-on-error: true` prevents badge failures (e.g., from forks without Gist access) from failing the overall workflow.
