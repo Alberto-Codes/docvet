@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.11.0](https://github.com/Alberto-Codes/docvet/compare/v1.10.0...v1.11.0) (2026-03-06)
+
+
+### Features
+
+* **enrichment:** report both doctest and rST findings for prefer-fenced-code-blocks ([#302](https://github.com/Alberto-Codes/docvet/issues/302)) ([d51edfd](https://github.com/Alberto-Codes/docvet/commit/d51edfd9e370f3d1351a318abf7f1f43b62f05a8))
+
+
+### Documentation
+
+* **site:** add Concepts page with research-backed quality narrative ([#297](https://github.com/Alberto-Codes/docvet/issues/297)) ([f88d3fc](https://github.com/Alberto-Codes/docvet/commit/f88d3fcfb4e9095fc5d6fa61471b4105a1144cd9)), closes [#296](https://github.com/Alberto-Codes/docvet/issues/296)
+* **site:** expand glossary with 16 new terms and fix six-layer model ([#301](https://github.com/Alberto-Codes/docvet/issues/301)) ([f396d0c](https://github.com/Alberto-Codes/docvet/commit/f396d0c52febfa2bc97b32cff793b208e63773b0)), closes [#263](https://github.com/Alberto-Codes/docvet/issues/263)
+
 ## [1.10.0](https://github.com/Alberto-Codes/docvet/compare/v1.9.0...v1.10.0) (2026-03-06)
 
 
