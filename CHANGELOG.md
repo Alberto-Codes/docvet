@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.1](https://github.com/Alberto-Codes/docvet/compare/v1.12.0...v1.12.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* **cli:** catch ImportError in mcp command for missing extras ([062072d](https://github.com/Alberto-Codes/docvet/commit/062072de88dd8f40543bfa66c10245f957d2403a))
+* **docs:** wrap GitHub Actions code blocks with raw tags ([3f1763d](https://github.com/Alberto-Codes/docvet/commit/3f1763d8de3413ee2610da2dd122b24bfe0a0a44))
+
 ## [1.12.0](https://github.com/Alberto-Codes/docvet/compare/v1.11.0...v1.12.0) (2026-03-07)
 
 
