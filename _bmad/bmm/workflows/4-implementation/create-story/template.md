@@ -70,7 +70,6 @@ so that {{benefit}}.
 - [ ] `uv run ty check` — zero type errors
 - [ ] `uv run pytest` — all tests pass, no regressions
 - [ ] `uv run docvet check --all` — zero docvet findings (full-strength dogfooding)
-- [ ] `uv run interrogate -v` — docstring coverage ≥ 95%
 
 ## Dev Agent Record
 

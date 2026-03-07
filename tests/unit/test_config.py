@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import tomllib
 from pathlib import Path
 
@@ -16,6 +17,9 @@ from docvet.config import (
     _find_pyproject,
     _resolve_fail_warn,
     _validate_string_list,
+    format_config_json,
+    format_config_toml,
+    get_user_keys,
     load_config,
 )
 
@@ -1072,3 +1076,216 @@ def test_load_config_presence_is_valid_check_name(
     write_pyproject('[tool.docvet]\nfail-on = ["presence"]\n')
     cfg = load_config()
     assert cfg.fail_on == ["presence"]
+
+
+# ---------------------------------------------------------------------------
+# get_user_keys (Story 31.3)
+# ---------------------------------------------------------------------------
+
+
+def test_get_user_keys_with_config_returns_raw_dict(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["enrichment"]\n')
+    user_keys, pyproject_path = get_user_keys()
+    assert user_keys == {"fail-on": ["enrichment"]}
+    assert pyproject_path == tmp_path / "pyproject.toml"
+
+
+def test_get_user_keys_without_docvet_section_returns_empty(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.ruff]\nline-length = 88\n")
+    user_keys, pyproject_path = get_user_keys()
+    assert user_keys == {}
+    assert pyproject_path == tmp_path / "pyproject.toml"
+
+
+def test_get_user_keys_no_pyproject_returns_empty_and_none(tmp_path, monkeypatch):
+    (tmp_path / ".git").mkdir()
+    monkeypatch.chdir(tmp_path)
+    user_keys, pyproject_path = get_user_keys()
+    assert user_keys == {}
+    assert pyproject_path is None
+
+
+def test_get_user_keys_preserves_kebab_case(tmp_path, monkeypatch, write_pyproject):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nsrc-root = "lib"\n\n[tool.docvet.enrichment]\nrequire-raises = false\n'
+    )
+    user_keys, _ = get_user_keys()
+    assert "src-root" in user_keys
+    assert "enrichment" in user_keys
+    assert user_keys["enrichment"]["require-raises"] is False  # type: ignore[index]
+
+
+# ---------------------------------------------------------------------------
+# format_config_toml (Story 31.3)
+# ---------------------------------------------------------------------------
+
+
+def test_format_config_toml_all_defaults_produces_valid_toml():
+    config = DocvetConfig()
+    output = format_config_toml(config, {})
+    assert "[tool.docvet]" in output
+    assert "# (default)" in output
+    assert "# (user)" not in output
+
+
+def test_format_config_toml_user_keys_annotated():
+    config = DocvetConfig(fail_on=["enrichment"])
+    user_keys: dict[str, object] = {"fail-on": ["enrichment"]}
+    output = format_config_toml(config, user_keys)
+    for line in output.splitlines():
+        if line.startswith("fail-on"):
+            assert "# (user)" in line
+            break
+    else:
+        pytest.fail("fail-on line not found")
+
+
+def test_format_config_toml_nested_user_keys():
+    config = DocvetConfig(
+        enrichment=EnrichmentConfig(require_raises=False),
+    )
+    user_keys: dict[str, object] = {"enrichment": {"require-raises": False}}
+    output = format_config_toml(config, user_keys)
+    assert "[tool.docvet.enrichment]" in output
+    for line in output.splitlines():
+        if line.startswith("require-raises"):
+            assert "# (user)" in line
+            break
+    else:
+        pytest.fail("require-raises line not found")
+
+
+def test_format_config_toml_roundtrip():
+    """AC 5: TOML roundtrip correctness."""
+    config = DocvetConfig()
+    output = format_config_toml(config, {})
+    parsed = tomllib.loads(output)
+    docvet = parsed["tool"]["docvet"]
+    assert docvet["src-root"] == config.src_root
+    assert docvet["exclude"] == config.exclude
+    assert docvet["fail-on"] == config.fail_on
+    assert docvet["warn-on"] == config.warn_on
+    assert docvet["freshness"]["drift-threshold"] == config.freshness.drift_threshold
+    assert docvet["freshness"]["age-threshold"] == config.freshness.age_threshold
+    assert docvet["enrichment"]["require-raises"] is config.enrichment.require_raises
+
+
+def test_format_config_toml_omits_package_name_when_none():
+    """AC 7: package-name omitted when None."""
+    config = DocvetConfig(package_name=None)
+    output = format_config_toml(config, {})
+    assert "package-name" not in output
+
+
+def test_format_config_toml_includes_package_name_when_set():
+    config = DocvetConfig(package_name="mypkg")
+    user_keys: dict[str, object] = {"package-name": "mypkg"}
+    output = format_config_toml(config, user_keys)
+    assert 'package-name = "mypkg"' in output
+    pkg_lines = [
+        line for line in output.splitlines() if line.startswith("package-name")
+    ]
+    assert "# (user)" in pkg_lines[0]
+
+
+def test_format_config_toml_omits_project_root():
+    config = DocvetConfig()
+    output = format_config_toml(config, {})
+    assert "project-root" not in output
+
+
+def test_format_config_toml_extend_exclude_annotation():
+    """AC 6: merged exclude annotated when extend-exclude present."""
+    config = DocvetConfig(exclude=["tests", "scripts", "vendor"])
+    user_keys: dict[str, object] = {"extend-exclude": ["vendor"]}
+    output = format_config_toml(config, user_keys)
+    for line in output.splitlines():
+        if line.startswith("exclude"):
+            assert "# (merged from exclude + extend-exclude)" in line
+            break
+    else:
+        pytest.fail("exclude line not found")
+
+
+def test_format_config_toml_extend_exclude_with_both_keys():
+    """AC 6: both exclude and extend-exclude in user keys."""
+    config = DocvetConfig(exclude=["vendor", "generated"])
+    user_keys: dict[str, object] = {
+        "exclude": ["vendor"],
+        "extend-exclude": ["generated"],
+    }
+    output = format_config_toml(config, user_keys)
+    for line in output.splitlines():
+        if line.startswith("exclude"):
+            assert "# (merged from exclude + extend-exclude)" in line
+            break
+    else:
+        pytest.fail("exclude line not found")
+
+
+# ---------------------------------------------------------------------------
+# format_config_json (Story 31.3)
+# ---------------------------------------------------------------------------
+
+
+def test_format_config_json_structure():
+    config = DocvetConfig()
+    output = format_config_json(config, {})
+    parsed = json.loads(output)
+    assert "config" in parsed
+    assert "user_configured" in parsed
+    assert isinstance(parsed["user_configured"], list)
+
+
+def test_format_config_json_kebab_case_keys():
+    config = DocvetConfig()
+    output = format_config_json(config, {})
+    parsed = json.loads(output)
+    cfg = parsed["config"]
+    assert "src-root" in cfg
+    assert "fail-on" in cfg
+    assert "warn-on" in cfg
+    assert "drift-threshold" in cfg["freshness"]
+
+
+def test_format_config_json_no_project_root():
+    config = DocvetConfig()
+    output = format_config_json(config, {})
+    parsed = json.loads(output)
+    assert "project-root" not in parsed["config"]
+
+
+def test_format_config_json_user_configured_keys():
+    config = DocvetConfig(fail_on=["enrichment"])
+    user_keys: dict[str, object] = {
+        "fail-on": ["enrichment"],
+        "enrichment": {"require-raises": False},
+    }
+    output = format_config_json(config, user_keys)
+    parsed = json.loads(output)
+    assert "fail-on" in parsed["user_configured"]
+    assert "enrichment.require-raises" in parsed["user_configured"]
+
+
+def test_format_config_json_omits_package_name_when_none():
+    """AC 7: package-name omitted from JSON when None."""
+    config = DocvetConfig(package_name=None)
+    output = format_config_json(config, {})
+    parsed = json.loads(output)
+    assert "package-name" not in parsed["config"]
+
+
+def test_format_config_json_includes_package_name_when_set():
+    config = DocvetConfig(package_name="mypkg")
+    user_keys: dict[str, object] = {"package-name": "mypkg"}
+    output = format_config_json(config, user_keys)
+    parsed = json.loads(output)
+    assert parsed["config"]["package-name"] == "mypkg"
+    assert "package-name" in parsed["user_configured"]

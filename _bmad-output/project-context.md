@@ -19,8 +19,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Python**: >=3.12 | Build: hatchling (PEP 517/518) | Package manager: uv (always `uv run`, never raw `pip` or `python`)
 - **Runtime**: typer >=0.9 (only runtime dep) | griffe >=1.0 (optional extra)
 - **Testing**: pytest >=9.0 | pytest-cov >=7.0 | pytest-mock >=3.15 | pytest-randomly >=4.0 (test order randomized — no shared state between tests)
-- **Quality**: ruff >=0.11 (lint + format) | ty >=0.0.1a33 (type checker) | interrogate >=1.5 (95% docstring coverage threshold)
-- **CI gates**: ruff check, ruff format --check, ty check, pytest --cov-fail-under=85, interrogate -v
+- **Quality**: ruff >=0.11 (lint + format) | ty >=0.0.1a33 (type checker) | docvet check --all (full-strength dogfooding)
+- **CI gates**: ruff check, ruff format --check, ty check, pytest --cov-fail-under=85, docvet check --all
 - **Typer caveats**: Use `list[str]` for repeated options (never `list[Path]` — breaks across versions). `CliRunner` does not support `mix_stderr` in current version. Entry point is `docvet.cli:app` (no `__main__.py`)
 - **enum.StrEnum**: Used for CLI-facing enums (Python 3.11+ stdlib). Plain `enum.Enum` for internal-only enums
 
@@ -79,9 +79,9 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Docstring code formatting**: Enabled (`docstring-code-format = true`) — ruff reformats code inside docstring `Examples:` sections. Always run `ruff format` after writing docstrings with code blocks
 - **Docstring summary line**: Max 80 chars (stricter than the 88-char line limit). `@property` uses attribute-style: `"The table path."` not `"Returns the table path."`. Generators use `Yields:` not `Returns:`
 - **File organization**: `src/docvet/` layout — `cli.py` (entry), `config.py`, `discovery.py`, `ast_utils.py`, `reporting.py`, `checks/*.py`
-- **Module docstrings**: Required on all modules (interrogate enforces 95% threshold). Exception: test files (excluded from interrogate and ruff D rules)
+- **Module docstrings**: Required on all modules (docvet presence check enforces coverage). Exception: test files (excluded from ruff D rules)
 - **Naming**: Files are `snake_case.py`. Classes `PascalCase`. Functions/vars `snake_case`. Test files `test_<module>.py`
-- **Six-layer model**: docvet implements layers 3-6 only. Layers 1-2 (presence + style) are handled by interrogate and ruff. Do not re-implement presence or style checking
+- **Six-layer model**: docvet implements layers 1 and 3-6. Layer 2 (style) is handled by ruff
 
 ### Development Workflow
 
@@ -91,7 +91,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **PR body**: Why paragraph → What changed (2-4 bullets, imperative mood) → `Test:` line → `Closes #` trailer → multi-commit footer blocks if needed → `## PR Review` section
 - **Before PR**: Run `git diff develop..HEAD` and `git log --oneline develop..HEAD` to understand ALL commits — PR description must cover the full scope, not just the latest commit. Push with `git push -u origin <branch>` (the `-u` sets upstream tracking)
 - **Quality before PR**: Run `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest` locally
-- **CI**: Runs on PR and push to develop/main. Gates: lint, format, type-check, test (py3.12 + py3.13), interrogate
+- **CI**: Runs on PR and push to develop/main. Gates: lint, format, type-check, test (py3.12 + py3.13), docvet
 
 ### AST Utilities Rules (`ast_utils.py`)
 

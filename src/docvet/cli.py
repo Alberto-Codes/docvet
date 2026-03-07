@@ -2,7 +2,8 @@
 
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``presence``, ``enrichment``, ``freshness``, ``coverage``, ``griffe``,
-``lsp``, ``mcp``) and the combined ``check`` entry point. All subcommands
+``lsp``, ``mcp``), the combined ``check`` entry point, and the
+``config`` introspection command. All check subcommands
 accept positional file arguments (``docvet check src/foo.py``) and the
 ``--files`` option, share three-tier verbosity control
 (quiet/default/verbose) via dual-registered ``--verbose`` and
@@ -61,7 +62,13 @@ from docvet.checks.enrichment import check_enrichment
 from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
 from docvet.checks.griffe_compat import check_griffe_compat
 from docvet.checks.presence import PresenceStats, check_presence
-from docvet.config import DocvetConfig, load_config
+from docvet.config import (
+    DocvetConfig,
+    format_config_json,
+    format_config_toml,
+    get_user_keys,
+    load_config,
+)
 from docvet.discovery import DiscoveryMode, discover_files
 from docvet.reporting import (
     CheckQuality,
@@ -1373,3 +1380,38 @@ def mcp() -> None:
         )
         raise typer.Exit(code=1)
     mcp_start_server()
+
+
+@app.command()
+def config(
+    ctx: typer.Context,
+    show_defaults: Annotated[
+        bool,
+        typer.Option(
+            "--show-defaults",
+            help="Show effective config (accepted for backward compat).",
+        ),
+    ] = False,
+) -> None:
+    """Show effective configuration with source annotations.
+
+    Prints the merged config (user values + defaults) in TOML or JSON
+    format. Each value is annotated with ``# (user)`` or
+    ``# (default)`` to show its source.
+
+    Args:
+        ctx: Typer invocation context.
+        show_defaults: No-op flag accepted for backward compatibility.
+    """
+    user_keys, pyproject_path = get_user_keys()
+    if pyproject_path is None:
+        typer.echo(
+            "docvet: no pyproject.toml found — showing built-in defaults",
+            err=True,
+        )
+    docvet_config: DocvetConfig = ctx.obj["docvet_config"]
+    fmt = ctx.obj.get("format")
+    if fmt == "json":
+        typer.echo(format_config_json(docvet_config, user_keys))
+    else:
+        typer.echo(format_config_toml(docvet_config, user_keys))

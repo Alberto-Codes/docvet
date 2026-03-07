@@ -1,4 +1,4 @@
-"""Configuration reader for ``[tool.docvet]`` in pyproject.toml.
+"""Configuration reader and formatter for ``[tool.docvet]`` in pyproject.toml.
 
 Loads and validates the ``[tool.docvet]`` configuration table from
 ``pyproject.toml``. Supports ``extend-exclude`` for additive pattern
@@ -6,7 +6,9 @@ merging on top of defaults or an explicit ``exclude`` list. Uses
 composable validation helpers (``_validate_string_list``,
 ``_resolve_fail_warn``) to keep individual parsers focused. Exposes
 ``EnrichmentConfig``, ``FreshnessConfig``, and ``PresenceConfig``
-dataclasses with sensible defaults for all check modules.
+dataclasses with sensible defaults for all check modules. Provides
+``format_config_toml`` and ``format_config_json`` for rendering
+the effective configuration with source annotations.
 
 Examples:
     Load configuration from the project root:
@@ -25,6 +27,8 @@ See Also:
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import sys
 import tomllib
 from dataclasses import dataclass, field
@@ -35,6 +39,9 @@ __all__ = [
     "EnrichmentConfig",
     "FreshnessConfig",
     "PresenceConfig",
+    "format_config_json",
+    "format_config_toml",
+    "get_user_keys",
     "load_config",
 ]
 
@@ -282,6 +289,18 @@ def _kebab_to_snake(key: str) -> str:
         The snake_case equivalent.
     """
     return key.replace("-", "_")
+
+
+def _snake_to_kebab(key: str) -> str:
+    """Convert a Python snake_case key to TOML kebab-case.
+
+    Args:
+        key: The snake_case key string.
+
+    Returns:
+        The kebab-case equivalent.
+    """
+    return key.replace("_", "-")
 
 
 def _validate_keys(
@@ -673,6 +692,204 @@ def _resolve_fail_warn(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+
+def get_user_keys(
+    path: Path | None = None,
+) -> tuple[dict[str, object], Path | None]:
+    """Return the raw ``[tool.docvet]`` dict and the pyproject.toml path.
+
+    Exposes the user's configuration as-is (kebab-case keys, no
+    validation or parsing) so callers can distinguish user-set values
+    from defaults.
+
+    Args:
+        path: Explicit path to a ``pyproject.toml``. When *None*,
+            discovery walks up from CWD.
+
+    Returns:
+        A tuple of ``(raw_dict, pyproject_path)``. *raw_dict* is the
+        ``[tool.docvet]`` table (empty dict if absent). *pyproject_path*
+        is the resolved path, or *None* when no file was found.
+    """
+    pyproject_path = _find_pyproject_path(path)
+    if pyproject_path is None:
+        return {}, None
+    return _read_docvet_toml(pyproject_path), pyproject_path
+
+
+def format_config_toml(
+    config: DocvetConfig,
+    user_keys: dict[str, object],
+) -> str:
+    """Format effective config as copy-paste-ready TOML.
+
+    Produces a ``[tool.docvet]`` block with ``# (user)`` annotations on
+    keys present in *user_keys* and ``# (default)`` on all others.
+    Omits ``package-name`` when its value is ``None`` and ``project_root``
+    (runtime-only). When ``extend-exclude`` appears in *user_keys*, the
+    merged ``exclude`` list is annotated accordingly.
+
+    Args:
+        config: The effective :class:`DocvetConfig`.
+        user_keys: Raw ``[tool.docvet]`` dict with kebab-case keys.
+
+    Returns:
+        A TOML-formatted string suitable for ``pyproject.toml``.
+    """
+    lines: list[str] = []
+    has_extend = "extend-exclude" in user_keys
+
+    def _annotation(
+        kebab_key: str, section_keys: dict[str, object] | None = None
+    ) -> str:
+        if section_keys is not None:
+            return "# (user)" if kebab_key in section_keys else "# (default)"
+        return "# (user)" if kebab_key in user_keys else "# (default)"
+
+    def _fmt_value(value: object) -> str:
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, str):
+            return f'"{value}"'
+        if isinstance(value, int | float):
+            return str(value)
+        if isinstance(value, list):
+            items = ", ".join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
+            return f"[{items}]"
+        return str(value)
+
+    # Top-level section
+    lines.append("[tool.docvet]")
+    top_fields = [
+        ("src_root", "src-root"),
+        ("package_name", "package-name"),
+        ("exclude", "exclude"),
+        ("fail_on", "fail-on"),
+        ("warn_on", "warn-on"),
+    ]
+    for attr, kebab in top_fields:
+        value = getattr(config, attr)
+        if attr == "package_name" and value is None:
+            continue
+        annotation = _annotation(kebab)
+        if attr == "exclude" and has_extend:
+            annotation = "# (merged from exclude + extend-exclude)"
+        lines.append(f"{kebab} = {_fmt_value(value)}  {annotation}")
+
+    def _sub_keys(key: str) -> dict[str, object] | None:
+        raw = user_keys.get(key)
+        if isinstance(raw, dict):
+            return {str(k): v for k, v in raw.items()}
+        return None
+
+    # Freshness section
+    freshness_section = _sub_keys("freshness")
+    lines.append("")
+    lines.append("[tool.docvet.freshness]")
+    for attr, kebab in [
+        ("drift_threshold", "drift-threshold"),
+        ("age_threshold", "age-threshold"),
+    ]:
+        value = getattr(config.freshness, attr)
+        lines.append(
+            f"{kebab} = {_fmt_value(value)}  {_annotation(kebab, freshness_section)}"
+        )
+
+    # Enrichment section
+    enrichment_section = _sub_keys("enrichment")
+    lines.append("")
+    lines.append("[tool.docvet.enrichment]")
+    enrichment_fields = [
+        ("require_raises", "require-raises"),
+        ("require_yields", "require-yields"),
+        ("require_warns", "require-warns"),
+        ("require_receives", "require-receives"),
+        ("require_other_parameters", "require-other-parameters"),
+        ("require_typed_attributes", "require-typed-attributes"),
+        ("require_cross_references", "require-cross-references"),
+        ("prefer_fenced_code_blocks", "prefer-fenced-code-blocks"),
+        ("require_attributes", "require-attributes"),
+        ("require_examples", "require-examples"),
+    ]
+    for attr, kebab in enrichment_fields:
+        value = getattr(config.enrichment, attr)
+        lines.append(
+            f"{kebab} = {_fmt_value(value)}  {_annotation(kebab, enrichment_section)}"
+        )
+
+    # Presence section
+    presence_section = _sub_keys("presence")
+    lines.append("")
+    lines.append("[tool.docvet.presence]")
+    presence_fields = [
+        ("enabled", "enabled"),
+        ("min_coverage", "min-coverage"),
+        ("ignore_init", "ignore-init"),
+        ("ignore_magic", "ignore-magic"),
+        ("ignore_private", "ignore-private"),
+    ]
+    for attr, kebab in presence_fields:
+        value = getattr(config.presence, attr)
+        lines.append(
+            f"{kebab} = {_fmt_value(value)}  {_annotation(kebab, presence_section)}"
+        )
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def format_config_json(
+    config: DocvetConfig,
+    user_keys: dict[str, object],
+) -> str:
+    """Format effective config as a JSON string.
+
+    Produces a JSON object with ``"config"`` (all effective values,
+    kebab-case keys, ``project_root`` excluded) and
+    ``"user_configured"`` (list of dot-separated kebab-case paths for
+    user-set keys). Omits ``package-name`` when its value is ``None``.
+
+    Args:
+        config: The effective :class:`DocvetConfig`.
+        user_keys: Raw ``[tool.docvet]`` dict with kebab-case keys.
+
+    Returns:
+        A pretty-printed JSON string.
+    """
+    raw = dataclasses.asdict(config)
+    raw.pop("project_root", None)
+
+    def _convert_keys(d: dict[str, object]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for k, v in d.items():
+            kebab = _snake_to_kebab(k)
+            if isinstance(v, dict):
+                result[kebab] = _convert_keys(v)  # type: ignore[arg-type]
+            else:
+                result[kebab] = v
+        return result
+
+    converted = _convert_keys(raw)
+
+    if converted.get("package-name") is None:
+        converted.pop("package-name", None)
+
+    user_configured: list[str] = []
+    for key, value in user_keys.items():
+        if key == "extend-exclude":
+            continue
+        if isinstance(value, dict):
+            for sub_key in value:
+                user_configured.append(f"{key}.{sub_key}")
+        else:
+            user_configured.append(key)
+
+    output = {
+        "config": converted,
+        "user_configured": sorted(user_configured),
+    }
+    return json.dumps(output, indent=2)
 
 
 def load_config(path: Path | None = None) -> DocvetConfig:

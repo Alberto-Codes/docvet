@@ -81,6 +81,7 @@ def test_app_when_invoked_with_help_shows_all_subcommands():
     assert "freshness" in output
     assert "coverage" in output
     assert "griffe" in output
+    assert "config" in output
     assert "lsp" in output
     assert "mcp" in output
 
@@ -2995,3 +2996,47 @@ class TestSummaryFlag:
         """2.1: --summary appears in help output."""
         result = runner.invoke(app, ["--help"])
         assert "--summary" in _strip_ansi(result.output)
+
+
+# ---------------------------------------------------------------------------
+# Config command (Story 31.3)
+# ---------------------------------------------------------------------------
+
+
+class TestConfigCommand:
+    """Tests for the ``docvet config`` command."""
+
+    def test_config_command_accepted(self):
+        result = runner.invoke(app, ["config"])
+        assert result.exit_code == 0
+        assert "[tool.docvet]" in result.output
+
+    def test_config_produces_toml_by_default(self):
+        result = runner.invoke(app, ["config"])
+        assert result.exit_code == 0
+        assert "src-root" in result.output
+        assert "# (default)" in result.output
+
+    def test_config_show_defaults_is_noop_alias(self):
+        default_result = runner.invoke(app, ["config"])
+        alias_result = runner.invoke(app, ["config", "--show-defaults"])
+        assert default_result.exit_code == 0
+        assert alias_result.exit_code == 0
+        assert default_result.output == alias_result.output
+
+    def test_config_json_output(self):
+        result = runner.invoke(app, ["--format", "json", "config"])
+        assert result.exit_code == 0
+        parsed = json.loads(result.output)
+        assert "config" in parsed
+        assert "user_configured" in parsed
+
+    def test_config_no_pyproject_shows_stderr_note(self, mocker):
+        mocker.patch("docvet.cli.get_user_keys", return_value=({}, None))
+        result = runner.invoke(app, ["config"])
+        assert result.exit_code == 0
+        assert "no pyproject.toml found" in result.output
+
+    def test_config_appears_in_help(self):
+        result = runner.invoke(app, ["--help"])
+        assert "config" in result.output
