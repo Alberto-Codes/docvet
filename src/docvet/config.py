@@ -8,8 +8,9 @@ conventions. Uses composable validation helpers
 (``_validate_string_list``, ``_resolve_fail_warn``) to keep individual
 parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 ``PresenceConfig`` dataclasses with sensible defaults for all check
-modules. ``EnrichmentConfig.user_set_keys`` tracks which enrichment
-toggles were explicitly set by the user (for sphinx auto-disable logic).
+modules. ``EnrichmentConfig`` fields include ``require_returns`` and
+other rule toggles. ``user_set_keys`` tracks which enrichment toggles
+were explicitly set by the user (for sphinx auto-disable logic).
 
 Provides ``format_config_toml`` and ``format_config_json`` for rendering
 the effective configuration with source annotations. TOML formatting
@@ -94,6 +95,8 @@ class EnrichmentConfig:
             ``["class", "protocol", "dataclass", "enum"]``.
         require_raises (bool): Require ``Raises:`` sections. Defaults
             to ``True``.
+        require_returns (bool): Require ``Returns:`` sections. Defaults
+            to ``True``.
         require_yields (bool): Require ``Yields:`` sections. Defaults
             to ``True``.
         require_warns (bool): Require ``Warns:`` sections. Defaults
@@ -133,6 +136,7 @@ class EnrichmentConfig:
         default_factory=lambda: ["class", "protocol", "dataclass", "enum"]
     )
     require_raises: bool = True
+    require_returns: bool = True
     require_yields: bool = True
     require_warns: bool = True
     require_receives: bool = True
@@ -276,6 +280,7 @@ _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
         "require-other-parameters",
         "require-raises",
         "require-receives",
+        "require-returns",
         "require-typed-attributes",
         "require-warns",
         "require-yields",
@@ -887,7 +892,8 @@ def format_config_toml(
 
     Renders the top-level ``[tool.docvet]`` keys (including
     ``docstring-style``) inline, then delegates each nested section
-    (freshness, enrichment, presence) to :func:`_format_toml_section`.
+    (freshness, enrichment — including ``require-returns``, presence)
+    to :func:`_format_toml_section`.
     Values are formatted via :func:`_fmt_toml_value` and annotated via
     :func:`_get_annotation`. Omits ``package-name`` when its value is
     ``None`` and ``project_root`` (runtime-only). When
@@ -937,6 +943,7 @@ def format_config_toml(
             "[tool.docvet.enrichment]",
             [
                 ("require_raises", "require-raises"),
+                ("require_returns", "require-returns"),
                 ("require_yields", "require-yields"),
                 ("require_warns", "require-warns"),
                 ("require_receives", "require-receives"),

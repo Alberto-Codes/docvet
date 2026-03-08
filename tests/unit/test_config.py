@@ -105,6 +105,11 @@ def test_enrichment_defaults_require_attributes_is_true():
     assert cfg.require_attributes is True
 
 
+def test_enrichment_defaults_require_returns_is_true():
+    cfg = EnrichmentConfig()
+    assert cfg.require_returns is True
+
+
 def test_docvet_defaults_src_root_is_dot():
     cfg = DocvetConfig()
     assert cfg.src_root == "."
@@ -382,6 +387,20 @@ require-raises = false
     cfg = load_config()
     assert cfg.enrichment.require_attributes is True
     assert cfg.enrichment.require_raises is False
+
+
+def test_load_config_nested_enrichment_require_returns_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+require-returns = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.enrichment.require_returns is False
 
 
 def test_load_config_explicit_path_uses_that_file(tmp_path):
@@ -1175,6 +1194,7 @@ def test_format_config_toml_roundtrip():
     assert docvet["freshness"]["drift-threshold"] == config.freshness.drift_threshold
     assert docvet["freshness"]["age-threshold"] == config.freshness.age_threshold
     assert docvet["enrichment"]["require-raises"] is config.enrichment.require_raises
+    assert docvet["enrichment"]["require-returns"] is config.enrichment.require_returns
 
 
 def test_format_config_toml_omits_package_name_when_none():

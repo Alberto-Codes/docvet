@@ -18,6 +18,28 @@
         FileNotFoundError: If the config file does not exist.
     ```
 
+- id: missing-returns
+  name: Missing Returns Section
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Function returns a value but has no Returns section
+  since: "1.13.0"
+  fix: |
+    Add a `Returns:` section describing the type and meaning of the return value:
+
+    ```python
+    Returns:
+        The parsed configuration as a dictionary.
+    ```
+
+    For functions with multiple return types, describe each possibility:
+
+    ```python
+    Returns:
+        The matched user, or ``None`` if no match is found.
+    ```
+
 - id: missing-yields
   name: Missing Yields Section
   check: enrichment

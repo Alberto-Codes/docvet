@@ -1,6 +1,6 @@
 """Enrichment check for docstring completeness.
 
-Detects missing docstring sections (Raises, Yields, Attributes, etc.),
+Detects missing docstring sections (Returns, Raises, Yields, Attributes, etc.),
 validates cross-reference syntax in See Also sections, and checks for
 non-fenced code block patterns (reporting both doctest and rST findings
 per symbol) by combining AST analysis with section header parsing.
@@ -340,6 +340,190 @@ def _check_missing_raises(
             f"Function '{symbol.name}' raises {exception_names} "
             f"but has no Raises: section"
         ),
+        category="required",
+    )
+
+
+def _is_meaningful_return(node: ast.Return) -> bool:
+    """Check whether a ``return`` statement returns a meaningful value.
+
+    Bare ``return`` and ``return None`` are control-flow idioms, not
+    meaningful return values that need a ``Returns:`` section.
+
+    Args:
+        node: The ``ast.Return`` node to inspect.
+
+    Returns:
+        ``False`` for bare ``return`` and ``return None``, ``True``
+        otherwise.
+    """
+    if node.value is None:
+        return False
+    if isinstance(node.value, ast.Constant) and node.value.value is None:
+        return False
+    return True
+
+
+def _is_property(node: _NodeT) -> bool:
+    """Check whether a function node is a ``@property`` or ``@cached_property``.
+
+    Handles both ``ast.Name`` (bare decorator) and ``ast.Attribute``
+    (qualified decorator, e.g. ``functools.cached_property``) forms.
+
+    Args:
+        node: The function or class AST node to inspect.
+
+    Returns:
+        ``True`` when the node has a ``property`` or ``cached_property``
+        decorator.
+    """
+    for dec in getattr(node, "decorator_list", []):
+        if isinstance(dec, ast.Name) and dec.id in ("property", "cached_property"):
+            return True
+        if isinstance(dec, ast.Attribute) and dec.attr in (
+            "property",
+            "cached_property",
+        ):
+            return True
+    return False
+
+
+def _has_decorator(node: _NodeT, name: str) -> bool:
+    """Check whether a function node has a specific decorator.
+
+    Handles both ``ast.Name`` (bare decorator) and ``ast.Attribute``
+    (qualified decorator, e.g. ``abc.abstractmethod``) forms.
+
+    Args:
+        node: The function or class AST node to inspect.
+        name: The decorator name to search for (unqualified).
+
+    Returns:
+        ``True`` when the node has a decorator matching *name*.
+    """
+    for dec in getattr(node, "decorator_list", []):
+        if isinstance(dec, ast.Name) and dec.id == name:
+            return True
+        if isinstance(dec, ast.Attribute) and dec.attr == name:
+            return True
+    return False
+
+
+def _is_stub_function(node: _NodeT) -> bool:
+    """Check whether a function body is a stub (no real implementation).
+
+    Stubs are single-statement bodies consisting of ``pass``,
+    ``...`` (Ellipsis), or ``raise NotImplementedError``.
+
+    Args:
+        node: The function AST node to inspect.
+
+    Returns:
+        ``True`` when the function body is a stub.
+    """
+    body = getattr(node, "body", [])
+    if len(body) != 1:
+        return False
+    stmt = body[0]
+    if isinstance(stmt, ast.Pass):
+        return True
+    if (
+        isinstance(stmt, ast.Expr)
+        and isinstance(stmt.value, ast.Constant)
+        and stmt.value.value is ...
+    ):
+        return True
+    if isinstance(stmt, ast.Raise) and isinstance(stmt.exc, (ast.Name, ast.Call)):
+        exc = stmt.exc.func if isinstance(stmt.exc, ast.Call) else stmt.exc
+        return isinstance(exc, ast.Name) and exc.id == "NotImplementedError"
+    return False
+
+
+def _check_missing_returns(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a function that returns values without a Returns section.
+
+    Walks the function's AST subtree to find ``return`` statements with
+    meaningful values (not bare ``return`` or ``return None``). Returns a
+    finding when such returns exist but no ``Returns:`` section is present.
+
+    The walk is scope-aware: it stops at nested ``FunctionDef``,
+    ``AsyncFunctionDef``, and ``ClassDef`` boundaries so that returns
+    inside nested scopes are not attributed to the outer function.
+
+    Skips dunder methods, ``@property``/``@cached_property``,
+    ``@abstractmethod``, ``@overload``, and stub functions to avoid
+    false positives.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-returns"`` when meaningful
+        return statements exist without documentation, or ``None``
+        otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+
+    if "Returns" in sections:
+        return None
+
+    # Skip dunder methods (covers __init__, __repr__, __len__, __new__, etc.)
+    if symbol.name.startswith("__") and symbol.name.endswith("__"):
+        return None
+
+    # Skip @property and @cached_property methods
+    if _is_property(node):
+        return None
+
+    # Skip @abstractmethod (interface contracts, not implementations)
+    if _has_decorator(node, "abstractmethod"):
+        return None
+
+    # Skip stub functions (pass, ..., raise NotImplementedError)
+    if _is_stub_function(node):
+        return None
+
+    # Skip @overload (defensive — 34.4 owns overload detection)
+    if _has_decorator(node, "overload"):
+        return None
+
+    # Scope-aware walk for meaningful return statements
+    has_meaningful_return = False
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, ast.Return) and _is_meaningful_return(child):
+            has_meaningful_return = True
+            break
+        stack.extend(ast.iter_child_nodes(child))
+
+    if not has_meaningful_return:
+        return None
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-returns",
+        message=f"Function '{symbol.name}' returns a value but has no Returns: section",
         category="required",
     )
 
@@ -1480,6 +1664,7 @@ _SPHINX_AUTO_DISABLE_RULES: frozenset[str] = frozenset(
 
 _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("require_raises", _check_missing_raises),
+    ("require_returns", _check_missing_returns),
     ("require_yields", _check_missing_yields),
     ("require_receives", _check_missing_receives),
     ("require_warns", _check_missing_warns),
