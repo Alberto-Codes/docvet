@@ -8,7 +8,8 @@ conventions. Uses composable validation helpers
 (``_validate_string_list``, ``_resolve_fail_warn``) to keep individual
 parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 ``PresenceConfig`` dataclasses with sensible defaults for all check
-modules. ``EnrichmentConfig`` fields include ``require_returns`` and
+modules. ``EnrichmentConfig`` fields include ``require_returns``,
+``require_param_agreement``, ``exclude_args_kwargs``, and
 other rule toggles. ``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
 ``user_set_keys`` tracks which enrichment toggles were explicitly
@@ -115,6 +116,12 @@ class EnrichmentConfig:
             over indented blocks. Defaults to ``True``.
         require_attributes (bool): Require ``Attributes:`` sections.
             Defaults to ``True``.
+        require_param_agreement (bool): Require parameter agreement
+            between function signatures and ``Args:`` sections. Gates
+            both ``missing-param-in-docstring`` and
+            ``extra-param-in-docstring`` rules. Defaults to ``True``.
+        exclude_args_kwargs (bool): Exclude ``*args`` and ``**kwargs``
+            from parameter agreement checks. Defaults to ``True``.
         user_set_keys (frozenset[str]): Snake_case keys explicitly set
             by the user in ``[tool.docvet.enrichment]``. Populated during
             config parsing to distinguish user overrides from defaults.
@@ -147,6 +154,8 @@ class EnrichmentConfig:
     require_cross_references: bool = True
     prefer_fenced_code_blocks: bool = True
     require_attributes: bool = True
+    require_param_agreement: bool = True
+    exclude_args_kwargs: bool = True
     user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -278,11 +287,13 @@ _VALID_FRESHNESS_KEYS: frozenset[str] = frozenset({"drift-threshold", "age-thres
 
 _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
     {
+        "exclude-args-kwargs",
         "prefer-fenced-code-blocks",
         "require-attributes",
         "require-cross-references",
         "require-examples",
         "require-other-parameters",
+        "require-param-agreement",
         "require-raises",
         "require-receives",
         "require-returns",
@@ -904,7 +915,8 @@ def format_config_toml(
 
     Renders the top-level ``[tool.docvet]`` keys (including
     ``docstring-style``) inline, then delegates each nested section
-    (freshness, enrichment — including ``require-returns``, presence —
+    (freshness, enrichment — including ``require-returns``,
+    ``require-param-agreement``, and ``exclude-args-kwargs``, presence —
     including ``check-overload-docstrings``) to :func:`_format_toml_section`.
     Values are formatted via :func:`_fmt_toml_value` and annotated via
     :func:`_get_annotation`. Omits ``package-name`` when its value is
@@ -964,6 +976,8 @@ def format_config_toml(
                 ("require_cross_references", "require-cross-references"),
                 ("prefer_fenced_code_blocks", "prefer-fenced-code-blocks"),
                 ("require_attributes", "require-attributes"),
+                ("require_param_agreement", "require-param-agreement"),
+                ("exclude_args_kwargs", "exclude-args-kwargs"),
                 ("require_examples", "require-examples"),
             ],
             config.enrichment,
