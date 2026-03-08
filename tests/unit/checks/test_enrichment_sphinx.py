@@ -274,16 +274,6 @@ def test_parse_sections_google_mode_ignores_sphinx_patterns():
 # Auto-disable rules in sphinx mode (Task 3)
 # ---------------------------------------------------------------------------
 
-_GENERATOR_SOURCE = '''\
-def gen():
-    """Generate values.
-
-    Yields:
-        int: The next value.
-    """
-    yield 42
-'''
-
 
 def test_check_enrichment_sphinx_auto_disables_yields_rule():
     source = '''\
@@ -363,6 +353,18 @@ def gen():
     config = EnrichmentConfig()
     findings = check_enrichment(source, tree, config, "test.py", style="google")
     assert any(f.rule == "missing-yields" for f in findings)
+
+
+def test_check_enrichment_sphinx_auto_disables_other_parameters_rule():
+    source = '''\
+def func(**kwargs):
+    """Do something."""
+    pass
+'''
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+    findings = check_enrichment(source, tree, config, "test.py", style="sphinx")
+    assert not any(f.rule == "missing-other-parameters" for f in findings)
 
 
 def test_check_enrichment_sphinx_raises_rule_not_auto_disabled():

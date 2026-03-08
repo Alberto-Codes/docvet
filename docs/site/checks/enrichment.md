@@ -23,6 +23,9 @@ docvet enrichment --all
 
 **Required** rules flag structural gaps where the docstring is objectively incomplete. **Recommended** rules flag best-practice improvements that enhance documentation quality.
 
+!!! note "Sphinx/RST mode"
+    When [`docstring-style`](../configuration.md#docstring-style) is set to `"sphinx"`, section detection switches to RST field-list patterns and several rules are auto-disabled. See the [configuration reference](../configuration.md#docstring-style) for details.
+
 !!! tip "Best practice"
     Start with `require-raises` and `missing-attributes` — these catch the most impactful gaps. Disable `require-other-parameters` if your project doesn't use `**kwargs` heavily.
 

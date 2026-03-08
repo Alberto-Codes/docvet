@@ -1,6 +1,6 @@
 # Story 34.1: Sphinx/RST Docstring Style Support
 
-Status: review
+Status: done
 Branch: `feat/enrichment-34-1-sphinx-rst-style-support`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -85,7 +85,7 @@ so that I get meaningful enrichment findings without false positives.
 |----|---------|--------|
 | 1 | `test_load_config_docstring_style_sphinx` | Pass |
 | 2 | `test_parse_sections_sphinx_param_detected`, `test_parse_sections_sphinx_returns_detected`, `test_parse_sections_sphinx_raises_detected`, `test_parse_sections_sphinx_ivar_detected`, `test_parse_sections_sphinx_seealso_detected`, `test_parse_sections_sphinx_doctest_detected`, `test_parse_sections_sphinx_double_colon_detected`, `test_parse_sections_sphinx_code_block_detected`, `test_parse_sections_sphinx_multiple_sections` | Pass |
-| 3 | `test_check_enrichment_sphinx_auto_disables_yields_rule`, `test_check_enrichment_sphinx_auto_disables_receives_rule`, `test_check_enrichment_sphinx_auto_disables_warns_rule` | Pass |
+| 3 | `test_check_enrichment_sphinx_auto_disables_yields_rule`, `test_check_enrichment_sphinx_auto_disables_receives_rule`, `test_check_enrichment_sphinx_auto_disables_warns_rule`, `test_check_enrichment_sphinx_auto_disables_other_parameters_rule` | Pass |
 | 4 | `test_check_enrichment_sphinx_auto_disables_fenced_code_blocks_rule` | Pass |
 | 5 | `test_check_enrichment_sphinx_role_satisfies_cross_ref_check`, `test_check_enrichment_sphinx_py_func_role_satisfies_cross_ref`, `test_check_enrichment_sphinx_no_roles_still_flags_missing_cross_ref` | Pass |
 | 6 | `test_griffe_subcommand_sphinx_mode_skips_with_message`, `test_check_command_sphinx_mode_skips_griffe`, `test_check_command_google_mode_runs_griffe` | Pass |
@@ -231,6 +231,7 @@ None — zero-debug implementation.
 ### Change Log
 
 - 2026-03-07: Implemented Sphinx/RST docstring style support (Story 34.1) — config layer, enrichment section detection, auto-disable rules, cross-reference extension, griffe auto-skip, documentation update
+- 2026-03-07: Code review fixes — added missing `require_other_parameters` auto-disable test, removed redundant conditions, added enrichment.md sphinx cross-reference, deleted dead test code, updated AC-to-Test Mapping
 
 ### File List
 
@@ -246,6 +247,7 @@ Modified files:
 - tests/unit/test_cli.py
 - tests/unit/checks/test_enrichment.py
 - docs/site/configuration.md
+- docs/site/checks/enrichment.md
 
 ## Code Review
 
@@ -253,15 +255,27 @@ Modified files:
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial review with party-mode consensus)
+
 ### Outcome
+
+Approved with fixes (6 fixes applied, 2 pushed back)
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | AC3 missing test for `require_other_parameters` auto-disable | Fixed — added `test_check_enrichment_sphinx_auto_disables_other_parameters_rule` |
+| M1 | LOW (downgraded) | Redundant `or text == pattern_key` in `_parse_sphinx_sections()` | Fixed — removed dead condition |
+| M2 | MEDIUM | `docs/site/checks/enrichment.md` missing sphinx mode cross-reference | Fixed — added admonition with link to configuration reference |
+| M3 | MEDIUM | AC-to-Test Mapping table incomplete for AC3 | Fixed — added missing test to AC3 row |
+| L1 | LOW | Dead code `_GENERATOR_SOURCE` in test file | Fixed — deleted unused constant |
+| L2 | LOW | Redundant `symbol.docstring` guard (already guaranteed by outer loop) | Fixed — removed redundant condition |
+| L3 | LOW | Test uses Google-style fixture for sphinx auto-disable test | Pushed back — auto-disable fires before parsing, fixture content is irrelevant |
+| L4 | LOW | Finding object created then discarded in cross-ref suppression | Pushed back — conscious architecture trade-off (uniform rule signature constraint) |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (1351 tests, ruff clean, format clean)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

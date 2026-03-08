@@ -156,8 +156,9 @@ def _parse_sphinx_sections(docstring: str) -> set[str]:
     """Extract section names from a Sphinx/RST-style docstring.
 
     Uses pattern matching (no RST parser dependency) to detect field-list
-    entries, directives, and code markers and maps each match to its
-    Google-equivalent internal section name via ``_SPHINX_SECTION_MAP``.
+    entries, directives, and code markers. Maps each match to its
+    Google-equivalent internal section name via ``_SPHINX_SECTION_MAP``
+    using prefix matching against map keys.
 
     Args:
         docstring: The raw docstring text to parse.
@@ -169,7 +170,7 @@ def _parse_sphinx_sections(docstring: str) -> set[str]:
     for match in _SPHINX_SECTION_PATTERN.finditer(docstring):
         text = match.group(0)
         for pattern_key, section_name in _SPHINX_SECTION_MAP.items():
-            if text.startswith(pattern_key) or text == pattern_key:
+            if text.startswith(pattern_key):
                 sections.add(section_name)
                 break
     return sections
@@ -1546,7 +1547,6 @@ def check_enrichment(
                     if (
                         style == "sphinx"
                         and attr == "require_cross_references"
-                        and symbol.docstring
                         and _SPHINX_ROLE_PATTERN.search(symbol.docstring)
                     ):
                         continue
