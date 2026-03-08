@@ -1,4 +1,4 @@
-# Rule metadata catalog — single source of truth for all 20 docvet rules.
+# Rule metadata catalog — single source of truth for all 22 docvet rules.
 # Used by docs/main.py macros hook to render consistent rule page headers.
 # Schema: id, name, check, category, applies_to, summary, since, fix (all required)
 
@@ -275,6 +275,36 @@
 
     ```python
     """Subpackage for handling configuration parsing."""
+    ```
+
+- id: overload-has-docstring
+  name: Overloaded Function Has Docstring
+  check: presence
+  category: required
+  applies_to: functions, methods
+  summary: "@overload-decorated function has a docstring — document the implementation instead"
+  since: "1.13.0"
+  fix: |
+    Remove the docstring from the `@overload`-decorated function and document the implementation
+    function instead. Documentation on overloads is ignored by `help()`, IDEs, and doc generators.
+
+    ```python
+    @overload
+    def connect(address: str) -> TCPConnection: ...
+
+    @overload
+    def connect(address: tuple[str, int]) -> TCPConnection: ...
+
+    def connect(address: str | tuple[str, int]) -> TCPConnection:
+        """Connect to a server.
+
+        Args:
+            address: Hostname string or (host, port) tuple.
+
+        Returns:
+            An established connection.
+        """
+        ...
     ```
 
 - id: missing-docstring

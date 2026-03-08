@@ -9,8 +9,10 @@ conventions. Uses composable validation helpers
 parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 ``PresenceConfig`` dataclasses with sensible defaults for all check
 modules. ``EnrichmentConfig`` fields include ``require_returns`` and
-other rule toggles. ``user_set_keys`` tracks which enrichment toggles
-were explicitly set by the user (for sphinx auto-disable logic).
+other rule toggles. ``PresenceConfig`` fields include
+``check_overload_docstrings`` for the overload-has-docstring rule.
+``user_set_keys`` tracks which enrichment toggles were explicitly
+set by the user (for sphinx auto-disable logic).
 
 Provides ``format_config_toml`` and ``format_config_json`` for rendering
 the effective configuration with source annotations. TOML formatting
@@ -166,6 +168,8 @@ class PresenceConfig:
         ignore_private (bool): Skip single-underscore-prefixed
             symbols when checking for missing docstrings. Defaults
             to ``True``.
+        check_overload_docstrings (bool): Flag ``@overload``-decorated
+            functions that have docstrings. Defaults to ``True``.
 
     Examples:
         Use defaults (all ignore flags on, no threshold):
@@ -186,6 +190,7 @@ class PresenceConfig:
     ignore_init: bool = True
     ignore_magic: bool = True
     ignore_private: bool = True
+    check_overload_docstrings: bool = True
 
 
 @dataclass(frozen=True)
@@ -292,7 +297,14 @@ _VALID_CHECK_NAMES: frozenset[str] = frozenset(
 )
 
 _VALID_PRESENCE_KEYS: frozenset[str] = frozenset(
-    {"enabled", "min-coverage", "ignore-init", "ignore-magic", "ignore-private"}
+    {
+        "check-overload-docstrings",
+        "enabled",
+        "ignore-init",
+        "ignore-magic",
+        "ignore-private",
+        "min-coverage",
+    }
 )
 
 _TOOL_SECTION = "[tool.docvet]"
@@ -892,8 +904,8 @@ def format_config_toml(
 
     Renders the top-level ``[tool.docvet]`` keys (including
     ``docstring-style``) inline, then delegates each nested section
-    (freshness, enrichment — including ``require-returns``, presence)
-    to :func:`_format_toml_section`.
+    (freshness, enrichment — including ``require-returns``, presence —
+    including ``check-overload-docstrings``) to :func:`_format_toml_section`.
     Values are formatted via :func:`_fmt_toml_value` and annotated via
     :func:`_get_annotation`. Omits ``package-name`` when its value is
     ``None`` and ``project_root`` (runtime-only). When
@@ -968,6 +980,7 @@ def format_config_toml(
                 ("ignore_init", "ignore-init"),
                 ("ignore_magic", "ignore-magic"),
                 ("ignore_private", "ignore-private"),
+                ("check_overload_docstrings", "check-overload-docstrings"),
             ],
             config.presence,
             user_keys,

@@ -1,7 +1,8 @@
-"""Presence check for missing docstrings.
+"""Presence check for missing and misplaced docstrings.
 
 Detects public symbols (modules, classes, functions, methods) that lack
-a docstring, and reports per-file coverage statistics via
+a docstring, flags ``@overload``-decorated functions that have docstrings
+(misplaced documentation), and reports per-file coverage statistics via
 :class:`PresenceStats`.  Module-kind findings use
 :func:`~docvet.ast_utils.module_display_name` for human-readable
 symbol names.  Complements ruff D100–D107 by adding coverage metrics
@@ -92,18 +93,83 @@ def _should_skip(symbol: Symbol, config: PresenceConfig) -> bool:
     return False
 
 
+def _has_overload_decorator(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> bool:
+    """Check if a function node has an ``@overload`` decorator.
+
+    Detects both bare ``@overload`` (name import) and attribute-access
+    forms like ``@typing.overload`` or ``@typing_extensions.overload``.
+
+    Args:
+        node: An AST function definition node.
+
+    Returns:
+        ``True`` if any decorator matches the overload pattern.
+    """
+    for decorator in node.decorator_list:
+        if isinstance(decorator, ast.Name) and decorator.id == "overload":
+            return True
+        if isinstance(decorator, ast.Attribute) and decorator.attr == "overload":
+            return True
+    return False
+
+
+def _check_overload_docstrings(
+    tree: ast.Module,
+    file_path: str,
+) -> list[Finding]:
+    """Find ``@overload``-decorated functions that have docstrings.
+
+    Walks the AST to find function definitions decorated with
+    ``@overload`` that also contain a docstring. These docstrings
+    are misplaced — they belong on the implementation function instead.
+
+    Args:
+        tree: Parsed AST module.
+        file_path: Relative file path for Finding construction.
+
+    Returns:
+        A list of findings for overloaded functions with docstrings.
+    """
+    findings: list[Finding] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if _has_overload_decorator(node) and ast.get_docstring(node):
+            findings.append(
+                Finding(
+                    file=file_path,
+                    line=node.lineno,
+                    symbol=node.name,
+                    rule="overload-has-docstring",
+                    message=(
+                        f"Overloaded function '{node.name}' should not have "
+                        "a docstring \u2014 document the implementation instead"
+                    ),
+                    category="required",
+                )
+            )
+    return findings
+
+
 def check_presence(
     source: str,
     file_path: str,
     config: PresenceConfig,
 ) -> tuple[list[Finding], PresenceStats]:
-    """Detect public symbols that lack a docstring.
+    """Detect missing and misplaced docstrings.
 
     Parses *source* into an AST, extracts all documentable symbols via
     :func:`~docvet.ast_utils.get_documented_symbols`, applies the
     filtering rules from *config*, and returns one finding per
     undocumented symbol together with per-file coverage statistics.
     Module symbols use the dotted display name in findings.
+    ``@overload``-decorated stubs are unconditionally excluded from
+    missing-docstring checks and coverage stats (documentation belongs
+    on the implementation function).  When
+    ``config.check_overload_docstrings`` is enabled, also flags
+    ``@overload``-decorated functions that have docstrings.
 
     Args:
         source: Raw Python source text.
@@ -127,11 +193,23 @@ def check_presence(
 
     symbols = get_documented_symbols(tree)
 
+    # Overload stubs are not documentable — documentation belongs on the
+    # implementation function.  Exclude them from missing-docstring checks
+    # and coverage stats unconditionally (regardless of check_overload_docstrings).
+    overload_lines: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if _has_overload_decorator(node):
+                overload_lines.add(node.lineno)
+
     findings: list[Finding] = []
     documented = 0
     total = 0
 
     for symbol in symbols:
+        if symbol.line in overload_lines:
+            continue
+
         if _should_skip(symbol, config):
             continue
 
@@ -159,5 +237,8 @@ def check_presence(
                 category="required",
             )
         )
+
+    if config.check_overload_docstrings:
+        findings.extend(_check_overload_docstrings(tree, file_path))
 
     return findings, PresenceStats(documented=documented, total=total)
