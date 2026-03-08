@@ -12,7 +12,10 @@ for human-readable symbol names. Implements Layer 3 (completeness) of
 the docstring quality model. Supports both Google-style and Sphinx/RST
 docstring conventions via the ``style`` parameter on
 :func:`check_enrichment`. Sphinx directive matching uses literal
-single-space patterns for canonical RST formatting.
+single-space patterns for canonical RST formatting. NumPy-style section
+headers (Notes, References, Warnings, Extended Summary, Methods) and
+underline format (header followed by dashes/equals) are recognized as
+section boundaries alongside Google colon format.
 
 Examples:
     Run the enrichment check on a source file:
@@ -49,9 +52,11 @@ __all__ = ["check_enrichment"]
 
 _SEE_ALSO = "See Also"
 
-# All 10 recognized Google-style section headers.
+# All 15 recognized section headers (10 Google-style + 5 NumPy-style).
 # Args and Returns are included for parsing context (FR15) — they are
 # recognized but never checked for absence (layer 2 style is ruff).
+# NumPy additions (Notes, References, Warnings, Extended Summary, Methods)
+# are recognition-only — no enforcement rules fire for them.
 _SECTION_HEADERS = frozenset(
     {
         "Args",
@@ -64,14 +69,29 @@ _SECTION_HEADERS = frozenset(
         "Attributes",
         "Examples",
         _SEE_ALSO,
+        "Notes",
+        "References",
+        "Warnings",
+        "Extended Summary",
+        "Methods",
     }
 )
 
 _SECTION_PATTERN = re.compile(
     r"^\s*"
     r"(Args|Returns|Raises|Yields|Receives|Warns"
-    r"|Other Parameters|Attributes|Examples|See Also)"
+    r"|Other Parameters|Attributes|Examples|See Also"
+    r"|Notes|References|Warnings|Extended Summary|Methods)"
     r":\s*$",
+    re.MULTILINE,
+)
+
+# NumPy underline format: section header on its own line followed by 3+ dashes/equals.
+# Built dynamically from _SECTION_HEADERS to stay in sync (Story 34.3).
+_numpy_header_list = sorted(_SECTION_HEADERS, key=len, reverse=True)
+_numpy_headers = "|".join(re.escape(str(h)) for h in _numpy_header_list)
+_NUMPY_UNDERLINE_PATTERN = re.compile(
+    rf"^\s*({_numpy_headers})\s*\n\s*[-=]{{3,}}\s*$",
     re.MULTILINE,
 )
 
@@ -133,8 +153,9 @@ def _parse_sections(docstring: str, *, style: str = "google") -> set[str]:
     """Extract recognized section headers from a docstring.
 
     When *style* is ``"google"`` (default), scans for colon-header format
-    (``Args:``, ``Returns:``, etc.). When ``"sphinx"``, scans for RST
-    field-list patterns (``:param name:``, ``:returns:``, etc.), directives
+    (``Args:``, ``Returns:``, etc.) and NumPy underline format
+    (e.g. ``Returns`` followed by dashes). When ``"sphinx"``, scans for RST field-list
+    patterns (``:param name:``, ``:returns:``, etc.), directives
     (``.. seealso::``), and code markers (``>>>``, ``::``).
 
     The parser does not validate overall docstring structure — a partially
@@ -153,7 +174,9 @@ def _parse_sections(docstring: str, *, style: str = "google") -> set[str]:
     """
     if style == "sphinx":
         return _parse_sphinx_sections(docstring)
-    return set(_SECTION_PATTERN.findall(docstring))
+    sections = set(_SECTION_PATTERN.findall(docstring))
+    sections.update(_NUMPY_UNDERLINE_PATTERN.findall(docstring))
+    return sections
 
 
 def _parse_sphinx_sections(docstring: str) -> set[str]:
@@ -184,8 +207,9 @@ def _extract_section_content(docstring: str, section_name: str) -> str | None:
     """Extract the text content of a specific section from a docstring.
 
     Finds the section header line matching the given name and collects
-    all subsequent lines until the next section header or end of
-    docstring. Returns ``None`` if the section is not found.
+    all subsequent lines until the next section header (Google colon or
+    NumPy underline format) or end of docstring. Returns ``None`` if the
+    section is not found.
 
     Args:
         docstring: The raw docstring text to search.
@@ -207,9 +231,15 @@ def _extract_section_content(docstring: str, section_name: str) -> str | None:
         return None
 
     content_lines: list[str] = []
-    for line in lines[start_idx:]:
+    for i, line in enumerate(lines[start_idx:], start_idx):
         if _SECTION_PATTERN.match(line):
             break
+        # NumPy underline boundary: header line + next line is 3+ dashes/equals
+        stripped = line.strip()
+        if stripped in _SECTION_HEADERS and i + 1 < len(lines):
+            next_line = lines[i + 1].strip()
+            if len(next_line) >= 3 and all(c in "-=" for c in next_line):
+                break
         content_lines.append(line)
 
     return "\n".join(content_lines)

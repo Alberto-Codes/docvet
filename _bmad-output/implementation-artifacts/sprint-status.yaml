@@ -283,7 +283,7 @@ development_status:
   epic-34: in-progress
   34-1-sphinx-rst-docstring-style-support: done
   34-2-missing-returns-enrichment-rule: done
-  34-3-numpy-style-section-recognition-phase-1: backlog
+  34-3-numpy-style-section-recognition-phase-1: review
   34-4-overload-has-docstring-check: backlog
   epic-34-retrospective: optional
 
