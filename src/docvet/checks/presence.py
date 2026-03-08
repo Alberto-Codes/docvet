@@ -164,7 +164,10 @@ def check_presence(
     :func:`~docvet.ast_utils.get_documented_symbols`, applies the
     filtering rules from *config*, and returns one finding per
     undocumented symbol together with per-file coverage statistics.
-    Module symbols use the dotted display name in findings.  When
+    Module symbols use the dotted display name in findings.
+    ``@overload``-decorated stubs are unconditionally excluded from
+    missing-docstring checks and coverage stats (documentation belongs
+    on the implementation function).  When
     ``config.check_overload_docstrings`` is enabled, also flags
     ``@overload``-decorated functions that have docstrings.
 
@@ -190,11 +193,23 @@ def check_presence(
 
     symbols = get_documented_symbols(tree)
 
+    # Overload stubs are not documentable — documentation belongs on the
+    # implementation function.  Exclude them from missing-docstring checks
+    # and coverage stats unconditionally (regardless of check_overload_docstrings).
+    overload_lines: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if _has_overload_decorator(node):
+                overload_lines.add(node.lineno)
+
     findings: list[Finding] = []
     documented = 0
     total = 0
 
     for symbol in symbols:
+        if symbol.line in overload_lines:
+            continue
+
         if _should_skip(symbol, config):
             continue
 

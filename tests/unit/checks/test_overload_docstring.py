@@ -123,6 +123,58 @@ class TestImplementationWithDocstring:
         assert len(findings) == 0
 
 
+class TestOverloadStubsExcludedFromMissingDocstring:
+    """Overload stubs must not emit missing-docstring or count in stats."""
+
+    def test_no_missing_docstring_for_overload_stubs(self) -> None:
+        source = '''\
+        from typing import overload
+
+        @overload
+        def connect(address: str) -> None: ...
+
+        @overload
+        def connect(address: tuple) -> None: ...
+
+        def connect(address):
+            """Connect to server."""
+            ...
+        '''
+        config = PresenceConfig()
+        all_findings, stats = check_presence(textwrap.dedent(source), "test.py", config)
+        # No missing-docstring for overload stubs, no overload-has-docstring either
+        missing = [
+            f
+            for f in all_findings
+            if f.symbol == "connect" and f.rule == "missing-docstring"
+        ]
+        assert len(missing) == 0
+        # Overload stubs excluded from coverage stats (only module + implementation)
+        assert stats.total == 2
+        assert stats.documented == 1  # implementation has docstring, module doesn't
+
+    def test_overload_stubs_excluded_even_when_rule_disabled(self) -> None:
+        source = '''\
+        from typing import overload
+
+        @overload
+        def connect(address: str) -> None: ...
+
+        def connect(address):
+            """Connect to server."""
+            ...
+        '''
+        config = PresenceConfig(check_overload_docstrings=False)
+        all_findings, stats = check_presence(textwrap.dedent(source), "test.py", config)
+        missing = [
+            f
+            for f in all_findings
+            if f.symbol == "connect" and f.rule == "missing-docstring"
+        ]
+        assert len(missing) == 0
+        assert stats.total == 2
+
+
 class TestConfigToggle:
     """AC 5: check_overload_docstrings=False skips the rule."""
 
