@@ -31,7 +31,11 @@ def _make_symbol_and_index(source: str):
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    func_symbols = [s for s in symbols if s.kind != "module"]
+    # Prefer function/method symbols so tests target callable objects
+    # rather than enclosing classes when both are documented.
+    func_symbols = [s for s in symbols if s.kind in ("function", "method")]
+    if not func_symbols:
+        func_symbols = [s for s in symbols if s.kind != "module"]
     symbol = func_symbols[0]
     assert symbol.docstring is not None
     return symbol, node_index, tree
@@ -615,3 +619,29 @@ def test_is_stub_function_multi_statement_not_stub():
     func_node = tree.body[0]
     assert isinstance(func_node, ast.FunctionDef)
     assert _is_stub_function(func_node) is False
+
+
+def test_is_stub_function_documented_stub_with_pass():
+    """Direct test: documented stub (docstring + pass) is a stub."""
+    tree = ast.parse('def f():\n    """A placeholder."""\n    pass\n')
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_documented_stub_with_ellipsis():
+    """Direct test: documented stub (docstring + ...) is a stub."""
+    tree = ast.parse('def f():\n    """A placeholder."""\n    ...\n')
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_documented_stub_with_raise():
+    """Direct test: documented stub (docstring + raise) is a stub."""
+    tree = ast.parse(
+        'def f():\n    """A placeholder."""\n    raise NotImplementedError\n'
+    )
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True

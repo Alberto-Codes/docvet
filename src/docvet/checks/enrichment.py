@@ -416,7 +416,10 @@ def _is_stub_function(node: _NodeT) -> bool:
     """Check whether a function body is a stub (no real implementation).
 
     Stubs are single-statement bodies consisting of ``pass``,
-    ``...`` (Ellipsis), or ``raise NotImplementedError``.
+    ``...`` (Ellipsis), or ``raise NotImplementedError``.  A leading
+    docstring ``Expr(Constant(str))`` is stripped before evaluating
+    body length so the helper works for both documented and
+    undocumented functions.
 
     Args:
         node: The function AST node to inspect.
@@ -424,7 +427,15 @@ def _is_stub_function(node: _NodeT) -> bool:
     Returns:
         ``True`` when the function body is a stub.
     """
-    body = getattr(node, "body", [])
+    body = list(getattr(node, "body", []))
+    # Strip leading docstring node if present.
+    if (
+        body
+        and isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
+        and isinstance(body[0].value.value, str)
+    ):
+        body = body[1:]
     if len(body) != 1:
         return False
     stmt = body[0]
