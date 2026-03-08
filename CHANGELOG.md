@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.13.0](https://github.com/Alberto-Codes/docvet/compare/v1.12.1...v1.13.0) (2026-03-08)
+
+
+### Features
+
+* **enrichment:** add missing-returns rule for undocumented return values ([#334](https://github.com/Alberto-Codes/docvet/issues/334)) ([31faf3d](https://github.com/Alberto-Codes/docvet/commit/31faf3d189159d44344f1935d41886acf699e2f6))
+* **enrichment:** add NumPy-style section recognition ([#344](https://github.com/Alberto-Codes/docvet/issues/344)) ([62ce6ed](https://github.com/Alberto-Codes/docvet/commit/62ce6edc598a2265fe4cf5aa7e0f6ecfd0f80d7c))
+* **enrichment:** add Sphinx/RST docstring style support ([#332](https://github.com/Alberto-Codes/docvet/issues/332)) ([1bbd18f](https://github.com/Alberto-Codes/docvet/commit/1bbd18fc788474d27223d9bbb07bdf853e2ebd0a))
+* **presence:** add overload-has-docstring rule ([0d83358](https://github.com/Alberto-Codes/docvet/commit/0d8335807ed8968c97bd6242f8a990f6753e3c85))
+
+
+### Bug Fixes
+
+* **enrichment:** address code review findings for Story 34.1 ([1bbd18f](https://github.com/Alberto-Codes/docvet/commit/1bbd18fc788474d27223d9bbb07bdf853e2ebd0a))
+
 ## [1.12.1](https://github.com/Alberto-Codes/docvet/compare/v1.12.0...v1.12.1) (2026-03-07)
 
 
