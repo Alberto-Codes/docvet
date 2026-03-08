@@ -1,6 +1,6 @@
 # Story 34.2: `missing-returns` Enrichment Rule
 
-Status: review
+Status: done
 Branch: `feat/enrichment-34-2-missing-returns-rule`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -323,7 +323,7 @@ From test-review.md — Recommendation 2 (P3): Continue splitting `test_enrichme
 - [x] `uv run ruff check .` — zero lint violations
 - [x] `uv run ruff format --check .` — zero format issues
 - [x] `uv run ty check` — zero type errors
-- [x] `uv run pytest` — 1376 passed, zero failures
+- [x] `uv run pytest` — 1381 passed, zero failures
 - [x] `uv run docvet check --all` — zero required findings (3 recommended stale-body from in-flight changes)
 
 ## Dev Agent Record
@@ -341,20 +341,24 @@ Claude Opus 4.6
 
 - Implemented `missing-returns` enrichment rule with 4 reusable helpers (`_is_meaningful_return`, `_is_property`, `_has_decorator`, `_is_stub_function`)
 - Rule follows identical pattern to `_check_missing_yields` with additional guard clauses for broader skip set
-- 23 dedicated tests in `test_missing_returns.py` + 3 config tests in `test_config.py` = 26 new tests
+- 28 dedicated tests in `test_missing_returns.py` + 3 config tests in `test_config.py` = 31 new tests
 - Zero dispatch machinery changes — wired via single `_RULE_DISPATCH` entry
 - Rule reference page created with macros scaffold integration
-- All quality gates pass: ruff, ty, pytest (1376), docvet dogfooding
+- All quality gates pass: ruff, ty, pytest (1381), docvet dogfooding
+- Code review: extracted `_should_skip_returns_check()` to reduce CC from 16 to ~8 (SonarQube S3776 resolved)
+- Code review: added 5 direct `_is_stub_function` helper tests (previously only tested indirectly)
+- Note: Task 1.4 mentions `format_config_json` but it needed no update (`dataclasses.asdict` auto-includes new fields)
 
 ### Change Log
 
 - 2026-03-07: Implemented `missing-returns` enrichment rule (Story 34.2)
+- 2026-03-07: Code review — extracted `_should_skip_returns_check()`, added 5 direct `_is_stub_function` tests
 
 ### File List
 
 - `src/docvet/config.py` — added `require_returns: bool = True` to `EnrichmentConfig`, `"require-returns"` to `_VALID_ENRICHMENT_KEYS`, and entry to `format_config_toml()`
-- `src/docvet/checks/enrichment.py` — added `_is_meaningful_return()`, `_is_property()`, `_has_decorator()`, `_is_stub_function()`, `_check_missing_returns()`, and `_RULE_DISPATCH` entry
-- `tests/unit/checks/test_missing_returns.py` — new file, 23 tests
+- `src/docvet/checks/enrichment.py` — added `_is_meaningful_return()`, `_is_property()`, `_has_decorator()`, `_is_stub_function()`, `_should_skip_returns_check()`, `_check_missing_returns()`, and `_RULE_DISPATCH` entry
+- `tests/unit/checks/test_missing_returns.py` — new file, 28 tests (23 rule + 5 helper)
 - `tests/unit/test_config.py` — 3 new config tests for `require_returns`
 - `tests/unit/test_docs_infrastructure.py` — updated `_EXPECTED_RULE_COUNT` from 20 to 21
 - `docs/rules.yml` — added `missing-returns` rule entry
@@ -368,15 +372,23 @@ Claude Opus 4.6
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review + party-mode consensus)
+
 ### Outcome
+
+Approved with fixes applied
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M1 | MEDIUM | `_check_missing_returns` CC 16 exceeds SonarQube threshold of 15 (S3776) | Fixed: extracted guards into `_should_skip_returns_check()`, CC now ~8 |
+| M2 | MEDIUM | `_is_stub_function` unreachable in `_check_missing_returns` for documented functions; AC 12 tests pass via "no returns" path not stub detection | Fixed: added 5 direct unit tests for `_is_stub_function` helper; guard kept as defense-in-depth |
+| L1 | LOW | Task 1.4 overstates scope — `format_config_json` needed no update (`dataclasses.asdict` auto-includes) | Noted in completion notes |
+| L2 | LOW | S1172 unused `config` parameter | By design — uniform `_CheckFn` dispatch signature |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

@@ -10,6 +10,7 @@ from docvet.checks import Finding
 from docvet.checks.enrichment import (
     _build_node_index,
     _check_missing_returns,
+    _is_stub_function,
     _parse_sections,
     check_enrichment,
 )
@@ -569,3 +570,48 @@ class Foo:
     result = _check_missing_returns(symbol, sections, node_index, config, "test.py")
 
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Direct _is_stub_function helper tests (M2 review finding)
+# ---------------------------------------------------------------------------
+
+
+def test_is_stub_function_pass():
+    """Direct test: pass-only body is a stub."""
+    tree = ast.parse("def f():\n    pass\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_ellipsis():
+    """Direct test: Ellipsis-only body is a stub."""
+    tree = ast.parse("def f():\n    ...\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_raise_not_implemented():
+    """Direct test: raise NotImplementedError body is a stub."""
+    tree = ast.parse("def f():\n    raise NotImplementedError\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_raise_not_implemented_with_args():
+    """Direct test: raise NotImplementedError('msg') body is a stub."""
+    tree = ast.parse("def f():\n    raise NotImplementedError('not done')\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_multi_statement_not_stub():
+    """Direct test: multi-statement body is NOT a stub."""
+    tree = ast.parse("def f():\n    x = 1\n    return x\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is False

@@ -4,6 +4,9 @@ Detects missing docstring sections (Returns, Raises, Yields, Attributes, etc.),
 validates cross-reference syntax in See Also sections, and checks for
 non-fenced code block patterns (reporting both doctest and rST findings
 per symbol) by combining AST analysis with section header parsing.
+Guard clauses for rules with broad skip sets (e.g. ``missing-returns``)
+are extracted into dedicated ``_should_skip_*`` helpers to keep check
+functions focused and within cognitive-complexity thresholds.
 Module-kind findings use :func:`~docvet.ast_utils.module_display_name`
 for human-readable symbol names. Implements Layer 3 (completeness) of
 the docstring quality model. Supports both Google-style and Sphinx/RST
@@ -439,6 +442,47 @@ def _is_stub_function(node: _NodeT) -> bool:
     return False
 
 
+def _should_skip_returns_check(
+    symbol: Symbol,
+    node: _NodeT,
+    sections: set[str],
+) -> bool:
+    """Determine whether the missing-returns rule should be skipped.
+
+    Centralises guard clauses for :func:`_check_missing_returns` to keep
+    the main function focused on AST walking. Skips when the symbol
+    already has a ``Returns:`` section, is a dunder method,
+    ``@property``/``@cached_property``, ``@abstractmethod``,
+    ``@overload``, or a stub function.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        node: The AST node for the symbol.
+        sections: Parsed section headers from the symbol's docstring.
+
+    Returns:
+        ``True`` when the rule should be skipped for this symbol.
+    """
+    if "Returns" in sections:
+        return True
+    # Dunder methods (__init__, __repr__, __len__, __new__, etc.)
+    if symbol.name.startswith("__") and symbol.name.endswith("__"):
+        return True
+    # @property and @cached_property methods
+    if _is_property(node):
+        return True
+    # @abstractmethod (interface contracts, not implementations)
+    if _has_decorator(node, "abstractmethod"):
+        return True
+    # Stub functions (pass, ..., raise NotImplementedError)
+    if _is_stub_function(node):
+        return True
+    # @overload (defensive — 34.4 owns overload detection)
+    if _has_decorator(node, "overload"):
+        return True
+    return False
+
+
 def _check_missing_returns(
     symbol: Symbol,
     sections: set[str],
@@ -457,8 +501,8 @@ def _check_missing_returns(
     inside nested scopes are not attributed to the outer function.
 
     Skips dunder methods, ``@property``/``@cached_property``,
-    ``@abstractmethod``, ``@overload``, and stub functions to avoid
-    false positives.
+    ``@abstractmethod``, ``@overload``, and stub functions via
+    :func:`_should_skip_returns_check`.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -480,27 +524,7 @@ def _check_missing_returns(
     if node is None:
         return None
 
-    if "Returns" in sections:
-        return None
-
-    # Skip dunder methods (covers __init__, __repr__, __len__, __new__, etc.)
-    if symbol.name.startswith("__") and symbol.name.endswith("__"):
-        return None
-
-    # Skip @property and @cached_property methods
-    if _is_property(node):
-        return None
-
-    # Skip @abstractmethod (interface contracts, not implementations)
-    if _has_decorator(node, "abstractmethod"):
-        return None
-
-    # Skip stub functions (pass, ..., raise NotImplementedError)
-    if _is_stub_function(node):
-        return None
-
-    # Skip @overload (defensive — 34.4 owns overload detection)
-    if _has_decorator(node, "overload"):
+    if _should_skip_returns_check(symbol, node, sections):
         return None
 
     # Scope-aware walk for meaningful return statements
