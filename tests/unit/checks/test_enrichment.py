@@ -42,7 +42,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 
 
-def test_section_headers_contains_all_ten_headers():
+def test_section_headers_contains_all_fifteen_headers():
     expected = {
         "Args",
         "Returns",
@@ -54,6 +54,11 @@ def test_section_headers_contains_all_ten_headers():
         "Attributes",
         "Examples",
         "See Also",
+        "Notes",
+        "References",
+        "Warnings",
+        "Extended Summary",
+        "Methods",
     }
     assert _SECTION_HEADERS == expected
 
@@ -139,6 +144,11 @@ Other Parameters:
 Attributes:
 Examples:
 See Also:
+Notes:
+References:
+Warnings:
+Extended Summary:
+Methods:
 """
     result = _parse_sections(docstring)
     assert result == _SECTION_HEADERS
