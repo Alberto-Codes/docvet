@@ -632,7 +632,7 @@ def foo(**kwargs):
     # Dynamically disable all boolean toggles so this test doesn't break
     # when new rules are added to EnrichmentConfig.
     config = EnrichmentConfig(
-        **{
+        **{  # type: ignore[arg-type]
             f.name: False
             for f in dataclasses.fields(EnrichmentConfig)
             if f.default is True

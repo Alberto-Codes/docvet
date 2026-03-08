@@ -6,7 +6,9 @@ non-fenced code block patterns (reporting both doctest and rST findings
 per symbol) by combining AST analysis with section header parsing.
 Module-kind findings use :func:`~docvet.ast_utils.module_display_name`
 for human-readable symbol names. Implements Layer 3 (completeness) of
-the docstring quality model.
+the docstring quality model. Supports both Google-style and Sphinx/RST
+docstring conventions via the ``style`` parameter on
+:func:`check_enrichment`.
 
 Examples:
     Run the enrichment check on a source file:
@@ -73,19 +75,63 @@ _SECTION_PATTERN = re.compile(
 _XREF_MD_LINK = re.compile(r"\[[^\]]+\]\[")
 _XREF_SPHINX = re.compile(r":\w+:`[^`]+`")
 
+# Sphinx domain-qualified roles (e.g., :py:class:`Foo`, :py:func:`bar`).
+# Used for body-wide cross-reference detection in sphinx mode (AC5).
+_SPHINX_ROLE_PATTERN = re.compile(
+    r":py:(?:class|meth|func|attr|mod|exc|data|const|obj):`[^`]+`"
+)
+
+# ---------------------------------------------------------------------------
+# Sphinx/RST section detection (Story 34.1)
+# ---------------------------------------------------------------------------
+
+# Maps RST field-list / directive patterns to internal section names.
+_SPHINX_SECTION_MAP: dict[str, str] = {
+    ":param": "Args",
+    ":type": "Args",
+    ":returns:": "Returns",
+    ":return:": "Returns",
+    ":rtype:": "Returns",
+    ":raises": "Raises",
+    ":ivar": "Attributes",
+    ":cvar": "Attributes",
+    ".. seealso::": "See Also",
+    ">>>": "Examples",
+    "::": "Examples",
+    ".. code-block::": "Examples",
+}
+
+# Regex to detect any Sphinx/RST section pattern in a docstring body.
+# Matches field-list entries (:param, :type, :returns:, :rtype:, :raises,
+# :ivar, :cvar), directives (.. seealso::, .. code-block::), doctest (>>>),
+# and rST code marker (::).
+_SPHINX_SECTION_PATTERN = re.compile(
+    r"(?:"
+    r":(?:param|type)\s"  # :param name: / :type name:
+    r"|:(?:returns|return|rtype):"  # :returns: / :return: / :rtype:
+    r"|:raises\s"  # :raises ExcType:
+    r"|:(?:ivar|cvar)\s"  # :ivar name: / :cvar name:
+    r"|\.\.\s+seealso::"  # .. seealso::
+    r"|\.\.\s+code-block::"  # .. code-block::
+    r"|>>>"  # doctest
+    r"|::\s*$"  # rST code block marker
+    r")",
+    re.MULTILINE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Shared helper functions
 # ---------------------------------------------------------------------------
 
 
-def _parse_sections(docstring: str) -> set[str]:
-    """Extract recognized Google-style section headers from a docstring.
+def _parse_sections(docstring: str, *, style: str = "google") -> set[str]:
+    """Extract recognized section headers from a docstring.
 
-    Scans the raw docstring text line-by-line with a compiled regex and
-    returns any of the 10 recognized section headers that match. Handles
-    varied indentation gracefully (module-level with no indent, method-level
-    with 8+ spaces).
+    When *style* is ``"google"`` (default), scans for colon-header format
+    (``Args:``, ``Returns:``, etc.). When ``"sphinx"``, scans for RST
+    field-list patterns (``:param name:``, ``:returns:``, etc.), directives
+    (``.. seealso::``), and code markers (``>>>``, ``::``).
 
     The parser does not validate overall docstring structure — a partially
     malformed docstring can still yield matches for its well-formed headers.
@@ -95,12 +141,38 @@ def _parse_sections(docstring: str) -> set[str]:
 
     Args:
         docstring: The raw docstring text to parse.
+        style: Docstring convention: ``"google"`` or ``"sphinx"``.
 
     Returns:
-        A set of header names found in the docstring. Returns an empty set
-        when no recognized section headers are found.
+        A set of internal section names found in the docstring. Returns an
+        empty set when no recognized section headers are found.
     """
+    if style == "sphinx":
+        return _parse_sphinx_sections(docstring)
     return set(_SECTION_PATTERN.findall(docstring))
+
+
+def _parse_sphinx_sections(docstring: str) -> set[str]:
+    """Extract section names from a Sphinx/RST-style docstring.
+
+    Uses pattern matching (no RST parser dependency) to detect field-list
+    entries, directives, and code markers and maps each match to its
+    Google-equivalent internal section name via ``_SPHINX_SECTION_MAP``.
+
+    Args:
+        docstring: The raw docstring text to parse.
+
+    Returns:
+        A set of internal section names (e.g. ``"Args"``, ``"Raises"``).
+    """
+    sections: set[str] = set()
+    for match in _SPHINX_SECTION_PATTERN.finditer(docstring):
+        text = match.group(0)
+        for pattern_key, section_name in _SPHINX_SECTION_MAP.items():
+            if text.startswith(pattern_key) or text == pattern_key:
+                sections.add(section_name)
+                break
+    return sections
 
 
 def _extract_section_content(docstring: str, section_name: str) -> str | None:
@@ -1393,6 +1465,17 @@ _CheckFn = Callable[
     Finding | None,
 ]
 
+# Rules auto-disabled in sphinx mode unless the user explicitly enables them.
+_SPHINX_AUTO_DISABLE_RULES: frozenset[str] = frozenset(
+    {
+        "require_yields",
+        "require_receives",
+        "require_warns",
+        "require_other_parameters",
+        "prefer_fenced_code_blocks",
+    }
+)
+
 _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("require_raises", _check_missing_raises),
     ("require_yields", _check_missing_yields),
@@ -1412,6 +1495,8 @@ def check_enrichment(
     tree: ast.Module,
     config: EnrichmentConfig,
     file_path: str,
+    *,
+    style: str = "google",
 ) -> list[Finding]:
     """Run all enrichment rules on a parsed source file.
 
@@ -1420,14 +1505,19 @@ def check_enrichment(
     For ``prefer_fenced_code_blocks``, a second-pass helper receives an
     explicit pattern type and checks for the other pattern so both
     doctest and rST findings surface in one run. Symbols without a
-    docstring are skipped (FR20). Config
-    gating controls which rules run.
+    docstring are skipped (FR20). Config gating and sphinx auto-disable
+    control which rules run.
+
+    When *style* is ``"sphinx"``, rules in ``_SPHINX_AUTO_DISABLE_RULES``
+    are skipped unless the user explicitly enabled them (tracked via
+    ``config.user_set_keys``).
 
     Args:
         source: Raw source text of the file (reserved for future rules).
         tree: Parsed AST module from ``ast.parse()``.
         config: Enrichment configuration controlling rule toggles.
         file_path: Source file path for finding records.
+        style: Docstring convention: ``"google"`` or ``"sphinx"``.
 
     Returns:
         A list of findings from all enabled enrichment rules. Returns an
@@ -1440,11 +1530,26 @@ def check_enrichment(
     for symbol in symbols:
         if not symbol.docstring:
             continue
-        sections = _parse_sections(symbol.docstring)
+        sections = _parse_sections(symbol.docstring, style=style)
 
         for attr, check_fn in _RULE_DISPATCH:
+            # Sphinx auto-disable: skip unless user explicitly enabled.
+            if (
+                style == "sphinx"
+                and attr in _SPHINX_AUTO_DISABLE_RULES
+                and attr not in config.user_set_keys
+            ):
+                continue
             if getattr(config, attr):
                 if f := check_fn(symbol, sections, node_index, config, file_path):
+                    # Sphinx cross-ref: roles anywhere in body satisfy check.
+                    if (
+                        style == "sphinx"
+                        and attr == "require_cross_references"
+                        and symbol.docstring
+                        and _SPHINX_ROLE_PATTERN.search(symbol.docstring)
+                    ):
+                        continue
                     findings.append(f)
                     if attr == "prefer_fenced_code_blocks":
                         pt = "doctest" if ">>>" in f.message else "rst"

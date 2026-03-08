@@ -280,8 +280,8 @@ development_status:
   epic-33-retrospective: optional
 
   # Epic 34: Multi-Style Support & Foundation Rules
-  epic-34: backlog
-  34-1-sphinx-rst-docstring-style-support: backlog
+  epic-34: in-progress
+  34-1-sphinx-rst-docstring-style-support: review
   34-2-missing-returns-enrichment-rule: backlog
   34-3-numpy-style-section-recognition-phase-1: backlog
   34-4-overload-has-docstring-check: backlog

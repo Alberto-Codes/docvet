@@ -1299,6 +1299,125 @@ def test_format_config_json_extend_exclude_excluded_from_user_configured():
     assert "extend-exclude" not in parsed["user_configured"]
 
 
+# ---------------------------------------------------------------------------
+# docstring_style config (Story 34.1)
+# ---------------------------------------------------------------------------
+
+
+def test_docvet_defaults_docstring_style_is_google():
+    cfg = DocvetConfig()
+    assert cfg.docstring_style == "google"
+
+
+def test_load_config_docstring_style_google_explicit(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\ndocstring-style = "google"\n')
+    cfg = load_config()
+    assert cfg.docstring_style == "google"
+
+
+def test_load_config_docstring_style_sphinx(tmp_path, monkeypatch, write_pyproject):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\ndocstring-style = "sphinx"\n')
+    cfg = load_config()
+    assert cfg.docstring_style == "sphinx"
+
+
+def test_load_config_docstring_style_omitted_defaults_to_google(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\n")
+    cfg = load_config()
+    assert cfg.docstring_style == "google"
+
+
+def test_load_config_docstring_style_invalid_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\ndocstring-style = "numpy"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    err = capsys.readouterr().err
+    assert "docstring-style" in err
+    assert "numpy" in err
+    assert "google" in err
+    assert "sphinx" in err
+
+
+def test_load_config_docstring_style_wrong_type_exits(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\ndocstring-style = 42\n")
+    with pytest.raises(SystemExit):
+        load_config()
+    assert "str" in capsys.readouterr().err
+
+
+def test_format_config_toml_includes_docstring_style():
+    config = DocvetConfig()
+    output = format_config_toml(config, {})
+    assert 'docstring-style = "google"' in output
+    assert "# (default)" in output
+
+
+def test_format_config_toml_docstring_style_user_annotated():
+    config = DocvetConfig(docstring_style="sphinx")
+    user_keys: dict[str, object] = {"docstring-style": "sphinx"}
+    output = format_config_toml(config, user_keys)
+    for line in output.splitlines():
+        if line.startswith("docstring-style"):
+            assert "# (user)" in line
+            break
+    else:
+        pytest.fail("docstring-style line not found")
+
+
+def test_format_config_json_includes_docstring_style():
+    config = DocvetConfig()
+    output = format_config_json(config, {})
+    parsed = json.loads(output)
+    assert parsed["config"]["docstring-style"] == "google"
+
+
+def test_format_config_json_docstring_style_in_user_configured():
+    config = DocvetConfig(docstring_style="sphinx")
+    user_keys: dict[str, object] = {"docstring-style": "sphinx"}
+    output = format_config_json(config, user_keys)
+    parsed = json.loads(output)
+    assert "docstring-style" in parsed["user_configured"]
+
+
+def test_load_config_enrichment_user_set_keys_tracked(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+require-yields = true
+require-raises = false
+"""
+    )
+    cfg = load_config()
+    assert "require_yields" in cfg.enrichment.user_set_keys
+    assert "require_raises" in cfg.enrichment.user_set_keys
+    assert "require_warns" not in cfg.enrichment.user_set_keys
+
+
+def test_load_config_enrichment_no_user_keys_when_section_absent(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\n")
+    cfg = load_config()
+    assert cfg.enrichment.user_set_keys == frozenset()
+
+
 def test_format_config_toml_roundtrip_with_user_keys():
     """Roundtrip correctness with user-configured values and annotations."""
     config = DocvetConfig(

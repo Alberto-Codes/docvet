@@ -2,11 +2,14 @@
 
 Loads and validates the ``[tool.docvet]`` configuration table from
 ``pyproject.toml``. Supports ``extend-exclude`` for additive pattern
-merging on top of defaults or an explicit ``exclude`` list. Uses
-composable validation helpers (``_validate_string_list``,
-``_resolve_fail_warn``) to keep individual parsers focused. Exposes
-``EnrichmentConfig``, ``FreshnessConfig``, and ``PresenceConfig``
-dataclasses with sensible defaults for all check modules.
+merging on top of defaults or an explicit ``exclude`` list, and
+``docstring-style`` for switching between Google and Sphinx/RST
+conventions. Uses composable validation helpers
+(``_validate_string_list``, ``_resolve_fail_warn``) to keep individual
+parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
+``PresenceConfig`` dataclasses with sensible defaults for all check
+modules. ``EnrichmentConfig.user_set_keys`` tracks which enrichment
+toggles were explicitly set by the user (for sphinx auto-disable logic).
 
 Provides ``format_config_toml`` and ``format_config_json`` for rendering
 the effective configuration with source annotations. TOML formatting
@@ -107,6 +110,10 @@ class EnrichmentConfig:
             over indented blocks. Defaults to ``True``.
         require_attributes (bool): Require ``Attributes:`` sections.
             Defaults to ``True``.
+        user_set_keys (frozenset[str]): Snake_case keys explicitly set
+            by the user in ``[tool.docvet.enrichment]``. Populated during
+            config parsing to distinguish user overrides from defaults.
+            Used by sphinx auto-disable logic (Story 34.1).
 
     Examples:
         Use defaults (all rules enabled):
@@ -134,6 +141,7 @@ class EnrichmentConfig:
     require_cross_references: bool = True
     prefer_fenced_code_blocks: bool = True
     require_attributes: bool = True
+    user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
 @dataclass(frozen=True)
@@ -185,6 +193,10 @@ class DocvetConfig:
             Defaults to ``"."`` (auto-detects ``src/`` layout).
         package_name (str | None): Explicit package name override.
             Defaults to ``None`` (auto-detected).
+        docstring_style (str): Docstring convention style. Either
+            ``"google"`` (default) or ``"sphinx"`` (RST field-list
+            syntax). Affects section detection, auto-disable rules,
+            and griffe compatibility check behavior.
         exclude (list[str]): Directory names to exclude from checks.
             Defaults to ``["tests", "scripts"]``.
         fail_on (list[str]): Check names that cause exit code 1.
@@ -214,6 +226,7 @@ class DocvetConfig:
 
     src_root: str = "."
     package_name: str | None = None
+    docstring_style: str = "google"
     exclude: list[str] = field(default_factory=lambda: ["tests", "scripts"])
     fail_on: list[str] = field(default_factory=list)
     warn_on: list[str] = field(
@@ -237,6 +250,7 @@ class DocvetConfig:
 
 _VALID_TOP_KEYS: frozenset[str] = frozenset(
     {
+        "docstring-style",
         "src-root",
         "package-name",
         "exclude",
@@ -248,6 +262,8 @@ _VALID_TOP_KEYS: frozenset[str] = frozenset(
         "presence",
     }
 )
+
+_VALID_DOCSTRING_STYLES: frozenset[str] = frozenset({"google", "sphinx"})
 
 _VALID_FRESHNESS_KEYS: frozenset[str] = frozenset({"drift-threshold", "age-threshold"})
 
@@ -483,6 +499,10 @@ def _parse_freshness(data: dict[str, object]) -> FreshnessConfig:
 def _parse_enrichment(data: dict[str, object]) -> EnrichmentConfig:
     """Parse and validate ``[tool.docvet.enrichment]``.
 
+    Tracks which keys the user explicitly set (before defaults are
+    applied) via ``user_set_keys`` on the returned config. This allows
+    sphinx auto-disable logic to distinguish user overrides from defaults.
+
     Args:
         data: Raw TOML dict for the enrichment section.
 
@@ -491,6 +511,8 @@ def _parse_enrichment(data: dict[str, object]) -> EnrichmentConfig:
     """
     _validate_keys(data, _VALID_ENRICHMENT_KEYS, "[tool.docvet.enrichment]")
     section = "[tool.docvet.enrichment]"
+    # Record user-set keys BEFORE applying defaults (Story 34.1, NFR5).
+    raw_user_keys = frozenset(_kebab_to_snake(k) for k in data)
     kwargs: dict[str, object] = {}
     for key, value in data.items():
         if key == "require-examples":
@@ -500,6 +522,7 @@ def _parse_enrichment(data: dict[str, object]) -> EnrichmentConfig:
         else:
             _validate_type(value, bool, key, section)
         kwargs[_kebab_to_snake(key)] = value
+    kwargs["user_set_keys"] = raw_user_keys
     return EnrichmentConfig(**kwargs)  # type: ignore[arg-type]
 
 
@@ -542,6 +565,7 @@ def _parse_docvet_section(
     Converts kebab-case keys to snake_case, validates types for all
     top-level keys, and delegates nested sections (``freshness``,
     ``enrichment``, ``presence``) to their respective parsers.
+    Validates ``docstring-style`` against ``_VALID_DOCSTRING_STYLES``.
     List-of-string fields (``exclude``, ``extend-exclude``,
     ``fail-on``, ``warn-on``) are validated via
     :func:`_validate_string_list`.
@@ -572,6 +596,19 @@ def _parse_docvet_section(
         _validate_type(presence_data, dict, "presence", _TOOL_SECTION)
         converted["presence"] = _parse_presence(presence_data)  # type: ignore[arg-type]
 
+    if "docstring_style" in converted:
+        _validate_type(
+            converted["docstring_style"], str, "docstring-style", _TOOL_SECTION
+        )
+        style = converted["docstring_style"]
+        if style not in _VALID_DOCSTRING_STYLES:
+            valid_csv = ", ".join(sorted(_VALID_DOCSTRING_STYLES))
+            msg = (
+                f"docvet: invalid docstring-style '{style}' in {_TOOL_SECTION}. "
+                f"Valid options: {valid_csv}"
+            )
+            print(msg, file=sys.stderr)
+            sys.exit(1)
     if "src_root" in converted:
         _validate_type(converted["src_root"], str, "src-root", _TOOL_SECTION)
     if "package_name" in converted:
@@ -848,13 +885,14 @@ def format_config_toml(
 ) -> str:
     """Format effective config as copy-paste-ready TOML.
 
-    Renders the top-level ``[tool.docvet]`` keys inline, then delegates
-    each nested section (freshness, enrichment, presence) to
-    :func:`_format_toml_section`. Values are formatted via
-    :func:`_fmt_toml_value` and annotated via :func:`_get_annotation`.
-    Omits ``package-name`` when its value is ``None`` and ``project_root``
-    (runtime-only). When ``extend-exclude`` appears in *user_keys*, the
-    merged ``exclude`` list is annotated accordingly.
+    Renders the top-level ``[tool.docvet]`` keys (including
+    ``docstring-style``) inline, then delegates each nested section
+    (freshness, enrichment, presence) to :func:`_format_toml_section`.
+    Values are formatted via :func:`_fmt_toml_value` and annotated via
+    :func:`_get_annotation`. Omits ``package-name`` when its value is
+    ``None`` and ``project_root`` (runtime-only). When
+    ``extend-exclude`` appears in *user_keys*, the merged ``exclude``
+    list is annotated accordingly.
 
     Args:
         config: The effective :class:`DocvetConfig`.
@@ -868,6 +906,7 @@ def format_config_toml(
     top_fields = [
         ("src_root", "src-root"),
         ("package_name", "package-name"),
+        ("docstring_style", "docstring-style"),
         ("exclude", "exclude"),
         ("fail_on", "fail-on"),
         ("warn_on", "warn-on"),
@@ -940,7 +979,7 @@ def format_config_json(
     """Format effective config as a JSON string.
 
     Produces a JSON object with ``"config"`` (all effective values,
-    kebab-case keys, ``project_root`` excluded) and
+    kebab-case keys, ``project_root`` and ``user_set_keys`` excluded) and
     ``"user_configured"`` (list of dot-separated kebab-case paths for
     user-set keys). Key conversion is handled by
     :func:`_convert_keys_to_kebab`. Omits ``package-name`` when its
@@ -955,6 +994,9 @@ def format_config_json(
     """
     raw = dataclasses.asdict(config)
     raw.pop("project_root", None)
+    # Remove internal-only fields not meaningful in user-facing output.
+    if "enrichment" in raw and isinstance(raw["enrichment"], dict):
+        raw["enrichment"].pop("user_set_keys", None)
     converted = _convert_keys_to_kebab(raw)
 
     if converted.get("package-name") is None:
@@ -982,7 +1024,8 @@ def load_config(path: Path | None = None) -> DocvetConfig:
 
     Merges ``extend-exclude`` patterns on top of the resolved base
     exclude list (explicit ``exclude`` or defaults) before constructing
-    the final :class:`DocvetConfig`. Delegates ``fail-on``/``warn-on``
+    the final :class:`DocvetConfig`. Reads ``docstring-style`` and
+    passes it through to the config. Delegates ``fail-on``/``warn-on``
     resolution (including overlap detection and filtering) to
     :func:`_resolve_fail_warn`. Nested ``presence`` section is parsed
     via :func:`_parse_presence`.
@@ -1018,6 +1061,7 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
 
     raw_pkg = parsed.get("package_name")
+    raw_style = parsed.get("docstring_style")
     raw_exclude = parsed.get("exclude")
     raw_extend_exclude = parsed.get("extend_exclude")
     raw_freshness = parsed.get("freshness")
@@ -1035,6 +1079,7 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     return DocvetConfig(
         src_root=resolved_src_root,
         package_name=raw_pkg if isinstance(raw_pkg, str) else None,
+        docstring_style=raw_style if isinstance(raw_style, str) else "google",
         exclude=base_exclude,
         fail_on=fail_on,
         warn_on=warn_on,
