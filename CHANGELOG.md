@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.0](https://github.com/Alberto-Codes/docvet/compare/v1.13.0...v1.14.0) (2026-03-08)
+
+
+### Features
+
+* **enrichment:** add param agreement checks for Args section ([#349](https://github.com/Alberto-Codes/docvet/issues/349)) ([724b81e](https://github.com/Alberto-Codes/docvet/commit/724b81ebafc461d221bf0548bfc9c71e5ba0823c))
+
+
+### Documentation
+
+* **enrichment:** add param agreement config keys and migration notes ([724b81e](https://github.com/Alberto-Codes/docvet/commit/724b81ebafc461d221bf0548bfc9c71e5ba0823c))
+
 ## [1.13.0](https://github.com/Alberto-Codes/docvet/compare/v1.12.1...v1.13.0) (2026-03-08)
 
 
