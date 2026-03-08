@@ -884,7 +884,7 @@ def check(
     computation when ``--summary`` is active. Griffe is auto-skipped
     when ``docstring-style`` is ``"sphinx"`` (incompatible parser). Griffe
     is only included in ``check_counts`` when the ``griffe`` package is
-    importable and the style is compatible. Coverage percentage is derived
+    importable and the docstring style is compatible. Coverage percentage is derived
     from :attr:`PresenceStats.percentage`. Displays a progress bar on
     stderr when connected to a TTY. Uses three-tier verbosity:
     ``--quiet`` suppresses all non-finding stderr output, default shows
@@ -1010,7 +1010,7 @@ def check(
         "freshness": freshness_count,
         "coverage": coverage_count,
     }
-    if griffe_installed:
+    if griffe_installed and not griffe_skipped_style:
         check_counts["griffe"] = griffe_count
     _output_and_exit(
         ctx,

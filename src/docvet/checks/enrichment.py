@@ -8,7 +8,8 @@ Module-kind findings use :func:`~docvet.ast_utils.module_display_name`
 for human-readable symbol names. Implements Layer 3 (completeness) of
 the docstring quality model. Supports both Google-style and Sphinx/RST
 docstring conventions via the ``style`` parameter on
-:func:`check_enrichment`.
+:func:`check_enrichment`. Sphinx directive matching uses literal
+single-space patterns for canonical RST formatting.
 
 Examples:
     Run the enrichment check on a source file:
@@ -111,8 +112,8 @@ _SPHINX_SECTION_PATTERN = re.compile(
     r"|:(?:returns|return|rtype):"  # :returns: / :return: / :rtype:
     r"|:raises\s"  # :raises ExcType:
     r"|:(?:ivar|cvar)\s"  # :ivar name: / :cvar name:
-    r"|\.\.\s+seealso::"  # .. seealso::
-    r"|\.\.\s+code-block::"  # .. code-block::
+    r"|\.\. seealso::"  # .. seealso::
+    r"|\.\. code-block::"  # .. code-block::
     r"|>>>"  # doctest
     r"|::\s*$"  # rST code block marker
     r")",
