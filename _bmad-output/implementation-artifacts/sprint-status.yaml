@@ -258,11 +258,11 @@ development_status:
   epic-30-retrospective: done  # 2026-03-06
 
   # Epic 31: Project Health Visibility
-  epic-31: in-progress
+  epic-31: done
   31-1-dynamic-badge-endpoint: done
   31-2-summary-flag-for-quality-percentages: done
-  31-3-config-show-defaults-command: review
-  epic-31-retrospective: optional
+  31-3-config-show-defaults-command: done  # 2026-03-07 — merged as `docvet config` command
+  epic-31-retrospective: done  # 2026-03-07
 
   # Epic 32: Linter Lifecycle -- Fix & Suppress
   epic-32: backlog
@@ -278,3 +278,21 @@ development_status:
   33-2-flagship-oss-runs-and-example-guide: backlog
   33-3-sarif-output-format: backlog
   epic-33-retrospective: optional
+
+  # Epic 34: Multi-Style Support & Foundation Rules
+  epic-34: backlog
+  34-1-sphinx-rst-docstring-style-support: backlog
+  34-2-missing-returns-enrichment-rule: backlog
+  34-3-numpy-style-section-recognition-phase-1: backlog
+  34-4-overload-has-docstring-check: backlog
+  epic-34-retrospective: optional
+
+  # Epic 35: Enrichment Depth — Correctness & Completeness Rules
+  epic-35: backlog
+  35-1-docstring-parameter-agreement-checks: backlog
+  35-2-missing-deprecation-enrichment-rule: backlog
+  35-3-reverse-enrichment-checks: backlog
+  35-4-trivial-docstring-enrichment-rule: backlog
+  35-5-missing-return-type-enrichment-rule: backlog
+  35-6-undocumented-init-params-enrichment-rule: backlog
+  epic-35-retrospective: optional
