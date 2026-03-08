@@ -178,6 +178,8 @@ These keys go under `[tool.docvet.enrichment]`:
 | `require-typed-attributes` | `bool` | `true` | Require typed format in `Attributes:` entries |
 | `require-cross-references` | `bool` | `true` | Require `See Also:` in module docstrings |
 | `prefer-fenced-code-blocks` | `bool` | `true` | Prefer fenced code blocks over doctest `>>>` and rST `::` formats |
+| `require-param-agreement` | `bool` | `true` | Require parameter agreement between function signatures and `Args:` sections. Gates both `missing-param-in-docstring` and `extra-param-in-docstring` rules. |
+| `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks. When `true`, undocumented `*args`/`**kwargs` are not flagged as missing, and documented `*args`/`**kwargs` are flagged as extra. Set to `false` to require their documentation (matches pydoclint's default behavior). |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 ### Example
@@ -222,6 +224,8 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     require-typed-attributes = true
     require-cross-references = true
     prefer-fenced-code-blocks = true
+    require-param-agreement = true
+    exclude-args-kwargs = true # (8)!
     require-examples = ["class", "dataclass"] # (7)!
     ```
 
@@ -232,6 +236,7 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     5. Require 95% docstring coverage — presence check reports percentage and pass/fail.
     6. Flag drift after just 2 weeks instead of the default 30 days.
     7. Only require `Examples:` on classes and dataclasses, not protocols or enums.
+    8. When `true`, `*args`/`**kwargs` don't need documentation. Set to `false` to match pydoclint's default behavior.
 
 === "Minimal Configuration"
 

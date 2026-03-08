@@ -1,4 +1,4 @@
-# Rule metadata catalog — single source of truth for all 22 docvet rules.
+# Rule metadata catalog — single source of truth for all 24 docvet rules.
 # Used by docs/main.py macros hook to render consistent rule page headers.
 # Schema: id, name, check, category, applies_to, summary, since, fix (all required)
 
@@ -38,6 +38,39 @@
     ```python
     Returns:
         The matched user, or ``None`` if no match is found.
+    ```
+
+- id: missing-param-in-docstring
+  name: Missing Parameter in Docstring
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Signature parameter not documented in Args section
+  since: "1.14.0"
+  fix: |
+    Add the missing parameter to the `Args:` section with a description:
+
+    ```python
+    Args:
+        host: The server hostname.
+        port: The server port number.
+        timeout: Connection timeout in seconds. Defaults to 30.0.
+    ```
+
+- id: extra-param-in-docstring
+  name: Extra Parameter in Docstring
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Args section documents a parameter not in the function signature
+  since: "1.14.0"
+  fix: |
+    Remove the stale `Args:` entry that no longer matches a signature parameter:
+
+    ```python
+    Args:
+        host: The server hostname.
+        port: The server port number.
     ```
 
 - id: missing-yields

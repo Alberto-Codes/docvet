@@ -3,7 +3,8 @@
 Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
-to retrieve the full rule catalog with per-rule fix guidance.
+to retrieve the full rule catalog (22 rules across 5 checks) with
+per-rule fix guidance.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
 module-level server instance, a single public ``start_server()``
@@ -315,6 +316,31 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
             "Create an __init__.py file with a module docstring in the directory."
         ),
         "fix_example": None,
+    },
+    {
+        "name": "missing-param-in-docstring",
+        "check": "enrichment",
+        "description": "Function signature parameter not documented in Args section.",
+        "category": "required",
+        "guidance": (
+            "Add the missing parameter to the Args: section with a type"
+            " annotation and description."
+        ),
+        "fix_example": "Args:\n    name (str): The user's display name.",
+    },
+    {
+        "name": "extra-param-in-docstring",
+        "check": "enrichment",
+        "description": "Args section documents a parameter not in the function signature.",
+        "category": "required",
+        "guidance": (
+            "Remove the stale parameter entry from the Args: section, or"
+            " rename it to match the current signature."
+        ),
+        "fix_example": (
+            "Args:\n    name (str): The user's display name.\n"
+            "    # Remove entries for parameters no longer in the signature."
+        ),
     },
     {
         "name": "griffe-unknown-param",
