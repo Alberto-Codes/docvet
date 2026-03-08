@@ -102,6 +102,7 @@ nav:
       - missing-docstring: rules/missing-docstring.md
     - Enrichment:
       - missing-raises: rules/missing-raises.md
+      - missing-returns: rules/missing-returns.md
       - missing-yields: rules/missing-yields.md
       - missing-receives: rules/missing-receives.md
       - missing-warns: rules/missing-warns.md
