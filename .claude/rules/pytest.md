@@ -113,6 +113,14 @@ def test_enrichment_detects_missing_sections(source, expected_sections):
     assert [f.section for f in findings] == expected_sections
 ```
 
+## Test Validity (Epic 34+)
+
+Tests can pass for wrong reasons. Coverage and assertion strength are necessary but not sufficient — verify the test itself is correct.
+
+- **Verify test helpers select the intended symbol type** — confirm `kind` and `name` before asserting on findings. A helper that returns a class symbol when you expect a method will produce a false-green test
+- **Test unfiltered findings when adding rules to modules with existing rules** — filtering by rule name can hide cross-rule conflicts (e.g., two rules emitting contradictory findings for the same symbol)
+- **Verify skip paths are reachable** — confirm the fixture actually triggers the intended guard clause. A skip test that never enters the guard is a false-green test
+
 ## Assertions and Testing Patterns
 
 ### Assertion Principles

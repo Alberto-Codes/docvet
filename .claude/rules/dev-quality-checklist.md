@@ -19,6 +19,14 @@ Before marking a story done, fill the AC-to-Test Mapping table in the story file
 - Test mix scenarios: some passing + some failing in same input
 - Test skip conditions: inputs that should produce zero results
 
+## Test Validity (Epic 34+)
+
+Coverage and assertion strength are necessary but not sufficient — the test itself must be correct.
+
+- Verify test helpers select the intended symbol type — confirm `kind` and `name` match expectations before asserting on findings
+- When adding a rule to a module with existing rules, test unfiltered findings to catch cross-rule conflicts
+- Verify skip-path tests actually trigger the guard clause — a skip test that never enters the guard is false-green
+
 ## Task Tracking Accuracy (Epic 6+)
 
 - Before marking a subtask `[x]` done, verify the code change actually exists

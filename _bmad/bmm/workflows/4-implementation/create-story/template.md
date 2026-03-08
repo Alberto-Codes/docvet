@@ -34,6 +34,7 @@ so that {{benefit}}.
 - Relevant architecture patterns and constraints
 - Source tree components to touch
 - Testing standards summary
+- **Interaction Risk:** [If this story adds a rule to an existing check module, identify existing rules in that module and any symbol overlap to verify. Otherwise: "None — new module or non-rule change."]
 
 ### Project Structure Notes
 
