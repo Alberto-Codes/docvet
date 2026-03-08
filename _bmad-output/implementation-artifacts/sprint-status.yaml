@@ -284,7 +284,7 @@ development_status:
   34-1-sphinx-rst-docstring-style-support: done
   34-2-missing-returns-enrichment-rule: done
   34-3-numpy-style-section-recognition-phase-1: done
-  34-4-overload-has-docstring-check: backlog
+  34-4-overload-has-docstring-check: review
   epic-34-retrospective: optional
 
   # Epic 35: Enrichment Depth — Correctness & Completeness Rules

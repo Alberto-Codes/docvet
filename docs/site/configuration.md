@@ -136,6 +136,7 @@ These keys go under `[tool.docvet.presence]`:
 | `ignore-init` | `bool` | `true` | Skip `__init__` methods when checking for missing docstrings |
 | `ignore-magic` | `bool` | `true` | Skip dunder methods (`__repr__`, `__str__`, etc.) |
 | `ignore-private` | `bool` | `true` | Skip single-underscore-prefixed symbols (`_helper`, `_internal`) |
+| `check-overload-docstrings` | `bool` | `true` | Flag `@overload`-decorated functions that have docstrings |
 
 ### Example
 

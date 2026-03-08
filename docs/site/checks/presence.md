@@ -1,6 +1,6 @@
 # Presence Check
 
-The presence check implements **Layer 1 (Presence)** of docvet's quality model. It detects public symbols — modules, classes, functions, and methods — that lack a docstring, and reports per-file coverage statistics. 1 rule. This is docvet's built-in replacement for interrogate, with zero extra dependencies.
+The presence check implements **Layer 1 (Presence)** of docvet's quality model. It detects public symbols — modules, classes, functions, and methods — that lack a docstring, flags misplaced docstrings on `@overload` functions, and reports per-file coverage statistics. 2 rules. This is docvet's built-in replacement for interrogate, with zero extra dependencies.
 
 ```bash
 docvet presence --all
@@ -11,6 +11,7 @@ docvet presence --all
 | Rule ID | Category | Description |
 |---------|----------|-------------|
 | [`missing-docstring`](../rules/missing-docstring.md) | required | Public symbol has no docstring |
+| [`overload-has-docstring`](../rules/overload-has-docstring.md) | required | `@overload`-decorated function has a docstring — document the implementation instead |
 
 The check parses each file with the standard library `ast` module, extracts all documentable symbols (modules, classes, functions, methods), applies filtering rules (init, magic, private), and reports one finding per undocumented symbol. Coverage statistics are aggregated across all files.
 
@@ -65,6 +66,7 @@ These keys go under `[tool.docvet.presence]`:
 | `ignore-init` | `bool` | `true` | Skip `__init__` methods |
 | `ignore-magic` | `bool` | `true` | Skip dunder methods (`__repr__`, `__str__`, etc.) |
 | `ignore-private` | `bool` | `true` | Skip single-underscore-prefixed symbols (`_helper`) |
+| `check-overload-docstrings` | `bool` | `true` | Flag `@overload`-decorated functions that have docstrings |
 
 ### Example
 
