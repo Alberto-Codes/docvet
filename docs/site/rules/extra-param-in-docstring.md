@@ -61,4 +61,3 @@ This rule is automatically skipped when:
 
 - The docstring has no `Args:` section (a separate concern)
 - The symbol is a class, module, or other non-function type
-- The symbol is an `@overload` signature (presence layer handles those)

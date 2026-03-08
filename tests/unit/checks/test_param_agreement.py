@@ -412,14 +412,14 @@ def broken(x, y):
 # ---------------------------------------------------------------------------
 
 
-def test_overload_symbol_no_param_findings():
-    """Cross-rule: @overload functions produce no param agreement findings."""
+def test_overload_symbol_with_mismatch_emits_finding():
+    """Cross-rule: @overload functions with param mismatch produce findings."""
     source = '''\
 from typing import overload
 
 @overload
-def process(x: int) -> int:
-    """Process an integer.
+def process(x: int, y: int) -> int:
+    """Process integers.
 
     Args:
         x: The value.
@@ -427,8 +427,8 @@ def process(x: int) -> int:
     ...
 
 @overload
-def process(x: str) -> str:
-    """Process a string.
+def process(x: str, y: str) -> str:
+    """Process strings.
 
     Args:
         x: The value.
@@ -440,8 +440,9 @@ def process(x: str) -> str:
 
     findings = check_enrichment(source, tree, config, "test.py")
 
-    assert not any(f.rule == "missing-param-in-docstring" for f in findings)
-    assert not any(f.rule == "extra-param-in-docstring" for f in findings)
+    missing_findings = [f for f in findings if f.rule == "missing-param-in-docstring"]
+    assert len(missing_findings) == 2
+    assert all("y" in f.message for f in missing_findings)
 
 
 def test_class_symbol_no_param_findings():

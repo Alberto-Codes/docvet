@@ -101,7 +101,7 @@ so that my docstrings accurately reflect the function's actual interface.
 | 1 | `test_missing_param_detection[single-missing]`, `test_missing_param_detection[multiple-missing]` | Pass |
 | 2 | `test_extra_param_detection[single-extra]`, `test_extra_param_detection[multiple-extra]` | Pass |
 | 3 | `test_self_cls_exclusion[self-excluded]`, `test_self_cls_exclusion[cls-excluded]` | Pass |
-| 4 | `test_args_kwargs_excluded_by_default`, `test_documented_args_kwargs_not_extra_when_excluded` | Pass |
+| 4 | `test_args_kwargs_excluded_by_default`, `test_documented_args_kwargs_flagged_as_extra_when_excluded` | Pass |
 | 5 | `test_args_kwargs_required_when_opt_in`, `test_star_prefixed_args_in_docstring_match_signature` | Pass |
 | 6 | `test_no_args_section_no_findings` | Pass |
 | 7 | `test_perfect_agreement_zero_findings` | Pass |

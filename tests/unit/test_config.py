@@ -110,6 +110,16 @@ def test_enrichment_defaults_require_returns_is_true():
     assert cfg.require_returns is True
 
 
+def test_enrichment_defaults_require_param_agreement_is_true():
+    cfg = EnrichmentConfig()
+    assert cfg.require_param_agreement is True
+
+
+def test_enrichment_defaults_exclude_args_kwargs_is_true():
+    cfg = EnrichmentConfig()
+    assert cfg.exclude_args_kwargs is True
+
+
 def test_docvet_defaults_src_root_is_dot():
     cfg = DocvetConfig()
     assert cfg.src_root == "."
@@ -401,6 +411,34 @@ require-returns = false
     )
     cfg = load_config()
     assert cfg.enrichment.require_returns is False
+
+
+def test_load_config_nested_enrichment_require_param_agreement_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+require-param-agreement = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.enrichment.require_param_agreement is False
+
+
+def test_load_config_nested_enrichment_exclude_args_kwargs_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+exclude-args-kwargs = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.enrichment.exclude_args_kwargs is False
 
 
 def test_load_config_explicit_path_uses_that_file(tmp_path):
