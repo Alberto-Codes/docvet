@@ -583,6 +583,39 @@ def test_griffe_when_invoked_calls_discover_and_run_griffe(mocker):
     )
 
 
+def test_griffe_subcommand_sphinx_mode_skips_with_message(mocker):
+    mocker.patch(
+        "docvet.cli.load_config",
+        return_value=DocvetConfig(docstring_style="sphinx"),
+    )
+    mock_run = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
+    result = runner.invoke(app, ["griffe"])
+    assert result.exit_code == 0
+    assert "incompatible with sphinx" in result.output
+    mock_run.assert_not_called()
+
+
+def test_check_command_sphinx_mode_skips_griffe(mocker):
+    mocker.patch(
+        "docvet.cli.load_config",
+        return_value=DocvetConfig(docstring_style="sphinx"),
+    )
+    mock_run = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 0
+    mock_run.assert_not_called()
+
+
+def test_check_command_google_mode_runs_griffe(mocker):
+    mocker.patch(
+        "docvet.cli.load_config",
+        return_value=DocvetConfig(),
+    )
+    mock_run = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
+    runner.invoke(app, ["check"])
+    mock_run.assert_called_once()
+
+
 def test_enrichment_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
     mock_discover = mocker.patch(
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
@@ -679,7 +712,11 @@ def test_run_enrichment_passes_config_enrichment_and_str_file_path(mocker):
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
     mock_check.assert_called_once_with(
-        "x = 1\n", ANY, fake_config.enrichment, str(file_path)
+        "x = 1\n",
+        ANY,
+        fake_config.enrichment,
+        str(file_path),
+        style=fake_config.docstring_style,
     )
 
 
@@ -1387,7 +1424,7 @@ def test_run_enrichment_direct_multiple_files_accumulates_findings(mocker):
 
     call_count = 0
 
-    def _fake_check(source, tree, enrichment_config, file_path):
+    def _fake_check(source, tree, enrichment_config, file_path, *, style="google"):
         nonlocal call_count
         call_count += 1
         return [

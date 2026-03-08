@@ -13,6 +13,7 @@ These keys go directly under `[tool.docvet]`:
 |-----|------|---------|-------------|
 | `src-root` | `str` | `"."` (auto-detects `src/`) | Source directory relative to project root |
 | `package-name` | `str` | auto-detected | Explicit package name override |
+| `docstring-style` | `str` | `"google"` | Docstring convention: `"google"` or `"sphinx"` |
 | `exclude` | `list[str]` | `["tests", "scripts"]` | Directory names to exclude from checks |
 | `extend-exclude` | `list[str]` | `[]` | Additional patterns appended to `exclude` |
 | `fail-on` | `list[str]` | `[]` | Check names that cause exit code 1 |
@@ -27,6 +28,32 @@ When `src-root` is not set in your config:
 - If a `src/` directory exists at the project root, `src-root` defaults to `"src"`
 - If no `src/` directory exists, `src-root` defaults to `"."` (project root)
 - If `src-root` is explicitly set, the configured value is used as-is — no heuristic applied
+
+### `docstring-style`
+
+Controls which docstring convention docvet uses for section detection and rule behavior. Valid values:
+
+- **`"google"`** (default) — Google-style section headers (`Args:`, `Returns:`, `Raises:`, etc.)
+- **`"sphinx"`** — Sphinx/RST field-list syntax (`:param name:`, `:returns:`, `:raises ExcType:`, etc.)
+
+When set to `"sphinx"`:
+
+- **Section detection** switches from colon-header matching to RST field-list pattern scanning (`:param`, `:type`, `:returns:`, `:rtype:`, `:raises`, `:ivar`, `:cvar`, `.. seealso::`, `>>>`, `::`, `.. code-block::`)
+- **Auto-disabled rules** — `require-yields`, `require-receives`, `require-warns`, `require-other-parameters`, and `prefer-fenced-code-blocks` are automatically disabled (these sections have no RST equivalent)
+- **Cross-references** — Sphinx roles (`:py:class:`, `:py:func:`, etc.) anywhere in the docstring body satisfy the `require-cross-references` check
+- **Griffe check** is auto-skipped (griffe's Google parser is incompatible with RST docstrings)
+
+!!! tip "Explicit override"
+    If you explicitly set an auto-disabled rule to `true` in `[tool.docvet.enrichment]`, your setting takes priority — the rule will run even in sphinx mode.
+
+```toml
+[tool.docvet]
+docstring-style = "sphinx"
+
+[tool.docvet.enrichment]
+# This overrides auto-disable — yields check will run in sphinx mode
+require-yields = true
+```
 
 ### `fail-on` / `warn-on` precedence
 

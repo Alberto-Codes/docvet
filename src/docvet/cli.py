@@ -553,7 +553,9 @@ def _run_enrichment(
     """Run the enrichment check on discovered files.
 
     Reads each file, parses its AST, and runs all enabled enrichment
-    rules. Files that fail to parse are skipped with a warning.
+    rules. Passes ``config.docstring_style`` to the enrichment checker
+    for style-aware section detection and rule gating. Files that fail
+    to parse are skipped with a warning.
 
     Args:
         files: Discovered Python file paths.
@@ -577,7 +579,13 @@ def _run_enrichment(
                 typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
                 continue
             symbol_count += len(get_documented_symbols(tree))
-            findings = check_enrichment(source, tree, config.enrichment, str(file_path))
+            findings = check_enrichment(
+                source,
+                tree,
+                config.enrichment,
+                str(file_path),
+                style=config.docstring_style,
+            )
             all_findings.extend(findings)
     return all_findings, symbol_count
 
@@ -870,16 +878,18 @@ def check(
     """Run all enabled checks.
 
     Runs presence (if enabled), enrichment, freshness, coverage, and
-    griffe (if installed) checks in sequence. Each check runner returns
-    a ``(findings, item_count)`` tuple; item counts are collected into
-    ``check_counts`` for per-check quality percentage computation when
-    ``--summary`` is active. Griffe is only included in ``check_counts``
-    when the ``griffe`` package is importable. Coverage percentage is derived from
-    :attr:`PresenceStats.percentage`. Displays a progress bar on stderr
-    when connected to a TTY. Uses three-tier verbosity: ``--quiet``
-    suppresses all non-finding stderr output, default shows the summary
-    line with coverage percentage, ``--verbose`` adds per-check timing,
-    file discovery count, and detailed coverage status.
+    griffe (if installed and compatible) checks in sequence. Each check
+    runner returns a ``(findings, item_count)`` tuple; item counts are
+    collected into ``check_counts`` for per-check quality percentage
+    computation when ``--summary`` is active. Griffe is auto-skipped
+    when ``docstring-style`` is ``"sphinx"`` (incompatible parser). Griffe
+    is only included in ``check_counts`` when the ``griffe`` package is
+    importable and the docstring style is compatible. Coverage percentage is derived
+    from :attr:`PresenceStats.percentage`. Displays a progress bar on
+    stderr when connected to a TTY. Uses three-tier verbosity:
+    ``--quiet`` suppresses all non-finding stderr output, default shows
+    the summary line with coverage percentage, ``--verbose`` adds
+    per-check timing, file discovery count, and detailed coverage status.
 
     Args:
         ctx: Typer invocation context.
@@ -934,19 +944,28 @@ def check(
     _write_timing("coverage", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     griffe_installed = importlib.util.find_spec("griffe") is not None
-    start = time.perf_counter()
-    griffe_findings, griffe_count = _run_griffe(
-        discovered, config, verbose=verbose, quiet=quiet
-    )
-    elapsed = time.perf_counter() - start
-    _write_timing(
-        "griffe",
-        file_count,
-        elapsed,
-        verbose=verbose,
-        quiet=quiet,
-        enabled=griffe_installed,
-    )
+    griffe_skipped_style = config.docstring_style == "sphinx"
+    if griffe_skipped_style:
+        griffe_findings: list[Finding] = []
+        griffe_count = 0
+        if verbose:
+            sys.stderr.write(
+                "  griffe: skipped (incompatible with sphinx docstring style)\n"
+            )
+    else:
+        start = time.perf_counter()
+        griffe_findings, griffe_count = _run_griffe(
+            discovered, config, verbose=verbose, quiet=quiet
+        )
+        elapsed = time.perf_counter() - start
+        _write_timing(
+            "griffe",
+            file_count,
+            elapsed,
+            verbose=verbose,
+            quiet=quiet,
+            enabled=griffe_installed,
+        )
 
     total_elapsed = time.perf_counter() - total_start
 
@@ -954,7 +973,7 @@ def check(
     if config.presence.enabled:
         checks.append("presence")
     checks.extend(["enrichment", "freshness", "coverage"])
-    if griffe_installed:
+    if griffe_installed and not griffe_skipped_style:
         checks.append("griffe")
 
     coverage_pct: float | None = None
@@ -991,7 +1010,7 @@ def check(
         "freshness": freshness_count,
         "coverage": coverage_count,
     }
-    if griffe_installed:
+    if griffe_installed and not griffe_skipped_style:
         check_counts["griffe"] = griffe_count
     _output_and_exit(
         ctx,
@@ -1305,7 +1324,9 @@ def griffe(
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count. Passes file count to ``_output_and_exit``
-    for ``--summary`` quality percentage computation.
+    for ``--summary`` quality percentage computation. Auto-skips with
+    exit code 0 when ``docstring-style`` is ``"sphinx"`` (griffe's
+    Google parser is incompatible with RST docstrings).
 
     Args:
         ctx: Typer invocation context.
@@ -1315,6 +1336,9 @@ def griffe(
         staged: Run on staged files.
         all_files: Run on entire codebase.
         files: Run on specific files via ``--files``.
+
+    Raises:
+        typer.Exit: When ``docstring-style`` is ``"sphinx"`` (exit 0).
     """
     files = _merge_file_args(files_pos, files)
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
@@ -1324,6 +1348,13 @@ def griffe(
     ctx.obj["quiet"] = quiet
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
+
+    if config.docstring_style == "sphinx":
+        typer.echo(
+            "Griffe check skipped: incompatible with sphinx docstring style",
+            err=True,
+        )
+        raise typer.Exit(0)
 
     start = time.perf_counter()
     findings, griffe_file_count = _run_griffe(
