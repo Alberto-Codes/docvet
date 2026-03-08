@@ -118,6 +118,16 @@ class TestNumpyUnderlineFormat:
         # Only colon format should work, not 2-dash underline
         assert "Returns" not in _parse_sections(docstring)
 
+    def test_blank_line_between_header_and_underline_not_recognized(self) -> None:
+        """Header with blank line before underline is NOT recognized (AC: 2 negative)."""
+        docstring = "Summary.\n\nReturns\n\n-------\n    int: The result.\n"
+        assert "Returns" not in _parse_sections(docstring)
+
+    def test_no_blank_line_between_header_and_underline_recognized(self) -> None:
+        """Header immediately followed by underline IS recognized (AC: 2 positive)."""
+        docstring = "Summary.\n\nReturns\n-------\n    int: The result.\n"
+        assert "Returns" in _parse_sections(docstring)
+
     def test_mixed_google_and_numpy_in_same_docstring(self) -> None:
         """Mixed Google colon and NumPy underline detected in same docstring."""
         docstring = (

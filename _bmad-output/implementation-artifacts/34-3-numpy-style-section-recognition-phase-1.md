@@ -93,8 +93,8 @@ so that section-boundary parsing doesn't bleed content across sections.
 
 - **New `_NUMPY_UNDERLINE_PATTERN`**: A compiled regex matching any recognized section header on a line by itself (no trailing colon), followed immediately by a line of 3+ dashes or equals. Must use `re.MULTILINE`. Example matches:
   ```
-  Parameters
-  ----------
+  Args
+  ----
 
   Returns
   -------

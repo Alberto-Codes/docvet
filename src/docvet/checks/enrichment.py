@@ -14,8 +14,9 @@ docstring conventions via the ``style`` parameter on
 :func:`check_enrichment`. Sphinx directive matching uses literal
 single-space patterns for canonical RST formatting. NumPy-style section
 headers (Notes, References, Warnings, Extended Summary, Methods) and
-underline format (header followed by dashes/equals) are recognized as
-section boundaries alongside Google colon format.
+underline format (header on one line immediately followed by
+dashes/equals) are recognized as section boundaries alongside
+Google colon format.
 
 Examples:
     Run the enrichment check on a source file:
@@ -91,7 +92,7 @@ _SECTION_PATTERN = re.compile(
 _numpy_header_list = sorted(_SECTION_HEADERS, key=len, reverse=True)
 _numpy_headers = "|".join(re.escape(str(h)) for h in _numpy_header_list)
 _NUMPY_UNDERLINE_PATTERN = re.compile(
-    rf"^\s*({_numpy_headers})\s*\n\s*[-=]{{3,}}\s*$",
+    rf"^\s*({_numpy_headers})[^\S\n]*\n[^\S\n]*[-=]{{3,}}\s*$",
     re.MULTILINE,
 )
 
