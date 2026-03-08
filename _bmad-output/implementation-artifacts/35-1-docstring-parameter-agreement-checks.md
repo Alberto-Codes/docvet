@@ -271,6 +271,10 @@ None — zero-debug implementation.
 - `docs/site/rules/missing-param-in-docstring.md`: Created rule reference page
 - `docs/site/rules/extra-param-in-docstring.md`: Created rule reference page
 - `docs/rules.yml`: Added 2 new rule entries (24 total)
+- `docs/site/configuration.md`: Added `require-param-agreement` and `exclude-args-kwargs` to enrichment options table and full example (review fix H1)
+- `docs/site/rules/missing-param-in-docstring.md`: Added pydoclint migration note (review fix M1)
+- `docs/site/rules/extra-param-in-docstring.md`: Added pydoclint migration note and `exclude-args-kwargs` interaction note (review fixes M1, L1)
+- `tests/unit/checks/test_param_agreement.py`: Renamed misleading test (review fix M2)
 
 ### File List
 
@@ -283,6 +287,7 @@ None — zero-debug implementation.
 | `docs/site/rules/missing-param-in-docstring.md` | Created |
 | `docs/site/rules/extra-param-in-docstring.md` | Created |
 | `docs/rules.yml` | Modified |
+| `docs/site/configuration.md` | Modified (review) |
 
 ## Code Review
 
@@ -290,15 +295,25 @@ None — zero-debug implementation.
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review + party-mode consensus)
+
 ### Outcome
+
+Changes Requested — 4 findings fixed
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | `docs/site/configuration.md` not updated with `require-param-agreement` and `exclude-args-kwargs` config keys | Fixed — added both keys to enrichment options table and full example |
+| M1 | MEDIUM | Missing pydoclint migration notes in both rule reference pages | Fixed — added migration notes mentioning pydoclint's `--should-document-star-arguments` default |
+| M2 | MEDIUM | Test name `test_documented_args_kwargs_not_extra_when_excluded` contradicts its assertion (says "not extra" but asserts `extra is not None`) | Fixed — renamed to `test_documented_args_kwargs_flagged_as_extra_when_excluded` |
+| L1 | LOW | `extra-param-in-docstring.md` missing `exclude-args-kwargs` interaction note in Configuration section | Fixed — added note explaining behavior when `exclude-args-kwargs = true` |
+| -- | LOW | No fixture file in `tests/fixtures/` | Dismissed — inline sources are better for parametrized tests |
+| -- | -- | `*args`/`**kwargs` flagged as extra when `exclude_args_kwargs=True` — initially raised as HIGH | Downgraded after party-mode debate + web research: current behavior matches pydoclint precedent; documented in rule pages |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

@@ -307,8 +307,8 @@ def test_star_prefixed_args_in_docstring_match_signature():
     assert extra is None
 
 
-def test_documented_args_kwargs_not_extra_when_excluded():
-    """Star-prefixed entries in docs should not be extra when exclude=True."""
+def test_documented_args_kwargs_flagged_as_extra_when_excluded():
+    """Star-prefixed entries in docs are flagged as extra when exclude=True."""
     symbol, node_index, _ = _make_symbol_and_index(_ARGS_KWARGS_DOCUMENTED_SOURCE)
     sections = _parse_sections(symbol.docstring)
     config = EnrichmentConfig(exclude_args_kwargs=True)
