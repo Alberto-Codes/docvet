@@ -9,8 +9,8 @@ conventions. Uses composable validation helpers
 parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 ``PresenceConfig`` dataclasses with sensible defaults for all check
 modules. ``EnrichmentConfig`` fields include ``require_returns``,
-``require_param_agreement``, ``exclude_args_kwargs``, and
-other rule toggles. ``PresenceConfig`` fields include
+``require_param_agreement``, ``exclude_args_kwargs``,
+``require_deprecation_notice``, and other rule toggles. ``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
 ``user_set_keys`` tracks which enrichment toggles were explicitly
 set by the user (for sphinx auto-disable logic).
@@ -122,6 +122,10 @@ class EnrichmentConfig:
             ``extra-param-in-docstring`` rules. Defaults to ``True``.
         exclude_args_kwargs (bool): Exclude ``*args`` and ``**kwargs``
             from parameter agreement checks. Defaults to ``True``.
+        require_deprecation_notice (bool): Require a deprecation notice
+            in the docstring when a function uses
+            ``warnings.warn(..., DeprecationWarning)`` or is decorated
+            with ``@deprecated``. Defaults to ``True``.
         user_set_keys (frozenset[str]): Snake_case keys explicitly set
             by the user in ``[tool.docvet.enrichment]``. Populated during
             config parsing to distinguish user overrides from defaults.
@@ -156,6 +160,7 @@ class EnrichmentConfig:
     require_attributes: bool = True
     require_param_agreement: bool = True
     exclude_args_kwargs: bool = True
+    require_deprecation_notice: bool = True
     user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -291,6 +296,7 @@ _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
         "prefer-fenced-code-blocks",
         "require-attributes",
         "require-cross-references",
+        "require-deprecation-notice",
         "require-examples",
         "require-other-parameters",
         "require-param-agreement",
@@ -916,8 +922,9 @@ def format_config_toml(
     Renders the top-level ``[tool.docvet]`` keys (including
     ``docstring-style``) inline, then delegates each nested section
     (freshness, enrichment — including ``require-returns``,
-    ``require-param-agreement``, and ``exclude-args-kwargs``, presence —
-    including ``check-overload-docstrings``) to :func:`_format_toml_section`.
+    ``require-param-agreement``, ``exclude-args-kwargs``, and
+    ``require-deprecation-notice``, presence — including
+    ``check-overload-docstrings``) to :func:`_format_toml_section`.
     Values are formatted via :func:`_fmt_toml_value` and annotated via
     :func:`_get_annotation`. Omits ``package-name`` when its value is
     ``None`` and ``project_root`` (runtime-only). When
@@ -978,6 +985,7 @@ def format_config_toml(
                 ("require_attributes", "require-attributes"),
                 ("require_param_agreement", "require-param-agreement"),
                 ("exclude_args_kwargs", "exclude-args-kwargs"),
+                ("require_deprecation_notice", "require-deprecation-notice"),
                 ("require_examples", "require-examples"),
             ],
             config.enrichment,

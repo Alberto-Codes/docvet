@@ -73,6 +73,31 @@
         port: The server port number.
     ```
 
+- id: missing-deprecation
+  name: Missing Deprecation Notice
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Deprecated function has no deprecation notice in docstring
+  since: "1.14.0"
+  fix: |
+    Add a deprecation notice anywhere in the docstring — a sentence containing
+    the word "deprecated" is sufficient:
+
+    ```python
+    def old_api(x):
+        """Process x using the old algorithm.
+
+        Deprecated:
+            This function is deprecated since v2.0. Use ``new_api`` instead.
+        """
+        warnings.warn("Use new_api instead", DeprecationWarning)
+        ...
+    ```
+
+    The check uses intentionally loose matching — "deprecated" anywhere in the
+    docstring (summary, body, or a ``Deprecated:`` section) satisfies the rule.
+
 - id: missing-yields
   name: Missing Yields Section
   check: enrichment
