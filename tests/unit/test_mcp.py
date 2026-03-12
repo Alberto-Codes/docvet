@@ -506,7 +506,7 @@ class TestFindingSchemaParity:
 
 class TestRuleCatalogStaleness:
     def test_rule_catalog_has_expected_count(self):
-        assert len(_RULE_CATALOG) == 22
+        assert len(_RULE_CATALOG) == 23
 
     def test_rule_catalog_entries_have_required_keys(self):
         expected_keys = {
@@ -524,7 +524,7 @@ class TestRuleCatalogStaleness:
         expected_rules = {
             # presence (1)
             "missing-docstring",
-            # enrichment (12)
+            # enrichment (13)
             "missing-raises",
             "missing-yields",
             "missing-receives",
@@ -537,6 +537,7 @@ class TestRuleCatalogStaleness:
             "prefer-fenced-code-blocks",
             "missing-param-in-docstring",
             "extra-param-in-docstring",
+            "missing-deprecation",
             # freshness (5)
             "stale-signature",
             "stale-body",

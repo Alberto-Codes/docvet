@@ -526,3 +526,31 @@ def f():
     assert isinstance(func_node, ast.FunctionDef)
 
     assert _has_deprecation_warning_call(func_node) is True
+
+
+def test_has_deprecation_warning_call_rejects_chained_attribute_warn() -> None:
+    """Helper: chained attribute access like obj.mod.warn(...) is not matched."""
+    source = '''\
+def f():
+    """A function."""
+    obj.mod.warn("msg", DeprecationWarning)
+'''
+    tree = ast.parse(source)
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+
+    assert _has_deprecation_warning_call(func_node) is False
+
+
+def test_has_deprecation_warning_call_rejects_non_warnings_module() -> None:
+    """Helper: warn() on a non-warnings module (e.g. logging.warn) is not matched."""
+    source = '''\
+def f():
+    """A function."""
+    logging.warn("msg", DeprecationWarning)
+'''
+    tree = ast.parse(source)
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+
+    assert _has_deprecation_warning_call(func_node) is False

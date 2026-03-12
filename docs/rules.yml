@@ -85,6 +85,8 @@
     the word "deprecated" is sufficient:
 
     ```python
+    import warnings
+
     def old_api(x):
         """Process x using the old algorithm.
 

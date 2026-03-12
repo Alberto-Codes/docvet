@@ -300,6 +300,8 @@ None — implementation was straightforward following Dev Notes patterns.
 - `docs/site/rules/missing-deprecation.md` — new rule reference page
 - `docs/rules.yml` — added `missing-deprecation` entry
 - `docs/site/configuration.md` — added `require-deprecation-notice` row to enrichment options table
+- `src/docvet/mcp.py` — added `missing-deprecation` entry to `_RULE_CATALOG`
+- `tests/unit/test_mcp.py` — incremented catalog count from 22 to 23, added `"missing-deprecation"` to expected rules set
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — updated story status
 
 ## Code Review
