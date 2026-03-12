@@ -3,8 +3,11 @@
 Detects missing docstring sections (Returns, Raises, Yields, Attributes, etc.),
 validates cross-reference syntax in See Also sections, checks for
 non-fenced code block patterns (reporting both doctest and rST findings
-per symbol), and verifies parameter agreement between function signatures
-and ``Args:`` sections by combining AST analysis with section header parsing.
+per symbol), verifies parameter agreement between function signatures
+and ``Args:`` sections by combining AST analysis with section header parsing,
+and flags deprecated functions lacking a deprecation notice in their docstring
+(``missing-deprecation`` rule via scope-aware walk for ``warnings.warn`` calls
+and ``@deprecated`` decorator detection).
 Guard clauses for rules with broad skip sets (e.g. ``missing-returns``)
 are extracted into dedicated ``_should_skip_*`` helpers to keep check
 functions focused and within cognitive-complexity thresholds.
@@ -1938,6 +1941,173 @@ def _check_extra_param_in_docstring(
 
 
 # ---------------------------------------------------------------------------
+# Deprecation detection helpers and check
+# ---------------------------------------------------------------------------
+
+_DEPRECATION_CATEGORIES: frozenset[str] = frozenset(
+    {"DeprecationWarning", "PendingDeprecationWarning", "FutureWarning"}
+)
+
+
+def _is_warnings_warn_call(call: ast.Call) -> bool:
+    """Return True if *call* is ``warnings.warn(msg, DeprecationCategory)``.
+
+    Only matches the ``warnings.warn(...)`` form (attribute access on the
+    ``warnings`` module name). Bare ``warn(...)`` calls are not matched to
+    avoid false positives when ``from warnings import warn`` is not in scope.
+
+    Args:
+        call: An ``ast.Call`` node to inspect.
+
+    Returns:
+        ``True`` if the call is ``warnings.warn`` with a deprecation category
+        as the second positional argument or ``category=`` keyword.
+    """
+    if not isinstance(call.func, ast.Attribute):
+        return False
+    if call.func.attr != "warn":
+        return False
+    if not isinstance(call.func.value, ast.Name):
+        return False
+    if call.func.value.id != "warnings":
+        return False
+    # Second positional arg
+    if len(call.args) >= 2 and isinstance(call.args[1], ast.Name):
+        if call.args[1].id in _DEPRECATION_CATEGORIES:
+            return True
+    # keyword arg category=
+    for kw in call.keywords:
+        if kw.arg == "category" and isinstance(kw.value, ast.Name):
+            if kw.value.id in _DEPRECATION_CATEGORIES:
+                return True
+    return False
+
+
+def _has_deprecation_warning_call(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> bool:
+    """Return True if the function body contains a qualifying ``warnings.warn``.
+
+    Traversal starts from ``node.body`` (not ``ast.iter_child_nodes``) so
+    decorators, argument annotations, and defaults are excluded. The walk
+    stops at nested ``FunctionDef``, ``AsyncFunctionDef``, and ``ClassDef``
+    boundaries so that deprecation warnings inside nested scopes are not
+    attributed to the outer function.
+
+    Args:
+        node: The function AST node whose body is searched.
+
+    Returns:
+        ``True`` if any top-scope call matches ``warnings.warn(msg, Category)``
+        where *Category* is ``DeprecationWarning``, ``PendingDeprecationWarning``,
+        or ``FutureWarning``.
+    """
+    stack: list[ast.AST] = list(node.body)
+    while stack:
+        child = stack.pop()
+        if isinstance(child, ast.Call) and _is_warnings_warn_call(child):
+            return True
+        if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            stack.extend(ast.iter_child_nodes(child))
+    return False
+
+
+def _has_deprecated_decorator(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> bool:
+    """Return True if *node* has a ``@deprecated`` or ``@*.deprecated`` decorator.
+
+    Matches all common forms of the deprecation decorator:
+
+    - Bare ``@deprecated`` (``ast.Name``) — third-party ``deprecated`` package
+    - Bare ``@foo.deprecated`` (``ast.Attribute``) — dotted bare form
+    - Call form ``@deprecated("msg")`` (``ast.Call`` wrapping ``ast.Name``) —
+      standard PEP 702 / ``typing_extensions.deprecated`` usage
+    - Call form ``@foo.deprecated("msg")`` (``ast.Call`` wrapping ``ast.Attribute``) —
+      standard ``@typing_extensions.deprecated("msg")`` and ``@warnings.deprecated("msg")``
+
+    Per PEP 702, ``typing_extensions.deprecated`` and ``warnings.deprecated``
+    **require** a message argument, so the call form is the dominant real-world
+    pattern. No import resolution is performed — matching by decorator name is
+    intentionally broad to avoid false negatives.
+
+    Args:
+        node: The function AST node whose decorator list is inspected.
+
+    Returns:
+        ``True`` if at least one decorator is named ``deprecated`` in any form.
+    """
+    for dec in node.decorator_list:
+        # Bare forms: @deprecated  or  @foo.deprecated
+        if isinstance(dec, ast.Name) and dec.id == "deprecated":
+            return True
+        if isinstance(dec, ast.Attribute) and dec.attr == "deprecated":
+            return True
+        # Call forms: @deprecated("msg")  or  @foo.deprecated("msg")  — PEP 702
+        if isinstance(dec, ast.Call):
+            func = dec.func
+            if isinstance(func, ast.Name) and func.id == "deprecated":
+                return True
+            if isinstance(func, ast.Attribute) and func.attr == "deprecated":
+                return True
+    return False
+
+
+def _check_missing_deprecation(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a deprecated function with no deprecation notice in its docstring.
+
+    Fires when a function contains ``warnings.warn(..., DeprecationWarning)``
+    (or ``PendingDeprecationWarning`` / ``FutureWarning``) at its top scope,
+    or is decorated with ``@deprecated`` (any form), and the docstring does
+    not contain the word ``"deprecated"`` (case-insensitive).
+
+    Config gating is handled by the orchestrator via
+    ``config.require_deprecation_notice`` — this function never reads
+    config directly.
+
+    Args:
+        symbol: The documented symbol to check.
+        sections: Parsed section headers from the symbol's docstring
+            (unused by this rule — deprecation detection operates on raw
+            AST and raw docstring text).
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-deprecation"`` when the function
+        has a deprecation pattern but no notice in the docstring, or
+        ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+    node = node_index.get(symbol.line)
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return None
+    if not (_has_deprecation_warning_call(node) or _has_deprecated_decorator(node)):
+        return None
+    if "deprecated" in (symbol.docstring or "").lower():
+        return None
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-deprecation",
+        message=(
+            f"Deprecated function '{symbol.name}' has no deprecation notice in docstring"
+        ),
+        category="required",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Public orchestrator
 # ---------------------------------------------------------------------------
 
@@ -1971,6 +2141,7 @@ _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("prefer_fenced_code_blocks", _check_prefer_fenced_code_blocks),
     ("require_param_agreement", _check_missing_param_in_docstring),
     ("require_param_agreement", _check_extra_param_in_docstring),
+    ("require_deprecation_notice", _check_missing_deprecation),
 )
 
 

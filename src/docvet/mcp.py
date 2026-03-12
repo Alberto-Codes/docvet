@@ -3,8 +3,8 @@
 Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
-to retrieve the full rule catalog (22 rules across 5 checks) with
-per-rule fix guidance.
+to retrieve the rule catalog (23 rules across 5 checks) with
+per-rule fix guidance. Fix examples show docstring-only changes.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
 module-level server instance, a single public ``start_server()``
@@ -340,6 +340,23 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
         "fix_example": (
             "Args:\n    name (str): The user's display name.\n"
             "    # Remove entries for parameters no longer in the signature."
+        ),
+    },
+    {
+        "name": "missing-deprecation",
+        "check": "enrichment",
+        "description": ("Deprecated function has no deprecation notice in docstring."),
+        "category": "required",
+        "guidance": (
+            "Add the word 'deprecated' anywhere in the docstring — a summary"
+            " sentence or a Deprecated: section both satisfy the rule."
+        ),
+        "fix_example": (
+            "def old_api(x):\n"
+            '    """Process x.\n\n'
+            "    Deprecated:\n"
+            "        This function is deprecated. Use new_api instead.\n"
+            '    """'
         ),
     },
     {
