@@ -1988,10 +1988,11 @@ def _has_deprecation_warning_call(
 ) -> bool:
     """Return True if the function body contains a qualifying ``warnings.warn``.
 
-    Performs a scope-aware walk that stops at nested ``FunctionDef``,
-    ``AsyncFunctionDef``, and ``ClassDef`` boundaries so that deprecation
-    warnings issued inside nested scopes are not attributed to the outer
-    function.
+    Traversal starts from ``node.body`` (not ``ast.iter_child_nodes``) so
+    decorators, argument annotations, and defaults are excluded. The walk
+    stops at nested ``FunctionDef``, ``AsyncFunctionDef``, and ``ClassDef``
+    boundaries so that deprecation warnings inside nested scopes are not
+    attributed to the outer function.
 
     Args:
         node: The function AST node whose body is searched.
@@ -2001,7 +2002,7 @@ def _has_deprecation_warning_call(
         where *Category* is ``DeprecationWarning``, ``PendingDeprecationWarning``,
         or ``FutureWarning``.
     """
-    stack = list(ast.iter_child_nodes(node))
+    stack: list[ast.AST] = list(node.body)
     while stack:
         child = stack.pop()
         if isinstance(child, ast.Call) and _is_warnings_warn_call(child):
