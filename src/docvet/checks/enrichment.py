@@ -1,13 +1,15 @@
 """Enrichment check for docstring completeness.
 
-Detects missing docstring sections (Returns, Raises, Yields, Attributes, etc.),
-validates cross-reference syntax in See Also sections, checks for
-non-fenced code block patterns (reporting both doctest and rST findings
-per symbol), verifies parameter agreement between function signatures
-and ``Args:`` sections, and detects missing deprecation notices on
-functions using ``warnings.warn`` with deprecation categories or the
-``@deprecated`` decorator (PEP 702) by combining AST analysis with
-section header parsing.
+Detects missing docstring sections (Returns, Raises, Yields, Attributes, etc.)
+and extra sections that claim behaviour the code does not exhibit
+(extra-raises, extra-yields, extra-returns).  Also validates
+cross-reference syntax in See Also sections, checks for non-fenced code
+block patterns (reporting both doctest and rST findings per symbol),
+verifies parameter agreement between function signatures and ``Args:``
+sections, and detects missing deprecation notices on functions using
+``warnings.warn`` with deprecation categories or the ``@deprecated``
+decorator (PEP 702) by combining AST analysis with section header
+parsing.
 Guard clauses for rules with broad skip sets (e.g. ``missing-returns``)
 are extracted into dedicated ``_should_skip_*`` helpers to keep check
 functions focused and within cognitive-complexity thresholds.
@@ -525,6 +527,29 @@ def _should_skip_returns_check(
         return True
     # @overload (defensive — 34.4 owns overload detection)
     if _has_decorator(node, "overload"):
+        return True
+    return False
+
+
+def _should_skip_reverse_check(node: _NodeT) -> bool:
+    """Determine whether reverse enrichment checks should be skipped.
+
+    Skips interface-documentation functions whose docstrings describe
+    intended behaviour for implementers, not current implementation.
+    This aligns with ruff DOC202/403/502 and pydoclint skip logic.
+
+    Skips when the node is ``@abstractmethod`` or a stub function
+    (body is ``pass``, ``...``, or ``raise NotImplementedError``).
+
+    Args:
+        node: The AST node for the symbol.
+
+    Returns:
+        ``True`` when reverse checks should be skipped for this node.
+    """
+    if _has_decorator(node, "abstractmethod"):
+        return True
+    if _is_stub_function(node):
         return True
     return False
 
@@ -1792,6 +1817,74 @@ def _parse_args_entries(
     return params
 
 
+# Regex to extract exception names from Google-style Raises: section entries.
+# Matches ClassName followed by colon at entry level (analogous to _ARGS_ENTRY_PATTERN).
+_RAISES_ENTRY_PATTERN = re.compile(r"(\w+)\s*:")
+
+# Regex to extract exception names from Sphinx :raises ExcType: entries.
+_SPHINX_RAISES_PATTERN = re.compile(r":raises\s+(\w+)\s*:")
+
+
+def _parse_raises_entries(
+    docstring: str,
+    *,
+    style: str = "google",
+) -> set[str]:
+    """Extract documented exception names from a docstring.
+
+    In Google mode, extracts the ``Raises:`` section via
+    :func:`_extract_section_content` and parses entry lines at the
+    detected base indent level.  In Sphinx mode, scans the full
+    docstring for ``:raises ExcType:`` patterns.
+
+    Returns an empty set when no ``Raises:`` section is found or when
+    content extraction fails.
+
+    Args:
+        docstring: The raw docstring text to parse.
+        style: Docstring convention: ``"google"`` or ``"sphinx"``.
+
+    Returns:
+        A set of documented exception class names.
+    """
+    if style == "sphinx":
+        return set(_SPHINX_RAISES_PATTERN.findall(docstring))
+
+    content = _extract_section_content(docstring, "Raises")
+    if content is None:
+        return set()
+
+    lines = content.splitlines()
+    if not lines:
+        return set()
+
+    # Detect base indent from first non-empty content line.
+    base_indent = ""
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped:
+            base_indent = line[: len(line) - len(stripped)]
+            break
+
+    if not base_indent:
+        return set()
+
+    exceptions: set[str] = set()
+    for line in lines:
+        # Only process lines at exactly the base indent level.
+        if not line.startswith(base_indent):
+            continue
+        after_indent = line[len(base_indent) :]
+        # Skip continuation lines (deeper indent).
+        if after_indent and after_indent[0] == " ":
+            continue
+        m = _RAISES_ENTRY_PATTERN.match(after_indent)
+        if m:
+            exceptions.add(m.group(1))
+
+    return exceptions
+
+
 def _extract_signature_params(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     config: EnrichmentConfig,
@@ -2133,6 +2226,190 @@ _CheckFn = Callable[
     Finding | None,
 ]
 
+# ---------------------------------------------------------------------------
+# Reverse enrichment checks — docstring claims behaviour code doesn't exhibit
+# ---------------------------------------------------------------------------
+
+
+def _check_extra_raises_in_docstring(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect documented exceptions not raised in the function body.
+
+    Parses the ``Raises:`` section to collect documented exception names,
+    then walks the AST subtree (scope-aware) to collect actually raised
+    exceptions.  Any documented name absent from the code is flagged.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="extra-raises-in-docstring"`` when
+        documented exceptions are not raised, or ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+    if "Raises" not in sections:
+        return None
+    if symbol.docstring is None:
+        return None
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+    if _should_skip_reverse_check(node):
+        return None
+
+    doc_raises = _parse_raises_entries(symbol.docstring, style=_active_style)
+    if not doc_raises:
+        return None
+
+    # Scope-aware walk to collect actually raised exception names.
+    code_raises: set[str] = set()
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, ast.Raise):
+            name = _extract_exception_name(child)
+            if name is not None:
+                code_raises.add(name)
+        stack.extend(ast.iter_child_nodes(child))
+
+    extra = sorted(doc_raises - code_raises)
+    if not extra:
+        return None
+
+    names = ", ".join(extra)
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="extra-raises-in-docstring",
+        message=(f"Function '{symbol.name}' documents exceptions not raised: {names}"),
+        category="recommended",
+    )
+
+
+def _check_extra_yields_in_docstring(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a Yields section on a function that never yields.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="extra-yields-in-docstring"`` when
+        a Yields section exists but the code never yields, or ``None``
+        otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+    if "Yields" not in sections:
+        return None
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+    if _should_skip_reverse_check(node):
+        return None
+
+    # Scope-aware walk for yield/yield-from.
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, (ast.Yield, ast.YieldFrom)):
+            return None  # Section is truthful.
+        stack.extend(ast.iter_child_nodes(child))
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="extra-yields-in-docstring",
+        message=(f"Function '{symbol.name}' has a Yields: section but does not yield"),
+        category="recommended",
+    )
+
+
+def _check_extra_returns_in_docstring(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a Returns section on a function with no meaningful return.
+
+    A function with only bare ``return`` or ``return None`` has no
+    meaningful return value — a ``Returns:`` section is misleading.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="extra-returns-in-docstring"`` when
+        a Returns section exists but the code has no meaningful return,
+        or ``None`` otherwise.
+    """
+    if symbol.kind not in ("function", "method"):
+        return None
+    if "Returns" not in sections:
+        return None
+    node = node_index.get(symbol.line)
+    if node is None:
+        return None
+    if _should_skip_reverse_check(node):
+        return None
+
+    # Scope-aware walk for meaningful return statements.
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if isinstance(child, ast.Return) and _is_meaningful_return(child):
+            return None  # Section is truthful.
+        stack.extend(ast.iter_child_nodes(child))
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="extra-returns-in-docstring",
+        message=(
+            f"Function '{symbol.name}' has a Returns: section "
+            f"but does not return a value"
+        ),
+        category="recommended",
+    )
+
+
 # Rules auto-disabled in sphinx mode unless the user explicitly enables them.
 _SPHINX_AUTO_DISABLE_RULES: frozenset[str] = frozenset(
     {
@@ -2159,6 +2436,9 @@ _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("require_param_agreement", _check_missing_param_in_docstring),
     ("require_param_agreement", _check_extra_param_in_docstring),
     ("require_deprecation_notice", _check_missing_deprecation),
+    ("require_raises", _check_extra_raises_in_docstring),
+    ("require_yields", _check_extra_yields_in_docstring),
+    ("require_returns", _check_extra_returns_in_docstring),
 )
 
 

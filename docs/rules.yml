@@ -1,4 +1,4 @@
-# Rule metadata catalog — single source of truth for all 25 docvet rules.
+# Rule metadata catalog — single source of truth for all 28 docvet rules.
 # Used by docs/main.py macros hook to render consistent rule page headers.
 # Schema: id, name, check, category, applies_to, summary, since, fix (all required)
 
@@ -72,6 +72,60 @@
         host: The server hostname.
         port: The server port number.
     ```
+
+- id: extra-raises-in-docstring
+  name: Extra Raises in Docstring
+  check: enrichment
+  category: recommended
+  applies_to: functions, methods
+  summary: Docstring documents exceptions not raised in the function body
+  since: "1.16.0"
+  fix: |
+    Remove the documented exception from the `Raises:` section, or add the
+    corresponding `raise` statement to the function body:
+
+    ```python
+    Raises:
+        ValueError: If the input is invalid.
+    ```
+
+    Only document exceptions that the function **directly** raises. Exceptions
+    from called functions should be documented in **their** docstrings.
+
+- id: extra-yields-in-docstring
+  name: Extra Yields in Docstring
+  check: enrichment
+  category: recommended
+  applies_to: functions, methods
+  summary: Docstring has a Yields section but the function does not yield
+  since: "1.16.0"
+  fix: |
+    Remove the `Yields:` section or convert the function to a generator:
+
+    If the function was refactored from a generator to a regular function,
+    replace `Yields:` with `Returns:`:
+
+    ```python
+    Returns:
+        A list of processed items.
+    ```
+
+- id: extra-returns-in-docstring
+  name: Extra Returns in Docstring
+  check: enrichment
+  category: recommended
+  applies_to: functions, methods
+  summary: Docstring has a Returns section but the function does not return a value
+  since: "1.16.0"
+  fix: |
+    Remove the `Returns:` section if the function has no meaningful return value:
+
+    ```python
+    def save(data: dict) -> None:
+        """Save data to disk."""
+    ```
+
+    If the function should return a value, add the `return` statement.
 
 - id: missing-deprecation
   name: Missing Deprecation Notice
