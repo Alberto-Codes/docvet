@@ -169,8 +169,9 @@ These keys go under `[tool.docvet.enrichment]`:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `require-raises` | `bool` | `true` | Require `Raises:` sections when exceptions are raised |
-| `require-yields` | `bool` | `true` | Require `Yields:` sections in generators |
+| `require-raises` | `bool` | `true` | Require `Raises:` sections when exceptions are raised. Gates both `missing-raises` and `extra-raises-in-docstring` rules. |
+| `require-returns` | `bool` | `true` | Require `Returns:` sections when functions return values. Gates both `missing-returns` and `extra-returns-in-docstring` rules. |
+| `require-yields` | `bool` | `true` | Require `Yields:` sections in generators. Gates both `missing-yields` and `extra-yields-in-docstring` rules. |
 | `require-receives` | `bool` | `true` | Require `Receives:` sections for `.send()` generators |
 | `require-warns` | `bool` | `true` | Require `Warns:` sections when `warnings.warn()` is called |
 | `require-other-parameters` | `bool` | `true` | Require `Other Parameters:` for `**kwargs` |

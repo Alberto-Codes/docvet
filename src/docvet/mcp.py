@@ -3,7 +3,7 @@
 Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
-to retrieve the full rule catalog (25 rules across 5 checks) with
+to retrieve the full rule catalog (28 rules across 5 checks) with
 per-rule fix guidance.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
@@ -424,6 +424,46 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
             " correct section headers, and valid Google-style syntax."
         ),
         "fix_example": "Args:\n    data (dict): The input data to process.",
+    },
+    {
+        "name": "extra-raises-in-docstring",
+        "check": "enrichment",
+        "description": (
+            "Docstring documents exceptions not raised in the function body."
+        ),
+        "category": "recommended",
+        "guidance": (
+            "Remove the documented exception from the Raises: section, or add"
+            " the corresponding raise statement to the function body."
+        ),
+        "fix_example": "Raises:\n    ValueError: If the input is invalid.",
+    },
+    {
+        "name": "extra-yields-in-docstring",
+        "check": "enrichment",
+        "description": (
+            "Docstring has a Yields: section but the function does not yield."
+        ),
+        "category": "recommended",
+        "guidance": (
+            "Remove the Yields: section or convert the function to a"
+            " generator. If refactored from a generator, replace Yields:"
+            " with Returns:."
+        ),
+        "fix_example": "Returns:\n    A list of processed items.",
+    },
+    {
+        "name": "extra-returns-in-docstring",
+        "check": "enrichment",
+        "description": (
+            "Docstring has a Returns: section but the function does not return a value."
+        ),
+        "category": "recommended",
+        "guidance": (
+            "Remove the Returns: section if the function has no meaningful"
+            " return value, or add the missing return statement."
+        ),
+        "fix_example": ('def save(data: dict) -> None:\n    """Save data to disk."""'),
     },
 ]
 

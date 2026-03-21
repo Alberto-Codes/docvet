@@ -1,6 +1,6 @@
 # Enrichment Check
 
-The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 14 rules cover functions, methods, classes, and modules across required and recommended categories.
+The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 17 rules cover functions, methods, classes, and modules across required and recommended categories.
 
 ```bash
 docvet enrichment --all
@@ -23,6 +23,9 @@ docvet enrichment --all
 | [`missing-typed-attributes`](../rules/missing-typed-attributes.md) | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
 | [`missing-examples`](../rules/missing-examples.md) | recommended | classes, modules | Symbol kind in `require-examples` list lacks `Examples:` section |
 | [`missing-cross-references`](../rules/missing-cross-references.md) | recommended | modules | Module missing or malformed `See Also:` section |
+| [`extra-raises-in-docstring`](../rules/extra-raises-in-docstring.md) | recommended | functions, methods | Docstring documents exceptions not raised in the function body |
+| [`extra-yields-in-docstring`](../rules/extra-yields-in-docstring.md) | recommended | functions, methods | Docstring has a `Yields:` section but the function does not yield |
+| [`extra-returns-in-docstring`](../rules/extra-returns-in-docstring.md) | recommended | functions, methods | Docstring has a `Returns:` section but the function does not return a value |
 | [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` or rST `::` instead of fenced code blocks |
 
 **Required** rules flag structural gaps where the docstring is objectively incomplete. **Recommended** rules flag best-practice improvements that enhance documentation quality.
