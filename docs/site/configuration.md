@@ -179,6 +179,7 @@ These keys go under `[tool.docvet.enrichment]`:
 | `require-cross-references` | `bool` | `true` | Require `See Also:` in module docstrings |
 | `prefer-fenced-code-blocks` | `bool` | `true` | Prefer fenced code blocks over doctest `>>>` and rST `::` formats |
 | `require-param-agreement` | `bool` | `true` | Require parameter agreement between function signatures and `Args:` sections. Gates both `missing-param-in-docstring` and `extra-param-in-docstring` rules. |
+| `require-deprecation-notice` | `bool` | `true` | Require a deprecation notice in the docstring when the function uses deprecation patterns (`warnings.warn(..., DeprecationWarning)` or `@deprecated` decorator). |
 | `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks. When `true`, undocumented `*args`/`**kwargs` are not flagged as missing, and documented `*args`/`**kwargs` are flagged as extra. Set to `false` to require their documentation (matches pydoclint's default behavior). |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
@@ -225,6 +226,7 @@ Here is a full `pyproject.toml` configuration showing all sections together:
     require-cross-references = true
     prefer-fenced-code-blocks = true
     require-param-agreement = true
+    require-deprecation-notice = true
     exclude-args-kwargs = true # (8)!
     require-examples = ["class", "dataclass"] # (7)!
     ```

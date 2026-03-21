@@ -49,7 +49,7 @@ The scanner reads `sonar-project.properties` from the project root. **Do NOT add
 ## Known Issue Patterns
 
 - The dominant finding is **cognitive complexity** (`python:S3776`, threshold 15). When refactoring functions, aim to stay under 15. When using `analyze_code_snippet` for fast feedback, target CC ≤ 12 to buffer against divergence between the MCP tool and the full scanner.
-- Enrichment `_check_*` functions take a `node_index` parameter for interface consistency even when unused — these `S1172` findings are by design.
+- Enrichment `_check_*` functions use a uniform 5-parameter dispatch signature (`symbol`, `sections`, `node_index`, `config`, `file_path`) for `_RULE_DISPATCH` table compatibility. Individual check functions may not use all parameters — these `S1172` findings are by design.
 - `analyze_code_snippet` (MCP tool) and the full scanner may calculate CC slightly differently — always trust the full scanner results on the dashboard as the source of truth.
 
 ## Important Notes

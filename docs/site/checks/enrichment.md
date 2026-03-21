@@ -1,6 +1,6 @@
 # Enrichment Check
 
-The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 10 rules cover functions, methods, classes, and modules across required and recommended categories.
+The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 14 rules cover functions, methods, classes, and modules across required and recommended categories.
 
 ```bash
 docvet enrichment --all
@@ -11,9 +11,13 @@ docvet enrichment --all
 | Rule ID | Category | Applies To | Description |
 |---------|----------|------------|-------------|
 | [`missing-raises`](../rules/missing-raises.md) | required | functions, methods | Function raises exceptions but has no `Raises:` section |
+| [`missing-returns`](../rules/missing-returns.md) | required | functions, methods | Function returns a value but has no `Returns:` section |
 | [`missing-yields`](../rules/missing-yields.md) | required | functions, methods | Generator yields but has no `Yields:` section |
 | [`missing-receives`](../rules/missing-receives.md) | required | functions, methods | Generator uses `.send()` pattern but has no `Receives:` section |
 | [`missing-warns`](../rules/missing-warns.md) | required | functions, methods | Function calls `warnings.warn()` but has no `Warns:` section |
+| [`missing-deprecation`](../rules/missing-deprecation.md) | required | functions, methods | Function uses deprecation patterns but has no deprecation notice in docstring |
+| [`missing-param-in-docstring`](../rules/missing-param-in-docstring.md) | required | functions, methods | Signature parameter not documented in `Args:` section |
+| [`extra-param-in-docstring`](../rules/extra-param-in-docstring.md) | required | functions, methods | `Args:` section documents a parameter not in the function signature |
 | [`missing-other-parameters`](../rules/missing-other-parameters.md) | recommended | functions, methods | Function accepts `**kwargs` but has no `Other Parameters:` section |
 | [`missing-attributes`](../rules/missing-attributes.md) | required | classes, modules | Class or `__init__.py` module has undocumented attributes |
 | [`missing-typed-attributes`](../rules/missing-typed-attributes.md) | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
@@ -55,6 +59,9 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `require-typed-attributes` | `bool` | `true` | Require typed format in `Attributes:` entries |
 | `require-cross-references` | `bool` | `true` | Require `See Also:` in module docstrings |
 | `prefer-fenced-code-blocks` | `bool` | `true` | Prefer fenced code blocks over doctest `>>>` format |
+| `require-param-agreement` | `bool` | `true` | Require parameter agreement between function signatures and `Args:` sections |
+| `require-deprecation-notice` | `bool` | `true` | Require deprecation notice when function uses deprecation patterns |
+| `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 Example configuration to disable specific rules:
