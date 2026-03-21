@@ -228,8 +228,8 @@ class TestDocvetCheck:
 class TestDocvetRules:
     """End-to-end tests for the docvet_rules MCP tool."""
 
-    def test_returns_all_22_rules(self):
-        """3.3: docvet_rules returns all 22 rules with required fields."""
+    def test_returns_all_25_rules(self):
+        """3.3: docvet_rules returns all 25 rules with required fields."""
 
         async def _run():
             async with stdio_client(_server_params()) as (read, write):
@@ -242,7 +242,7 @@ class TestDocvetRules:
         content = asyncio.run(_run())
         assert "rules" in content
         rules = content["rules"]
-        assert len(rules) == 22
+        assert len(rules) == 25
 
         for rule in rules:
             assert "name" in rule

@@ -51,6 +51,7 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `require-raises` | `bool` | `true` | Require `Raises:` sections when exceptions are raised |
+| `require-returns` | `bool` | `true` | Require `Returns:` sections when functions return a value |
 | `require-yields` | `bool` | `true` | Require `Yields:` sections in generators |
 | `require-receives` | `bool` | `true` | Require `Receives:` sections for `.send()` generators |
 | `require-warns` | `bool` | `true` | Require `Warns:` sections when `warnings.warn()` is called |
