@@ -1,4 +1,4 @@
-# Rule metadata catalog — single source of truth for all 24 docvet rules.
+# Rule metadata catalog — single source of truth for all 25 docvet rules.
 # Used by docs/main.py macros hook to render consistent rule page headers.
 # Schema: id, name, check, category, applies_to, summary, since, fix (all required)
 
@@ -71,6 +71,37 @@
     Args:
         host: The server hostname.
         port: The server port number.
+    ```
+
+- id: missing-deprecation
+  name: Missing Deprecation Notice
+  check: enrichment
+  category: required
+  applies_to: functions, methods
+  summary: Function uses deprecation patterns but has no deprecation notice in docstring
+  since: "1.15.0"
+  fix: |
+    Add a deprecation notice to the docstring. The word "deprecated" must appear
+    somewhere in the docstring (case-insensitive). Common formats:
+
+    Google-style:
+
+    ```python
+    Deprecated:
+        Use :func:`new_func` instead. Will be removed in v3.0.
+    ```
+
+    Sphinx-style:
+
+    ```python
+    .. deprecated:: 2.0
+        Use :func:`new_func` instead.
+    ```
+
+    Inline:
+
+    ```python
+    """Connect to the server (deprecated — use connect_async)."""
     ```
 
 - id: missing-yields

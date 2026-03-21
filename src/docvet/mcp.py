@@ -3,7 +3,7 @@
 Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
-to retrieve the full rule catalog (22 rules across 5 checks) with
+to retrieve the full rule catalog (25 rules across 5 checks) with
 per-rule fix guidance.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
@@ -125,6 +125,26 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
         "fix_example": '"""One-line summary.\n\nDetailed description.\n"""',
     },
     {
+        "name": "overload-has-docstring",
+        "check": "presence",
+        "description": (
+            "@overload-decorated function has a docstring — document the"
+            " implementation instead."
+        ),
+        "category": "required",
+        "guidance": (
+            "Remove the docstring from the @overload-decorated function and"
+            " document the implementation function instead."
+        ),
+        "fix_example": (
+            "@overload\ndef connect(address: str) -> TCPConnection: ...\n\n"
+            "def connect(address):\n"
+            '    """Connect to a server.\n\n'
+            "    Args:\n"
+            '        address: Hostname string or (host, port) tuple.\n    """'
+        ),
+    },
+    {
         "name": "missing-raises",
         "check": "enrichment",
         "description": "Function raises an exception not documented in Raises section.",
@@ -134,6 +154,17 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
             " condition that triggers it."
         ),
         "fix_example": "Raises:\n    ValueError: If the input is negative.",
+    },
+    {
+        "name": "missing-returns",
+        "check": "enrichment",
+        "description": "Function returns a value but has no Returns section.",
+        "category": "required",
+        "guidance": (
+            "Add a Returns: section describing the type and meaning of the"
+            " return value."
+        ),
+        "fix_example": "Returns:\n    The parsed configuration as a dictionary.",
     },
     {
         "name": "missing-yields",
@@ -166,6 +197,25 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
             "Add a Warns: section listing each warning category and the condition."
         ),
         "fix_example": ("Warns:\n    UserWarning: If timeout is less than 5 seconds."),
+    },
+    {
+        "name": "missing-deprecation",
+        "check": "enrichment",
+        "description": (
+            "Function uses deprecation patterns (warnings.warn with"
+            " DeprecationWarning or @deprecated decorator) but has no"
+            " deprecation notice in docstring."
+        ),
+        "category": "required",
+        "guidance": (
+            "Add the word 'deprecated' somewhere in the docstring"
+            " (case-insensitive). Common formats: Google-style"
+            " 'Deprecated:' section, Sphinx '.. deprecated::' directive,"
+            " or inline mention."
+        ),
+        "fix_example": (
+            "Deprecated:\n    Use :func:`new_func` instead. Will be removed in v3.0."
+        ),
     },
     {
         "name": "missing-other-parameters",

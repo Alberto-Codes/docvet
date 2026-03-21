@@ -506,7 +506,7 @@ class TestFindingSchemaParity:
 
 class TestRuleCatalogStaleness:
     def test_rule_catalog_has_expected_count(self):
-        assert len(_RULE_CATALOG) == 22
+        assert len(_RULE_CATALOG) == 25
 
     def test_rule_catalog_entries_have_required_keys(self):
         expected_keys = {
@@ -522,13 +522,16 @@ class TestRuleCatalogStaleness:
 
     def test_rule_catalog_names_match_emitted_rules(self):
         expected_rules = {
-            # presence (1)
+            # presence (2)
             "missing-docstring",
-            # enrichment (12)
+            "overload-has-docstring",
+            # enrichment (14)
             "missing-raises",
+            "missing-returns",
             "missing-yields",
             "missing-receives",
             "missing-warns",
+            "missing-deprecation",
             "missing-other-parameters",
             "missing-attributes",
             "missing-typed-attributes",

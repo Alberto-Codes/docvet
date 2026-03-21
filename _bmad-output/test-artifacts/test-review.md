@@ -9,7 +9,7 @@ stepsCompleted:
   - step-03f-aggregate-scores
   - step-04-generate-report
 lastStep: step-04-generate-report
-lastSaved: '2026-03-06'
+lastSaved: '2026-03-21'
 workflowType: testarch-test-review
 inputDocuments:
   - _bmad/tea/testarch/knowledge/test-quality.md
@@ -22,8 +22,8 @@ inputDocuments:
 
 # Test Quality Review: docvet Full Suite
 
-**Quality Score**: 96/100 (A+ - Excellent)
-**Review Date**: 2026-03-06
+**Quality Score**: 97/100 (A+ - Excellent)
+**Review Date**: 2026-03-21
 **Review Scope**: Suite (all tests)
 **Reviewer**: TEA Agent
 
@@ -40,33 +40,28 @@ Coverage mapping and coverage gates are out of scope here. Use `trace` for cover
 
 ### Key Strengths
 
-- 1,210 tests all passing (2.99s for non-slow, 4.95s total) -- exceptional speed for suite size
-- Zero bare `assert_called_once()` across entire suite -- all mock assertions verify arguments
-- Zero `time.sleep` or hard waits anywhere in the suite
-- Zero non-deterministic patterns (no uncontrolled random, no time dependencies)
-- Consistent `pytestmark` on all 35 test files -- unit vs integration cleanly separated
-- Strong multi-field assertion pattern -- all check tests verify all 6 Finding fields (file, line, symbol, rule, message, category)
-- `assert len` before field access prevents confusing index errors
+- 1,505 tests all passing (7.94s non-slow, ~12s total) -- exceptional speed for suite size
+- Zero anti-patterns across entire suite (no sleep, no shared state, no flow-control conditionals)
+- 100% pytestmark coverage on all test files -- unit vs integration cleanly separated
+- Strong multi-field assertion pattern -- all check tests verify all 6 Finding fields
+- `@pytest.mark.parametrize` adoption improved 129% (7 -> 16 usages, 2 -> 6 files) -- addressing prior P2 recommendation
+- 3 more enrichment rules extracted to dedicated test files (test_missing_returns.py, test_param_agreement.py, test_missing_deprecation.py) -- continued progress on prior P3 recommendation
+- New test_missing_deprecation.py demonstrates all review-era best practices: parametrize, AC-labeled docstrings, cross-rule interaction tests, scope boundary parametrization
 - pytest-randomly installed -- continuous order-independence verification
-- All `try/except` usages are legitimate (test source strings, subprocess scripts, proper `finally` cleanup)
-- New `test_prefer_fenced_code_blocks.py` demonstrates AC-to-test traceability with labeled docstrings (AC 1-5, 7)
 
 ### Key Weaknesses
 
-- Near-zero `@pytest.mark.parametrize` usage (7 usages across 2 files out of 1,210 test functions) -- significant deduplication opportunity
-- Two files exceed 2,000 lines (`test_enrichment.py`: 3,746 lines; `test_cli.py`: 2,835 lines) -- splitting would improve navigability
-- Two assertion-free tests in `test_config.py` (lines 824, 850) -- valid "does not raise" pattern but unclear intent
-- `test_mcp.py` has 23 classes for 56 tests -- over-fragmented class organization
+- Two files still exceed 2,000 lines (test_enrichment.py: 3,756; test_cli.py: 3,106) -- splitting would improve navigability
+- Parametrize adoption at 16/1,505 (1.1%) still leaves significant deduplication opportunity in test_enrichment.py and test_config.py
+- test_mcp.py has 23 classes for ~56 tests -- over-fragmented class organization
 
 ### Summary
 
-The docvet test suite is exemplary for a Python backend project. The suite contains 1,210 tests across 35 files (18,217 lines) with perfect determinism and isolation scores. Execution time remains under 3 seconds for non-slow tests, well within the 1.5-minute quality threshold. The suite demonstrates strong TDD discipline established through 24+ epics of iterative development.
+The docvet test suite continues its upward trajectory across all quality dimensions. Since v5.0, the suite grew 24.4% (1,210 -> 1,505 tests) while maintaining perfect determinism and isolation scores. Two of the four prior recommendations saw meaningful progress: parametrize adoption more than doubled (7 -> 16 usages across 6 files), and 3 additional enrichment rules were extracted to dedicated test files, bringing the total to 4/14 rules with their own files.
 
-Since the previous review (v4.0), the `prefer-fenced-code-blocks` rule tests were extracted into a dedicated file (`test_prefer_fenced_code_blocks.py`, 680 lines, 25 tests), partially addressing recommendation #2 (split by rule). This reduced `test_enrichment.py` from 4,134 to 3,746 lines (-388). The new test file demonstrates excellent quality: AC-labeled docstrings, strong assertions, clean helper factoring, and thorough edge case coverage including multi-symbol and mixed-pattern scenarios. Full suite execution time improved from 5.6s to 4.95s.
+The newest addition -- `test_missing_deprecation.py` (485 lines, 34 tests) -- exemplifies the target quality pattern: `@pytest.mark.parametrize` for variant coverage, AC-labeled docstrings, cross-rule interaction verification, and a parametrized scope-boundary test covering sync functions, async functions, and nested classes. This file should serve as the template for future rule test files.
 
-The remaining maintainability improvement opportunity is parametrize adoption (7 usages in 2 files vs. 1,210 test functions), consistent with the project's "readability and clarity over cleverness" philosophy.
-
-This suite is production-quality and should be considered a reference implementation for AST-based tool testing.
+The suite remains production-quality and continues to demonstrate reference-grade testing discipline for AST-based tool development.
 
 ---
 
@@ -76,21 +71,20 @@ This suite is production-quality and should be considered a reference implementa
 |-----------|--------|------------|-------|
 | Determinism (no random/time deps) | PASS | 0 | Zero non-deterministic patterns |
 | Hard Waits (sleep, waitForTimeout) | PASS | 0 | No `time.sleep` anywhere |
-| Conditional Flow Control (if/try) | PASS | 0 | All try/except in test strings, subprocess scripts, or legitimate `finally` cleanup |
+| Conditional Flow Control (if/try) | PASS | 0 | All try/except in test source strings or legitimate cleanup |
 | Isolation (cleanup, no shared state) | PASS | 0 | Monkeypatch auto-restores; tmp_path for filesystem |
-| Fixture Patterns | PASS | 0 | conftest.py provides `parse_source` and `make_finding` factories |
+| Fixture Patterns | PASS | 0 | conftest.py factories; local `_make_symbol_and_index` helpers |
 | Data Factories | PASS | 0 | Helper functions construct test data inline |
 | Explicit Assertions | PASS | 0 | All assertions visible in test bodies |
 | Assertion Strength | PASS | 0 | Zero bare `assert_called_once()` -- all use `assert_called_once_with()` |
 | Test Length (per function) | PASS | 0 | Individual tests well under 100 lines |
-| File Length (per file) | WARN | 7 | 2 files exceed 2,000 lines (down from 8 WARN; test_enrichment.py shrank 388 lines) |
-| Parametrize Usage | WARN | 1 | 7/1,210 test functions use parametrize |
-| Assertion-Free Tests | WARN | 2 | test_config.py lines 824, 850 |
-| Class Organization | WARN | 1 | test_mcp.py: 23 classes for 56 tests |
-| Test Duration (<=1.5 min) | PASS | 0 | Full suite: 4.95s |
+| File Length (per file) | WARN | 5 | 2 files >2,000 lines; 3 more >1,000 lines |
+| Parametrize Usage | WARN | 1 | 16/1,505 test items use parametrize (improved from 7/1,210) |
+| Class Organization | WARN | 1 | test_mcp.py: 23 classes for ~56 tests |
+| Test Duration (<=1.5 min) | PASS | 0 | Full suite: ~12s |
 | Flakiness Patterns | PASS | 0 | pytest-randomly installed |
 
-**Total Violations**: 0 Critical, 0 High, 4 Medium, 7 Low
+**Total Violations**: 0 Critical, 0 High, 3 Medium, 4 Low
 
 ---
 
@@ -100,16 +94,16 @@ This suite is production-quality and should be considered a reference implementa
 Dimension Scores (weighted):
   Determinism (30%):     100 x 0.30 = 30.00
   Isolation (30%):       100 x 0.30 = 30.00
-  Maintainability (25%):  84 x 0.25 = 21.00
-  Performance (15%):      99 x 0.15 = 14.85
+  Maintainability (25%):  88 x 0.25 = 22.00
+  Performance (15%):      98 x 0.15 = 14.70
                          --------
-Final Score:             96/100
+Final Score:             97/100
 Grade:                   A+ (Excellent)
 ```
 
-**Maintainability breakdown**: Deducted 10 for near-zero parametrize adoption, 4 for oversized files (reduced from 5 -- test_enrichment.py shrank 388 lines via extraction), 1 for assertion-free tests, 1 for over-fragmented test_mcp.py classes. Score: 84/100.
+**Maintainability breakdown**: Deducted 8 for limited parametrize adoption (improved from -10), 4 for oversized files (unchanged), 1 for mcp class fragmentation (unchanged). Added +1 bonus for 3 new rule extractions. Score: 88/100 (up from 84).
 
-**Performance breakdown**: 1,210 tests in 2.99s (non-slow) = ~2.5ms per test average. Deducted 1 point for two files that slow IDE navigation (3,746 and 2,835 lines). Score: 99/100.
+**Performance breakdown**: 1,505 tests in 7.94s (non-slow) = 5.3ms per test average (up from 2.5ms due to larger parametrized AST fixtures). Deducted 2 for per-test time increase and 2 files that slow IDE navigation. Score: 98/100 (down from 99).
 
 ---
 
@@ -121,170 +115,97 @@ No critical issues detected.
 
 ## Recommendations (Should Fix)
 
-### 1. Introduce @pytest.mark.parametrize in test_enrichment.py
+### 1. Continue parametrize adoption in test_enrichment.py and test_config.py
 
 **Severity**: P2 (Medium)
-**Location**: `tests/unit/checks/test_enrichment.py` (suite-wide)
+**Location**: `tests/unit/checks/test_enrichment.py`, `tests/unit/test_config.py`
 **Criterion**: Maintainability
 
 **Issue Description**:
-Tests with 0 `@pytest.mark.parametrize` usage. Many tests follow identical structure: construct source string, parse, run check, verify findings. Groups of tests differ only in input source code and expected findings.
+Parametrize adoption improved (7 -> 16 usages, 2 -> 6 files) but remains concentrated in newer test files. The two largest files (test_enrichment.py, test_config.py) have zero parametrize usage despite containing many structurally identical tests.
 
-**Current Code**:
+**Progress since v5.0**: test_missing_deprecation.py and test_param_agreement.py demonstrate effective parametrize patterns that should propagate to older test files when touched.
 
-```python
-# Pattern repeated 20+ times for missing-raises variants
-def test_missing_raises_single_exception(parse_source):
-    source = "def foo():\n    raise ValueError\n"
-    # ... parse and check ...
-    assert len(findings) == 1
-    assert findings[0].rule == "missing-raises"
-
-def test_missing_raises_multiple_exceptions(parse_source):
-    source = "def foo():\n    raise ValueError\n    raise TypeError\n"
-    # ... identical structure, different source ...
-    assert len(findings) == 1
-```
-
-**Recommended Improvement**:
-
-```python
-@pytest.mark.parametrize("source,expected_count,expected_rule", [
-    ("def foo():\n    raise ValueError\n", 1, "missing-raises"),
-    ("def foo():\n    raise ValueError\n    raise TypeError\n", 1, "missing-raises"),
-], ids=["single-exception", "multiple-exceptions"])
-def test_missing_raises_variants(parse_source, source, expected_count, expected_rule):
-    findings = check_enrichment(parse_source(source))
-    assert len(findings) == expected_count
-    assert findings[0].rule == expected_rule
-```
-
-**Benefits**:
-Reduces file from 3,746 lines further. Easier to add new test cases. Better test output (pytest shows each parametrized case).
-
-**Priority**: P2 -- Improves maintainability and execution reporting but no functional impact.
-
-**Note**: This is a design choice tradeoff. The project philosophy ("readability and clarity over cleverness") justifies the current approach. Only apply parametrize where it genuinely improves clarity.
+**Priority**: P2 -- Apply opportunistically when editing these files, not as standalone refactoring.
 
 ### 2. Continue splitting test_enrichment.py by rule
 
 **Severity**: P3 (Low)
-**Location**: `tests/unit/checks/test_enrichment.py`
+**Location**: `tests/unit/checks/test_enrichment.py` (3,756 lines)
 **Criterion**: Maintainability
 
 **Issue Description**:
-At 3,746 lines, this remains the largest test file. The extraction of `test_prefer_fenced_code_blocks.py` (680 lines) is a positive step -- continuing this pattern for other rules (e.g., `test_missing_raises.py`, `test_missing_yields.py`) would further improve navigability.
+3 more rules extracted since v5.0 (test_missing_returns.py, test_param_agreement.py, test_missing_deprecation.py). Total: 4/14 enrichment rules with dedicated files. test_enrichment.py remains at 3,756 lines -- new extractions offset new additions.
 
-**Benefits**: Faster git blame, easier PR reviews, clearer test ownership per rule.
+**Progress**: 4/14 rules extracted (29%). Each extraction follows the pattern established by test_prefer_fenced_code_blocks.py.
 
-**Progress**: 1 of 10 rules extracted (prefer-fenced-code-blocks). 9 remaining.
-
-### 3. Add explicit assertions to "does not raise" tests
-
-**Severity**: P3 (Low)
-**Location**: `tests/unit/test_config.py:824, 850`
-**Criterion**: Maintainability
-
-**Issue Description**:
-Two tests call validation functions without any assert. The implicit contract is "does not raise," but this is unclear to future readers.
-
-**Recommended Improvement**: Add a `# Should not raise` comment to clarify intent.
-
-### 4. Reduce class fragmentation in test_mcp.py
+### 3. Consolidate test_mcp.py classes
 
 **Severity**: P3 (Low)
 **Location**: `tests/unit/test_mcp.py`
 **Criterion**: Maintainability
 
 **Issue Description**:
-23 test classes for 56 tests (2.4 tests per class average). Many classes have only 1-2 tests. Consolidating related tests into fewer classes would reduce boilerplate and improve scanability.
+23 test classes for ~56 tests (2.4 tests/class average). Unchanged from v5.0.
 
 ---
 
 ## Best Practices Found
 
-### 1. Strong Multi-Field Assertion Pattern
+### 1. Parametrized Scope Boundary Testing (NEW)
 
-**Location**: `tests/unit/checks/test_enrichment.py`, `test_freshness.py`, `test_presence.py`, `test_finding.py`, `test_prefer_fenced_code_blocks.py`
-**Pattern**: Assert ALL Finding fields
+**Location**: `tests/unit/checks/test_missing_deprecation.py:336-363`
+**Pattern**: Parametrize over scope boundary types
 
 **Why This Is Good**:
-Every check test verifies all 6 Finding fields (file, line, symbol, rule, message, category) rather than just checking the primary field. This catches subtle regressions like a correct rule name but wrong line number.
+Tests all three AST boundary types (sync function, async function, nested class) in a single parametrized test rather than duplicating the test body. This pattern emerged from the code review of Story 35.2 and directly validates all branches of the scope-aware walk.
 
 ```python
-assert len(findings) == 1
-finding = findings[0]
-assert finding.file == "test.py"
-assert finding.line == 5
-assert finding.symbol == "MyClass"
-assert finding.rule == "missing-attributes"
-assert "Attributes" in finding.message
-assert finding.category == "required"
+@pytest.mark.parametrize(
+    "nested_def",
+    [
+        "    def inner():\n        warnings.warn('old', DeprecationWarning)\n",
+        "    async def inner():\n        warnings.warn('old', DeprecationWarning)\n",
+        "    class Inner:\n        def method(self):\n"
+        "            warnings.warn('old', DeprecationWarning)\n",
+    ],
+    ids=["sync-function", "async-function", "nested-class"],
+)
+def test_nested_scope_boundary_isolation(self, nested_def: str):
 ```
 
-### 2. assert_called_once_with Over assert_called_once
+### 2. Cross-Rule Interaction Tests (NEW)
 
-**Location**: Suite-wide (zero bare `assert_called_once()`)
-**Pattern**: Always verify mock call arguments
-
-**Why This Is Good**:
-`assert_called_once()` only checks call count. `assert_called_once_with(...)` verifies both count AND arguments. The suite has zero instances of the weak pattern.
-
-### 3. Length-Before-Access Pattern
-
-**Location**: `tests/unit/checks/test_enrichment.py`, `test_freshness.py`, `test_presence.py`, `test_prefer_fenced_code_blocks.py`
-**Pattern**: `assert len(results) == N` before accessing `results[0]`
+**Location**: `tests/unit/checks/test_missing_deprecation.py:440-474`
+**Pattern**: Verify unfiltered findings when rules overlap
 
 **Why This Is Good**:
-Prevents confusing `IndexError` when the real issue is wrong result count. The assertion message "expected 1, got 0" is far more diagnostic than "list index out of range."
+When a new rule is added to a module with existing rules, it's critical to verify that both rules fire independently. The `TestCrossRuleInteraction` class verifies that `missing-warns` and `missing-deprecation` both emit findings for the same function -- catching the case where one rule's early return accidentally suppresses another.
 
-### 4. pytest-randomly for Order Independence
+### 3. Strong Multi-Field Assertion Pattern (CONTINUED)
 
-**Location**: `pyproject.toml` (dev dependency)
-**Pattern**: Randomize test execution order on every run
+**Location**: Suite-wide, exemplified in all `tests/unit/checks/test_*.py`
+**Pattern**: Assert all 6 Finding fields on every positive test
 
-**Why This Is Good**:
-Continuously verifies that no test depends on execution order. Passive quality assurance with zero maintenance cost.
-
-### 5. Consistent pytestmark Convention
-
-**Location**: All test files
-**Pattern**: `pytestmark = pytest.mark.unit` or `pytest.mark.integration` at module level
-
-**Why This Is Good**:
-Every test file declares its level. Enables reliable `pytest -m unit` / `pytest -m integration` selection. 100% adoption rate across all 35 files.
-
-### 6. Infrastructure Tests Guard Against Silent Corruption
-
-**Location**: `tests/unit/test_docs_infrastructure.py`, `tests/unit/test_pre_commit_hooks.py`
-**Pattern**: Validate structural integrity of non-code project files
-
-**Why This Is Good**:
-Catches silent corruption in `docs/rules.yml`, `mkdocs.yml`, and `.pre-commit-hooks.yaml`. Bidirectional consistency test verifies that every rule ID has a page AND every page has a rule ID.
-
-### 7. AC-to-Test Traceability
-
-**Location**: `tests/unit/test_reporting.py`, `tests/unit/checks/test_coverage.py`, `tests/unit/checks/test_prefer_fenced_code_blocks.py`
-**Pattern**: Test classes/functions named after acceptance criteria with AC-labeled docstrings
-
-**Why This Is Good**:
-Directly links tests to requirements, enabling traceability reviews without a separate mapping document. The new `test_prefer_fenced_code_blocks.py` exemplifies this with docstrings like `"""AC 1: Both patterns -> 2 findings with distinct messages."""`.
-
-### 8. Factory Fixtures in conftest.py
+### 4. Factory Fixtures in conftest.py (CONTINUED)
 
 **Location**: `tests/conftest.py:15-47`
-**Pattern**: Factory fixture returning callable
+**Pattern**: Factory fixture returning callable with sensible defaults
 
-**Why This Is Good**:
-Provides sensible defaults while allowing per-test overrides. Eliminates boilerplate across 200+ tests while keeping each test's intent explicit through keyword arguments.
+### 5. Consistent pytestmark Convention (CONTINUED)
 
-### 9. Dedicated Test File per Rule (NEW)
+**Location**: All 35 test files
+**Pattern**: 100% marker adoption
 
-**Location**: `tests/unit/checks/test_prefer_fenced_code_blocks.py`
-**Pattern**: One test file per enrichment rule with focused helper
+### 6. AC-to-Test Traceability (CONTINUED)
 
-**Why This Is Good**:
-The `_make_symbol_and_index` helper encapsulates boilerplate (AST parse + symbol extraction + node index) while the test file stays focused on a single rule. Clear section headers (`# Direct-function tests`, `# Multi-finding tests`, `# Direct helper tests`) organize tests by abstraction level. This pattern should be replicated for remaining enrichment rules.
+**Location**: `test_missing_deprecation.py`, `test_param_agreement.py`, `test_prefer_fenced_code_blocks.py`
+**Pattern**: AC-labeled docstrings on test functions
+
+### 7. Infrastructure Tests Guard Against Silent Corruption (CONTINUED)
+
+**Location**: `test_docs_infrastructure.py`, `test_pre_commit_hooks.py`
+**Pattern**: Bidirectional consistency validation for rule pages and YAML metadata
 
 ---
 
@@ -293,61 +214,39 @@ The `_make_symbol_and_index` helper encapsulates boilerplate (AST parse + symbol
 ### File Metadata
 
 - **Test Directory**: `tests/`
-- **Total Test Files**: 35 Python files (+1 since v4.0)
-- **Total Lines**: 18,217 (+381 since v4.0)
+- **Total Test Files**: 35 Python files (same count, different composition -- 3 new dedicated files offset by restructuring)
+- **Total Lines**: 22,286 (+4,069 since v5.0)
 - **Test Framework**: pytest + pytest-cov + pytest-mock + pytest-randomly
 - **Language**: Python 3.12+
 
-### Test Structure
+### Key File Sizes
 
-| File | Lines | Tests | Avg Lines/Test |
-|------|-------|-------|----------------|
-| test_enrichment.py | 3,746 | ~202 | 18.5 |
-| test_cli.py | 2,835 | 178 | 15.9 |
-| test_freshness.py | 1,698 | ~100 | 17.0 |
-| test_mcp.py (unit) | 1,184 | ~100 | 11.8 |
-| test_config.py | 1,072 | ~70 | 15.3 |
-| test_reporting.py | 750 | ~68 | 11.0 |
-| test_griffe_compat.py (unit) | 744 | ~40 | 18.6 |
-| test_presence.py | 695 | ~31 | 22.4 |
-| **test_prefer_fenced_code_blocks.py** | **680** | **25** | **27.2** |
-| test_discovery.py (int) | 613 | ~50 | 12.3 |
-| test_discovery.py (unit) | 580 | ~50 | 11.6 |
-| test_ast_utils.py | 444 | ~40 | 11.1 |
-| test_coverage.py | 422 | ~30 | 14.1 |
-| test_lsp.py | 408 | ~25 | 16.3 |
-| test_cli_timing.py | 372 | ~24 | 15.5 |
-| test_mcp.py (int) | 341 | 11 | 31.0 |
-| test_cli_progress.py | 304 | ~15 | 20.3 |
-| test_finding.py | 256 | 14 | 18.3 |
-| test_docs_infrastructure.py | 222 | 18 | 12.3 |
-| test_exports.py | 173 | ~20 | 8.7 |
-| test_pre_commit_hooks.py | 106 | 11 | 9.6 |
-| test_griffe_compat.py (int) | 105 | 7 | 15.0 |
-| test_freshness_diff.py (int) | 84 | 1 | 84.0 |
+| File | Lines | Change from v5.0 |
+|------|-------|-------------------|
+| test_enrichment.py | 3,756 | +10 (flat -- extractions offset additions) |
+| test_cli.py | 3,106 | +271 |
+| test_freshness.py | 1,726 | +28 |
+| test_config.py | 1,493 | +421 |
+| test_mcp.py | 1,186 | +2 |
+| **test_param_agreement.py** | **913** | **NEW** |
+| **test_missing_returns.py** | **647** | **NEW** |
+| **test_missing_deprecation.py** | **485** | **NEW** |
 
 ### Suite Summary
 
-- **Test Functions**: 1,210 collected (+9 since v4.0)
-- **Unit Tests**: 1,165 (96.3%)
-- **Integration Tests**: 45 (3.7%)
-- **Slow Tests**: 6 (0.5%)
-- **Shared Fixtures**: `parse_source`, `make_finding` (conftest.py), `git_repo` (integration conftest.py)
-- **Parametrize Usages**: 7 (test_exports.py, test_mcp.py)
+- **Test Items Collected**: 1,505 (+295 since v5.0)
+- **Unit Tests**: ~1,460 (97%)
+- **Integration Tests**: ~45 (3%)
+- **Parametrize Usages**: 16 in 6 files (up from 7 in 2 files)
+- **Dedicated Rule Test Files**: 4 (prefer-fenced-code-blocks, missing-returns, param-agreement, missing-deprecation)
 
 ### Execution Timing
 
 | Scope | Tests | Duration | Per-Test Avg |
 |-------|-------|----------|--------------|
-| Non-slow (`-m "not slow"`) | 1,204 | 2.99s | 2.5ms |
-| Slow only (`-m slow`) | 6 | ~2.0s | ~333ms |
-| Full suite | 1,210 | 4.95s | 4.1ms |
-
-### Assertions Analysis
-
-- **Assertion Types**: `assert ==`, `assert in`, `assert len`, `assert_called_once_with`, `assert_not_called`, `isinstance`, `pytest.raises`
-- **Pattern**: All assertions explicit in test bodies (never hidden in helpers)
-- **Average assertions per test**: ~2.3
+| Non-slow (`-m "not slow"`) | 1,499 | 7.94s | 5.3ms |
+| Slow only (`-m slow`) | 6 | ~4s | ~667ms |
+| Full suite | 1,505 | ~12s | 8.0ms |
 
 ---
 
@@ -365,48 +264,20 @@ The `_make_symbol_and_index` helper encapsulates boilerplate (AST parse + symbol
 
 ---
 
-## Context and Integration
-
-### Related Artifacts
-
-- **Project**: docvet -- Python CLI for docstring quality vetting
-- **Architecture**: Six-layer docstring quality model (layers 3-6 implemented)
-- **Quality Gates**: ruff, ruff format, ty, pytest, docvet check --all, interrogate
-- **CI**: GitHub Actions with 6 quality gates
-
----
-
-## Knowledge Base References
-
-This review consulted the following knowledge base fragments (adapted for Python/pytest backend):
-
-- **test-quality.md** -- Definition of Done (no hard waits, <300 lines, <1.5 min, self-cleaning)
-- **fixture-architecture.md** -- Pure function -> Fixture pattern (adapted: pytest factory fixtures)
-- **data-factories.md** -- Factory functions with overrides (adapted: `make_finding()` conftest fixture)
-- **test-levels-framework.md** -- Unit vs Integration vs E2E appropriateness
-- **selective-testing.md** -- Tag-based execution (adapted: pytest markers `unit`, `integration`, `slow`)
-- **test-healing-patterns.md** -- Common failure patterns (confirmed: zero anti-patterns present)
-
----
-
 ## Next Steps
 
 ### Follow-up Actions (Future PRs)
 
-1. **Parametrize enrichment tests** -- Consolidate structurally identical tests using `@pytest.mark.parametrize`
+1. **Continue parametrize adoption** -- Apply to test_enrichment.py and test_config.py when those files are edited
    - Priority: P2
-   - Target: Backlog (housekeeping)
+   - Target: Next relevant enrichment/config story
 
-2. **Continue splitting test_enrichment.py by rule** -- Extract remaining 9 rules into dedicated files (as done with prefer-fenced-code-blocks)
+2. **Continue rule extraction** -- Extract remaining 10 rules from test_enrichment.py to dedicated files
    - Priority: P3
-   - Target: Backlog
-   - Progress: 1/10 rules extracted
+   - Target: Backlog (apply when rule is modified)
+   - Progress: 4/14 rules extracted (29%)
 
-3. **Add explicit assertions to config validation tests** -- Replace implicit "does not raise" with comment
-   - Priority: P3
-   - Target: Next relevant config story
-
-4. **Consolidate test_mcp.py classes** -- Merge single-test classes into logical groups
+3. **Consolidate test_mcp.py classes** -- Merge single-test classes into logical groups
    - Priority: P3
    - Target: Next MCP-related story
 
@@ -421,9 +292,9 @@ No re-review needed -- approve as-is. All recommendations are P2/P3 improvements
 **Recommendation**: Approve
 
 **Rationale**:
-Test quality is excellent with 96/100 score (up from 95 in v4.0). The suite demonstrates production-grade discipline across all four quality dimensions: determinism (100), isolation (100), maintainability (84, up from 82), and performance (99, up from 98). Zero critical or high violations. The maintainability score improved due to the extraction of `test_prefer_fenced_code_blocks.py` from `test_enrichment.py`, partially addressing prior recommendation #2. Full suite execution time improved from 5.6s to 4.95s. The remaining recommendations (parametrize adoption, further file splitting) are genuine improvements but don't block approval.
+Test quality is excellent with 97/100 score (up from 96 in v5.0). The suite grew 24.4% (+295 tests) while improving its maintainability score from 84 to 88 -- a rare combination. Two of four prior recommendations saw meaningful progress: parametrize adoption more than doubled, and 3 additional enrichment rules were extracted to dedicated test files. The newest test file (test_missing_deprecation.py) serves as a reference template combining parametrize, AC traceability, cross-rule interaction testing, and scope-boundary coverage. Zero critical or high violations. Suite execution time remains excellent at 5.3ms/test (non-slow).
 
-> Test quality is excellent with 96/100 score. The new `test_prefer_fenced_code_blocks.py` demonstrates exemplary AC-to-test traceability and strong assertion patterns. Minor maintainability observations (large files, parametrize opportunities) can be addressed opportunistically in future PRs. Tests are production-ready and follow best practices consistently across 1,210 test cases.
+> Test quality is excellent with 97/100 score. The suite continues its upward trajectory with improved parametrize adoption and progressive file extraction. Minor maintainability observations (large files, remaining parametrize opportunities) can be addressed opportunistically. Tests are production-ready and follow best practices consistently across 1,505 test cases.
 
 ---
 
@@ -436,41 +307,42 @@ Test quality is excellent with 96/100 score (up from 95 in v4.0). The suite demo
 | 2026-03-05 (v2.0) | 948 | 95/100 | A | 0 | Baseline |
 | 2026-03-05 (v3.0) | 1,201 | 95/100 | A+ | 0 | +26.7% tests, stable quality |
 | 2026-03-06 (v4.0) | 1,201 | 95/100 | A | 0 | Stable, improved execution time |
-| 2026-03-06 (v5.0) | 1,210 | 96/100 | A+ | 0 | +9 tests, file-split improvement, faster suite |
+| 2026-03-06 (v5.0) | 1,210 | 96/100 | A+ | 0 | +9 tests, file-split improvement |
+| 2026-03-21 (v6.0) | 1,505 | 97/100 | A+ | 0 | +24.4% tests, parametrize adoption, 3 more rule extractions |
 
-### File Size Distribution
+### Delta from v5.0
 
-| Range | Files | Percentage |
-|-------|-------|------------|
-| < 200 lines | 6 | 17% |
-| 200-500 lines | 10 | 29% |
-| 500-1,000 lines | 7 | 20% |
-| 1,000-2,000 lines | 3 | 9% |
-| > 2,000 lines | 2 | 6% |
-| Init/conftest/fixture | 7 | 20% |
-
-### Delta from v4.0
-
-| Metric | v4.0 | v5.0 | Change |
+| Metric | v5.0 | v6.0 | Change |
 |--------|------|------|--------|
-| Tests | 1,201 | 1,210 | +9 |
-| Files | 34 | 35 | +1 |
-| Total lines | 17,836 | 18,217 | +381 |
-| test_enrichment.py lines | 4,134 | 3,746 | -388 |
-| Full suite time | 5.6s | 4.95s | -0.65s |
-| Quality score | 95 | 96 | +1 |
-| Maintainability | 82 | 84 | +2 |
-| Performance | 98 | 99 | +1 |
+| Tests | 1,210 | 1,505 | +295 (+24.4%) |
+| Files | 35 | 35 | 0 (composition changed) |
+| Total lines | 18,217 | 22,286 | +4,069 (+22.3%) |
+| Parametrize usages | 7 (2 files) | 16 (6 files) | +129% usages, +200% files |
+| Dedicated rule files | 1 | 4 | +3 (29% of rules extracted) |
+| Non-slow time | 2.99s | 7.94s | +4.95s (24% more tests) |
+| Per-test avg (non-slow) | 2.5ms | 5.3ms | +2.8ms |
+| Quality score | 96 | 97 | +1 |
+| Maintainability | 84 | 88 | +4 |
+| Performance | 99 | 98 | -1 |
+
+### Recommendation Progress
+
+| Recommendation | v5.0 Status | v6.0 Status |
+|----------------|-------------|-------------|
+| Parametrize adoption | 7 usages, 2 files | 16 usages, 6 files (+129%) |
+| Rule extraction | 1/10 rules | 4/14 rules (29%) |
+| Config assertion-free tests | Open | Open (P3, deferred) |
+| MCP class consolidation | Open | Open (P3, deferred) |
 
 ---
 
 ## Review Metadata
 
 **Generated By**: BMad TEA Agent (Test Architect)
-**Workflow**: testarch-test-review v5.0
-**Review ID**: test-review-docvet-suite-20260306-v5
-**Timestamp**: 2026-03-06
-**Version**: 5.0 (supersedes v4.0 -- updated for prefer-fenced-code-blocks extraction, +9 tests, improved suite timing)
+**Workflow**: testarch-test-review v6.0
+**Review ID**: test-review-docvet-suite-20260321-v6
+**Timestamp**: 2026-03-21
+**Version**: 6.0 (supersedes v5.0 -- +295 tests, parametrize adoption improvement, 3 rule extractions, score 96->97)
 
 ---
 
