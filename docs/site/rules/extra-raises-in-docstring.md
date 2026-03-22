@@ -43,12 +43,14 @@ Documenting exceptions that are never raised misleads callers into writing unnec
 
 ## Configuration
 
-This rule is gated by `require-raises`, the same toggle that controls `missing-raises`. Disabling it skips both the forward and reverse checks:
+This rule is **opt-in** and disabled by default due to false positives on propagated exceptions (exceptions raised by callees but documented in the caller's `Raises:` section). Enable it with:
 
 ```toml
 [tool.docvet.enrichment]
-require-raises = false
+check-extra-raises = true
 ```
+
+The forward check (`missing-raises`) is controlled independently by `require-raises` and remains enabled by default.
 
 ## Exceptions
 
