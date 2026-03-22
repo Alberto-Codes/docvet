@@ -225,16 +225,14 @@ class TestTrivialDocstringGuards:
 
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        # Only module symbol has a docstring (None), skip
         func_symbols = [s for s in symbols if s.kind == "function"]
-        if not func_symbols:
-            return  # No documented function — correct
+        assert len(func_symbols) == 1
         symbol = func_symbols[0]
-        if symbol.docstring is None:
-            result = _check_trivial_docstring(
-                symbol, set(), node_index, _DEFAULT_CONFIG, "test.py"
-            )
-            assert result is None
+        assert symbol.docstring is None
+        result = _check_trivial_docstring(
+            symbol, set(), node_index, _DEFAULT_CONFIG, "test.py"
+        )
+        assert result is None
 
     def test_single_char_name_still_trivial(self):
         """Single-char name x with docstring 'X.' is trivial — subset match."""
@@ -296,12 +294,12 @@ class TestTrivialDocstringEdgeCases:
         mod_symbol = [s for s in symbols if s.kind == "module"][0]
         assert mod_symbol.docstring is not None
         sections = _parse_sections(mod_symbol.docstring)
-        # <module> decomposes to {module}, "Module." → {module} → subset
         result = _check_trivial_docstring(
             mod_symbol, sections, node_index, _DEFAULT_CONFIG, "test.py"
         )
         assert result is not None
         assert result.rule == "trivial-docstring"
+        assert result.symbol == "test"  # module_display_name("test.py")
 
     def test_method_symbol_trivial_finding(self):
         """Method on a class with trivial docstring emits finding."""

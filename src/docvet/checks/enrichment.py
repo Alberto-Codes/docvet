@@ -2516,7 +2516,9 @@ def _check_trivial_docstring(
     ``@property`` and ``@cached_property`` methods are skipped because
     PEP 257 and the Google Style Guide prescribe attribute-style
     docstrings (e.g. ``"The user name."``) that naturally restate the
-    attribute name.
+    attribute name.  Module-kind symbols use
+    :func:`~docvet.ast_utils.module_display_name` for the finding's
+    ``symbol`` and message fields.
 
     Args:
         symbol: The documented symbol to check.
@@ -2542,13 +2544,16 @@ def _check_trivial_docstring(
     if not summary_words:
         return None
     if summary_words <= name_words:
+        display_name = (
+            module_display_name(file_path) if symbol.kind == "module" else symbol.name
+        )
         return Finding(
             file=file_path,
             line=symbol.line,
-            symbol=symbol.name,
+            symbol=display_name,
             rule="trivial-docstring",
             message=(
-                f"Docstring for '{symbol.name}' restates the name"
+                f"Docstring for '{display_name}' restates the name"
                 f" — add details about behavior, constraints, or return value"
             ),
             category="recommended",

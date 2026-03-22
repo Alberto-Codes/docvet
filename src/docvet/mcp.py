@@ -3,7 +3,7 @@
 Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
-to retrieve the full rule catalog (28 rules across 5 checks) with
+to retrieve the full rule catalog (29 rules across 5 checks) with
 per-rule fix guidance.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
@@ -464,6 +464,24 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
             " return value, or add the missing return statement."
         ),
         "fix_example": ('def save(data: dict) -> None:\n    """Save data to disk."""'),
+    },
+    {
+        "name": "trivial-docstring",
+        "check": "enrichment",
+        "description": (
+            "Docstring summary line restates the symbol name without"
+            " adding information."
+        ),
+        "category": "recommended",
+        "guidance": (
+            "Replace the summary line with a description that adds"
+            " information beyond what the name already communicates,"
+            " such as behavior, constraints, or return value."
+        ),
+        "fix_example": (
+            'def get_user():\n    """Fetch the active user from the'
+            ' session cache by their ID."""'
+        ),
     },
 ]
 
