@@ -29,15 +29,6 @@ from docvet.config import EnrichmentConfig
 pytestmark = pytest.mark.unit
 
 
-@pytest.fixture(autouse=True)
-def _reset_active_style():
-    """Reset module-level _active_style after each test."""
-    import docvet.checks.enrichment as enrichment_mod
-
-    yield
-    enrichment_mod._active_style = "google"
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
