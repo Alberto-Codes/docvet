@@ -127,7 +127,7 @@ so that callers can determine the return type from either the docstring or the s
 
 ## Dev Notes
 
-- **Interaction Risk:** This story adds 1 rule (`missing-return-type`) to the enrichment module which already has 19 entries in `_RULE_DISPATCH` (20 after this story). The rule is gated by a NEW config key `require_return_type` (default `False`), so it cannot conflict with existing rules at default settings. The rule requires a `Returns` section to be present -- functions missing `Returns` entirely are handled by `missing-returns` (config key `require_returns`). These two rules are complementary, not conflicting: `missing-returns` checks for section presence, `missing-return-type` checks for type completeness within the section. Verify with an unfiltered findings test.
+- **Interaction Risk:** This story adds 1 rule (`missing-return-type`) to the enrichment module which already has 18 entries in `_RULE_DISPATCH` (19 after this story). The rule is gated by a NEW config key `require_return_type` (default `False`), so it cannot conflict with existing rules at default settings. The rule requires a `Returns` section to be present -- functions missing `Returns` entirely are handled by `missing-returns` (config key `require_returns`). These two rules are complementary, not conflicting: `missing-returns` checks for section presence, `missing-return-type` checks for type completeness within the section. Verify with an unfiltered findings test.
 
 ### Architecture & Implementation Patterns
 
