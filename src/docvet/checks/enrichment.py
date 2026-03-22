@@ -2686,6 +2686,10 @@ def _check_undocumented_init_params(
     docstring contains an ``Args:`` or ``Parameters:`` section.  Either
     location satisfies the check (FR24).
 
+    Parameter extraction uses ``posonlyargs + args`` to correctly handle
+    PEP 570 positional-only syntax (``/``), where ``self`` may appear in
+    ``posonlyargs`` rather than ``args``.
+
     Structural types (``@dataclass``, ``NamedTuple``, ``TypedDict``) whose
     ``__init__`` is auto-generated at runtime are naturally skipped because
     ``_find_init_method`` returns ``None`` for them.
@@ -2713,9 +2717,11 @@ def _check_undocumented_init_params(
     if init_node is None:
         return None
 
-    # Collect documentable params (skip self at args[0]).
-    params: list[str] = [a.arg for a in init_node.args.args[1:]]
-    params.extend(a.arg for a in init_node.args.posonlyargs)
+    # Collect documentable params.  The full positional list is
+    # posonlyargs + args; self is always the first element regardless
+    # of whether ``/`` appears in the signature (PEP 570).
+    all_positional = init_node.args.posonlyargs + init_node.args.args
+    params: list[str] = [a.arg for a in all_positional[1:]]
     params.extend(a.arg for a in init_node.args.kwonlyargs)
     if not config.exclude_args_kwargs:
         if init_node.args.vararg:

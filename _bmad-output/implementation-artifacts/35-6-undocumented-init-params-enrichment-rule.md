@@ -1,6 +1,6 @@
 # Story 35.6: `undocumented-init-params` Enrichment Rule
 
-Status: review
+Status: done
 Branch: `feat/enrichment-35-6-undocumented-init-params`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -262,6 +262,7 @@ Zero-debug implementation. All 19 tests passed on first run.
 ### Change Log
 
 - 2026-03-22: Implemented undocumented-init-params rule, 19 tests, rule page, docs updates
+- 2026-03-22: Code review fixes — positional-only params bug (H1), test assertions (M1+M2), config key ordering (L1)
 
 ### File List
 
@@ -281,15 +282,24 @@ Zero-debug implementation. All 19 tests passed on first run.
 
 ### Reviewer
 
+Adversarial code review (AI) — 2026-03-22
+
 ### Outcome
+
+Changes Requested → Fixed
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | Positional-only params bug: `self` included in param list + regular params lost after `/` due to `args[1:]` assumption. Confirmed with AST verification. | Fixed — branch-free `(posonlyargs + args)[1:]` approach per party-mode consensus. |
+| M1 | MEDIUM | `test_posonly_params_emits_finding` missing `assert "self" not in finding.message` — masked H1. | Fixed — negative assertion added. |
+| M2 | MEDIUM | Missing test for mixed posonly + regular: `def __init__(self, a, /, b)` — the worst H1 variant where `b` is silently lost. | Fixed — `test_mixed_posonly_and_regular_params` added. |
+| L1 | LOW | `_VALID_ENRICHMENT_KEYS` non-alphabetical: `require-init-params` placed after `require-receives`. | Fixed — reordered alphabetically. |
+| L2 | LOW | Quality Gates section checkboxes unchecked vs Tasks 6.1-6.5 checked. | Skipped — QG section is review-time checklist. |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass (1653 passed, ruff clean, format clean)
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

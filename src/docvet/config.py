@@ -11,8 +11,9 @@ parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 modules. ``EnrichmentConfig`` fields include ``require_returns``,
 ``require_param_agreement``, ``require_deprecation_notice``,
 ``exclude_args_kwargs``, ``check_trivial_docstrings``,
-``require_return_type``, ``require_init_params``, and other rule
-toggles. ``PresenceConfig`` fields include
+``require_return_type``, ``require_init_params``, and other rule toggles.
+Validation keys in ``_VALID_ENRICHMENT_KEYS`` are kept alphabetically.
+``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
 ``user_set_keys`` tracks which enrichment toggles were explicitly
 set by the user (for sphinx auto-disable logic).
@@ -314,13 +315,13 @@ _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
         "prefer-fenced-code-blocks",
         "require-attributes",
         "require-cross-references",
-        "require-examples",
-        "require-other-parameters",
         "require-deprecation-notice",
+        "require-examples",
+        "require-init-params",
+        "require-other-parameters",
         "require-param-agreement",
         "require-raises",
         "require-receives",
-        "require-init-params",
         "require-return-type",
         "require-returns",
         "require-typed-attributes",

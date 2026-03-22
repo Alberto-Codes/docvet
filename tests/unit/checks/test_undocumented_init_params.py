@@ -439,6 +439,28 @@ def test_posonly_params_emits_finding():
     assert finding is not None
     assert "x" in finding.message
     assert "y" in finding.message
+    assert "self" not in finding.message
+
+
+def test_mixed_posonly_and_regular_params():
+    """Mixed positional-only + regular params are all detected."""
+    source = '''\
+    class Mixed:
+        """A mixed param class."""
+
+        def __init__(self, a, /, b):
+            self.a = a
+            self.b = b
+    '''
+    symbol, sections, node_index = _make_class_symbol_and_index(source)
+    config = EnrichmentConfig(require_init_params=True)
+    finding = _check_undocumented_init_params(
+        symbol, sections, node_index, config, "mixed.py"
+    )
+    assert finding is not None
+    assert "a" in finding.message
+    assert "b" in finding.message
+    assert "self" not in finding.message
 
 
 # ---------------------------------------------------------------------------
