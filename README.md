@@ -24,7 +24,7 @@ ruff checks how your docstrings look. interrogate checks if they exist (but is u
 | 5. Rendering | "Will mkdocs render it correctly?" | -- | -- | -- | **Yes** |
 | 6. Visibility | "Will mkdocs even see the file?" | -- | -- | -- | **Yes** |
 
-**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 10 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, and cross-references. Add presence (coverage metrics + threshold enforcement), freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 20 rules across 5 checks, in territory no other tool touches.
+**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 10 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, and cross-references. Add presence (coverage metrics + threshold enforcement), freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 31 rules across 5 checks, in territory no other tool touches.
 
 **[Quickstart](#quickstart)** | **[GitHub Action](#github-action)** | **[Pre-commit](#pre-commit)** | **[Configuration](#configuration)** | **[AI Agent Integration](#ai-agent-integration)** | **[Docs](https://alberto-codes.github.io/docvet/)**
 

@@ -3,7 +3,7 @@
 Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
-to retrieve the full rule catalog (29 rules across 5 checks) with
+to retrieve the full rule catalog (31 rules across 5 checks) with
 per-rule fix guidance.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
@@ -481,6 +481,37 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
         "fix_example": (
             'def get_user():\n    """Fetch the active user from the'
             ' session cache by their ID."""'
+        ),
+    },
+    {
+        "name": "missing-return-type",
+        "check": "enrichment",
+        "description": (
+            "Returns section has no type and function has no return annotation."
+        ),
+        "category": "recommended",
+        "guidance": (
+            "Add a type to the Returns entry (e.g., 'int: The count.')"
+            " or add a -> return annotation to the function signature."
+        ),
+        "fix_example": "Returns:\n    int: The computed value.",
+    },
+    {
+        "name": "undocumented-init-params",
+        "check": "enrichment",
+        "description": (
+            "Class __init__ takes parameters but neither class nor"
+            " __init__ docstring has an Args section."
+        ),
+        "category": "required",
+        "guidance": (
+            "Add an Args: section to either the class docstring or"
+            " the __init__ docstring listing all constructor parameters"
+            " with descriptions."
+        ),
+        "fix_example": (
+            "Args:\n    host (str): The server hostname.\n"
+            "    port (int): The server port number."
         ),
     },
 ]
