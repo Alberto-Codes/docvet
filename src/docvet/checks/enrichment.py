@@ -2683,8 +2683,8 @@ def _check_undocumented_init_params(
 
     Fires when a class has an explicit ``__init__`` method with parameters
     beyond ``self``, but neither the class docstring nor the ``__init__``
-    docstring contains an ``Args:`` or ``Parameters:`` section.  Either
-    location satisfies the check (FR24).
+    docstring contains an ``Args:`` section.  Either location satisfies
+    the check (FR24).
 
     Parameter extraction uses ``posonlyargs + args`` to correctly handle
     PEP 570 positional-only syntax (``/``), where ``self`` may appear in
@@ -2733,14 +2733,14 @@ def _check_undocumented_init_params(
         return None
 
     # Check class docstring sections (already parsed by orchestrator).
-    if "Args" in sections or "Parameters" in sections:
+    if "Args" in sections:
         return None
 
     # Check __init__ docstring (FR24 — either location satisfies).
     init_docstring = ast.get_docstring(init_node)
     if init_docstring:
         init_sections = _parse_sections(init_docstring, style=_active_style)
-        if "Args" in init_sections or "Parameters" in init_sections:
+        if "Args" in init_sections:
             return None
 
     param_list = ", ".join(params)

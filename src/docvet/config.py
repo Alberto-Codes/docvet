@@ -135,9 +135,9 @@ class EnrichmentConfig:
         require_return_type (bool): Require return type documentation
             via either a typed ``Returns:`` entry or a ``->`` return
             annotation. Defaults to ``False`` (opt-in).
-        require_init_params (bool): Require an ``Args:`` or
-            ``Parameters:`` section documenting ``__init__`` parameters
-            in either the class docstring or ``__init__`` docstring.
+        require_init_params (bool): Require an ``Args:`` section
+            documenting ``__init__`` parameters in either the class
+            docstring or ``__init__`` docstring.
             Only fires on classes with an explicit ``__init__`` that
             takes parameters beyond ``self``. Defaults to ``False``
             (opt-in).

@@ -4,7 +4,7 @@
 
 ## What it detects
 
-This rule flags classes whose `__init__` method takes parameters beyond `self`, but neither the class docstring nor the `__init__` docstring contains an `Args:` or `Parameters:` section. Either location satisfies the check.
+This rule flags classes whose `__init__` method takes parameters beyond `self`, but neither the class docstring nor the `__init__` docstring contains an `Args:` section. Either location satisfies the check.
 
 Structural types (`@dataclass`, `NamedTuple`, `TypedDict`) whose `__init__` is auto-generated are naturally skipped because the generated `__init__` does not appear in the source code.
 

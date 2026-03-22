@@ -280,7 +280,7 @@ def test_config_default_false_skips_via_dispatch():
     '''
     tree = ast.parse(textwrap.dedent(source))
     config = EnrichmentConfig()  # Default: require_init_params=False
-    findings = check_enrichment(source, tree, config, "server.py")
+    findings = check_enrichment(textwrap.dedent(source), tree, config, "server.py")
     init_findings = [f for f in findings if f.rule == "undocumented-init-params"]
     assert len(init_findings) == 0
 
@@ -488,7 +488,7 @@ def test_cross_rule_no_interference():
         require_param_agreement=True,
         require_attributes=True,
     )
-    findings = check_enrichment(source, tree, config, "server.py")
+    findings = check_enrichment(textwrap.dedent(source), tree, config, "server.py")
     init_findings = [f for f in findings if f.rule == "undocumented-init-params"]
     assert len(init_findings) == 1
     # Other rules may also fire (missing-attributes), but no duplication
@@ -520,6 +520,6 @@ def test_args_section_present_no_init_finding():
         require_init_params=True,
         require_param_agreement=True,
     )
-    findings = check_enrichment(source, tree, config, "server.py")
+    findings = check_enrichment(textwrap.dedent(source), tree, config, "server.py")
     init_findings = [f for f in findings if f.rule == "undocumented-init-params"]
     assert len(init_findings) == 0
