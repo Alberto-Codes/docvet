@@ -40,11 +40,11 @@ A `Yields:` section on a non-generator function misleads callers into treating t
 
 ## Configuration
 
-This rule is gated by `require-yields`, the same toggle that controls `missing-yields`. Disabling it skips both the forward and reverse checks:
+This rule is controlled by `check-extra-yields` (default: `true`). The forward check (`missing-yields`) is controlled independently by `require-yields`.
 
 ```toml
 [tool.docvet.enrichment]
-require-yields = false
+check-extra-yields = false
 ```
 
 ## Exceptions

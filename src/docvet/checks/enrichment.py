@@ -2,7 +2,8 @@
 
 Detects missing docstring sections (Returns, Raises, Yields, Attributes, etc.)
 and extra sections that claim behaviour the code does not exhibit
-(extra-raises, extra-yields, extra-returns).  Also validates
+(extra-raises, extra-yields, extra-returns — each independently
+togglable via ``check_extra_*`` config keys).  Also validates
 cross-reference syntax in See Also sections, checks for non-fenced code
 block patterns (reporting both doctest and rST findings per symbol),
 verifies parameter agreement between function signatures and ``Args:``
@@ -2762,6 +2763,7 @@ def _check_undocumented_init_params(
 _SPHINX_AUTO_DISABLE_RULES: frozenset[str] = frozenset(
     {
         "require_yields",
+        "check_extra_yields",
         "require_receives",
         "require_warns",
         "require_other_parameters",
@@ -2784,9 +2786,9 @@ _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("require_param_agreement", _check_missing_param_in_docstring),
     ("require_param_agreement", _check_extra_param_in_docstring),
     ("require_deprecation_notice", _check_missing_deprecation),
-    ("require_raises", _check_extra_raises_in_docstring),
-    ("require_yields", _check_extra_yields_in_docstring),
-    ("require_returns", _check_extra_returns_in_docstring),
+    ("check_extra_raises", _check_extra_raises_in_docstring),
+    ("check_extra_yields", _check_extra_yields_in_docstring),
+    ("check_extra_returns", _check_extra_returns_in_docstring),
     ("check_trivial_docstrings", _check_trivial_docstring),
     ("require_return_type", _check_missing_return_type),
     ("require_init_params", _check_undocumented_init_params),

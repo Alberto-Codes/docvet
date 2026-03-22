@@ -11,7 +11,8 @@ parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 modules. ``EnrichmentConfig`` fields include ``require_returns``,
 ``require_param_agreement``, ``require_deprecation_notice``,
 ``exclude_args_kwargs``, ``check_trivial_docstrings``,
-``require_return_type``, ``require_init_params``, and other rule toggles.
+``require_return_type``, ``require_init_params``, ``check_extra_raises``,
+``check_extra_yields``, ``check_extra_returns``, and other rule toggles.
 Validation keys in ``_VALID_ENRICHMENT_KEYS`` are kept alphabetically.
 ``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
@@ -141,6 +142,15 @@ class EnrichmentConfig:
             Only fires on classes with an explicit ``__init__`` that
             takes parameters beyond ``self``. Defaults to ``False``
             (opt-in).
+        check_extra_raises (bool): Flag documented exceptions not
+            raised in the function body. Defaults to ``False``
+            (opt-in) due to false positives on propagated exceptions
+            from callees.
+        check_extra_yields (bool): Flag ``Yields:`` sections when the
+            function has no ``yield`` statement. Defaults to ``True``.
+        check_extra_returns (bool): Flag ``Returns:`` sections when
+            the function has no meaningful return. Defaults to
+            ``True``.
         user_set_keys (frozenset[str]): Snake_case keys explicitly set
             by the user in ``[tool.docvet.enrichment]``. Populated during
             config parsing to distinguish user overrides from defaults.
@@ -179,6 +189,9 @@ class EnrichmentConfig:
     check_trivial_docstrings: bool = True
     require_return_type: bool = False
     require_init_params: bool = False
+    check_extra_raises: bool = False
+    check_extra_yields: bool = True
+    check_extra_returns: bool = True
     user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -310,6 +323,9 @@ _VALID_FRESHNESS_KEYS: frozenset[str] = frozenset({"drift-threshold", "age-thres
 
 _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
     {
+        "check-extra-raises",
+        "check-extra-returns",
+        "check-extra-yields",
         "check-trivial-docstrings",
         "exclude-args-kwargs",
         "prefer-fenced-code-blocks",
@@ -944,7 +960,8 @@ def format_config_toml(
     ``docstring-style``) inline, then delegates each nested section
     (freshness, enrichment — including ``require-returns``,
     ``require-param-agreement``, ``require-deprecation-notice``,
-    and ``exclude-args-kwargs``, presence —
+    ``exclude-args-kwargs``, ``check-extra-raises``,
+    ``check-extra-yields``, and ``check-extra-returns``, presence —
     including ``check-overload-docstrings``) to :func:`_format_toml_section`.
     Values are formatted via :func:`_fmt_toml_value` and annotated via
     :func:`_get_annotation`. Omits ``package-name`` when its value is
@@ -1007,6 +1024,9 @@ def format_config_toml(
                 ("require_param_agreement", "require-param-agreement"),
                 ("require_deprecation_notice", "require-deprecation-notice"),
                 ("exclude_args_kwargs", "exclude-args-kwargs"),
+                ("check_extra_raises", "check-extra-raises"),
+                ("check_extra_yields", "check-extra-yields"),
+                ("check_extra_returns", "check-extra-returns"),
                 ("require_examples", "require-examples"),
             ],
             config.enrichment,

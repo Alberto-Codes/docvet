@@ -38,11 +38,11 @@ A `Returns:` section on a function that never returns a value misleads callers i
 
 ## Configuration
 
-This rule is gated by `require-returns`, the same toggle that controls `missing-returns`. Disabling it skips both the forward and reverse checks:
+This rule is controlled by `check-extra-returns` (default: `true`). The forward check (`missing-returns`) is controlled independently by `require-returns`.
 
 ```toml
 [tool.docvet.enrichment]
-require-returns = false
+check-extra-returns = false
 ```
 
 ## Exceptions
