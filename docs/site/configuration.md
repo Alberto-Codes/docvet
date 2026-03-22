@@ -183,6 +183,7 @@ These keys go under `[tool.docvet.enrichment]`:
 | `require-deprecation-notice` | `bool` | `true` | Require a deprecation notice in the docstring when the function uses deprecation patterns (`warnings.warn(..., DeprecationWarning)` or `@deprecated` decorator). |
 | `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks. When `true`, undocumented `*args`/`**kwargs` are not flagged as missing, and documented `*args`/`**kwargs` are flagged as extra. Set to `false` to require their documentation (matches pydoclint's default behavior). |
 | `check-trivial-docstrings` | `bool` | `true` | Flag docstrings whose summary line trivially restates the symbol name without adding information. `@property` and `@cached_property` methods are skipped (PEP 257 attribute-style docstrings naturally restate the name). |
+| `require-return-type` | `bool` | `false` | Require return type documentation via either a typed `Returns:` entry (e.g., `dict: The result.`) or a `->` return annotation. Opt-in — stricter check that may not suit all projects. |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 ### Example

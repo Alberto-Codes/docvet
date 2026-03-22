@@ -1,4 +1,4 @@
-# Rule metadata catalog — single source of truth for all 29 docvet rules.
+# Rule metadata catalog — single source of truth for all docvet rules.
 # Used by docs/main.py macros hook to render consistent rule page headers.
 # Schema: id, name, check, category, applies_to, summary, since, fix (all required)
 
@@ -39,6 +39,29 @@
     Returns:
         The matched user, or ``None`` if no match is found.
     ```
+
+- id: missing-return-type
+  name: Missing Return Type
+  check: enrichment
+  category: recommended
+  applies_to: functions, methods
+  summary: Returns section has no type and function has no return annotation
+  since: "1.14.0"
+  fix: |
+    Add a type to the `Returns:` entry:
+
+    ```python
+    Returns:
+        dict: The parsed configuration as a dictionary.
+    ```
+
+    Or add a return annotation to the function signature:
+
+    ```python
+    def parse_config(path: str) -> dict:
+    ```
+
+    Either approach is sufficient — you don't need both.
 
 - id: missing-param-in-docstring
   name: Missing Parameter in Docstring

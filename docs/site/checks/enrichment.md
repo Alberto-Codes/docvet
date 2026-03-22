@@ -1,6 +1,6 @@
 # Enrichment Check
 
-The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 17 rules cover functions, methods, classes, and modules across required and recommended categories.
+The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 19 rules cover functions, methods, classes, and modules across required and recommended categories.
 
 ```bash
 docvet enrichment --all
@@ -26,6 +26,7 @@ docvet enrichment --all
 | [`extra-raises-in-docstring`](../rules/extra-raises-in-docstring.md) | recommended | functions, methods | Docstring documents exceptions not raised in the function body |
 | [`extra-yields-in-docstring`](../rules/extra-yields-in-docstring.md) | recommended | functions, methods | Docstring has a `Yields:` section but the function does not yield |
 | [`extra-returns-in-docstring`](../rules/extra-returns-in-docstring.md) | recommended | functions, methods | Docstring has a `Returns:` section but the function does not return a value |
+| [`missing-return-type`](../rules/missing-return-type.md) | recommended | functions, methods | Returns section has no type and function has no return annotation |
 | [`trivial-docstring`](../rules/trivial-docstring.md) | recommended | any symbol | Docstring summary line restates the symbol name without adding information |
 | [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` or rST `::` instead of fenced code blocks |
 
@@ -67,6 +68,8 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `require-param-agreement` | `bool` | `true` | Require parameter agreement between function signatures and `Args:` sections |
 | `require-deprecation-notice` | `bool` | `true` | Require deprecation notice when function uses deprecation patterns |
 | `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks |
+| `check-trivial-docstrings` | `bool` | `true` | Flag docstrings whose summary line trivially restates the symbol name |
+| `require-return-type` | `bool` | `false` | Require return type via typed `Returns:` entry or `->` annotation (opt-in) |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 Example configuration to disable specific rules:
