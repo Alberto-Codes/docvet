@@ -294,5 +294,5 @@ development_status:
   35-3-reverse-enrichment-checks: done
   35-4-trivial-docstring-enrichment-rule: done
   35-5-missing-return-type-enrichment-rule: done
-  35-6-undocumented-init-params-enrichment-rule: backlog
+  35-6-undocumented-init-params-enrichment-rule: review
   epic-35-retrospective: optional

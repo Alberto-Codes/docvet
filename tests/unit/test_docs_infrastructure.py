@@ -38,7 +38,7 @@ _REQUIRED_FIELDS = {
 _VALID_CHECKS = {"presence", "enrichment", "freshness", "coverage", "griffe"}
 _VALID_CATEGORIES = {"required", "recommended"}
 
-_EXPECTED_RULE_COUNT = 30
+_EXPECTED_RULE_COUNT = 31
 
 
 def _load_rules() -> list[dict]:

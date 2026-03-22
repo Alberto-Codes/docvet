@@ -11,8 +11,10 @@ sections, detects missing deprecation notices on functions using
 decorator (PEP 702), flags trivial docstrings whose summary line
 restates the symbol name without adding information, and detects
 missing return type documentation when neither a typed ``Returns:``
-entry nor a ``->`` return annotation is present, by combining AST
-analysis with section header parsing.
+entry nor a ``->`` return annotation is present, and flags classes
+whose ``__init__`` has parameters but neither the class docstring nor
+the ``__init__`` docstring contains an ``Args:`` section, by combining
+AST analysis with section header parsing.
 Guard clauses for rules with broad skip sets (e.g. ``missing-returns``)
 are extracted into dedicated ``_should_skip_*`` helpers to keep check
 functions focused and within cognitive-complexity thresholds.
@@ -2670,6 +2672,86 @@ def _check_missing_return_type(
     )
 
 
+def _check_undocumented_init_params(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect a class with parameterized ``__init__`` but no Args section.
+
+    Fires when a class has an explicit ``__init__`` method with parameters
+    beyond ``self``, but neither the class docstring nor the ``__init__``
+    docstring contains an ``Args:`` or ``Parameters:`` section.  Either
+    location satisfies the check (FR24).
+
+    Structural types (``@dataclass``, ``NamedTuple``, ``TypedDict``) whose
+    ``__init__`` is auto-generated at runtime are naturally skipped because
+    ``_find_init_method`` returns ``None`` for them.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (``exclude_args_kwargs``
+            controls ``*args``/``**kwargs`` filtering).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="undocumented-init-params"`` when
+        constructor parameters are undocumented, or ``None`` otherwise.
+    """
+    if symbol.kind != "class":
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None or not isinstance(node, ast.ClassDef):
+        return None
+
+    init_node = _find_init_method(node)
+    if init_node is None:
+        return None
+
+    # Collect documentable params (skip self at args[0]).
+    params: list[str] = [a.arg for a in init_node.args.args[1:]]
+    params.extend(a.arg for a in init_node.args.posonlyargs)
+    params.extend(a.arg for a in init_node.args.kwonlyargs)
+    if not config.exclude_args_kwargs:
+        if init_node.args.vararg:
+            params.append(f"*{init_node.args.vararg.arg}")
+        if init_node.args.kwarg:
+            params.append(f"**{init_node.args.kwarg.arg}")
+
+    if not params:
+        return None
+
+    # Check class docstring sections (already parsed by orchestrator).
+    if "Args" in sections or "Parameters" in sections:
+        return None
+
+    # Check __init__ docstring (FR24 — either location satisfies).
+    init_docstring = ast.get_docstring(init_node)
+    if init_docstring:
+        init_sections = _parse_sections(init_docstring, style=_active_style)
+        if "Args" in init_sections or "Parameters" in init_sections:
+            return None
+
+    param_list = ", ".join(params)
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="undocumented-init-params",
+        message=(
+            f"class '{symbol.name}' __init__ has parameters"
+            f" ({param_list}) but no Args section in class"
+            f" or __init__ docstring"
+        ),
+        category="required",
+    )
+
+
 # Rules auto-disabled in sphinx mode unless the user explicitly enables them.
 _SPHINX_AUTO_DISABLE_RULES: frozenset[str] = frozenset(
     {
@@ -2701,6 +2783,7 @@ _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("require_returns", _check_extra_returns_in_docstring),
     ("check_trivial_docstrings", _check_trivial_docstring),
     ("require_return_type", _check_missing_return_type),
+    ("require_init_params", _check_undocumented_init_params),
 )
 
 

@@ -11,7 +11,8 @@ parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 modules. ``EnrichmentConfig`` fields include ``require_returns``,
 ``require_param_agreement``, ``require_deprecation_notice``,
 ``exclude_args_kwargs``, ``check_trivial_docstrings``,
-``require_return_type``, and other rule toggles. ``PresenceConfig`` fields include
+``require_return_type``, ``require_init_params``, and other rule
+toggles. ``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
 ``user_set_keys`` tracks which enrichment toggles were explicitly
 set by the user (for sphinx auto-disable logic).
@@ -133,6 +134,12 @@ class EnrichmentConfig:
         require_return_type (bool): Require return type documentation
             via either a typed ``Returns:`` entry or a ``->`` return
             annotation. Defaults to ``False`` (opt-in).
+        require_init_params (bool): Require an ``Args:`` or
+            ``Parameters:`` section documenting ``__init__`` parameters
+            in either the class docstring or ``__init__`` docstring.
+            Only fires on classes with an explicit ``__init__`` that
+            takes parameters beyond ``self``. Defaults to ``False``
+            (opt-in).
         user_set_keys (frozenset[str]): Snake_case keys explicitly set
             by the user in ``[tool.docvet.enrichment]``. Populated during
             config parsing to distinguish user overrides from defaults.
@@ -170,6 +177,7 @@ class EnrichmentConfig:
     exclude_args_kwargs: bool = True
     check_trivial_docstrings: bool = True
     require_return_type: bool = False
+    require_init_params: bool = False
     user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -312,6 +320,7 @@ _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
         "require-param-agreement",
         "require-raises",
         "require-receives",
+        "require-init-params",
         "require-return-type",
         "require-returns",
         "require-typed-attributes",

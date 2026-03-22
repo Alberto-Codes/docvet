@@ -537,6 +537,41 @@
     - Use the exact section header format (e.g., `Args:` not `Arguments:`)
     - Ensure a blank line between sections
 
+- id: undocumented-init-params
+  name: Undocumented Init Parameters
+  check: enrichment
+  category: required
+  applies_to: classes
+  summary: "Class __init__ has parameters but no Args section in class or __init__ docstring"
+  since: "1.14.0"
+  fix: |
+    Add an `Args:` section documenting the constructor parameters in either the
+    class docstring or the `__init__` docstring:
+
+    ```python
+    class Server:
+        """A network server.
+
+        Args:
+            host: The server hostname.
+            port: The server port number.
+        """
+    ```
+
+    Or document them in the `__init__` docstring instead:
+
+    ```python
+    def __init__(self, host, port):
+        """Initialize the server.
+
+        Args:
+            host: The server hostname.
+            port: The server port number.
+        """
+    ```
+
+    Either location is sufficient — you don't need both.
+
 - id: trivial-docstring
   name: Trivial Docstring
   check: enrichment
