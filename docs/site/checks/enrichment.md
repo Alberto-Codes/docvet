@@ -1,6 +1,6 @@
 # Enrichment Check
 
-The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 17 rules cover functions, methods, classes, and modules across required and recommended categories.
+The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 19 rules cover functions, methods, classes, and modules across required and recommended categories.
 
 ```bash
 docvet enrichment --all
@@ -68,6 +68,8 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `require-param-agreement` | `bool` | `true` | Require parameter agreement between function signatures and `Args:` sections |
 | `require-deprecation-notice` | `bool` | `true` | Require deprecation notice when function uses deprecation patterns |
 | `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks |
+| `check-trivial-docstrings` | `bool` | `true` | Flag docstrings whose summary line trivially restates the symbol name |
+| `require-return-type` | `bool` | `false` | Require return type via typed `Returns:` entry or `->` annotation (opt-in) |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 Example configuration to disable specific rules:
