@@ -162,6 +162,23 @@ fail_under = 95
 show_missing = true
 
 # --------------------------------------------------------------------------- #
+# import-linter
+# --------------------------------------------------------------------------- #
+[tool.importlinter]
+root_package = "docvet"
+
+[[tool.importlinter.contracts]]
+name = "Check modules are isolated"
+type = "independence"
+modules = [
+    "docvet.checks.enrichment",
+    "docvet.checks.freshness",
+    "docvet.checks.coverage",
+    "docvet.checks.griffe_compat",
+    "docvet.checks.presence",
+]
+
+# --------------------------------------------------------------------------- #
 # Dev dependencies
 # --------------------------------------------------------------------------- #
 [dependency-groups]
@@ -177,5 +194,6 @@ dev = [
     "readme-renderer[md]>=44.0",
     "ruff>=0.11",
     "ty>=0.0.1a33",
+    "import-linter>=2.11",
     "uv-secure>=0.17.0",
 ]
