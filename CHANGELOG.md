@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/Alberto-Codes/docvet/compare/v1.14.0...v1.14.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* **enrichment:** add independent config toggles for reverse checks ([643ca49](https://github.com/Alberto-Codes/docvet/commit/643ca490ecfeaab2dee6fba5328a570209b68d39)), closes [#359](https://github.com/Alberto-Codes/docvet/issues/359)
+
 ## [1.14.0](https://github.com/Alberto-Codes/docvet/compare/v1.13.0...v1.14.0) (2026-03-22)
 
 
