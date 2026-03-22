@@ -1,6 +1,6 @@
 # Story 35.4: Trivial Docstring Enrichment Rule
 
-Status: review
+Status: done
 Branch: `feat/enrichment-35-4-trivial-docstring-rule`
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->

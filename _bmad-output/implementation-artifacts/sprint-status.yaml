@@ -292,7 +292,7 @@ development_status:
   35-1-docstring-parameter-agreement-checks: done
   35-2-missing-deprecation-enrichment-rule: done
   35-3-reverse-enrichment-checks: done
-  35-4-trivial-docstring-enrichment-rule: review
+  35-4-trivial-docstring-enrichment-rule: done
   35-5-missing-return-type-enrichment-rule: backlog
   35-6-undocumented-init-params-enrichment-rule: backlog
   epic-35-retrospective: optional
