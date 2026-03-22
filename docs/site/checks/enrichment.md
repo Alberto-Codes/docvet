@@ -26,6 +26,7 @@ docvet enrichment --all
 | [`extra-raises-in-docstring`](../rules/extra-raises-in-docstring.md) | recommended | functions, methods | Docstring documents exceptions not raised in the function body |
 | [`extra-yields-in-docstring`](../rules/extra-yields-in-docstring.md) | recommended | functions, methods | Docstring has a `Yields:` section but the function does not yield |
 | [`extra-returns-in-docstring`](../rules/extra-returns-in-docstring.md) | recommended | functions, methods | Docstring has a `Returns:` section but the function does not return a value |
+| [`missing-return-type`](../rules/missing-return-type.md) | recommended | functions, methods | Returns section has no type and function has no return annotation |
 | [`trivial-docstring`](../rules/trivial-docstring.md) | recommended | any symbol | Docstring summary line restates the symbol name without adding information |
 | [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` or rST `::` instead of fenced code blocks |
 

@@ -104,6 +104,7 @@ nav:
     - Enrichment:
       - missing-raises: rules/missing-raises.md
       - missing-returns: rules/missing-returns.md
+      - missing-return-type: rules/missing-return-type.md
       - missing-yields: rules/missing-yields.md
       - missing-receives: rules/missing-receives.md
       - missing-warns: rules/missing-warns.md

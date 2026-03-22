@@ -8,8 +8,10 @@ block patterns (reporting both doctest and rST findings per symbol),
 verifies parameter agreement between function signatures and ``Args:``
 sections, detects missing deprecation notices on functions using
 ``warnings.warn`` with deprecation categories or the ``@deprecated``
-decorator (PEP 702), and flags trivial docstrings whose summary line
-restates the symbol name without adding information, by combining AST
+decorator (PEP 702), flags trivial docstrings whose summary line
+restates the symbol name without adding information, and detects
+missing return type documentation when neither a typed ``Returns:``
+entry nor a ``->`` return annotation is present, by combining AST
 analysis with section header parsing.
 Guard clauses for rules with broad skip sets (e.g. ``missing-returns``)
 are extracted into dedicated ``_should_skip_*`` helpers to keep check
@@ -2561,6 +2563,113 @@ def _check_trivial_docstring(
     return None
 
 
+# ---------------------------------------------------------------------------
+# Rule: missing-return-type
+# ---------------------------------------------------------------------------
+
+_RETURNS_TYPE_PATTERN = re.compile(r"^\s*[A-Za-z_][\w\[\], |.]*\s*:")
+
+
+def _has_return_type_in_docstring(docstring: str) -> bool:
+    """Check whether the Returns section contains a typed entry.
+
+    In Google/NumPy mode, extracts the ``Returns:`` section content via
+    :func:`_extract_section_content` and checks the first non-empty line
+    for a type pattern (``type: description``).  In Sphinx mode, checks
+    for the presence of ``:rtype:`` in the raw docstring.
+
+    Args:
+        docstring: The raw docstring text to inspect.
+
+    Returns:
+        ``True`` when return type information is found, ``False``
+        otherwise.  Returns ``True`` conservatively when content
+        cannot be extracted (e.g. NumPy underline format).
+    """
+    if _active_style == "sphinx":
+        return ":rtype:" in docstring
+
+    content = _extract_section_content(docstring, "Returns")
+    if content is None:
+        # NumPy underline format — can't parse, don't false-positive.
+        return True
+
+    for line in content.splitlines():
+        if line.strip():
+            return bool(_RETURNS_TYPE_PATTERN.match(line))
+
+    # Empty Returns section — no content to inspect.
+    return True
+
+
+def _check_missing_return_type(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect functions with a Returns section that lacks type information.
+
+    Flags functions whose ``Returns:`` section has no typed entry AND
+    whose signature has no ``->`` return annotation.  Either a typed
+    docstring entry or a return annotation satisfies the check (FR20).
+
+    Skips ``__init__``, ``__del__``, ``@property``, and
+    ``@cached_property`` methods.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring.
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="missing-return-type"`` when the
+        return type is undocumented, or ``None`` otherwise.
+    """
+    if symbol.docstring is None:
+        return None
+
+    if "Returns" not in sections:
+        return None
+
+    if symbol.kind not in ("function", "method"):
+        return None
+
+    # Skip __init__ and __del__ — constructors/destructors.
+    if symbol.name in ("__init__", "__del__"):
+        return None
+
+    node = node_index.get(symbol.line)
+    if node is None or isinstance(node, ast.ClassDef):
+        return None
+
+    if _is_property(node):
+        return None
+
+    # FR20: return annotation satisfies the check.
+    if node.returns is not None:
+        return None
+
+    if _has_return_type_in_docstring(symbol.docstring):
+        return None
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=symbol.name,
+        rule="missing-return-type",
+        message=(
+            f"Function '{symbol.name}' has a Returns section with no type"
+            f" and no return annotation"
+        ),
+        category="recommended",
+    )
+
+
 # Rules auto-disabled in sphinx mode unless the user explicitly enables them.
 _SPHINX_AUTO_DISABLE_RULES: frozenset[str] = frozenset(
     {
@@ -2591,6 +2700,7 @@ _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("require_yields", _check_extra_yields_in_docstring),
     ("require_returns", _check_extra_returns_in_docstring),
     ("check_trivial_docstrings", _check_trivial_docstring),
+    ("require_return_type", _check_missing_return_type),
 )
 
 
