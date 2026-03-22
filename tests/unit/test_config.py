@@ -384,6 +384,32 @@ require-attributes = false
     assert cfg.enrichment.require_attributes is False
 
 
+def test_load_config_check_extra_raises_defaults_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\n")
+    cfg = load_config()
+    assert cfg.enrichment.check_extra_raises is False
+    assert cfg.enrichment.check_extra_yields is True
+    assert cfg.enrichment.check_extra_returns is True
+
+
+def test_load_config_check_extra_raises_enabled(tmp_path, monkeypatch, write_pyproject):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+check-extra-raises = true
+check-extra-yields = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.enrichment.check_extra_raises is True
+    assert cfg.enrichment.check_extra_yields is False
+    assert cfg.enrichment.check_extra_returns is True
+
+
 def test_load_config_nested_enrichment_without_require_attributes_uses_default(
     tmp_path, monkeypatch, write_pyproject
 ):
