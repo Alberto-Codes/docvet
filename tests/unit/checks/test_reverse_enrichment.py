@@ -558,21 +558,20 @@ class TestExtraYieldsInDocstring:
         assert not any(f.rule == "extra-yields-in-docstring" for f in findings)
 
     def test_forward_reverse_independence(self):
-        """require_yields=True + check_extra_yields=False fires missing but not extra."""
+        """require_yields=True + check_extra_yields=False: forward fires, reverse does not."""
         source = '''\
         def foo():
-            """Summary.
-
-            Yields:
-                int: Numbers.
-            """
-            raise ValueError("oops")
+            """Summary."""
+            yield 1
         '''
         config = EnrichmentConfig(require_yields=True, check_extra_yields=False)
         tree = ast.parse(textwrap.dedent(source))
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
 
+        # Forward check fires: yields but no Yields section.
+        assert any(f.rule == "missing-yields" for f in findings)
+        # Reverse check does not fire (disabled by config).
         assert not any(f.rule == "extra-yields-in-docstring" for f in findings)
 
 
@@ -715,21 +714,20 @@ class TestExtraReturnsInDocstring:
         assert not any(f.rule == "extra-returns-in-docstring" for f in findings)
 
     def test_forward_reverse_independence(self):
-        """require_returns=True + check_extra_returns=False fires missing but not extra."""
+        """require_returns=True + check_extra_returns=False: forward fires, reverse does not."""
         source = '''\
         def foo():
-            """Summary.
-
-            Returns:
-                str: The result.
-            """
-            raise ValueError("oops")
+            """Summary."""
+            return 1
         '''
         config = EnrichmentConfig(require_returns=True, check_extra_returns=False)
         tree = ast.parse(textwrap.dedent(source))
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
 
+        # Forward check fires: returns but no Returns section.
+        assert any(f.rule == "missing-returns" for f in findings)
+        # Reverse check does not fire (disabled by config).
         assert not any(f.rule == "extra-returns-in-docstring" for f in findings)
 
 
