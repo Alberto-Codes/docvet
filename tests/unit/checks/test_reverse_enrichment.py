@@ -309,7 +309,7 @@ class TestExtraRaisesInDocstring:
         assert result is None
 
     def test_config_disable_no_finding(self):
-        """check_extra_raises=False suppresses extra-raises-in-docstring."""
+        """AC 8: require_raises=False skips both forward and reverse."""
         source = '''\
         def foo():
             """Summary.
@@ -317,31 +317,15 @@ class TestExtraRaisesInDocstring:
             Raises:
                 ValueError: If bad.
             """
-            return 1
+            pass
         '''
-        config = EnrichmentConfig(check_extra_raises=False)
-        tree = ast.parse(textwrap.dedent(source))
+        symbol, node_index, tree = _make_symbol_and_index(source)
+        config = EnrichmentConfig(require_raises=False)
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
 
         assert not any(f.rule == "extra-raises-in-docstring" for f in findings)
-
-    def test_forward_reverse_independence(self):
-        """require_raises=True + check_extra_raises=False: forward fires, reverse does not."""
-        source = '''\
-        def foo():
-            """Summary."""
-            raise ValueError("oops")
-        '''
-        config = EnrichmentConfig(require_raises=True, check_extra_raises=False)
-        tree = ast.parse(textwrap.dedent(source))
-
-        findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
-
-        # Forward check fires: raises ValueError but no Raises section.
-        assert any(f.rule == "missing-raises" for f in findings)
-        # Reverse check does not fire (disabled by config).
-        assert not any(f.rule == "extra-raises-in-docstring" for f in findings)
+        assert not any(f.rule == "missing-raises" for f in findings)
 
     def test_class_symbol_no_finding(self):
         """Class symbol -> guard returns None."""
@@ -540,7 +524,7 @@ class TestExtraYieldsInDocstring:
         assert result is None
 
     def test_config_disable_no_finding(self):
-        """check_extra_yields=False suppresses extra-yields-in-docstring."""
+        """AC 8: require_yields=False skips reverse check."""
         source = '''\
         def foo():
             """Summary.
@@ -548,30 +532,13 @@ class TestExtraYieldsInDocstring:
             Yields:
                 int: Numbers.
             """
-            return 1
+            pass
         '''
-        config = EnrichmentConfig(check_extra_yields=False)
-        tree = ast.parse(textwrap.dedent(source))
+        symbol, node_index, tree = _make_symbol_and_index(source)
+        config = EnrichmentConfig(require_yields=False)
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
 
-        assert not any(f.rule == "extra-yields-in-docstring" for f in findings)
-
-    def test_forward_reverse_independence(self):
-        """require_yields=True + check_extra_yields=False: forward fires, reverse does not."""
-        source = '''\
-        def foo():
-            """Summary."""
-            yield 1
-        '''
-        config = EnrichmentConfig(require_yields=True, check_extra_yields=False)
-        tree = ast.parse(textwrap.dedent(source))
-
-        findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
-
-        # Forward check fires: yields but no Yields section.
-        assert any(f.rule == "missing-yields" for f in findings)
-        # Reverse check does not fire (disabled by config).
         assert not any(f.rule == "extra-yields-in-docstring" for f in findings)
 
 
@@ -696,7 +663,7 @@ class TestExtraReturnsInDocstring:
         assert result is None
 
     def test_config_disable_no_finding(self):
-        """check_extra_returns=False suppresses extra-returns-in-docstring."""
+        """AC 8: require_returns=False skips reverse check."""
         source = '''\
         def foo():
             """Summary.
@@ -704,30 +671,13 @@ class TestExtraReturnsInDocstring:
             Returns:
                 str: The result.
             """
-            raise ValueError("oops")
+            pass
         '''
-        config = EnrichmentConfig(check_extra_returns=False)
-        tree = ast.parse(textwrap.dedent(source))
+        symbol, node_index, tree = _make_symbol_and_index(source)
+        config = EnrichmentConfig(require_returns=False)
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
 
-        assert not any(f.rule == "extra-returns-in-docstring" for f in findings)
-
-    def test_forward_reverse_independence(self):
-        """require_returns=True + check_extra_returns=False: forward fires, reverse does not."""
-        source = '''\
-        def foo():
-            """Summary."""
-            return 1
-        '''
-        config = EnrichmentConfig(require_returns=True, check_extra_returns=False)
-        tree = ast.parse(textwrap.dedent(source))
-
-        findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
-
-        # Forward check fires: returns but no Returns section.
-        assert any(f.rule == "missing-returns" for f in findings)
-        # Reverse check does not fire (disabled by config).
         assert not any(f.rule == "extra-returns-in-docstring" for f in findings)
 
 
@@ -992,7 +942,7 @@ class TestCategoryAndCrossRule:
             yield 1
         '''
         symbol, node_index, tree = _make_symbol_and_index(source)
-        config = EnrichmentConfig(check_extra_raises=True)
+        config = EnrichmentConfig()
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
 

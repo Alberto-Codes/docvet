@@ -72,9 +72,6 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `check-trivial-docstrings` | `bool` | `true` | Flag docstrings whose summary line trivially restates the symbol name |
 | `require-return-type` | `bool` | `false` | Require return type via typed `Returns:` entry or `->` annotation (opt-in) |
 | `require-init-params` | `bool` | `false` | Require `Args:` section when `__init__` takes parameters (opt-in) |
-| `check-extra-raises` | `bool` | `false` | Flag documented exceptions not raised in function body (opt-in due to propagated exception false positives) |
-| `check-extra-yields` | `bool` | `true` | Flag `Yields:` section when function has no `yield` statement |
-| `check-extra-returns` | `bool` | `true` | Flag `Returns:` section when function has no meaningful return |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 Example configuration to disable specific rules:

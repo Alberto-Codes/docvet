@@ -4,9 +4,7 @@ Provides a Model Context Protocol server that exposes docvet checks as
 MCP tools. AI agents (Claude Code, Cursor, etc.) connect via stdio and
 invoke ``docvet_check`` to run checks on Python files or ``docvet_rules``
 to retrieve the full rule catalog (31 rules across 5 checks) with
-per-rule fix guidance. Catalog entries include opt-in annotations
-(e.g. ``extra-raises-in-docstring`` notes its ``check-extra-raises``
-toggle).
+per-rule fix guidance.
 
 Follows the same architectural pattern as :mod:`docvet.lsp`: a
 module-level server instance, a single public ``start_server()``
@@ -435,10 +433,8 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
         ),
         "category": "recommended",
         "guidance": (
-            "This rule is opt-in (check-extra-raises = true) because"
-            " documenting propagated exceptions from callees is common"
-            " and correct. If the exception is genuinely stale, remove"
-            " it from the Raises: section."
+            "Remove the documented exception from the Raises: section, or add"
+            " the corresponding raise statement to the function body."
         ),
         "fix_example": "Raises:\n    ValueError: If the input is invalid.",
     },
