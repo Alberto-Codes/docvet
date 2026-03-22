@@ -20,6 +20,7 @@ docvet enrichment --all
 | [`extra-param-in-docstring`](../rules/extra-param-in-docstring.md) | required | functions, methods | `Args:` section documents a parameter not in the function signature |
 | [`missing-other-parameters`](../rules/missing-other-parameters.md) | recommended | functions, methods | Function accepts `**kwargs` but has no `Other Parameters:` section |
 | [`missing-attributes`](../rules/missing-attributes.md) | required | classes, modules | Class or `__init__.py` module has undocumented attributes |
+| [`undocumented-init-params`](../rules/undocumented-init-params.md) | required | classes | Class `__init__` takes parameters but neither class nor `__init__` docstring has an `Args:` section |
 | [`missing-typed-attributes`](../rules/missing-typed-attributes.md) | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
 | [`missing-examples`](../rules/missing-examples.md) | recommended | classes, modules | Symbol kind in `require-examples` list lacks `Examples:` section |
 | [`missing-cross-references`](../rules/missing-cross-references.md) | recommended | modules | Module missing or malformed `See Also:` section |
@@ -70,6 +71,7 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks |
 | `check-trivial-docstrings` | `bool` | `true` | Flag docstrings whose summary line trivially restates the symbol name |
 | `require-return-type` | `bool` | `false` | Require return type via typed `Returns:` entry or `->` annotation (opt-in) |
+| `require-init-params` | `bool` | `false` | Require `Args:` section when `__init__` takes parameters (opt-in) |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 Example configuration to disable specific rules:
