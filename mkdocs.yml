@@ -120,6 +120,7 @@ nav:
       - extra-yields-in-docstring: rules/extra-yields-in-docstring.md
       - extra-returns-in-docstring: rules/extra-returns-in-docstring.md
       - trivial-docstring: rules/trivial-docstring.md
+      - undocumented-init-params: rules/undocumented-init-params.md
       - prefer-fenced-code-blocks: rules/prefer-fenced-code-blocks.md
     - Freshness:
       - stale-signature: rules/stale-signature.md

@@ -1,6 +1,6 @@
 # Enrichment Check
 
-The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 19 rules cover functions, methods, classes, and modules across required and recommended categories.
+The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 20 rules cover functions, methods, classes, and modules across required and recommended categories.
 
 ```bash
 docvet enrichment --all
