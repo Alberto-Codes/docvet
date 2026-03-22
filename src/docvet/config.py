@@ -10,7 +10,8 @@ parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 ``PresenceConfig`` dataclasses with sensible defaults for all check
 modules. ``EnrichmentConfig`` fields include ``require_returns``,
 ``require_param_agreement``, ``require_deprecation_notice``,
-``exclude_args_kwargs``, and other rule toggles. ``PresenceConfig`` fields include
+``exclude_args_kwargs``, ``check_trivial_docstrings``, and other rule
+toggles. ``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
 ``user_set_keys`` tracks which enrichment toggles were explicitly
 set by the user (for sphinx auto-disable logic).
@@ -126,6 +127,9 @@ class EnrichmentConfig:
             ``@deprecated`` decorator). Defaults to ``True``.
         exclude_args_kwargs (bool): Exclude ``*args`` and ``**kwargs``
             from parameter agreement checks. Defaults to ``True``.
+        check_trivial_docstrings (bool): Flag docstrings whose summary
+            line trivially restates the symbol name without adding
+            information. Defaults to ``True``.
         user_set_keys (frozenset[str]): Snake_case keys explicitly set
             by the user in ``[tool.docvet.enrichment]``. Populated during
             config parsing to distinguish user overrides from defaults.
@@ -161,6 +165,7 @@ class EnrichmentConfig:
     require_param_agreement: bool = True
     require_deprecation_notice: bool = True
     exclude_args_kwargs: bool = True
+    check_trivial_docstrings: bool = True
     user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -292,6 +297,7 @@ _VALID_FRESHNESS_KEYS: frozenset[str] = frozenset({"drift-threshold", "age-thres
 
 _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
     {
+        "check-trivial-docstrings",
         "exclude-args-kwargs",
         "prefer-fenced-code-blocks",
         "require-attributes",
@@ -1078,9 +1084,6 @@ def load_config(path: Path | None = None) -> DocvetConfig:
 
     Returns:
         A fully resolved :class:`DocvetConfig`.
-
-    Raises:
-        FileNotFoundError: If an explicit *path* does not exist.
     """
     pyproject_path = _find_pyproject_path(path)
     if pyproject_path is not None:

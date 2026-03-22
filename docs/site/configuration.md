@@ -182,6 +182,7 @@ These keys go under `[tool.docvet.enrichment]`:
 | `require-param-agreement` | `bool` | `true` | Require parameter agreement between function signatures and `Args:` sections. Gates both `missing-param-in-docstring` and `extra-param-in-docstring` rules. |
 | `require-deprecation-notice` | `bool` | `true` | Require a deprecation notice in the docstring when the function uses deprecation patterns (`warnings.warn(..., DeprecationWarning)` or `@deprecated` decorator). |
 | `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks. When `true`, undocumented `*args`/`**kwargs` are not flagged as missing, and documented `*args`/`**kwargs` are flagged as extra. Set to `false` to require their documentation (matches pydoclint's default behavior). |
+| `check-trivial-docstrings` | `bool` | `true` | Flag docstrings whose summary line trivially restates the symbol name without adding information. `@property` and `@cached_property` methods are skipped (PEP 257 attribute-style docstrings naturally restate the name). |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
 
 ### Example
