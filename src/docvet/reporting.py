@@ -431,7 +431,6 @@ def write_report(
             *fmt* is ``"json"`` (for the summary object).
 
     Raises:
-        FileNotFoundError: If the parent directory does not exist.
         ValueError: If fmt is not a recognized format.
     """
     if fmt == "markdown":

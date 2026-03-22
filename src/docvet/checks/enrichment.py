@@ -6,10 +6,11 @@ and extra sections that claim behaviour the code does not exhibit
 cross-reference syntax in See Also sections, checks for non-fenced code
 block patterns (reporting both doctest and rST findings per symbol),
 verifies parameter agreement between function signatures and ``Args:``
-sections, and detects missing deprecation notices on functions using
+sections, detects missing deprecation notices on functions using
 ``warnings.warn`` with deprecation categories or the ``@deprecated``
-decorator (PEP 702) by combining AST analysis with section header
-parsing.
+decorator (PEP 702), and flags trivial docstrings whose summary line
+restates the symbol name without adding information, by combining AST
+analysis with section header parsing.
 Guard clauses for rules with broad skip sets (e.g. ``missing-returns``)
 are extracted into dedicated ``_should_skip_*`` helpers to keep check
 functions focused and within cognitive-complexity thresholds.
@@ -2410,6 +2411,156 @@ def _check_extra_returns_in_docstring(
     )
 
 
+# ---------------------------------------------------------------------------
+# Trivial docstring detection
+# ---------------------------------------------------------------------------
+
+_STOP_WORDS: frozenset[str] = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "of",
+        "for",
+        "to",
+        "in",
+        "is",
+        "it",
+        "and",
+        "or",
+        "this",
+        "that",
+        "with",
+        "from",
+        "by",
+        "on",
+    }
+)
+
+_CAMEL_SPLIT_PATTERN = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z][a-z0-9]*|[a-z][a-z0-9]*")
+
+
+def _decompose_name(name: str) -> set[str]:
+    """Split a symbol name into a set of lowercase word tokens.
+
+    Handles ``snake_case`` (split on underscores) and ``CamelCase``
+    (split on uppercase boundaries with acronym-aware grouping).
+    Leading and trailing underscores are stripped before decomposition.
+
+    Args:
+        name: The symbol name to decompose.
+
+    Returns:
+        A set of lowercase word tokens, or an empty set when the name
+        produces no meaningful tokens.
+
+    Examples:
+        ```python
+        _decompose_name("get_user") == {"get", "user"}
+        _decompose_name("HTTPSConnection") == {"https", "connection"}
+        ```
+    """
+    stripped = name.strip("_")
+    if not stripped:
+        return set()
+    if "_" in stripped:
+        return {t.lower() for t in stripped.split("_") if t}
+    tokens = _CAMEL_SPLIT_PATTERN.findall(stripped)
+    return {t.lower() for t in tokens if t}
+
+
+def _extract_summary_words(docstring: str) -> set[str]:
+    """Extract meaningful words from the first line of a docstring.
+
+    Takes the first non-empty line, strips the trailing period, tokenises
+    on non-alphanumeric characters, lowercases every token, and filters
+    out stop words.
+
+    Args:
+        docstring: The full docstring text.
+
+    Returns:
+        A set of lowercase content words from the summary line, with
+        stop words removed.
+
+    Examples:
+        ```python
+        _extract_summary_words("Process the data.") == {"process", "data"}
+        ```
+    """
+    for line in docstring.split("\n"):
+        stripped = line.strip()
+        if stripped:
+            break
+    else:
+        return set()
+    summary = stripped.rstrip(".")
+    tokens = re.split(r"[^a-zA-Z0-9]+", summary)
+    return {t.lower() for t in tokens if t and t.lower() not in _STOP_WORDS}
+
+
+def _check_trivial_docstring(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect docstrings whose summary line trivially restates the symbol name.
+
+    Decomposes the symbol name into a word set and compares against the
+    summary-line word set (after stop-word removal).  When the summary
+    words are a subset of the name words, the docstring adds no
+    information beyond what the name already communicates.
+
+    ``@property`` and ``@cached_property`` methods are skipped because
+    PEP 257 and the Google Style Guide prescribe attribute-style
+    docstrings (e.g. ``"The user name."``) that naturally restate the
+    attribute name.  Module-kind symbols use
+    :func:`~docvet.ast_utils.module_display_name` for the finding's
+    ``symbol`` and message fields.
+
+    Args:
+        symbol: The documented symbol to check.
+        sections: Set of section headers found in the docstring (unused).
+        node_index: Line-number-to-node mapping for the module.
+        config: Enrichment configuration (unused — config gating is in
+            the orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="trivial-docstring"`` when the summary
+        restates the name, or ``None`` otherwise.
+    """
+    if symbol.docstring is None:
+        return None
+    node = node_index.get(symbol.line)
+    if node is not None and _is_property(node):
+        return None
+    name_words = _decompose_name(symbol.name)
+    if not name_words:
+        return None
+    summary_words = _extract_summary_words(symbol.docstring)
+    if not summary_words:
+        return None
+    if summary_words <= name_words:
+        display_name = (
+            module_display_name(file_path) if symbol.kind == "module" else symbol.name
+        )
+        return Finding(
+            file=file_path,
+            line=symbol.line,
+            symbol=display_name,
+            rule="trivial-docstring",
+            message=(
+                f"Docstring for '{display_name}' restates the name"
+                f" — add details about behavior, constraints, or return value"
+            ),
+            category="recommended",
+        )
+    return None
+
+
 # Rules auto-disabled in sphinx mode unless the user explicitly enables them.
 _SPHINX_AUTO_DISABLE_RULES: frozenset[str] = frozenset(
     {
@@ -2439,6 +2590,7 @@ _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("require_raises", _check_extra_raises_in_docstring),
     ("require_yields", _check_extra_yields_in_docstring),
     ("require_returns", _check_extra_returns_in_docstring),
+    ("check_trivial_docstrings", _check_trivial_docstring),
 )
 
 

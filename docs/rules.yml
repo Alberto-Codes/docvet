@@ -1,4 +1,4 @@
-# Rule metadata catalog — single source of truth for all 28 docvet rules.
+# Rule metadata catalog — single source of truth for all 29 docvet rules.
 # Used by docs/main.py macros hook to render consistent rule page headers.
 # Schema: id, name, check, category, applies_to, summary, since, fix (all required)
 
@@ -513,3 +513,24 @@
     - Indent section entries by 4 spaces under the section header
     - Use the exact section header format (e.g., `Args:` not `Arguments:`)
     - Ensure a blank line between sections
+
+- id: trivial-docstring
+  name: Trivial Docstring
+  check: enrichment
+  category: recommended
+  applies_to: any symbol
+  summary: Docstring summary line restates the symbol name without adding information
+  since: "1.14.0"
+  fix: |
+    Replace the summary line with a description that adds information beyond
+    the symbol name — explain behaviour, constraints, or return value:
+
+    ```python
+    # Before (trivial)
+    def get_user():
+        """Get user."""
+
+    # After (informative)
+    def get_user():
+        """Fetch the active user from the session cache by primary key."""
+    ```
