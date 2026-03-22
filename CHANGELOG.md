@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.14.0](https://github.com/Alberto-Codes/docvet/compare/v1.13.0...v1.14.0) (2026-03-22)
+
+
+### Features
+
+* **enrichment:** add missing-deprecation rule ([#353](https://github.com/Alberto-Codes/docvet/issues/353)) ([6df6405](https://github.com/Alberto-Codes/docvet/commit/6df64059206385d3b3cf4d5402f763e993799ef6))
+* **enrichment:** add missing-return-type rule ([#356](https://github.com/Alberto-Codes/docvet/issues/356)) ([2a2db8d](https://github.com/Alberto-Codes/docvet/commit/2a2db8dcf2b093829a6f1a8e304a6a92f71066c1))
+* **enrichment:** add param agreement checks for Args section ([#349](https://github.com/Alberto-Codes/docvet/issues/349)) ([724b81e](https://github.com/Alberto-Codes/docvet/commit/724b81ebafc461d221bf0548bfc9c71e5ba0823c))
+* **enrichment:** add reverse enrichment checks ([#354](https://github.com/Alberto-Codes/docvet/issues/354)) ([7bdfbcf](https://github.com/Alberto-Codes/docvet/commit/7bdfbcfd4302e260a675505652b06888228653ab))
+* **enrichment:** add trivial-docstring rule ([#355](https://github.com/Alberto-Codes/docvet/issues/355)) ([eb42c4d](https://github.com/Alberto-Codes/docvet/commit/eb42c4d3ce960b6545dbb00160ca827a1b9063e2))
+
+
+### Bug Fixes
+
+* **docs:** address code review findings for missing-return-type story ([2a2db8d](https://github.com/Alberto-Codes/docvet/commit/2a2db8dcf2b093829a6f1a8e304a6a92f71066c1))
+* **docs:** remove undocumented Raises entry in write_report ([eb42c4d](https://github.com/Alberto-Codes/docvet/commit/eb42c4d3ce960b6545dbb00160ca827a1b9063e2))
+
+
+### Documentation
+
+* **enrichment:** add param agreement config keys and migration notes ([724b81e](https://github.com/Alberto-Codes/docvet/commit/724b81ebafc461d221bf0548bfc9c71e5ba0823c))
+* **enrichment:** update enrichment check page with missing rules ([6df6405](https://github.com/Alberto-Codes/docvet/commit/6df64059206385d3b3cf4d5402f763e993799ef6))
+
 ## [1.13.0](https://github.com/Alberto-Codes/docvet/compare/v1.12.1...v1.13.0) (2026-03-08)
 
 
