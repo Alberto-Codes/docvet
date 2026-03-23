@@ -8,7 +8,7 @@ Attributes, typed attributes, Examples, cross-references, fenced code
 blocks), ``_params`` (parameter agreement), ``_deprecation`` (missing
 deprecation notices), ``_reverse`` (extra Raises/Yields/Returns), and
 ``_late_rules`` (trivial docstrings, return types, init params).  This
-module retains section parsing, shared helpers, and the
+module retains section parsing, shared constants, and the
 ``check_enrichment`` dispatch orchestrator.
 
 Supports both Google-style and Sphinx/RST docstring conventions via the
@@ -43,11 +43,7 @@ import ast
 import re
 from collections.abc import Callable
 
-from docvet.ast_utils import (  # noqa: F401
-    Symbol,
-    get_documented_symbols,
-    module_display_name,
-)
+from docvet.ast_utils import Symbol, get_documented_symbols
 from docvet.checks._finding import Finding
 from docvet.config import EnrichmentConfig
 
