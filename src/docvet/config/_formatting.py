@@ -14,7 +14,8 @@ Examples:
     from docvet.config import load_config, format_config_toml, get_user_keys
 
     cfg = load_config()
-    print(format_config_toml(cfg, get_user_keys()))
+    user_keys, _ = get_user_keys()
+    print(format_config_toml(cfg, user_keys))
     ```
 """
 
@@ -29,8 +30,9 @@ from . import DocvetConfig, _snake_to_kebab
 def _fmt_toml_value(value: object) -> str:
     """Format a Python value as a TOML literal.
 
-    Handles bool, str, int/float, and list types. List elements are
-    formatted recursively to ensure consistent escaping.
+    Handles bool, str, int/float, and list types.  List elements are
+    formatted recursively to ensure consistent escaping.  Falls back to
+    ``str()`` for unexpected types.
 
     Args:
         value: The Python value to format.
@@ -47,7 +49,7 @@ def _fmt_toml_value(value: object) -> str:
     if isinstance(value, list):
         items = ", ".join(_fmt_toml_value(v) for v in value)
         return f"[{items}]"
-    return str(value)
+    return str(value)  # pragma: no cover – fallback for unexpected types
 
 
 def _get_annotation(
