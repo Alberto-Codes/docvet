@@ -20,9 +20,8 @@ Validation keys in ``_VALID_ENRICHMENT_KEYS`` are kept alphabetically.
 set by the user (for sphinx auto-disable logic).
 
 Provides ``format_config_toml`` and ``format_config_json`` for rendering
-the effective configuration with source annotations. TOML formatting
-is decomposed into ``_fmt_toml_value``, ``_get_annotation``, and
-``_format_toml_section`` helpers to keep individual functions focused.
+the effective configuration with source annotations. Formatting logic
+is delegated to the ``_formatting`` submodule.
 
 Attributes:
     load_config: Load and validate ``[tool.docvet]`` from pyproject.toml.
