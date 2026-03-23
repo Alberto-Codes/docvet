@@ -25,11 +25,11 @@ Google-style docstrings with triple double-quotes. One-line summary (max 80 char
 
 Use "Yields:" instead of "Returns:" for generators. For `@property`, use attribute style ("The table path.") not "Returns the...".
 
-## Module Size Guidance
+## Module Size Gate
 
-When a source module exceeds ~500 lines or contains 3+ distinct concerns (parsing, checking, helpers, dispatch), consider extracting into a sub-package:
+When a source module exceeds 500 lines **and** the current story modifies that module, you **must** either split it into a sub-package or create a follow-up issue and reference it in the story file. Do not silently add to oversized files.
 
 - Pattern: `checks/enrichment.py` -> `checks/enrichment/` with `__init__.py` re-exporting public API
 - Internal modules for distinct concerns (section parsing, check functions, helpers)
 - Same principle applies to test files — split by rule or concern into dedicated files
-- Apply when natural (during a story that touches the module), not as forced refactoring
+- After implementation, run `wc -l` on all modified source files and flag any over 500 lines
