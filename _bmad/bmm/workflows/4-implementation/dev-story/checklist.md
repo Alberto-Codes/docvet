@@ -37,6 +37,11 @@ validation-rules:
 - [ ] **Edge Cases Handled:** Error conditions and edge cases appropriately addressed
 - [ ] **Dependencies Within Scope:** Only uses dependencies specified in story or project-context.md
 
+## 📏 File Size Gate
+
+- [ ] **Source File Size:** No modified source file exceeds 500 lines (run `wc -l` on all changed source files)
+- [ ] **Split or Track:** If any file exceeds 500 lines: split into sub-package as part of this story, OR create a follow-up issue and reference it in the Dev Agent Record
+
 ## 🧪 Testing & Quality Assurance
 
 - [ ] **Unit Tests:** Unit tests added/updated for ALL core functionality introduced/changed by this story

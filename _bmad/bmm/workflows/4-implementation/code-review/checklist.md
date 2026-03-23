@@ -12,6 +12,7 @@
 - [ ] File List reviewed and validated for completeness
 - [ ] Documentation Impact verified: listed pages updated, or "None" confirmed accurate
 - [ ] Tests identified and mapped to ACs; gaps noted
+- [ ] File size gate: no modified source file exceeds 500 lines (flag if so — split or track as follow-up)
 - [ ] Code quality review performed on changed files
 - [ ] SonarQube `analyze_code_snippet` run on each modified `src/` file (skip gracefully if server unreachable)
 - [ ] Security review performed on changed files and dependencies

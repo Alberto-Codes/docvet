@@ -57,6 +57,13 @@ Verify code quality:
 - [ ] Error handling consistent with codebase
 - [ ] No obvious code smells introduced
 
+### 5. File Size Gate
+
+Run `wc -l` on all modified source files:
+
+- [ ] No modified source file exceeds 500 lines
+- [ ] If any file exceeds 500 lines: split into smaller modules as part of this work, OR create a follow-up issue and note it in the summary
+
 ---
 
 ## UPDATE TECH-SPEC (Mode A only)
