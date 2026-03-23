@@ -62,7 +62,7 @@ Verify code quality:
 Run `wc -l` on all modified source files:
 
 - [ ] No modified source file exceeds 500 lines
-- [ ] If any file exceeds 500 lines: split into sub-package as part of this work, OR create a follow-up issue and note it in the summary
+- [ ] If any file exceeds 500 lines: split into smaller modules as part of this work, OR create a follow-up issue and note it in the summary
 
 ---
 

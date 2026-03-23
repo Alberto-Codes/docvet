@@ -39,7 +39,7 @@ validation-rules:
 
 ## 📏 File Size Gate
 
-- [ ] **Source File Size:** No modified source file exceeds 500 lines (run `wc -l` on all changed `.py` files)
+- [ ] **Source File Size:** No modified source file exceeds 500 lines (run `wc -l` on all changed source files)
 - [ ] **Split or Track:** If any file exceeds 500 lines: split into sub-package as part of this story, OR create a follow-up issue and reference it in the Dev Agent Record
 
 ## 🧪 Testing & Quality Assurance

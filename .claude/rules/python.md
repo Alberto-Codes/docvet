@@ -27,7 +27,7 @@ Use "Yields:" instead of "Returns:" for generators. For `@property`, use attribu
 
 ## Module Size Gate
 
-When a source module exceeds 500 lines **and** the current story modifies that module, you **must** either split it into a sub-package or create a follow-up issue and reference it in the story file. Do not silently add to oversized files.
+When a source module exceeds 500 lines **and** the current story modifies that module, you **must** either split it into smaller modules or create a follow-up issue and reference it in the story file or implementation summary. Do not silently add to oversized files.
 
 - Pattern: `checks/enrichment.py` -> `checks/enrichment/` with `__init__.py` re-exporting public API
 - Internal modules for distinct concerns (section parsing, check functions, helpers)
