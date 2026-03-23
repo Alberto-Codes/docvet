@@ -304,29 +304,6 @@ def _should_skip_returns_check(
     return False
 
 
-def _should_skip_reverse_check(node: _NodeT) -> bool:
-    """Determine whether reverse enrichment checks should be skipped.
-
-    Skips interface-documentation functions whose docstrings describe
-    intended behaviour for implementers, not current implementation.
-    This aligns with ruff DOC202/403/502 and pydoclint skip logic.
-
-    Skips when the node is ``@abstractmethod`` or a stub function
-    (body is ``pass``, ``...``, or ``raise NotImplementedError``).
-
-    Args:
-        node: The AST node for the symbol.
-
-    Returns:
-        ``True`` when reverse checks should be skipped for this node.
-    """
-    if _has_decorator(node, "abstractmethod"):
-        return True
-    if _is_stub_function(node):
-        return True
-    return False
-
-
 def _check_missing_returns(
     symbol: Symbol,
     sections: set[str],
