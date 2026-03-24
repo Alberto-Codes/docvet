@@ -46,8 +46,8 @@ class Finding:
             (function/class/module name).
         rule (str): Kebab-case rule identifier (e.g., ``"missing-raises"``).
         message (str): Human-readable description of the issue.
-        category (str): Severity classification (``"required"`` or
-            ``"recommended"``).
+        category (str): Severity classification (``"required"``,
+            ``"recommended"``, or ``"scaffold"``).
 
     Examples:
         Create a finding for a function missing a Raises section:
@@ -69,13 +69,14 @@ class Finding:
     symbol: str
     rule: str
     message: str
-    category: Literal["required", "recommended"]
+    category: Literal["required", "recommended", "scaffold"]
 
     def __post_init__(self) -> None:
         """Validate Finding fields and normalize paths after initialization.
 
         Normalizes backslash path separators to forward slashes for
-        consistent cross-platform output.
+        consistent cross-platform output.  Validates that ``category`` is
+        one of ``"required"``, ``"recommended"``, or ``"scaffold"``.
 
         Raises:
             ValueError: If any field has an invalid value.
@@ -91,7 +92,8 @@ class Finding:
             raise ValueError("rule must be non-empty")
         if not self.message:
             raise ValueError("message must be non-empty")
-        if self.category not in ("required", "recommended"):
+        if self.category not in ("required", "recommended", "scaffold"):
             raise ValueError(
-                f'category must be "required" or "recommended", got {self.category!r}'
+                f'category must be "required", "recommended", or "scaffold",'
+                f" got {self.category!r}"
             )

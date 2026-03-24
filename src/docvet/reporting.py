@@ -5,8 +5,9 @@ structured JSON for programmatic consumption. Computes per-check quality
 percentages via :func:`compute_quality` and formats them for terminal
 display via :func:`format_quality_summary`. Produces an unconditional
 summary line for stderr (with optional coverage percentage from the
-presence check), groups findings by file, calculates summary statistics,
-and determines the CLI exit code based on finding severity and coverage
+presence check), groups findings by file, calculates summary statistics
+(with required, recommended, and scaffold category breakdowns), and
+determines the CLI exit code based on finding severity and coverage
 threshold enforcement.
 
 Examples:
@@ -157,11 +158,13 @@ def format_quality_summary(quality: dict[str, CheckQuality]) -> str:
 _COLORS: dict[str, str] = {
     "required": typer.colors.RED,
     "recommended": typer.colors.YELLOW,
+    "scaffold": typer.colors.CYAN,
 }
 
 _CATEGORY_TO_SEVERITY: dict[str, str] = {
     "required": "high",
     "recommended": "low",
+    "scaffold": "medium",
 }
 
 
@@ -183,6 +186,11 @@ def _colorize(text: str, color: str, *, no_color: bool) -> str:
 
 def format_terminal(findings: list[Finding], *, no_color: bool = False) -> str:
     """Format findings for terminal output.
+
+    Each finding is printed as ``file:line: rule message [category]``,
+    grouped by file. The summary line shows total count with required
+    and recommended breakdowns; the scaffold count is included only
+    when greater than zero.
 
     Args:
         findings: List of findings to format.
@@ -212,10 +220,13 @@ def format_terminal(findings: list[Finding], *, no_color: bool = False) -> str:
 
     counts = Counter(f.category for f in findings)
     lines.append("")
-    lines.append(
-        f"{len(findings)} findings "
-        f"({counts['required']} required, {counts['recommended']} recommended)"
-    )
+    parts = [
+        f"{counts['required']} required",
+        f"{counts['recommended']} recommended",
+    ]
+    if counts.get("scaffold"):
+        parts.append(f"{counts['scaffold']} scaffold")
+    lines.append(f"{len(findings)} findings ({', '.join(parts)})")
     return "\n".join(lines) + "\n"
 
 
@@ -223,7 +234,9 @@ def format_markdown(findings: list[Finding]) -> str:
     """Format findings as a GFM markdown table with summary footer.
 
     Produces a pipe-delimited table with File, Line, Rule, Symbol,
-    Message, and Category columns, followed by a bold summary count.
+    Message, and Category columns, followed by a bold summary count
+    showing required and recommended breakdowns. The scaffold count
+    is included only when greater than zero.
 
     Args:
         findings: List of findings to format.
@@ -249,10 +262,13 @@ def format_markdown(findings: list[Finding]) -> str:
 
     counts = Counter(f.category for f in findings)
     lines.append("")
-    lines.append(
-        f"**{len(findings)} findings** "
-        f"({counts['required']} required, {counts['recommended']} recommended)"
-    )
+    parts = [
+        f"{counts['required']} required",
+        f"{counts['recommended']} recommended",
+    ]
+    if counts.get("scaffold"):
+        parts.append(f"{counts['scaffold']} scaffold")
+    lines.append(f"**{len(findings)} findings** ({', '.join(parts)})")
     return "\n".join(lines) + "\n"
 
 
@@ -268,8 +284,10 @@ def format_json(
 
     Produces a JSON object with a ``findings`` array and a ``summary``
     object. Each finding includes all six ``Finding`` fields plus a
-    derived ``severity`` field (``"high"`` for required, ``"low"`` for
-    recommended). When *presence_stats* is provided, a
+    derived ``severity`` field (``"high"`` for required, ``"medium"``
+    for scaffold, ``"low"`` for recommended). The ``summary.by_category``
+    object always includes ``required``, ``recommended``, and ``scaffold``
+    keys (defaulting to 0). When *presence_stats* is provided, a
     ``presence_coverage`` object is added using
     :attr:`PresenceStats.percentage` for documented/total counts,
     percentage, threshold, and pass/fail status. When *quality* is
@@ -322,6 +340,7 @@ def format_json(
             "by_category": {
                 "required": counts.get("required", 0),
                 "recommended": counts.get("recommended", 0),
+                "scaffold": counts.get("scaffold", 0),
             },
             "files_checked": file_count,
         },
@@ -351,9 +370,10 @@ def format_summary(
     """Format the unconditional summary line for stderr.
 
     Produces a one-line summary showing file count, checks that ran,
-    finding count with category breakdown, optional coverage percentage,
-    and elapsed time. Uses the "Vetted" brand verb and an em dash
-    separator.
+    finding count with category breakdown (required and recommended,
+    plus scaffold when count is greater than zero), optional coverage
+    percentage, and elapsed time. Uses the "Vetted" brand verb and an
+    em dash separator.
 
     Args:
         file_count: Number of files that were checked.
@@ -387,10 +407,13 @@ def format_summary(
     check_list = ", ".join(checks)
     if findings:
         counts = Counter(f.category for f in findings)
-        detail = (
-            f"{len(findings)} findings"
-            f" ({counts['required']} required, {counts['recommended']} recommended)"
-        )
+        parts = [
+            f"{counts['required']} required",
+            f"{counts['recommended']} recommended",
+        ]
+        if counts.get("scaffold"):
+            parts.append(f"{counts['scaffold']} scaffold")
+        detail = f"{len(findings)} findings ({', '.join(parts)})"
     else:
         detail = "no findings"
     if coverage_pct is not None:

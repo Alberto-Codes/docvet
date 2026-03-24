@@ -7,9 +7,9 @@ Yields, Receives, Warns, Other Parameters), ``_class_module`` (missing
 Attributes, typed attributes, Examples, cross-references, fenced code
 blocks), ``_params`` (parameter agreement), ``_deprecation`` (missing
 deprecation notices), ``_reverse`` (extra Raises/Yields/Returns), and
-``_late_rules`` (trivial docstrings, return types, init params).  This
-module retains section parsing, shared constants, and the
-``check_enrichment`` dispatch orchestrator.
+``_late_rules`` (trivial docstrings, return types, init params,
+scaffold-incomplete).  This module retains section parsing, shared
+constants, and the ``check_enrichment`` dispatch orchestrator.
 
 Supports both Google-style and Sphinx/RST docstring conventions via the
 ``style`` parameter on :func:`check_enrichment`. NumPy-style section
@@ -339,7 +339,9 @@ _CheckFn = Callable[
 
 from ._late_rules import (  # noqa: E402
     _RETURNS_TYPE_PATTERN,  # noqa: F401 – re-exported for tests
+    _TODO_PATTERN,  # noqa: F401 – re-exported for tests
     _check_missing_return_type,
+    _check_scaffold_incomplete,
     _check_trivial_docstring,
     _check_undocumented_init_params,
     _decompose_name,  # noqa: F401 – re-exported for tests
@@ -384,6 +386,7 @@ _RULE_DISPATCH: tuple[tuple[str, _CheckFn], ...] = (
     ("check_trivial_docstrings", _check_trivial_docstring),
     ("require_return_type", _check_missing_return_type),
     ("require_init_params", _check_undocumented_init_params),
+    ("scaffold_incomplete", _check_scaffold_incomplete),
 )
 
 

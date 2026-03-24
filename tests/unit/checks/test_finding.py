@@ -241,10 +241,26 @@ def test_finding_rejects_empty_message():
         )
 
 
+def test_finding_accepts_scaffold_category():
+    """Test that Finding accepts scaffold as a valid category."""
+    finding = Finding(
+        file="src/example.py",
+        line=42,
+        symbol="validate",
+        rule="scaffold-incomplete",
+        message="fill in Raises for 'validate' — describe ValueError",
+        category="scaffold",
+    )
+    assert finding.category == "scaffold"
+    assert finding.file == "src/example.py"
+    assert finding.rule == "scaffold-incomplete"
+
+
 def test_finding_rejects_invalid_category():
     """Test that Finding raises ValueError for invalid category values."""
     with pytest.raises(
-        ValueError, match='category must be "required" or "recommended"'
+        ValueError,
+        match='category must be "required", "recommended", or "scaffold"',
     ):
         Finding(
             file="test.py",

@@ -49,9 +49,10 @@ class TestChecksPackageReExports:
             "check_freshness_drift",
             "check_griffe_compat",
             "check_presence",
+            "scaffold_missing_sections",
         ]
-        assert sorted(mod.__all__) == expected
-        assert len(mod.__all__) == 8
+        assert sorted(mod.__all__) == sorted(expected)
+        assert len(mod.__all__) == 9
 
     def test_checks_package_exposes_check_functions_as_attributes(self):
         mod = importlib.import_module("docvet.checks")

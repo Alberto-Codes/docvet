@@ -153,6 +153,8 @@ class EnrichmentConfig:
         check_extra_returns (bool): Flag ``Returns:`` sections when
             the function has no meaningful return. Defaults to
             ``True``.
+        scaffold_incomplete (bool): Detect unfilled placeholder markers
+            left by ``docvet fix``. Defaults to ``True``.
         user_set_keys (frozenset[str]): Snake_case keys explicitly set
             by the user in ``[tool.docvet.enrichment]``. Populated during
             config parsing to distinguish user overrides from defaults.
@@ -194,6 +196,7 @@ class EnrichmentConfig:
     check_extra_raises: bool = False
     check_extra_yields: bool = True
     check_extra_returns: bool = True
+    scaffold_incomplete: bool = True
     user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
