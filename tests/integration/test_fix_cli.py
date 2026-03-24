@@ -51,12 +51,13 @@ class TestFixCliIntegration:
 
     def test_fix_modifies_files_in_repo(self, git_repo):
         """Fix modifies files with missing sections in a git repo."""
-        subprocess.run(
+        result = subprocess.run(
             ["uv", "run", "docvet", "fix", "--all"],
             cwd=git_repo,
             capture_output=True,
             text=True,
         )
+        assert result.returncode in (0, 1)  # 1 = scaffold findings (expected)
         src = git_repo / "mod.py"
         content = src.read_text()
         assert "Raises:" in content
@@ -79,12 +80,13 @@ class TestFixCliIntegration:
     def test_fix_then_check_shows_scaffold_findings(self, git_repo):
         """After fix, check shows scaffold-incomplete instead of missing-raises."""
         # Step 1: fix
-        subprocess.run(
+        fix_result = subprocess.run(
             ["uv", "run", "docvet", "fix", "--all"],
             cwd=git_repo,
             capture_output=True,
             text=True,
         )
+        assert fix_result.returncode in (0, 1)  # 1 = scaffold findings (expected)
         # Step 2: check
         result = subprocess.run(
             ["uv", "run", "docvet", "enrichment", "--all"],
@@ -122,12 +124,13 @@ class TestFixCliIntegration:
         subprocess.run(
             ["git", "add", "mod.py"], cwd=git_repo, capture_output=True, check=True
         )
-        subprocess.run(
+        result = subprocess.run(
             ["uv", "run", "docvet", "fix", "--staged"],
             cwd=git_repo,
             capture_output=True,
             text=True,
         )
+        assert result.returncode in (0, 1)  # 1 = scaffold findings (expected)
         # Staged file should have been fixed.
         assert "Raises:" in src.read_text()
         # Unstaged file should not have been fixed.

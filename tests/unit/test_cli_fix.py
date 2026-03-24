@@ -4,40 +4,18 @@ from __future__ import annotations
 
 import re
 import textwrap
-from typing import Literal
 
 import pytest
 from typer.testing import CliRunner
 
-from docvet.checks import Finding
 from docvet.cli import app
 from docvet.config import DocvetConfig
 
 pytestmark = pytest.mark.unit
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
-_Category = Literal["required", "recommended", "scaffold"]
 
 runner = CliRunner()
-
-
-def _finding(
-    *,
-    file: str = "test.py",
-    line: int = 1,
-    symbol: str = "func",
-    rule: str = "missing-raises",
-    message: str = "test message",
-    category: _Category = "required",
-) -> Finding:
-    return Finding(
-        file=file,
-        line=line,
-        symbol=symbol,
-        rule=rule,
-        message=message,
-        category=category,
-    )
 
 
 # ---------------------------------------------------------------------------
