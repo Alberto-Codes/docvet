@@ -37,19 +37,31 @@ The `--format json` option produces a structured JSON object for programmatic co
       "severity": "high"
     }
   ],
+  "suppressed": [
+    {
+      "file": "src/app/utils.py",
+      "line": 30,
+      "symbol": "internal_helper",
+      "rule": "missing-examples",
+      "message": "Public symbol lacks an Examples section",
+      "category": "recommended",
+      "severity": "low"
+    }
+  ],
   "summary": {
     "total": 1,
-    "by_category": { "required": 1, "recommended": 0 },
+    "by_category": { "required": 1, "recommended": 0, "scaffold": 0 },
     "files_checked": 42
   }
 }
 ```
 
 - Each finding has seven fields: `file`, `line`, `symbol`, `rule`, `message`, `category`, `severity`.
-- The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"recommended"` maps to `"low"`. It has exactly two values and is a convenience alias, not a separate signal.
-- The `summary` object includes `total`, `by_category` (with `required` and `recommended` counts), and `files_checked`.
+- The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"scaffold"` maps to `"medium"`, `"recommended"` maps to `"low"`. It is a convenience alias, not a separate signal.
+- The `summary` object includes `total`, `by_category` (with `required`, `recommended`, and `scaffold` counts), and `files_checked`.
+- A `suppressed` array is included containing findings that were suppressed by inline `# docvet: ignore` comments. Each entry has the same seven fields as a finding.
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
-- Exit codes are unchanged: `0` for no findings, `1` when findings exist in a `fail_on` check.
+- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check.
 
 ### Quality Summary (`--summary`)
 
@@ -363,6 +375,79 @@ docvet --config path/to/pyproject.toml check --all
 | `0` | No findings (or no findings in `fail_on` checks) |
 | `1` | Findings detected in `fail_on` checks |
 | `2` | Usage error (invalid arguments or options) |
+
+## Inline Suppression
+
+Suppress specific findings with inline comments. Suppression operates as a post-filter — all checks run normally, then matching findings are partitioned into suppressed.
+
+### Line-Level Suppression
+
+Place a `# docvet: ignore[rule]` comment on the `def` or `class` keyword line:
+
+```python
+def connect(host, port):  # docvet: ignore[missing-raises]
+    """Connect to the server."""
+    ...
+```
+
+Suppress multiple rules with comma separation:
+
+```python
+def connect(host, port):  # docvet: ignore[missing-raises,missing-returns]
+    """Connect to the server."""
+    ...
+```
+
+Suppress all rules on a symbol with a blanket ignore:
+
+```python
+def connect(host, port):  # docvet: ignore
+    """Connect to the server."""
+    ...
+```
+
+!!! note
+    The comment must be on the `def`/`class` keyword line itself — not on a decorator line. For multi-line signatures, place it on the `def` line: `def long_name(  # docvet: ignore[rule]`.
+
+### File-Level Suppression
+
+Place a `# docvet: ignore-file[rule]` comment before the first `def` or `class`:
+
+```python
+# docvet: ignore-file[missing-examples]
+
+def foo():
+    """Does something."""
+    ...
+```
+
+Suppress all rules for the entire file:
+
+```python
+# docvet: ignore-file
+
+def foo():
+    """Does something."""
+    ...
+```
+
+### Behavior
+
+- **Exit code**: Suppressed findings do NOT count toward the exit code. Only active findings determine pass/fail.
+- **Verbose mode**: When `--verbose` is active, suppressed findings are listed separately on stderr with a `[suppressed]` tag.
+- **JSON output**: `--format json` includes a `"suppressed"` array alongside `"findings"`.
+- **Invalid rules**: If a suppression comment specifies a non-existent rule ID, a warning is emitted to stderr. The directive is recorded for forward-compatibility, but only matching rule IDs suppress findings — a typo will not hide anything.
+- **Always active**: Suppression requires no configuration toggle — it is always available.
+
+### Cross-Tool Syntax Reference
+
+| Tool | Syntax | Scope |
+|------|--------|-------|
+| ruff | `# noqa: E501` | Line |
+| pylint | `# pylint: disable=C0114` | Line/block |
+| mypy | `# type: ignore[attr-defined]` | Line |
+| **docvet** | `# docvet: ignore[rule]` | Line (symbol) |
+| **docvet** | `# docvet: ignore-file[rule]` | File |
 
 ## Examples
 
