@@ -164,6 +164,8 @@ def _build_section_lines(
 
     Uses AST re-extraction to produce section-specific placeholders
     (exception names for Raises, field names for Attributes, etc.).
+    Examples sections use fenced code block placeholders to avoid
+    triggering ``prefer-fenced-code-blocks`` findings.
 
     Args:
         section: The section header name (e.g. ``"Raises"``).
@@ -213,7 +215,9 @@ def _build_section_lines(
     if section == "Examples":
         return [
             f"{indent}{section}:{newline}",
-            f"{ci}>>> # [TODO: add example usage]{newline}",
+            f"{ci}```python{newline}",
+            f"{ci}# [TODO: add example usage]{newline}",
+            f"{ci}```{newline}",
         ]
 
     # Generic placeholder for Yields, Receives, Warns, Other Parameters,

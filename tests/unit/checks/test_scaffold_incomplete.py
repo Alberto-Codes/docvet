@@ -196,7 +196,9 @@ class TestMessageFormat:
                     x: [TODO: describe]
 
                 Examples:
-                    >>> # [TODO: add example usage]
+                    ```python
+                    # [TODO: add example usage]
+                    ```
                 """
                 x: int = 0
         ''')

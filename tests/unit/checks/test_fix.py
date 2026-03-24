@@ -194,10 +194,10 @@ class TestGeneratorSections:
 
 
 class TestExamplesSection:
-    """AC 5: Examples section with doctest-style placeholder."""
+    """AC 5: Examples section with fenced code block placeholder."""
 
     def test_examples_fenced_code_placeholder(self):
-        """Examples section uses doctest-style placeholder."""
+        """Examples section uses fenced code block placeholder."""
         source = textwrap.dedent('''\
             class Foo:
                 """A foo class."""
@@ -207,7 +207,9 @@ class TestExamplesSection:
             source, [_finding(line=1, symbol="Foo", rule="missing-examples")]
         )
         assert "Examples:" in result
-        assert ">>> # [TODO: add example usage]" in result
+        assert "```python" in result
+        assert "# [TODO: add example usage]" in result
+        assert "```" in result
 
 
 # ---------------------------------------------------------------------------
