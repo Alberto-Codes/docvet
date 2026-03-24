@@ -265,8 +265,8 @@ development_status:
   epic-31-retrospective: done  # 2026-03-07
 
   # Epic 32: Linter Lifecycle -- Fix & Suppress
-  epic-32: backlog
-  32-1-fix-feasibility-spike: backlog
+  epic-32: in-progress
+  32-1-fix-feasibility-spike: review
   32-2-fix-core-section-scaffolding-engine: backlog
   32-3-fix-cli-wiring-subcommand-dry-run-and-discovery: backlog
   32-4-inline-suppression-comments: backlog
@@ -288,7 +288,7 @@ development_status:
   epic-34-retrospective: done  # 2026-03-08
 
   # Epic 35: Enrichment Depth — Correctness & Completeness Rules
-  epic-35: in-progress
+  epic-35: done
   35-1-docstring-parameter-agreement-checks: done
   35-2-missing-deprecation-enrichment-rule: done
   35-3-reverse-enrichment-checks: done
