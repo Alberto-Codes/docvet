@@ -86,7 +86,8 @@ def parse_suppression_directives(
     Uses the ``tokenize`` module to extract only real ``COMMENT`` tokens,
     avoiding false positives from ``#`` inside string literals. Validates
     rule IDs against the known rule set and emits warnings to stderr for
-    invalid rules (fail-safe: the suppression is still applied).
+    unknown or invalid rules. Such rule IDs are recorded for forward-
+    compatibility but only suppress findings when they match exactly.
 
     Args:
         source: Python source code string.

@@ -46,8 +46,8 @@ The `--format json` option produces a structured JSON object for programmatic co
 ```
 
 - Each finding has seven fields: `file`, `line`, `symbol`, `rule`, `message`, `category`, `severity`.
-- The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"recommended"` maps to `"low"`. It has exactly two values and is a convenience alias, not a separate signal.
-- The `summary` object includes `total`, `by_category` (with `required` and `recommended` counts), and `files_checked`.
+- The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"scaffold"` maps to `"medium"`, `"recommended"` maps to `"low"`. It is a convenience alias, not a separate signal.
+- The `summary` object includes `total`, `by_category` (with `required`, `recommended`, and `scaffold` counts), and `files_checked`.
 - A `suppressed` array is included containing findings that were suppressed by inline `# docvet: ignore` comments. Each entry has the same seven fields as a finding.
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
 - Exit codes are unchanged: `0` for no findings, `1` when findings exist in a `fail_on` check.
@@ -425,7 +425,7 @@ def foo():
 - **Exit code**: Suppressed findings do NOT count toward the exit code. Only active findings determine pass/fail.
 - **Verbose mode**: When `--verbose` is active, suppressed findings are listed separately on stderr with a `[suppressed]` tag.
 - **JSON output**: `--format json` includes a `"suppressed"` array alongside `"findings"`.
-- **Invalid rules**: If a suppression comment specifies a non-existent rule ID, a warning is emitted to stderr. The suppression is still applied (fail-safe).
+- **Invalid rules**: If a suppression comment specifies a non-existent rule ID, a warning is emitted to stderr. The directive is recorded for forward-compatibility, but only matching rule IDs suppress findings — a typo will not hide anything.
 - **Always active**: Suppression requires no configuration toggle — it is always available.
 
 ### Cross-Tool Syntax Reference
