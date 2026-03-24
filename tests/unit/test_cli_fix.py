@@ -266,8 +266,8 @@ class TestFixSubcommand:
         )
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["fix", str(src)])
-        # stderr captured in result.output by CliRunner
-        assert "Fixed 1 of 1 files" in result.output or "scaffold" in result.output
+        assert "Fixed 1 of 1 files" in result.output
+        assert "scaffold" in result.output
 
     def test_summary_format_no_fixes(self, tmp_path, monkeypatch):
         """Summary line shows 'no fixes needed' when nothing to do."""
@@ -281,4 +281,4 @@ class TestFixSubcommand:
         )
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["fix", str(src)])
-        assert "No fixes needed" in result.output or result.exit_code == 0
+        assert "No fixes needed" in result.output

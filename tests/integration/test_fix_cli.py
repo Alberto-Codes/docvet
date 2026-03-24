@@ -97,7 +97,7 @@ class TestFixCliIntegration:
 
     def test_fix_staged_only_modifies_staged(self, git_repo):
         """Fix --staged only modifies staged files."""
-        # Create a second file (unstaged).
+        # Create a second file (unstaged/untracked).
         unstaged = git_repo / "other.py"
         unstaged.write_text(
             textwrap.dedent('''\
@@ -106,9 +106,19 @@ class TestFixCliIntegration:
                     raise TypeError("bad")
             ''')
         )
-        # Stage only the first file's changes by re-touching it.
+        # Actually modify mod.py so there is a real staged delta.
         src = git_repo / "mod.py"
-        src.write_text(src.read_text())  # no-op write to keep same content
+        src.write_text(
+            src.read_text()
+            + textwrap.dedent('''\
+
+                def transform(value):
+                    """Transform a value."""
+                    if not value:
+                        raise KeyError("missing")
+                    return value
+            ''')
+        )
         subprocess.run(
             ["git", "add", "mod.py"], cwd=git_repo, capture_output=True, check=True
         )
@@ -118,5 +128,7 @@ class TestFixCliIntegration:
             capture_output=True,
             text=True,
         )
-        # unstaged file should not have been fixed.
+        # Staged file should have been fixed.
+        assert "Raises:" in src.read_text()
+        # Unstaged file should not have been fixed.
         assert "Raises:" not in unstaged.read_text()

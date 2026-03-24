@@ -355,20 +355,23 @@ def _run_fix(
     """Run the fix pipeline on discovered files.
 
     For each file: runs enrichment to find missing sections, scaffolds
-    them via ``scaffold_missing_sections``, writes the result (unless
-    *dry_run*), and re-runs enrichment to collect scaffold-incomplete
-    findings.
+    them via ``scaffold_missing_sections``, and either writes the result
+    or collects diffs.  In write mode, re-runs enrichment to collect
+    scaffold-incomplete findings.  In dry-run mode, collects diffs
+    without writing or re-checking.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
-        dry_run: When ``True``, collect diffs without writing files.
+        dry_run: When ``True``, collect diffs without writing files
+            or re-running enrichment.
         show_progress: Display a progress bar on stderr.
 
     Returns:
         A tuple of ``(scaffold_findings, files_modified, sections_scaffolded,
         diffs)`` where *diffs* is a list of ``(path, original, modified)``
-        tuples (only populated in dry-run mode).
+        tuples (only populated in dry-run mode) and *scaffold_findings*
+        is empty in dry-run mode.
     """
     from docvet.checks.fix import RULE_TO_SECTION, scaffold_missing_sections
 
@@ -411,8 +414,9 @@ def _run_fix(
 
             if dry_run:
                 diffs.append((str(file_path), source, modified))
-            else:
-                file_path.write_text(modified, encoding="utf-8")
+                continue
+
+            file_path.write_text(modified, encoding="utf-8")
 
             # Step 3: re-check for scaffold-incomplete findings.
             try:
