@@ -1011,3 +1011,208 @@ class TestCategoryAndCrossRule:
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
 
         assert not any(f.rule == "extra-returns-in-docstring" for f in findings)
+
+
+# ===========================================================================
+# Bug fix tests (#387, #388, #389)
+# ===========================================================================
+
+
+class TestDocstringOnlyBodySkip:
+    """Tests for docstring-only stub body skip (#387)."""
+
+    def test_protocol_method_docstring_only_returns_skipped(self):
+        """Protocol method with docstring-only body — no extra-returns finding (#387)."""
+        source = '''\
+        from typing import Protocol
+
+        class MyProtocol(Protocol):
+            def compute(self, x: int) -> float:
+                """Compute a value.
+
+                Returns:
+                    The computed float result.
+                """
+        '''
+        from docvet.ast_utils import get_documented_symbols
+
+        tree = ast.parse(textwrap.dedent(source))
+        symbols = get_documented_symbols(tree)
+        node_index = _build_node_index(tree)
+        symbol = [s for s in symbols if s.name == "compute"][0]
+        assert symbol.docstring is not None
+        sections = _parse_sections(symbol.docstring)
+        config = EnrichmentConfig()
+
+        result = _check_extra_returns_in_docstring(
+            symbol, sections, node_index, config, "test.py"
+        )
+
+        assert result is None
+
+    def test_docstring_only_body_yields_skipped(self):
+        """Docstring-only body — no extra-yields finding (#387)."""
+        source = '''\
+        def gen():
+            """Generate values.
+
+            Yields:
+                int: Numbers.
+            """
+        '''
+        symbol, node_index, _ = _make_symbol_and_index(source)
+        sections = _parse_sections(symbol.docstring)
+        config = EnrichmentConfig()
+
+        result = _check_extra_yields_in_docstring(
+            symbol, sections, node_index, config, "test.py"
+        )
+
+        assert result is None
+
+    def test_docstring_only_body_raises_skipped(self):
+        """Docstring-only body — no extra-raises finding (#387)."""
+        source = '''\
+        def validate():
+            """Validate input.
+
+            Raises:
+                ValueError: If invalid.
+            """
+        '''
+        symbol, node_index, _ = _make_symbol_and_index(source)
+        sections = _parse_sections(symbol.docstring)
+        config = EnrichmentConfig()
+
+        result = _check_extra_raises_in_docstring(
+            symbol, sections, node_index, config, "test.py"
+        )
+
+        assert result is None
+
+    def test_docstring_only_skip_via_orchestrator(self):
+        """Orchestrator-level: docstring-only Protocol method emits no reverse findings (#387)."""
+        source = textwrap.dedent('''\
+        from typing import Protocol
+
+        class MyProtocol(Protocol):
+            def compute(self, x: int) -> float:
+                """Compute a value.
+
+                Returns:
+                    The computed float result.
+                """
+        ''')
+        tree = ast.parse(source)
+        config = EnrichmentConfig()
+
+        findings = check_enrichment(source, tree, config, "test.py")
+
+        reverse_rules = {f.rule for f in findings if f.rule.startswith("extra-")}
+        assert not reverse_rules
+
+
+class TestDeprecatedAbstractDecorators:
+    """Tests for deprecated abstract decorator skip (#389)."""
+
+    @pytest.mark.parametrize(
+        "decorator",
+        [
+            "abstractclassmethod",
+            "abstractstaticmethod",
+            "abstractproperty",
+        ],
+    )
+    def test_deprecated_abstract_returns_skipped(self, decorator):
+        """Deprecated abstract decorator — no extra-returns finding (#389)."""
+        source = f'''\
+        import abc
+
+        class Base(abc.ABC):
+            @abc.{decorator}
+            def method(self):
+                """Summary.
+
+                Returns:
+                    str: The result.
+                """
+                x = 1
+        '''
+        from docvet.ast_utils import get_documented_symbols
+
+        tree = ast.parse(textwrap.dedent(source))
+        symbols = get_documented_symbols(tree)
+        node_index = _build_node_index(tree)
+        symbol = [s for s in symbols if s.name == "method"][0]
+        assert symbol.docstring is not None
+        sections = _parse_sections(symbol.docstring)
+        config = EnrichmentConfig()
+
+        result = _check_extra_returns_in_docstring(
+            symbol, sections, node_index, config, "test.py"
+        )
+
+        assert result is None
+
+    @pytest.mark.parametrize(
+        "decorator",
+        [
+            "abstractclassmethod",
+            "abstractstaticmethod",
+            "abstractproperty",
+        ],
+    )
+    def test_deprecated_abstract_skip_directly(self, decorator):
+        """_should_skip_reverse_check returns True for deprecated decorators (#389)."""
+        source = f'''\
+        import abc
+
+        class Base(abc.ABC):
+            @abc.{decorator}
+            def method(self):
+                """Summary."""
+                return 42
+        '''
+        from docvet.ast_utils import get_documented_symbols
+
+        tree = ast.parse(textwrap.dedent(source))
+        symbols = get_documented_symbols(tree)
+        node_index = _build_node_index(tree)
+        target = [s for s in symbols if s.kind in ("function", "method")][0]
+        node = node_index.get(target.line)
+        assert node is not None
+
+        result = _should_skip_reverse_check(node)
+
+        assert result is True
+
+    def test_deprecated_abstract_yields_skipped(self):
+        """@abstractstaticmethod — no extra-yields finding (#389)."""
+        source = '''\
+        import abc
+
+        class Base(abc.ABC):
+            @abc.abstractstaticmethod
+            def gen():
+                """Generate values.
+
+                Yields:
+                    int: Numbers.
+                """
+                x = 1
+        '''
+        from docvet.ast_utils import get_documented_symbols
+
+        tree = ast.parse(textwrap.dedent(source))
+        symbols = get_documented_symbols(tree)
+        node_index = _build_node_index(tree)
+        symbol = [s for s in symbols if s.name == "gen"][0]
+        assert symbol.docstring is not None
+        sections = _parse_sections(symbol.docstring)
+        config = EnrichmentConfig()
+
+        result = _check_extra_yields_in_docstring(
+            symbol, sections, node_index, config, "test.py"
+        )
+
+        assert result is None

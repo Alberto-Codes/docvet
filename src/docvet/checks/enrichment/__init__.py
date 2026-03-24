@@ -9,7 +9,8 @@ blocks), ``_params`` (parameter agreement), ``_deprecation`` (missing
 deprecation notices), ``_reverse`` (extra Raises/Yields/Returns), and
 ``_late_rules`` (trivial docstrings, return types, init params,
 scaffold-incomplete).  This module retains section parsing, shared
-constants, and the ``check_enrichment`` dispatch orchestrator.
+constants, the ``_should_skip_reverse_check`` guard, and the
+``check_enrichment`` dispatch orchestrator.
 
 Supports both Google-style and Sphinx/RST docstring conventions via the
 ``style`` parameter on :func:`check_enrichment`. NumPy-style section
@@ -253,6 +254,7 @@ def _extract_section_content(docstring: str, section_name: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 from ._forward import (  # noqa: E402
+    _ABSTRACT_DECORATORS,  # noqa: F401 – re-exported for tests
     _build_node_index,
     _check_missing_other_parameters,
     _check_missing_raises,
@@ -261,10 +263,12 @@ from ._forward import (  # noqa: E402
     _check_missing_warns,
     _check_missing_yields,
     _extract_exception_name,  # noqa: F401 – re-exported for submodules
-    _has_decorator,
+    _has_decorator,  # noqa: F401 – re-exported for submodules
+    _is_abstract,
     _is_meaningful_return,  # noqa: F401 – re-exported for submodules
     _is_property,  # noqa: F401 – re-exported for submodules
     _is_stub_function,
+    _is_stub_statement,  # noqa: F401 – re-exported for tests
     _is_warn_call,  # noqa: F401 – re-exported for submodules
     _NodeT,
 )
@@ -277,8 +281,11 @@ def _should_skip_reverse_check(node: _NodeT) -> bool:
     intended behaviour for implementers, not current implementation.
     This aligns with ruff DOC202/403/502 and pydoclint skip logic.
 
-    Skips when the node is ``@abstractmethod`` or a stub function
-    (body is ``pass``, ``...``, or ``raise NotImplementedError``).
+    Skips when the node has any abstract decorator (``@abstractmethod``
+    and deprecated variants ``@abstractclassmethod``,
+    ``@abstractstaticmethod``, ``@abstractproperty``) or is a stub
+    function (body is ``pass``, ``...``, ``raise NotImplementedError``,
+    or docstring-only).
 
     Args:
         node: The AST node for the symbol.
@@ -286,7 +293,7 @@ def _should_skip_reverse_check(node: _NodeT) -> bool:
     Returns:
         ``True`` when reverse checks should be skipped for this node.
     """
-    if _has_decorator(node, "abstractmethod"):
+    if _is_abstract(node):
         return True
     if _is_stub_function(node):
         return True

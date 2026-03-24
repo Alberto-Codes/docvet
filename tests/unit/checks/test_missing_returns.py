@@ -10,7 +10,9 @@ from docvet.checks import Finding
 from docvet.checks.enrichment import (
     _build_node_index,
     _check_missing_returns,
+    _is_abstract,
     _is_stub_function,
+    _is_stub_statement,
     _parse_sections,
     check_enrichment,
 )
@@ -645,3 +647,163 @@ def test_is_stub_function_documented_stub_with_raise():
     func_node = tree.body[0]
     assert isinstance(func_node, ast.FunctionDef)
     assert _is_stub_function(func_node) is True
+
+
+# ---------------------------------------------------------------------------
+# _is_stub_function: docstring-only body (#387)
+# ---------------------------------------------------------------------------
+
+
+def test_is_stub_function_docstring_only_body():
+    """Docstring-only body is a stub (Protocol methods, #387)."""
+    tree = ast.parse('def f():\n    """Interface contract."""\n')
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_docstring_only_method_in_protocol():
+    """Protocol method with docstring-only body is a stub (#387)."""
+    source = (
+        "from typing import Protocol\n"
+        "class P(Protocol):\n"
+        "    def compute(self, x: int) -> float:\n"
+        '        """Compute a value.\n\n'
+        "        Returns:\n"
+        "            The computed float result.\n"
+        '        """\n'
+    )
+    tree = ast.parse(source)
+    class_node = tree.body[1]
+    assert isinstance(class_node, ast.ClassDef)
+    func_node = class_node.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+# ---------------------------------------------------------------------------
+# _is_stub_function: multi-statement stub bodies (#388)
+# ---------------------------------------------------------------------------
+
+
+def test_is_stub_function_multi_pass():
+    """Multiple pass statements should be recognized as a stub (#388)."""
+    tree = ast.parse("def f():\n    pass\n    pass\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_pass_and_ellipsis():
+    """Pass + ellipsis combination is a stub (#388)."""
+    tree = ast.parse("def f():\n    pass\n    ...\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_documented_multi_statement_stub():
+    """Docstring + pass + ellipsis is a stub (#388)."""
+    tree = ast.parse('def f():\n    """Doc."""\n    pass\n    ...\n')
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is True
+
+
+def test_is_stub_function_mixed_stub_and_real_not_stub():
+    """Pass + real statement is NOT a stub."""
+    tree = ast.parse("def f():\n    pass\n    return 1\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_stub_function(func_node) is False
+
+
+# ---------------------------------------------------------------------------
+# _is_stub_statement helper tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("pass", True),
+        ("...", True),
+        ("raise NotImplementedError", True),
+        ("raise NotImplementedError('msg')", True),
+        ('"extra docstring"', True),
+        ("x = 1", False),
+        ("return 42", False),
+    ],
+    ids=[
+        "pass",
+        "ellipsis",
+        "raise-NIE",
+        "raise-NIE-msg",
+        "string-literal",
+        "assign",
+        "return",
+    ],
+)
+def test_is_stub_statement(code, expected):
+    """Direct test of _is_stub_statement helper."""
+    tree = ast.parse(code)
+    stmt = tree.body[0]
+    assert _is_stub_statement(stmt) is expected
+
+
+# ---------------------------------------------------------------------------
+# _is_abstract helper tests (#389)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("decorator", "expected"),
+    [
+        ("abstractmethod", True),
+        ("abstractclassmethod", True),
+        ("abstractstaticmethod", True),
+        ("abstractproperty", True),
+        ("staticmethod", False),
+        ("classmethod", False),
+        ("property", False),
+    ],
+    ids=[
+        "abstractmethod",
+        "abstractclassmethod",
+        "abstractstaticmethod",
+        "abstractproperty",
+        "staticmethod",
+        "classmethod",
+        "property",
+    ],
+)
+def test_is_abstract(decorator, expected):
+    """_is_abstract detects all abstract decorators (#389)."""
+    tree = ast.parse(f"@{decorator}\ndef f():\n    pass\n")
+    func_node = tree.body[0]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_abstract(func_node) is expected
+
+
+def test_is_abstract_qualified_decorator():
+    """_is_abstract detects abc.abstractmethod (qualified form)."""
+    tree = ast.parse("import abc\n@abc.abstractmethod\ndef f():\n    pass\n")
+    func_node = tree.body[1]
+    assert isinstance(func_node, ast.FunctionDef)
+    assert _is_abstract(func_node) is True
+
+
+def test_missing_returns_skips_abstractclassmethod():
+    """missing-returns skips @abstractclassmethod (#389)."""
+    source = (
+        "import abc\n"
+        "class C(abc.ABC):\n"
+        "    @abc.abstractclassmethod\n"
+        "    def create(cls) -> 'C':\n"
+        '        """Create instance."""\n'
+        "        return cls()\n"
+    )
+    tree = ast.parse(source)
+    config = EnrichmentConfig()
+    findings = check_enrichment(source, tree, config, "test.py")
+    assert not any(f.rule == "missing-returns" for f in findings)
