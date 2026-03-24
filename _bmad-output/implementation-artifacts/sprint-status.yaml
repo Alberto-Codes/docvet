@@ -1,4 +1,4 @@
-# generated: 2026-03-07
+# generated: 2026-03-24
 # project: docvet
 # project_key: NOKEY
 # tracking_system: both
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-03-07
+generated: 2026-03-24
 project: docvet
 project_key: NOKEY
 tracking_system: both
@@ -268,7 +268,7 @@ development_status:
   epic-32: in-progress
   32-1-fix-feasibility-spike: done
   32-2-fix-core-section-scaffolding-engine: done
-  32-3-fix-cli-wiring-subcommand-dry-run-and-discovery: review
+  32-3-fix-cli-wiring-subcommand-dry-run-and-discovery: done
   32-4-inline-suppression-comments: backlog
   epic-32-retrospective: optional
 
