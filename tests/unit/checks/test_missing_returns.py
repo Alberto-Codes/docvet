@@ -800,11 +800,8 @@ def test_missing_returns_skips_abstractclassmethod():
         "class C(abc.ABC):\n"
         "    @abc.abstractclassmethod\n"
         "    def create(cls) -> 'C':\n"
-        '        """Create instance.\n\n'
-        "        Returns:\n"
-        "            C: New instance.\n"
-        '        """\n'
-        "        ...\n"
+        '        """Create instance."""\n'
+        "        return cls()\n"
     )
     tree = ast.parse(source)
     config = EnrichmentConfig()

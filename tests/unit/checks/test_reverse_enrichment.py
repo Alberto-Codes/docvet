@@ -1136,7 +1136,7 @@ class TestDeprecatedAbstractDecorators:
                 Returns:
                     str: The result.
                 """
-                ...
+                x = 1
         '''
         from docvet.ast_utils import get_documented_symbols
 
@@ -1171,7 +1171,7 @@ class TestDeprecatedAbstractDecorators:
             @abc.{decorator}
             def method(self):
                 """Summary."""
-                ...
+                return 42
         '''
         from docvet.ast_utils import get_documented_symbols
 
@@ -1199,7 +1199,7 @@ class TestDeprecatedAbstractDecorators:
                 Yields:
                     int: Numbers.
                 """
-                ...
+                x = 1
         '''
         from docvet.ast_utils import get_documented_symbols
 
