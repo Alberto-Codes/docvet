@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>docvet — The Lie Detector for Your Codebase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141418;
+      --text: #e8e6e3;
+      --text-dim: #5a5a5e;
+      --red: #FF3B30;
+      --red-soft: #ffb4aa;
+      --red-glow: rgba(255, 59, 48, 0.35);
+      --green: #00E676;
+      --green-dim: #00c853;
+      --green-glow: rgba(0, 230, 118, 0.25);
+      --blue: #00E5FF;
+      --blue-glow: rgba(0, 229, 255, 0.25);
+      --coral: #FF6B9D;
+      --amber: #E5C07B;
+      --code-str: #98C379;
+      --code-kw: #C678DD;
+      --code-fn: #61AFEF;
+      --code-param: #E06C75;
+      --code-const: #E5C07B;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { background: var(--bg); }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #stars {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ─── SHARED ACT STYLES ─── */
+    .act {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .act-inner {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      z-index: 2;
+    }
+
+    .act::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .ambient-glow {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── HEADLINE TYPOGRAPHY ─── */
+    .headline {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+    }
+
+    .headline-line {
+      display: block;
+    }
+
+    .headline-lg {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+    }
+
+    .headline-md {
+      font-size: clamp(2rem, 5vw, 4rem);
+    }
+
+    .headline-red { color: var(--red); }
+    .headline-coral { color: var(--coral); }
+    .headline-green { color: var(--green); }
+
+    .subtext, .stat {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 300;
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .stat { font-size: 0.95rem; }
+
+    /* ─── CODE EDITOR ─── */
+    .editor {
+      background: #1a1a22;
+      border-radius: 12px;
+      overflow: hidden;
+      width: min(580px, 85vw);
+      box-shadow:
+        0 4px 24px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(255,255,255,0.06);
+    }
+
+    .editor-chrome {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #12121a;
+    }
+
+    .editor-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-r { background: #FF5F57; }
+    .dot-y { background: #FFBD2E; }
+    .dot-g { background: #28C840; }
+
+    .editor-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-left: auto;
+      letter-spacing: 0.05em;
+    }
+
+    .editor-body {
+      padding: 1.25rem 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      line-height: 1.8;
+      position: relative;
+    }
+
+    .code-line {
+      white-space: nowrap;
+    }
+
+    .kw { color: var(--code-kw); }
+    .fn { color: var(--code-fn); }
+    .param { color: var(--code-param); }
+    .str { color: var(--code-str); }
+    .const { color: var(--code-const); }
+    .indent { padding-left: 2rem; }
+
+    /* ─── ACT 1: THE LIE ─── */
+    #act1 .red-glow {
+      background: radial-gradient(ellipse at center, var(--red-glow) 0%, transparent 55%);
+    }
+
+    .red-x-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -70%);
+      z-index: 10;
+    }
+
+    .red-x {
+      font-size: 8rem;
+      font-weight: 900;
+      color: var(--red);
+      text-shadow: 0 0 80px var(--red-glow), 0 0 160px var(--red-glow);
+      font-family: 'Syne', sans-serif;
+      line-height: 1;
+    }
+
+    /* ─── ACT 2: THE CATCH ─── */
+    .catch-layout {
+      display: flex;
+      align-items: flex-start;
+      gap: 2.5rem;
+    }
+
+    .catch-code {
+      position: relative;
+    }
+
+    .small-editor {
+      width: min(420px, 60vw);
+      font-size: 0.82rem;
+    }
+
+    .small-editor .editor-body {
+      padding: 1rem 1.25rem;
+      line-height: 1.7;
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      top: 0;
+      background: var(--blue);
+      box-shadow:
+        0 0 8px var(--blue),
+        0 0 24px var(--blue-glow),
+        0 0 48px var(--blue-glow);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .scan-line::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -30px;
+      height: 32px;
+      background: linear-gradient(to top, rgba(0, 229, 255, 0.06), transparent);
+    }
+
+    .finding {
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 3px solid var(--red);
+      padding: 1.25rem 1.5rem;
+      border-radius: 0 10px 10px 0;
+      max-width: 320px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    .finding-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      color: var(--amber);
+    }
+
+    .finding-icon {
+      font-size: 1.1rem;
+    }
+
+    .finding-rule {
+      font-weight: 600;
+    }
+
+    .finding-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .finding-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 0.15rem;
+    }
+
+    .finding-old .finding-value {
+      color: var(--red-soft);
+      text-decoration: line-through;
+      text-decoration-color: rgba(255, 59, 48, 0.5);
+    }
+
+    .finding-new .finding-value {
+      color: var(--green);
+    }
+
+    #act2 .blue-glow {
+      background: radial-gradient(ellipse at 35% 45%, var(--blue-glow) 0%, transparent 55%);
+    }
+
+    /* ─── ACT 3: THE FIX ─── */
+    #act3 .green-wash {
+      background: radial-gradient(ellipse at center, var(--green-glow) 0%, transparent 60%);
+    }
+
+    .checkmark-container {
+      width: 140px;
+      height: 140px;
+      position: relative;
+      z-index: 5;
+    }
+
+    .checkmark-svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 30px var(--green-glow));
+    }
+
+    .checkmark-circle {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 3;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+    }
+
+    .checkmark-path {
+      fill: none;
+      stroke: #fff;
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 80;
+      stroke-dashoffset: 80;
+    }
+
+    .rays-container {
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -55%);
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .ray {
+      position: absolute;
+      width: 2px;
+      height: 220px;
+      left: 50%;
+      bottom: 50%;
+      transform-origin: bottom center;
+      background: linear-gradient(to top, rgba(0, 230, 118, 0.2), transparent);
+      border-radius: 2px;
+    }
+
+    .ray:nth-child(1) { transform: translateX(-50%) rotate(0deg); }
+    .ray:nth-child(2) { transform: translateX(-50%) rotate(45deg); }
+    .ray:nth-child(3) { transform: translateX(-50%) rotate(90deg); }
+    .ray:nth-child(4) { transform: translateX(-50%) rotate(135deg); }
+    .ray:nth-child(5) { transform: translateX(-50%) rotate(180deg); }
+    .ray:nth-child(6) { transform: translateX(-50%) rotate(225deg); }
+    .ray:nth-child(7) { transform: translateX(-50%) rotate(270deg); }
+    .ray:nth-child(8) { transform: translateX(-50%) rotate(315deg); }
+
+    .terminal {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      background: rgba(255,255,255, 0.04);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .terminal-prompt {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .terminal-text {
+      color: var(--text);
+    }
+
+    .terminal-cursor {
+      color: var(--green);
+      animation: blink 1s step-end infinite;
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 400;
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+
+    .stat-sep { opacity: 0.3; }
+
+    .tagline {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 300;
+      font-size: 1rem;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ─── SCROLL HINT ─── */
+    .scroll-hint {
+      position: fixed;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .scroll-hint-text {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .scroll-arrow {
+      width: 20px;
+      height: 20px;
+      border-right: 1.5px solid rgba(255,255,255,0.3);
+      border-bottom: 1.5px solid rgba(255,255,255,0.3);
+      transform: rotate(45deg);
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: rotate(45deg) translateY(0); }
+      50% { transform: rotate(45deg) translateY(6px); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @keyframes slowSpin {
+      from { transform: translate(-50%, -55%) rotate(0deg); }
+      to { transform: translate(-50%, -55%) rotate(360deg); }
+    }
+
+    .end-pad {
+      height: 30vh;
+      background: var(--bg);
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="stars"></canvas>
+
+  <div class="scroll-hint" id="scrollHint">
+    <span class="scroll-hint-text">Scroll</span>
+    <div class="scroll-arrow"></div>
+  </div>
+
+  <!-- ═══════════ ACT 1: THE LIE ═══════════ -->
+  <section class="act" id="act1">
+    <div class="ambient-glow red-glow" id="redGlow"></div>
+    <div class="act-inner">
+      <div class="editor" id="editor1">
+        <div class="editor-chrome">
+          <div class="editor-dots">
+            <span class="dot dot-r"></span>
+            <span class="dot dot-y"></span>
+            <span class="dot dot-g"></span>
+          </div>
+          <span class="editor-title">app.py</span>
+        </div>
+        <div class="editor-body">
+          <div class="code-line" id="cl1"><span class="kw">def</span> <span class="fn">get_active_users</span>(<span class="param">db</span>):</div>
+          <div class="code-line indent" id="cl2"><span class="str">"""Returns a list of active users."""</span></div>
+          <div class="code-line indent" id="cl3"><span class="kw">return</span> <span class="const">None</span></div>
+        </div>
+      </div>
+
+      <div class="red-x-container" id="redX">
+        <div class="red-x">✕</div>
+      </div>
+
+      <div class="act1-text" id="act1Text">
+        <h1 class="headline headline-lg">
+          <span class="headline-line" id="h1a">AI WRITES DOCS.</span>
+          <span class="headline-line headline-red" id="h1b">SOMETIMES THEY LIE.</span>
+        </h1>
+        <p class="stat" id="stat1">Bad docs degrade AI effectiveness by 23%</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ACT 2: THE CATCH ═══════════ -->
+  <section class="act" id="act2">
+    <div class="ambient-glow blue-glow" id="blueGlow"></div>
+    <div class="act-inner">
+      <div class="catch-layout" id="catchLayout">
+        <div class="catch-code" id="catchCode">
+          <div class="editor small-editor">
+            <div class="editor-chrome">
+              <div class="editor-dots">
+                <span class="dot dot-r"></span>
+                <span class="dot dot-y"></span>
+                <span class="dot dot-g"></span>
+              </div>
+              <span class="editor-title" id="editorStatus">app.py</span>
+            </div>
+            <div class="editor-body" id="scanArea">
+              <div class="code-line"><span class="kw">def</span> <span class="fn">get_active_users</span>(<span class="param">db</span>):</div>
+              <div class="code-line indent" id="docLine"><span class="str">"""Returns a list of active users."""</span></div>
+              <div class="code-line indent"><span class="kw">return</span> <span class="const">None</span></div>
+            </div>
+          </div>
+          <div class="scan-line" id="scanLine"></div>
+        </div>
+
+        <div class="finding" id="finding">
+          <div class="finding-header">
+            <span class="finding-icon">⚠</span>
+            <span class="finding-rule">stale-signature</span>
+          </div>
+          <div class="finding-body">
+            <div class="finding-old">
+              <div class="finding-label">Docstring says</div>
+              <div class="finding-value">"Returns a list of active users"</div>
+            </div>
+            <div class="finding-new">
+              <div class="finding-label">Code actually</div>
+              <div class="finding-value">returns None</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="act2-text" id="act2Text">
+        <h1 class="headline headline-lg">
+          <span class="headline-line" id="h2a">docvet</span>
+          <span class="headline-line headline-coral" id="h2b">catches it.</span>
+        </h1>
+        <p class="subtext" id="sub2">Automated docstring vetting for critical codebases</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ACT 3: THE FIX ═══════════ -->
+  <section class="act" id="act3">
+    <div class="ambient-glow green-wash" id="greenWash"></div>
+    <div class="act-inner">
+      <div class="rays-container" id="rays">
+        <div class="ray"></div><div class="ray"></div>
+        <div class="ray"></div><div class="ray"></div>
+        <div class="ray"></div><div class="ray"></div>
+        <div class="ray"></div><div class="ray"></div>
+      </div>
+
+      <div class="checkmark-container" id="checkmark">
+        <svg viewBox="0 0 100 100" class="checkmark-svg">
+          <circle cx="50" cy="50" r="45" class="checkmark-circle" id="cmCircle"/>
+          <path d="M30 52 L43 65 L70 38" class="checkmark-path" id="cmPath"/>
+        </svg>
+      </div>
+
+      <div class="act3-text" id="act3Text">
+        <h1 class="headline headline-md" id="h3a">Now your docs tell the truth.</h1>
+        <div class="terminal" id="term">
+          <span class="terminal-prompt">$</span>
+          <span class="terminal-text" id="termText">pip install docvet</span>
+          <span class="terminal-cursor">▎</span>
+        </div>
+        <div class="stats-row" id="statsRow">
+          <span class="stat-item" id="si1">31 rules</span>
+          <span class="stat-sep">•</span>
+          <span class="stat-item" id="si2">1,660 tests</span>
+          <span class="stat-sep">•</span>
+          <span class="stat-item" id="si3">6 CI gates</span>
+          <span class="stat-sep">•</span>
+          <span class="stat-item" id="si4">v1.14.1</span>
+        </div>
+        <p class="tagline" id="tagline">The lie detector for your codebase.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="end-pad"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/ScrollTrigger.min.js"></script>
+  <script>
+    /* ─── PARTICLE STARFIELD ─── */
+    (() => {
+      const c = document.getElementById('stars');
+      const ctx = c.getContext('2d');
+      let w, h;
+
+      function resize() {
+        w = c.width = window.innerWidth;
+        h = c.height = window.innerHeight;
+      }
+
+      const pts = Array.from({ length: 70 }, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.2 + 0.3,
+        dy: -(Math.random() * 0.25 + 0.08),
+        o: Math.random() * 0.35 + 0.05,
+      }));
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        for (const p of pts) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, 6.283);
+          ctx.fillStyle = `rgba(255,255,255,${p.o})`;
+          ctx.fill();
+          p.y += p.dy;
+          if (p.y < -5) { p.y = h + 5; p.x = Math.random() * w; }
+        }
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      draw();
+    })();
+
+    /* ─── GSAP SETUP ─── */
+    gsap.registerPlugin(ScrollTrigger);
+
+    /* ─── INITIAL STATES ─── */
+    // Act 1
+    gsap.set('#editor1', { opacity: 0, scale: 0.92, y: 30 });
+    gsap.set('#cl1, #cl2, #cl3', { clipPath: 'inset(0 100% 0 0)' });
+    gsap.set('#redX', { scale: 5, opacity: 0 });
+    gsap.set('#redGlow', { opacity: 0 });
+    gsap.set('#h1a, #h1b', { opacity: 0, y: 40 });
+    gsap.set('#stat1', { opacity: 0 });
+
+    // Act 2
+    gsap.set('#catchLayout', { opacity: 0 });
+    gsap.set('#scanLine', { top: 0, opacity: 0 });
+    gsap.set('#finding', { opacity: 0, x: 30 });
+    gsap.set('#docLine', { backgroundColor: 'transparent' });
+    gsap.set('#blueGlow', { opacity: 0 });
+    gsap.set('#h2a, #h2b', { opacity: 0, y: 40 });
+    gsap.set('#sub2', { opacity: 0 });
+    gsap.set('#editorStatus', { textContent: 'app.py' });
+
+    // Act 3
+    gsap.set('#greenWash', { opacity: 0 });
+    gsap.set('#checkmark', { scale: 0.3, opacity: 0 });
+    gsap.set('#rays', { opacity: 0, scale: 0.5 });
+    gsap.set('#h3a', { opacity: 0, y: 40 });
+    gsap.set('#term', { opacity: 0 });
+    gsap.set('#termText', { clipPath: 'inset(0 100% 0 0)' });
+    gsap.set('#si1, #si2, #si3, #si4, .stat-sep', { opacity: 0 });
+    gsap.set('#tagline', { opacity: 0 });
+
+    /* ─── SCROLL HINT ─── */
+    gsap.to('#scrollHint', {
+      opacity: 0,
+      scrollTrigger: {
+        trigger: '#act1',
+        start: 'top top',
+        end: '+=200',
+        scrub: true,
+      }
+    });
+
+    /* ─── ACT 1 TIMELINE: THE LIE ─── */
+    const tl1 = gsap.timeline({
+      scrollTrigger: {
+        trigger: '#act1',
+        start: 'top top',
+        end: '+=2800',
+        pin: true,
+        scrub: 1,
+      }
+    });
+
+    tl1
+      // Editor appears
+      .to('#editor1', { opacity: 1, scale: 1, y: 0, duration: 1, ease: 'power3.out' })
+      // Line 1 types
+      .to('#cl1', { clipPath: 'inset(0 0% 0 0)', duration: 1.2 })
+      // Line 2 (docstring) types
+      .to('#cl2', { clipPath: 'inset(0 0% 0 0)', duration: 1.5 })
+      // Line 3 (return None) types
+      .to('#cl3', { clipPath: 'inset(0 0% 0 0)', duration: 1.2 })
+      // Pause beat
+      .to({}, { duration: 0.3 })
+      // Red X slams in
+      .to('#redGlow', { opacity: 1, duration: 0.3 })
+      .to('#redX', { scale: 1, opacity: 1, duration: 0.8, ease: 'elastic.out(1, 0.4)' }, '<')
+      // Screen shake
+      .to('#editor1', { x: -6, duration: 0.05 })
+      .to('#editor1', { x: 7, duration: 0.05 })
+      .to('#editor1', { x: -4, duration: 0.05 })
+      .to('#editor1', { x: 5, duration: 0.05 })
+      .to('#editor1', { x: -2, duration: 0.05 })
+      .to('#editor1', { x: 0, duration: 0.05 })
+      // Pause beat
+      .to({}, { duration: 0.4 })
+      // Headline line 1
+      .to('#h1a', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' })
+      // Headline line 2 (red)
+      .to('#h1b', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.3')
+      // Stat
+      .to('#stat1', { opacity: 1, duration: 0.6 })
+      // Hold
+      .to({}, { duration: 1 })
+      // Fade out
+      .to('#act1 .act-inner', { opacity: 0, y: -30, duration: 0.8 });
+
+    /* ─── ACT 2 TIMELINE: THE CATCH ─── */
+    const tl2 = gsap.timeline({
+      scrollTrigger: {
+        trigger: '#act2',
+        start: 'top top',
+        end: '+=2400',
+        pin: true,
+        scrub: 1,
+      }
+    });
+
+    tl2
+      // Layout fades in
+      .to('#catchLayout', { opacity: 1, duration: 0.8 })
+      .to('#blueGlow', { opacity: 1, duration: 0.5 }, '<0.3')
+      // Scan line appears and sweeps
+      .to('#scanLine', { opacity: 1, duration: 0.2 })
+      .to('#scanLine', {
+        top: () => document.getElementById('scanArea').offsetHeight + 'px',
+        duration: 2.5,
+        ease: 'power1.inOut'
+      })
+      // Docstring highlights red
+      .to('#docLine', { backgroundColor: 'rgba(255, 59, 48, 0.12)', duration: 0.4 }, '-=1.5')
+      // Scan line fades
+      .to('#scanLine', { opacity: 0, duration: 0.3 })
+      // Finding card appears
+      .to('#finding', { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out' })
+      // Pause beat
+      .to({}, { duration: 0.5 })
+      // Headline
+      .to('#h2a', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' })
+      .to('#h2b', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.4')
+      // Subtext
+      .to('#sub2', { opacity: 1, duration: 0.6 })
+      // Hold
+      .to({}, { duration: 0.8 })
+      // Fade out
+      .to('#act2 .act-inner', { opacity: 0, y: -30, duration: 0.8 });
+
+    /* ─── ACT 3 TIMELINE: THE FIX ─── */
+    const tl3 = gsap.timeline({
+      scrollTrigger: {
+        trigger: '#act3',
+        start: 'top top',
+        end: '+=2800',
+        pin: true,
+        scrub: 1,
+      }
+    });
+
+    tl3
+      // Green wash appears
+      .to('#greenWash', { opacity: 1, duration: 1 })
+      // Checkmark pops in
+      .to('#checkmark', { scale: 1, opacity: 1, duration: 1.2, ease: 'elastic.out(1, 0.35)' }, '-=0.5')
+      // Draw SVG circle
+      .to('#cmCircle', { strokeDashoffset: 0, duration: 1.2, ease: 'power2.out' }, '<')
+      // Draw SVG check path
+      .to('#cmPath', { strokeDashoffset: 0, duration: 0.8, ease: 'power2.out' }, '-=0.4')
+      // Rays burst
+      .to('#rays', { opacity: 1, scale: 1, duration: 0.8, ease: 'power3.out' }, '-=0.6')
+      // Start rays slow spin (CSS driven, GSAP just reveals)
+      .set('#rays', { animation: 'slowSpin 30s linear infinite' })
+      // Pause beat
+      .to({}, { duration: 0.5 })
+      // Headline
+      .to('#h3a', { opacity: 1, y: 0, duration: 1, ease: 'power3.out' })
+      // Terminal
+      .to('#term', { opacity: 1, duration: 0.4 })
+      .to('#termText', { clipPath: 'inset(0 0% 0 0)', duration: 1.5, ease: 'steps(18)' })
+      // Stats stagger
+      .to('#si1', { opacity: 1, duration: 0.3 })
+      .to('.stat-sep', { opacity: 0.3, duration: 0.1, stagger: 0.15 }, '<')
+      .to('#si2', { opacity: 1, duration: 0.3 }, '-=0.2')
+      .to('#si3', { opacity: 1, duration: 0.3 }, '-=0.2')
+      .to('#si4', { opacity: 1, duration: 0.3 }, '-=0.2')
+      // Tagline
+      .to('#tagline', { opacity: 1, duration: 0.8 })
+      // Hold
+      .to({}, { duration: 1.5 });
+  </script>
+</body>
+</html>

@@ -240,6 +240,10 @@ So that the fix command can be built on a validated foundation.
 **When** reviewed
 **Then** a decision document records: chosen insertion strategy (string ops + AST line numbers vs libcst), edge cases identified, and go/no-go recommendation
 
+**Given** the spike evaluates the fix lifecycle
+**When** the scaffold category design is reviewed
+**Then** the decision document also records: the `scaffold` finding category design (required severity, actionable message format "fill in [Section] — describe [items]"), the placeholder marker specification (e.g. `[TODO: describe]`), and how scaffold findings integrate with reporting, exit codes, and JSON output
+
 ### Story 32.2: Fix Core -- Section Scaffolding Engine
 
 As a **developer**,
@@ -250,7 +254,7 @@ So that I get a skeleton I can fill in instead of writing sections from scratch.
 
 **Given** a function with missing Args, Returns, and Raises sections
 **When** `docvet fix` runs on the file
-**Then** all three sections are scaffolded with parameter names from the signature and exception names from the body, using `[TODO: describe]` placeholders
+**Then** all three sections are scaffolded with parameter names from the signature and exception names from the body, using `[TODO: describe]` placeholders. Each scaffolded section produces a `scaffold` category finding with an actionable message (e.g. "fill in Args — describe parameters: data, timeout")
 
 **Given** a function that already has an Args section but is missing Raises
 **When** `docvet fix` runs
@@ -266,7 +270,7 @@ So that I get a skeleton I can fill in instead of writing sections from scratch.
 
 **Given** a symbol missing an Examples section (and `require_examples` config matches its type)
 **When** `docvet fix` runs
-**Then** an Examples section is scaffolded with `>>> ` placeholder
+**Then** an Examples section is scaffolded with a fenced code block placeholder. A `scaffold` finding is produced: "fill in Examples section"
 
 **Given** fix produces output
 **When** the same input is processed
@@ -279,6 +283,14 @@ So that I get a skeleton I can fill in instead of writing sections from scratch.
 **Given** a file with mixed symbols -- some needing fixes, some already complete
 **When** `docvet fix` runs
 **Then** only symbols with missing sections are modified; complete symbols are untouched
+
+**Given** `docvet fix` has scaffolded missing sections in a file
+**When** `docvet check` runs on that file
+**Then** the original missing-section findings (e.g. `missing-raises`) are gone, replaced by `scaffold` category findings for each scaffolded section. Scaffold findings are `required` severity and block CI.
+
+**Given** the scaffolding engine produces output
+**When** findings are generated
+**Then** each scaffold finding uses the `scaffold` category on the Finding dataclass, with a message format: "fill in [Section] — describe [items]" where [items] are the specific parameters, exceptions, or fields that need descriptions
 
 ### Story 32.3: Fix CLI Wiring -- Subcommand, Dry-Run, and Discovery
 
@@ -314,7 +326,7 @@ So that I can preview changes before applying them and use fix with the same wor
 
 **Given** fix modifies files
 **When** the user subsequently runs `docvet check` on those files
-**Then** the scaffolded sections produce zero enrichment findings (roundtrip validation)
+**Then** the original missing-section findings are gone, replaced by `scaffold` category findings for each scaffolded section. The scaffold findings have actionable messages guiding the user to fill in real content. Once the user replaces placeholders with descriptions, `docvet check` produces zero findings (full roundtrip validation).
 
 ### Story 32.4: Inline Suppression Comments
 
