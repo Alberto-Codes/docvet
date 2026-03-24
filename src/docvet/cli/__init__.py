@@ -2,8 +2,8 @@
 
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``presence``, ``enrichment``, ``freshness``, ``coverage``, ``griffe``,
-``lsp``, ``mcp``), the combined ``check`` entry point, and the
-``config`` introspection command.  Check runners are in ``_runners``
+``lsp``, ``mcp``), the ``fix`` scaffolding command, the combined
+``check`` entry point, and the ``config`` introspection command.  Check runners are in ``_runners``
 and the output pipeline is in ``_output``.  This module retains enums,
 discovery helpers, the app callback, and all typer subcommands.
 
@@ -285,6 +285,7 @@ from ._runners import (  # noqa: E402
     _get_git_diff,  # noqa: F401 – re-exported for tests
     _run_coverage,
     _run_enrichment,
+    _run_fix,
     _run_freshness,
     _run_griffe,
     _run_presence,
@@ -956,6 +957,116 @@ def mcp() -> None:
         )
         raise typer.Exit(code=1)
     mcp_start_server()
+
+
+@app.command()
+def fix(
+    ctx: typer.Context,
+    files_pos: FilesArgument = None,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", help="Enable verbose output.")
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option(
+            "-q",
+            "--quiet",
+            help="Suppress non-finding output (summary, timing, verbose details)."
+            " Config warnings are always shown.",
+        ),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Show changes without writing files."),
+    ] = False,
+    staged: StagedOption = False,
+    all_files: AllOption = False,
+    files: FilesOption = None,
+) -> None:
+    """Scaffold missing docstring sections.
+
+    Runs enrichment to find missing sections, inserts scaffolded
+    placeholders, and writes modified files.  Use ``--dry-run`` to
+    preview changes as a unified diff without modifying files.
+
+    Args:
+        ctx: Typer invocation context.
+        files_pos: Positional file paths to fix.
+        verbose: Enable verbose output (subcommand-level).
+        quiet: Suppress non-finding output on stderr (subcommand-level).
+        dry_run: Show changes without writing files.
+        staged: Run on staged files.
+        all_files: Run on entire codebase.
+        files: Run on specific files via ``--files``.
+
+    Raises:
+        typer.Exit: After outputting results (exit code 0 for dry-run,
+            determined by ``fail_on`` config otherwise).
+    """
+    import difflib
+
+    files = _merge_file_args(files_pos, files)
+    discovery_mode = _resolve_discovery_mode(staged, all_files, files)
+    verbose = verbose or ctx.obj.get("verbose", False)
+    quiet = quiet or ctx.obj.get("quiet", False)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
+    discovered = _discover_and_handle(ctx, discovery_mode, files)
+    docvet_config: DocvetConfig = ctx.obj["docvet_config"]
+
+    start = time.perf_counter()
+    findings, files_modified, sections_scaffolded, diffs = _run_fix(
+        discovered,
+        docvet_config,
+        dry_run=dry_run,
+        show_progress=sys.stderr.isatty() and not dry_run,
+    )
+    elapsed = time.perf_counter() - start
+
+    if dry_run:
+        # Print unified diffs to stdout, summary to stderr.
+        for path, original, modified in diffs:
+            diff_lines = difflib.unified_diff(
+                original.splitlines(keepends=True),
+                modified.splitlines(keepends=True),
+                fromfile=f"a/{path}",
+                tofile=f"b/{path}",
+            )
+            sys.stdout.writelines(diff_lines)
+        if not quiet:
+            if files_modified:
+                sys.stderr.write(
+                    f"Would fix {files_modified} of {len(discovered)} files"
+                    f" ({sections_scaffolded} sections scaffolded). ({elapsed:.1f}s)\n"
+                )
+            else:
+                sys.stderr.write(
+                    f"No fixes needed (0 of {len(discovered)} files)."
+                    f" ({elapsed:.1f}s)\n"
+                )
+        raise typer.Exit(0)
+
+    # Non-dry-run: report scaffold findings via output pipeline.
+    if not quiet:
+        if files_modified:
+            sys.stderr.write(
+                f"Fixed {files_modified} of {len(discovered)} files"
+                f" ({sections_scaffolded} sections scaffolded)"
+                f" \u2014 {len(findings)} scaffold findings. ({elapsed:.1f}s)\n"
+            )
+        else:
+            sys.stderr.write(
+                f"No fixes needed (0 of {len(discovered)} files)"
+                f" \u2014 0 findings. ({elapsed:.1f}s)\n"
+            )
+
+    _output_and_exit(
+        ctx,
+        {"enrichment": findings},
+        docvet_config,
+        len(discovered),
+        ["fix"],
+    )
 
 
 @app.command()

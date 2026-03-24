@@ -1,6 +1,6 @@
 # CLI Reference
 
-docvet provides nine subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
+docvet provides ten subcommands. Global options are generally placed **before** the subcommand; discovery flags and check-specific options are placed **after** it.
 
 ```
 docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
@@ -236,6 +236,36 @@ Loads packages with the griffe parser and captures warnings that would cause bro
 
 !!! note
     Requires the optional `griffe` extra: `pip install docvet[griffe]`
+
+### `docvet fix`
+
+Scaffold missing docstring sections. Runs enrichment to find missing sections, inserts placeholder content, and writes modified files. Use `--dry-run` to preview changes as a unified diff without modifying any files.
+
+```bash
+docvet fix                        # Fix files in git diff (default)
+docvet fix --all                  # Fix entire codebase
+docvet fix --staged               # Fix staged files only
+docvet fix src/app.py             # Fix a specific file
+docvet fix --dry-run --all        # Preview changes without writing
+```
+
+**Unique options:**
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Show unified diff of changes without writing files |
+
+All standard [discovery modes](#discovery-modes) are supported (`--all`, `--staged`, positional files, `--files`).
+
+**Workflow:** After running `docvet fix`, run `docvet check` to see `scaffold-incomplete` findings for each `[TODO: ...]` placeholder. Fill in the placeholders with real descriptions, then `docvet check` produces zero findings.
+
+```bash
+# Typical fix workflow
+docvet fix --all                  # Insert scaffolded sections
+docvet check --all                # See scaffold-incomplete findings
+# ... fill in [TODO: ...] markers ...
+docvet check --all                # Zero findings
+```
 
 ### `docvet config`
 
