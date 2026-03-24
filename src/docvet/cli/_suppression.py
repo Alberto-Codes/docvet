@@ -2,7 +2,10 @@
 
 Parses ``# docvet: ignore[rule]`` and ``# docvet: ignore-file[rule]``
 comments from Python source files using the ``tokenize`` module, then
-filters findings into active and suppressed partitions. Operates as a
+filters findings into active and suppressed partitions. Bracket content
+is captured broadly and validated in :func:`_parse_rules` so that
+non-standard input (uppercase, underscores) produces warnings rather
+than silently falling back to blanket suppression. Operates as a
 post-filter on the findings list — no ``_check_*`` functions are modified.
 
 Attributes:
@@ -39,10 +42,14 @@ KNOWN_RULES: frozenset[str] = frozenset(_RULE_TO_CHECK)
 
 # Regex for the directive payload after ``# docvet:``.
 # Matches: ignore, ignore[rule], ignore[rule1,rule2], ignore-file, ignore-file[rule], etc.
+# The bracket character class is deliberately broad (``[^\]]+``) so that
+# non-standard input (uppercase, underscores) is captured and forwarded
+# to ``_parse_rules`` for validation, rather than silently falling back
+# to blanket suppression.
 _DIRECTIVE_RE = re.compile(
     r"#\s*docvet\s*:\s*"
     r"(?P<kind>ignore-file|ignore)"
-    r"(?:\[\s*(?P<rules>[a-z0-9, -]+)\s*\])?"
+    r"(?:\[\s*(?P<rules>[^\]]+)\s*\])?"
 )
 
 

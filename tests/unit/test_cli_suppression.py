@@ -221,6 +221,34 @@ class TestParseSuppressionDirectives:
         assert result.file_rules == {"missing-examples"}
         assert result.line_directives[2] == {"missing-raises"}
 
+    @pytest.mark.parametrize(
+        ("comment", "expected_rule"),
+        [
+            ("# docvet: ignore[Missing-Raises]", "Missing-Raises"),
+            ("# docvet: ignore[MISSING-RAISES]", "MISSING-RAISES"),
+            ("# docvet: ignore[missing_raises]", "missing_raises"),
+        ],
+        ids=["mixed-case", "all-uppercase", "underscores"],
+    )
+    def test_non_standard_case_captured_not_blanket(
+        self,
+        comment: str,
+        expected_rule: str,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Non-standard case in rule ID is captured (not blanket) and warns (H1 regression)."""
+        from docvet.cli._suppression import parse_suppression_directives
+
+        source = f"def foo():  {comment}\n    pass\n"
+        result = parse_suppression_directives(source, "test.py")
+
+        # Must NOT be blanket suppression (None)
+        assert result.line_directives[1] is not None
+        assert result.line_directives[1] == {expected_rule}
+        # Should warn about unknown rule
+        captured = capsys.readouterr()
+        assert expected_rule in captured.err
+
 
 # ---------------------------------------------------------------------------
 # filter_findings tests
@@ -548,6 +576,30 @@ class TestApplySuppressions:
 
         assert len(active["enrichment"]) == 0
         assert len(suppressed) == 2
+
+    def test_uppercase_rule_not_blanket_suppressed(self, tmp_path: object) -> None:
+        """Uppercase rule in comment does not blanket-suppress (H1 regression)."""
+        import pathlib
+
+        from docvet.cli._output import _apply_suppressions
+
+        p = pathlib.Path(str(tmp_path)) / "test.py"
+        p.write_text(
+            "def foo():  # docvet: ignore[Missing-Raises]\n    pass\n",
+            encoding="utf-8",
+        )
+
+        findings_by_check = {
+            "enrichment": [
+                _finding(file=str(p), line=1, rule="missing-raises"),
+                _finding(file=str(p), line=1, rule="missing-returns"),
+            ]
+        }
+        active, suppressed = _apply_suppressions(findings_by_check)
+
+        # "Missing-Raises" != "missing-raises" — no match, no suppression
+        assert len(active["enrichment"]) == 2
+        assert len(suppressed) == 0
 
 
 # ---------------------------------------------------------------------------
