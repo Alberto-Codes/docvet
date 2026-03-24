@@ -1,6 +1,6 @@
 # Story 32.1: Fix Feasibility Spike
 
-Status: review
+Status: done
 Branch: `feat/fix-32-1-feasibility-spike`
 
 ## Story
@@ -155,26 +155,41 @@ Claude Opus 4.6 (1M context)
 ### Change Log
 
 - 2026-03-23: Created decision document `32-1-spike-decision.md` with insertion strategy evaluation, POC results, edge case catalog, scaffold category design, and go/no-go recommendation.
+- 2026-03-23: Code review — added config pattern divergence note to decision doc section 4.4, fixed File List sprint-status description, added forward-carry note for 32.2 POC test scenarios.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/32-1-spike-decision.md` (new) — Decision document with POC code and design specs
 - `_bmad-output/implementation-artifacts/32-1-fix-feasibility-spike.md` (modified) — Story file with task completion, AC mapping, dev record
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified) — Status: ready-for-dev → in-progress
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified) — Status: 32-1 backlog → review, epic-32 backlog → in-progress, epic-35 in-progress → done
 
 ## Code Review
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review) + party mode consensus (Winston, Amelia, Bob, Quinn)
+
 ### Outcome
+
+Approve — 1 MEDIUM (addressed), 5 LOW (noted/fixed), no blockers.
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| M4 | MEDIUM | Config pattern divergence: `fail_on_scaffold` boolean vs existing `fail-on` list. Two competing control planes. | Added design note to decision doc section 4.4 for Story 32.2 |
+| M1 | LOW | Branch includes 10 unrelated chore files from 3 non-story commits | Noted — branch hygiene, no deliverable impact |
+| M2 | LOW | File List sprint-status description wrong (said "ready-for-dev → in-progress", actual "backlog → review") | Fixed File List description |
+| M3 | LOW | POC function signature inconsistent across 3 locations in decision doc | Self-documented divergence — 32.2 defines production API fresh |
+| M5 | LOW | POC test code (~200 lines) not preserved in decision doc | Added forward-carry note for 32.2 below |
+| L1 | LOW | Commit scope `enrichment` misleading for docs-only spike | Noted — don't rewrite history |
+
+### Forward-Carry for Story 32.2
+
+POC tested 14 scenarios (decision doc section 2.3). Production tests should cover at minimum: one-liner expansion, multi-section preservation, idempotency, nested class methods, multiple missing sections, decorators, dataclasses, async functions, raw docstrings, single-quote docstrings, tab indentation, module-level docstrings, and empty findings.
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)

@@ -223,6 +223,8 @@ This means `docvet fix` followed by `docvet check` will still fail until the use
 
 **Configuration**: `[tool.docvet.enrichment] fail_on_scaffold = true` (default). Users can set `false` to treat scaffolds as warnings during development.
 
+> **Design note for Story 32.2**: The existing config uses a top-level `fail-on` list of check names (`fail_on: list[str]` on `DocvetConfig`). The `fail_on_scaffold` boolean proposed above introduces a second dimension of fail-on control (per-category vs per-check). Story 32.2 must decide whether to: (a) use this per-category boolean under `[tool.docvet.enrichment]`, (b) extend the existing `fail-on` list pattern (e.g., `fail-on = ["enrichment:scaffold"]`), or (c) add a separate top-level key like `scaffold-behavior = "fail" | "warn"`. Evaluate consistency with the existing config surface before implementing.
+
 ### 4.5 Reporting integration
 
 **Terminal output**: Scaffold findings display with `[scaffold]` category tag:
