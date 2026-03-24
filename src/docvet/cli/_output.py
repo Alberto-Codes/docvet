@@ -141,6 +141,8 @@ def _apply_suppressions(
     Reads source files to parse suppression directives, then partitions
     findings into active and suppressed. Source files are cached to avoid
     redundant reads when multiple checks produce findings in the same file.
+    Files that cannot be read or decoded are treated as having no
+    suppression directives.
 
     Args:
         findings_by_check: Findings grouped by check name.
@@ -161,7 +163,7 @@ def _apply_suppressions(
     for file_path in all_files:
         try:
             source = Path(file_path).read_text(encoding="utf-8")
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             suppression_cache[file_path] = SuppressionMap()
             continue
         suppression_cache[file_path] = parse_suppression_directives(source, file_path)

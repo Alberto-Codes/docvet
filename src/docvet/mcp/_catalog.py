@@ -33,7 +33,8 @@ class RuleCatalogEntry(TypedDict):
         name (str): The rule identifier (e.g. ``missing-raises``).
         check (str): The check module that owns this rule.
         description (str): Human-readable description of what the rule detects.
-        category (str): Severity category (``required`` or ``recommended``).
+        category (str): Severity category (``required``, ``recommended``,
+            or ``scaffold``).
         guidance (str): Prescriptive fix guidance for the rule.
         fix_example (str | None): Optional code example showing the fix.
     """

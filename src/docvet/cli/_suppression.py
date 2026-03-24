@@ -8,8 +8,13 @@ non-standard input (uppercase, underscores) produces warnings rather
 than silently falling back to blanket suppression. Operates as a
 post-filter on the findings list — no ``_check_*`` functions are modified.
 
+The rule ID registry is imported from the MCP catalog when available.
+When the ``mcp`` extra is not installed, rule validation is skipped
+and suppression operates without unknown-rule warnings.
+
 Attributes:
     KNOWN_RULES: Set of all valid docvet rule IDs for validation.
+        Empty when the ``mcp`` extra is not installed.
 
 Examples:
     Parse and filter in one pass:
@@ -35,9 +40,15 @@ import tokenize
 from dataclasses import dataclass, field
 
 from docvet.checks import Finding
-from docvet.mcp._catalog import _RULE_TO_CHECK
+
+try:
+    from docvet.mcp._catalog import _RULE_TO_CHECK
+except ImportError:
+    # MCP extra not installed — rule validation unavailable.
+    _RULE_TO_CHECK: dict[str, str] = {}
 
 # Complete set of known rule IDs for validation.
+# Empty when the MCP extra is not installed; validation is skipped.
 KNOWN_RULES: frozenset[str] = frozenset(_RULE_TO_CHECK)
 
 # Regex for the directive payload after ``# docvet:``.
@@ -145,6 +156,9 @@ def _parse_rules(
 ) -> set[str] | None:
     """Parse and validate rule IDs from bracket content.
 
+    When :data:`KNOWN_RULES` is empty (MCP extra not installed),
+    validation is skipped and no unknown-rule warnings are emitted.
+
     Args:
         raw: Comma-separated rule string from the bracket group, or
             ``None`` for blanket suppression.
@@ -162,7 +176,7 @@ def _parse_rules(
         rule = part.strip()
         if not rule:
             continue
-        if rule not in KNOWN_RULES:
+        if KNOWN_RULES and rule not in KNOWN_RULES:
             sys.stderr.write(
                 f"warning: {file_path}:{line_no}: "
                 f"unknown rule {rule!r} in suppression comment\n"
