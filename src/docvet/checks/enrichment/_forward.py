@@ -3,7 +3,10 @@
 Detects missing docstring sections (Raises, Returns, Yields, Receives,
 Warns, Other Parameters) by walking the function's AST subtree.  Each
 check function follows the uniform five-parameter dispatch signature
-used by ``_RULE_DISPATCH`` in the enrichment orchestrator.
+used by ``_RULE_DISPATCH`` in the enrichment orchestrator.  Also provides
+shared helpers for stub detection (``_is_stub_function``,
+``_is_stub_statement``) and abstract decorator detection
+(``_is_abstract``, ``_ABSTRACT_DECORATORS``).
 
 See Also:
     [`docvet.checks.enrichment`][]: Orchestrator and dispatch table.
@@ -222,14 +225,70 @@ def _has_decorator(node: _NodeT, name: str) -> bool:
     return False
 
 
+_ABSTRACT_DECORATORS = frozenset(
+    {
+        "abstractmethod",
+        "abstractclassmethod",
+        "abstractstaticmethod",
+        "abstractproperty",
+    }
+)
+
+
+def _is_abstract(node: _NodeT) -> bool:
+    """Check whether a function has any abstract decorator.
+
+    Detects ``@abstractmethod`` and its deprecated predecessors
+    (``@abstractclassmethod``, ``@abstractstaticmethod``,
+    ``@abstractproperty``).  Aligned with ruff's ``is_abstract()``
+    in ``crates/ruff_python_semantic/src/analyze/visibility.rs``.
+
+    Args:
+        node: The function or class AST node to inspect.
+
+    Returns:
+        ``True`` when the node has any abstract decorator.
+    """
+    return any(_has_decorator(node, name) for name in _ABSTRACT_DECORATORS)
+
+
+def _is_stub_statement(stmt: ast.stmt) -> bool:
+    """Check whether a single AST statement is a stub-like statement.
+
+    Recognises ``pass``, ``...`` (Ellipsis), ``raise NotImplementedError``,
+    and string literals (extra docstrings).  Aligned with ruff's ``is_stub()``
+    in ``crates/ruff_python_semantic/src/analyze/function_type.rs``.
+
+    Args:
+        stmt: The AST statement node to inspect.
+
+    Returns:
+        ``True`` when the statement is a stub-like statement.
+    """
+    if isinstance(stmt, ast.Pass):
+        return True
+    if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant):
+        # Ellipsis (...) or string literal (extra docstring).
+        return stmt.value.value is ... or isinstance(stmt.value.value, str)
+    if isinstance(stmt, ast.Raise) and isinstance(stmt.exc, (ast.Name, ast.Call)):
+        exc = stmt.exc.func if isinstance(stmt.exc, ast.Call) else stmt.exc
+        return isinstance(exc, ast.Name) and exc.id == "NotImplementedError"
+    return False
+
+
 def _is_stub_function(node: _NodeT) -> bool:
     """Check whether a function body is a stub (no real implementation).
 
-    Stubs are single-statement bodies consisting of ``pass``,
-    ``...`` (Ellipsis), or ``raise NotImplementedError``.  A leading
-    docstring ``Expr(Constant(str))`` is stripped before evaluating
-    body length so the helper works for both documented and
-    undocumented functions.
+    Stubs are bodies consisting entirely of stub-like statements:
+    ``pass``, ``...`` (Ellipsis), ``raise NotImplementedError``, or
+    string literals.  A leading docstring ``Expr(Constant(str))`` is
+    stripped before evaluating so the helper works for both documented
+    and undocumented functions.  A docstring-only body (empty after
+    stripping) is also a stub — this covers ``typing.Protocol`` methods
+    and interface contracts.
+
+    Multi-statement stub bodies (e.g. ``pass; ...``) are accepted,
+    aligning with ruff's ``is_stub()`` semantics.
 
     Args:
         node: The function AST node to inspect.
@@ -246,21 +305,9 @@ def _is_stub_function(node: _NodeT) -> bool:
         and isinstance(body[0].value.value, str)
     ):
         body = body[1:]
-    if len(body) != 1:
-        return False
-    stmt = body[0]
-    if isinstance(stmt, ast.Pass):
-        return True
-    if (
-        isinstance(stmt, ast.Expr)
-        and isinstance(stmt.value, ast.Constant)
-        and stmt.value.value is ...
-    ):
-        return True
-    if isinstance(stmt, ast.Raise) and isinstance(stmt.exc, (ast.Name, ast.Call)):
-        exc = stmt.exc.func if isinstance(stmt.exc, ast.Call) else stmt.exc
-        return isinstance(exc, ast.Name) and exc.id == "NotImplementedError"
-    return False
+    if not body:
+        return True  # Docstring-only body is a stub.
+    return all(_is_stub_statement(stmt) for stmt in body)
 
 
 def _should_skip_returns_check(
@@ -273,8 +320,9 @@ def _should_skip_returns_check(
     Centralises guard clauses for :func:`_check_missing_returns` to keep
     the main function focused on AST walking. Skips when the symbol
     already has a ``Returns:`` section, is a dunder method,
-    ``@property``/``@cached_property``, ``@abstractmethod``,
-    ``@overload``, or a stub function.
+    ``@property``/``@cached_property``, any abstract decorator
+    (``@abstractmethod`` and deprecated variants), ``@overload``, or a
+    stub function.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -292,8 +340,8 @@ def _should_skip_returns_check(
     # @property and @cached_property methods
     if _is_property(node):
         return True
-    # @abstractmethod (interface contracts, not implementations)
-    if _has_decorator(node, "abstractmethod"):
+    # Abstract methods (interface contracts, not implementations)
+    if _is_abstract(node):
         return True
     # Stub functions (pass, ..., raise NotImplementedError)
     if _is_stub_function(node):
