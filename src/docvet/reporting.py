@@ -279,6 +279,7 @@ def format_json(
     presence_stats: PresenceStats | None = None,
     min_coverage: float = 0.0,
     quality: dict[str, CheckQuality] | None = None,
+    suppressed: list[Finding] | None = None,
 ) -> str:
     """Format findings as a structured JSON object.
 
@@ -292,8 +293,9 @@ def format_json(
     :attr:`PresenceStats.percentage` for documented/total counts,
     percentage, threshold, and pass/fail status. When *quality* is
     provided, a ``quality`` object is added with per-check percentage
-    breakdowns. Always returns a valid JSON object, even when there
-    are no findings.
+    breakdowns. When *suppressed* is provided, a ``suppressed`` array
+    is added alongside ``findings``. Always returns a valid JSON object,
+    even when there are no findings.
 
     Args:
         findings: List of findings to format.
@@ -304,6 +306,8 @@ def format_json(
             threshold enforcement).
         quality: Per-check quality data, or *None* when ``--summary``
             was not used.
+        suppressed: Suppressed findings list, or *None* when
+            suppression data is not requested.
 
     Returns:
         JSON string with ``indent=2`` formatting.
@@ -345,6 +349,20 @@ def format_json(
             "files_checked": file_count,
         },
     }
+    if suppressed is not None:
+        sorted_suppressed = sorted(suppressed, key=lambda f: (f.file, f.line))
+        obj["suppressed"] = [
+            {
+                "file": f.file,
+                "line": f.line,
+                "symbol": f.symbol,
+                "rule": f.rule,
+                "message": f.message,
+                "category": f.category,
+                "severity": _CATEGORY_TO_SEVERITY[f.category],
+            }
+            for f in sorted_suppressed
+        ]
     if presence_stats is not None:
         pct = presence_stats.percentage
         obj["presence_coverage"] = {

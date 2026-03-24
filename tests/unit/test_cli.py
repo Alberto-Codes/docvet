@@ -1874,7 +1874,12 @@ class TestOutputAndExit:
         ctx = self._make_ctx(fmt="json")
         self._call(ctx, {"enrichment": [finding]}, DocvetConfig(), 5, ["enrichment"])
         self.mock_format_json.assert_called_once_with(
-            [finding], 5, presence_stats=None, min_coverage=0.0, quality=None
+            [finding],
+            5,
+            presence_stats=None,
+            min_coverage=0.0,
+            quality=None,
+            suppressed=[],
         )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'
@@ -1884,7 +1889,7 @@ class TestOutputAndExit:
         ctx = self._make_ctx(fmt="json")
         self._call(ctx, {"enrichment": []}, DocvetConfig(), 5, ["enrichment"])
         self.mock_format_json.assert_called_once_with(
-            [], 5, presence_stats=None, min_coverage=0.0, quality=None
+            [], 5, presence_stats=None, min_coverage=0.0, quality=None, suppressed=[]
         )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'

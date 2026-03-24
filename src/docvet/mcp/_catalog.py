@@ -1,6 +1,6 @@
 """Rule catalog for the docvet MCP server.
 
-Static catalog of all 31 docvet rules with descriptions, categories,
+Static catalog of all 32 docvet rules with descriptions, categories,
 fix guidance, and examples. Used by the ``docvet_rules`` MCP tool
 to provide rule discovery for AI agents.
 
@@ -449,6 +449,20 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
             "Args:\n    host (str): The server hostname.\n"
             "    port (int): The server port number."
         ),
+    },
+    {
+        "name": "scaffold-incomplete",
+        "check": "enrichment",
+        "description": (
+            "Scaffolded placeholder section still contains TODO marker"
+            " and needs to be filled in by the developer."
+        ),
+        "category": "scaffold",
+        "guidance": (
+            "Replace the TODO placeholder in the scaffolded section with"
+            " actual documentation content."
+        ),
+        "fix_example": "Raises:\n    ValueError: If the input is negative.",
     },
 ]
 

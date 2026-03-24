@@ -269,7 +269,7 @@ development_status:
   32-1-fix-feasibility-spike: done
   32-2-fix-core-section-scaffolding-engine: done
   32-3-fix-cli-wiring-subcommand-dry-run-and-discovery: done
-  32-4-inline-suppression-comments: backlog
+  32-4-inline-suppression-comments: review
   epic-32-retrospective: optional
 
   # Epic 33: Ecosystem Visibility & Editor Integration
