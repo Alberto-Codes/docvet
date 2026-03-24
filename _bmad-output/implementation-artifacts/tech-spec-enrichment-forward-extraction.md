@@ -2,7 +2,7 @@
 title: 'Extract forward checks into enrichment sub-package'
 slug: 'enrichment-forward-extraction'
 created: '2026-03-22'
-status: 'ready-for-dev'
+status: 'done'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['Python 3.12+']
 files_to_modify:

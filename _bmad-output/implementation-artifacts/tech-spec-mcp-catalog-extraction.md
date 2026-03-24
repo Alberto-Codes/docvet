@@ -2,7 +2,7 @@
 title: 'Extract MCP rule catalog to _catalog.py'
 slug: 'mcp-catalog-extraction'
 created: '2026-03-23'
-status: 'ready-for-dev'
+status: 'done'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['Python 3.12+']
 files_to_modify:

@@ -167,9 +167,9 @@ class Finding:
     category: Literal["required", "recommended", "scaffold"]
 ```
 
-**Severity**: `scaffold` findings are **required** severity — they indicate sections that exist structurally but have placeholder content that must be filled in. The `docvet fix` command inserts the scaffolding; scaffold findings enforce that users complete the content.
+**Category semantics**: `category = "scaffold"` is **blocking by default** — same exit-code behavior as `required` findings. Scaffold findings indicate sections that exist structurally but have placeholder content that must be filled in. The `docvet fix` command inserts the scaffolding; scaffold findings then enforce that users complete the content.
 
-**Rationale for required severity**: The purpose of `docvet fix` is to reduce friction, not to silence findings. A scaffolded `Raises: [TODO: describe]` is better than nothing (the section header exists, so the enrichment rule is satisfied), but the placeholder content is not documentation. Scaffold findings ensure the user follows through.
+**Rationale for blocking behavior**: The purpose of `docvet fix` is to reduce friction, not to silence findings. A scaffolded `Raises: [TODO: describe]` is better than nothing (the section header exists, so the enrichment rule is satisfied), but the placeholder content is not documentation. Scaffold findings ensure the user follows through.
 
 ### 4.2 Placeholder marker format
 

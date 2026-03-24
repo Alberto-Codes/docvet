@@ -2,7 +2,7 @@
 title: 'Independent config toggles for reverse enrichment checks'
 slug: 'reverse-check-config-split'
 created: '2026-03-22'
-status: 'ready-for-dev'
+status: 'done'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['Python 3.12+']
 files_to_modify:

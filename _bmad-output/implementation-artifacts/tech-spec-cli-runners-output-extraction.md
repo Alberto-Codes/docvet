@@ -2,7 +2,7 @@
 title: 'Extract CLI check runners and output pipeline'
 slug: 'cli-runners-output-extraction'
 created: '2026-03-23'
-status: 'ready-for-dev'
+status: 'done'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['Python 3.12+', 'typer']
 files_to_modify:
@@ -34,7 +34,7 @@ test_patterns:
 
 ### Solution
 
-Convert `cli.py` to a `cli/` package. Extract the 5 `_run_*` functions + `_write_timing` to `cli/_runners.py` (~238 lines) and the output helpers to `cli/_output.py` (~197 lines). The `__init__.py` retains enums, discovery helpers, app callback, and typer subcommands (~1,021 lines). Entry point `docvet = "docvet:main"` works unchanged.
+Convert `cli.py` to a `cli/` package. Extract the 5 `_run_*` functions + `_write_timing` to `cli/_runners.py` (~238 lines) and the output helpers to `cli/_output.py` (~197 lines). The `__init__.py` retains enums, discovery helpers, app callback, and typer subcommands (~1,021 lines). Entry point `docvet = "docvet.cli:app"` works unchanged.
 
 ### Scope
 
