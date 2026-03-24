@@ -37,9 +37,20 @@ The `--format json` option produces a structured JSON object for programmatic co
       "severity": "high"
     }
   ],
+  "suppressed": [
+    {
+      "file": "src/app/utils.py",
+      "line": 30,
+      "symbol": "internal_helper",
+      "rule": "missing-examples",
+      "message": "Public symbol lacks an Examples section",
+      "category": "recommended",
+      "severity": "low"
+    }
+  ],
   "summary": {
     "total": 1,
-    "by_category": { "required": 1, "recommended": 0 },
+    "by_category": { "required": 1, "recommended": 0, "scaffold": 0 },
     "files_checked": 42
   }
 }
@@ -50,7 +61,7 @@ The `--format json` option produces a structured JSON object for programmatic co
 - The `summary` object includes `total`, `by_category` (with `required`, `recommended`, and `scaffold` counts), and `files_checked`.
 - A `suppressed` array is included containing findings that were suppressed by inline `# docvet: ignore` comments. Each entry has the same seven fields as a finding.
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
-- Exit codes are unchanged: `0` for no findings, `1` when findings exist in a `fail_on` check.
+- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check.
 
 ### Quality Summary (`--summary`)
 

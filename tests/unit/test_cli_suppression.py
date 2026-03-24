@@ -169,6 +169,26 @@ class TestParseSuppressionDirectives:
         assert not result.file_rules
         assert result.file_blanket is False
 
+    @pytest.mark.parametrize(
+        ("comment",),
+        [
+            ("# docvet: ignore[]",),
+            ("# docvet: ignore[   ]",),
+            ("# docvet: ignore[ , ]",),
+        ],
+        ids=["empty-brackets", "whitespace-brackets", "comma-only-brackets"],
+    )
+    def test_empty_brackets_not_blanket(self, comment: str) -> None:
+        """Empty or whitespace-only brackets do NOT degrade to blanket (C9 regression)."""
+        from docvet.cli._suppression import parse_suppression_directives
+
+        source = f"def foo():  {comment}\n    pass\n"
+        result = parse_suppression_directives(source, "test.py")
+
+        # Must be a set (possibly empty), NOT None (blanket)
+        assert 1 in result.line_directives
+        assert result.line_directives[1] is not None
+
     def test_invalid_rule_emits_warning(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:

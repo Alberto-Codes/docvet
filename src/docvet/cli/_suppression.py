@@ -3,9 +3,10 @@
 Parses ``# docvet: ignore[rule]`` and ``# docvet: ignore-file[rule]``
 comments from Python source files using the ``tokenize`` module, then
 filters findings into active and suppressed partitions. Bracket content
-is captured broadly and validated in :func:`_parse_rules` so that
-non-standard input (uppercase, underscores) produces warnings rather
-than silently falling back to blanket suppression. Operates as a
+is captured broadly (including empty brackets) and validated in
+:func:`_parse_rules` so that non-standard input (uppercase, underscores)
+produces warnings and empty brackets suppress nothing, rather than
+silently falling back to blanket suppression. Operates as a
 post-filter on the findings list — no ``_check_*`` functions are modified.
 
 The rule ID registry is imported from the MCP catalog when available.
@@ -53,14 +54,16 @@ KNOWN_RULES: frozenset[str] = frozenset(_RULE_TO_CHECK)
 
 # Regex for the directive payload after ``# docvet:``.
 # Matches: ignore, ignore[rule], ignore[rule1,rule2], ignore-file, ignore-file[rule], etc.
-# The bracket character class is deliberately broad (``[^\]]+``) so that
+# The bracket character class is deliberately broad (``[^\]]*``) so that
 # non-standard input (uppercase, underscores) is captured and forwarded
 # to ``_parse_rules`` for validation, rather than silently falling back
-# to blanket suppression.
+# to blanket suppression. Zero-or-more (``*``) allows empty brackets
+# (``ignore[]``) to be captured as an empty string instead of falling
+# through to blanket suppression.
 _DIRECTIVE_RE = re.compile(
     r"#\s*docvet\s*:\s*"
     r"(?P<kind>ignore-file|ignore)"
-    r"(?:\[\s*(?P<rules>[^\]]+)\s*\])?"
+    r"(?:\[\s*(?P<rules>[^\]]*)\s*\])?"
 )
 
 
@@ -166,7 +169,8 @@ def _parse_rules(
         line_no: Line number for warning messages.
 
     Returns:
-        A set of rule IDs, or ``None`` for blanket suppression.
+        A set of rule IDs (possibly empty for malformed brackets like
+        ``ignore[]``), or ``None`` for blanket suppression (no brackets).
     """
     if raw is None:
         return None
@@ -183,7 +187,7 @@ def _parse_rules(
             )
         rules.add(rule)
 
-    return rules if rules else None
+    return rules
 
 
 def filter_findings(
