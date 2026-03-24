@@ -186,6 +186,7 @@ These keys go under `[tool.docvet.enrichment]`:
 | `require-return-type` | `bool` | `false` | Require return type documentation via either a typed `Returns:` entry (e.g., `dict: The result.`) or a `->` return annotation. Opt-in — stricter check that may not suit all projects. |
 | `require-init-params` | `bool` | `false` | Require an `Args:` section documenting `__init__` parameters in either the class docstring or `__init__` docstring. Only fires on classes with an explicit `__init__`. Opt-in. |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
+| `scaffold-incomplete` | `bool` | `true` | Detect unfilled `[TODO: ...]` placeholder markers left by `docvet fix`. Scaffold findings use the `scaffold` category (medium severity). |
 
 ### Example
 

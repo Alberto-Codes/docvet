@@ -1,10 +1,11 @@
-"""Late enrichment rules — trivial docstring, return type, init params.
+"""Late enrichment rules — trivial docstring, return type, init params, scaffold.
 
 Rules that were added after the initial enrichment rule set.  Includes
 trivial-docstring detection (summary restates symbol name),
-missing-return-type (no typed Returns entry or annotation), and
+missing-return-type (no typed Returns entry or annotation),
 undocumented-init-params (class ``__init__`` has parameters but no
-``Args:`` section).
+``Args:`` section), and scaffold-incomplete (unfilled placeholder
+markers left by ``docvet fix``).
 
 See Also:
     [`docvet.checks.enrichment`][]: Orchestrator and dispatch table.
@@ -374,4 +375,111 @@ def _check_undocumented_init_params(
             f" or __init__ docstring"
         ),
         category="required",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule: scaffold-incomplete
+# ---------------------------------------------------------------------------
+
+_TODO_PATTERN = re.compile(r"\[TODO: [^\]]+\]")
+
+# Pattern to detect section header lines for context extraction.
+_SECTION_HEADER_LINE = re.compile(
+    r"^\s*(Args|Returns|Raises|Yields|Receives|Warns"
+    r"|Other Parameters|Attributes|Examples|See Also"
+    r"|Notes|References|Warnings|Extended Summary|Methods):\s*$"
+)
+
+
+def _find_section_for_todo(docstring: str, todo_offset: int) -> str | None:
+    """Find which section a TODO marker belongs to.
+
+    Scans backwards from the TODO's position to find the nearest
+    section header.
+
+    Args:
+        docstring: The raw docstring text.
+        todo_offset: Character offset of the TODO marker in the docstring.
+
+    Returns:
+        The section name, or ``None`` if no section header precedes the
+        marker.
+    """
+    prefix = docstring[:todo_offset]
+    lines = prefix.splitlines()
+    for line in reversed(lines):
+        m = _SECTION_HEADER_LINE.match(line)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _check_scaffold_incomplete(
+    symbol: Symbol,
+    sections: set[str],
+    node_index: dict[int, _NodeT],
+    config: EnrichmentConfig,
+    file_path: str,
+) -> Finding | None:
+    """Detect scaffolded docstring sections with unfilled placeholder markers.
+
+    Scans the docstring for bracket-prefixed TODO markers left by
+    ``scaffold_missing_sections()``.  Produces a single ``scaffold``
+    category finding per symbol (consolidating all markers) with an
+    actionable message listing the affected sections.
+
+    Args:
+        symbol: The documented symbol to inspect.
+        sections: Parsed section headers from the symbol's docstring
+            (unused — detection is regex-based).
+        node_index: Line-number-to-node mapping (unused).
+        config: Enrichment configuration (config gating is in the
+            orchestrator).
+        file_path: Source file path for the finding record.
+
+    Returns:
+        A ``Finding`` with ``rule="scaffold-incomplete"`` and
+        ``category="scaffold"`` when TODO markers are found, or
+        ``None`` otherwise.
+    """
+    if symbol.docstring is None:
+        return None
+
+    matches = list(_TODO_PATTERN.finditer(symbol.docstring))
+    if not matches:
+        return None
+
+    # Find which sections contain TODO markers.
+    section_names: list[str] = []
+    seen: set[str] = set()
+    for m in matches:
+        sec = _find_section_for_todo(symbol.docstring, m.start())
+        if sec and sec not in seen:
+            section_names.append(sec)
+            seen.add(sec)
+
+    display_name = (
+        module_display_name(file_path) if symbol.kind == "module" else symbol.name
+    )
+
+    if section_names:
+        sections_str = ", ".join(section_names)
+        message = (
+            f"fill in {sections_str} for '{display_name}'"
+            f" \u2014 describe the placeholder content"
+        )
+    else:
+        message = (
+            f"fill in scaffold placeholders for '{display_name}'"
+            f" \u2014 replace [TODO: ...] markers with real content"
+        )
+
+    return Finding(
+        file=file_path,
+        line=symbol.line,
+        symbol=display_name,
+        rule="scaffold-incomplete",
+        message=message,
+        category="scaffold",
     )

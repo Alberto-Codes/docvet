@@ -1,6 +1,6 @@
 # Enrichment Check
 
-The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 20 rules cover functions, methods, classes, and modules across required and recommended categories.
+The enrichment check implements **Layer 3 (Completeness)** of docvet's quality model. It uses AST analysis to detect missing docstring sections — Raises, Yields, Attributes, Examples, and more — by inspecting your code's actual behavior and structure. 21 rules cover functions, methods, classes, and modules across required, recommended, and scaffold categories.
 
 ```bash
 docvet enrichment --all
@@ -30,8 +30,9 @@ docvet enrichment --all
 | [`missing-return-type`](../rules/missing-return-type.md) | recommended | functions, methods | Returns section has no type and function has no return annotation |
 | [`trivial-docstring`](../rules/trivial-docstring.md) | recommended | any symbol | Docstring summary line restates the symbol name without adding information |
 | [`prefer-fenced-code-blocks`](../rules/prefer-fenced-code-blocks.md) | recommended | any symbol | `Examples:` section uses doctest `>>>` or rST `::` instead of fenced code blocks |
+| [`scaffold-incomplete`](../rules/scaffold-incomplete.md) | scaffold | any symbol | Docstring contains unfilled `[TODO: ...]` placeholder markers from `docvet fix` |
 
-**Required** rules flag structural gaps where the docstring is objectively incomplete. **Recommended** rules flag best-practice improvements that enhance documentation quality.
+**Required** rules flag structural gaps where the docstring is objectively incomplete. **Recommended** rules flag best-practice improvements that enhance documentation quality. **Scaffold** findings flag placeholder content that must be filled in before merging.
 
 !!! note "Sphinx/RST mode"
     When [`docstring-style`](../configuration.md#docstring-style) is set to `"sphinx"`, section detection switches to RST field-list patterns and several rules are auto-disabled. See the [configuration reference](../configuration.md#docstring-style) for details.
@@ -76,6 +77,7 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `check-extra-yields` | `bool` | `true` | Flag `Yields:` section when function has no `yield` statement |
 | `check-extra-returns` | `bool` | `true` | Flag `Returns:` section when function has no meaningful return |
 | `require-examples` | `list[str]` | `["class", "protocol", "dataclass", "enum"]` | Symbol kinds requiring `Examples:` sections |
+| `scaffold-incomplete` | `bool` | `true` | Detect unfilled `[TODO: ...]` placeholder markers left by `docvet fix` |
 
 Example configuration to disable specific rules:
 

@@ -1031,3 +1031,96 @@ class TestFormatJsonQuality:
         """Without quality param, JSON output is identical to existing."""
         result = json.loads(format_json([], 10))
         assert set(result.keys()) == {"findings", "summary"}
+
+
+# ---------------------------------------------------------------------------
+# Scaffold category tests (Story 32.2)
+# ---------------------------------------------------------------------------
+
+
+class TestScaffoldCategory:
+    """Tests for scaffold category across all reporting formats."""
+
+    def test_terminal_scaffold_finding_has_cyan_tag(self, make_finding):
+        """Scaffold findings display with [scaffold] tag in terminal output."""
+        f = make_finding(
+            rule="scaffold-incomplete",
+            message="fill in Raises for 'validate'",
+            category="scaffold",
+        )
+        result = format_terminal([f], no_color=True)
+        assert "[scaffold]" in result
+
+    def test_terminal_scaffold_count_in_summary(self, make_finding):
+        """Terminal summary includes scaffold count when scaffold findings exist."""
+        findings = [
+            make_finding(category="required"),
+            make_finding(category="scaffold", line=2),
+            make_finding(category="scaffold", line=3),
+        ]
+        result = format_terminal(findings, no_color=True)
+        assert "2 scaffold" in result
+        assert "1 required" in result
+
+    def test_terminal_no_scaffold_count_when_zero(self, make_finding):
+        """Terminal summary omits scaffold count when no scaffold findings."""
+        findings = [make_finding(category="required")]
+        result = format_terminal(findings, no_color=True)
+        assert "scaffold" not in result
+
+    def test_markdown_scaffold_finding(self, make_finding):
+        """Scaffold findings appear in markdown with scaffold category."""
+        f = make_finding(
+            rule="scaffold-incomplete",
+            message="fill in Raises",
+            category="scaffold",
+        )
+        result = format_markdown([f])
+        assert "| scaffold |" in result
+
+    def test_markdown_scaffold_count_in_summary(self, make_finding):
+        """Markdown summary includes scaffold count."""
+        findings = [
+            make_finding(category="required"),
+            make_finding(category="scaffold", line=2),
+        ]
+        result = format_markdown(findings)
+        assert "1 scaffold" in result
+
+    def test_json_scaffold_severity_is_medium(self, make_finding):
+        """JSON output maps scaffold category to medium severity."""
+        f = make_finding(category="scaffold")
+        result = json.loads(format_json([f], 1))
+        assert result["findings"][0]["severity"] == "medium"
+        assert result["findings"][0]["category"] == "scaffold"
+
+    def test_json_scaffold_in_by_category(self, make_finding):
+        """JSON summary includes scaffold in by_category."""
+        findings = [
+            make_finding(category="scaffold"),
+            make_finding(category="required", line=2),
+        ]
+        result = json.loads(format_json(findings, 1))
+        assert result["summary"]["by_category"]["scaffold"] == 1
+        assert result["summary"]["by_category"]["required"] == 1
+
+    def test_json_scaffold_zero_when_no_scaffolds(self, make_finding):
+        """JSON by_category always includes scaffold key, even when zero."""
+        result = json.loads(format_json([], 1))
+        assert result["summary"]["by_category"]["scaffold"] == 0
+
+    def test_format_summary_scaffold_count(self, make_finding):
+        """format_summary includes scaffold count in stderr line."""
+        findings = [
+            make_finding(category="required"),
+            make_finding(category="scaffold", line=2),
+        ]
+        result = format_summary(5, ["enrichment"], findings, 1.0)
+        assert "1 scaffold" in result
+        assert "1 required" in result
+
+    def test_format_summary_no_scaffold_when_zero(self, make_finding):
+        """format_summary omits scaffold when no scaffold findings."""
+        findings = [make_finding(category="required")]
+        result = format_summary(5, ["enrichment"], findings, 1.0)
+        assert "scaffold" not in result

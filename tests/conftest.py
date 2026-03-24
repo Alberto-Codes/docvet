@@ -9,7 +9,7 @@ import pytest
 
 from docvet.checks import Finding
 
-_Category = Literal["required", "recommended"]
+_Category = Literal["required", "recommended", "scaffold"]
 
 
 @pytest.fixture

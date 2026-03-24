@@ -6,6 +6,8 @@ detected issues.
 
 The Finding dataclass is the shared API contract between all check modules
 (enrichment, freshness, griffe, coverage, presence) and the CLI layer.
+The ``scaffold_missing_sections`` function inserts placeholder sections
+into docstrings based on enrichment findings.
 
 Attributes:
     Finding: Immutable dataclass representing a docstring quality finding.
@@ -26,6 +28,7 @@ See Also:
     [`docvet.checks.coverage`][]: Missing ``__init__.py`` detection.
     [`docvet.checks.griffe_compat`][]: Griffe rendering compatibility.
     [`docvet.checks.presence`][]: Missing docstring presence detection.
+    [`docvet.checks.fix`][]: Section scaffolding engine for ``docvet fix``.
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ from __future__ import annotations
 from docvet.checks._finding import Finding
 from docvet.checks.coverage import check_coverage
 from docvet.checks.enrichment import check_enrichment
+from docvet.checks.fix import scaffold_missing_sections
 from docvet.checks.freshness import check_freshness_diff, check_freshness_drift
 from docvet.checks.griffe_compat import check_griffe_compat
 from docvet.checks.presence import PresenceStats, check_presence
@@ -46,4 +50,5 @@ __all__ = [
     "check_freshness_drift",
     "check_griffe_compat",
     "check_presence",
+    "scaffold_missing_sections",
 ]

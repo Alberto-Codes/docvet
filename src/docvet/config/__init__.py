@@ -12,7 +12,8 @@ modules. ``EnrichmentConfig`` fields include ``require_returns``,
 ``require_param_agreement``, ``require_deprecation_notice``,
 ``exclude_args_kwargs``, ``check_trivial_docstrings``,
 ``require_return_type``, ``require_init_params``, ``check_extra_raises``,
-``check_extra_yields``, ``check_extra_returns``, and other rule toggles.
+``check_extra_yields``, ``check_extra_returns``, ``scaffold_incomplete``,
+and other rule toggles.
 Validation keys in ``_VALID_ENRICHMENT_KEYS`` are kept alphabetically.
 ``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
@@ -153,6 +154,8 @@ class EnrichmentConfig:
         check_extra_returns (bool): Flag ``Returns:`` sections when
             the function has no meaningful return. Defaults to
             ``True``.
+        scaffold_incomplete (bool): Detect unfilled placeholder markers
+            left by ``docvet fix``. Defaults to ``True``.
         user_set_keys (frozenset[str]): Snake_case keys explicitly set
             by the user in ``[tool.docvet.enrichment]``. Populated during
             config parsing to distinguish user overrides from defaults.
@@ -194,6 +197,7 @@ class EnrichmentConfig:
     check_extra_raises: bool = False
     check_extra_yields: bool = True
     check_extra_returns: bool = True
+    scaffold_incomplete: bool = True
     user_set_keys: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -345,6 +349,7 @@ _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
         "require-typed-attributes",
         "require-warns",
         "require-yields",
+        "scaffold-incomplete",
     }
 )
 
