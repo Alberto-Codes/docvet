@@ -204,3 +204,15 @@ class TestMessageFormat:
         assert len(findings) == 1
         assert "Attributes" in findings[0].message
         assert "Examples" in findings[0].message
+
+    def test_generic_fallback_when_todo_before_any_section(self):
+        """Generic fallback message when TODO appears before any section header."""
+        source = textwrap.dedent('''\
+            def f():
+                """[TODO: describe] this function."""
+                pass
+        ''')
+        findings = _scaffold_findings(_check(source))
+        assert len(findings) == 1
+        assert "scaffold placeholders" in findings[0].message
+        assert "[TODO: ...]" in findings[0].message

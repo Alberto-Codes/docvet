@@ -384,20 +384,6 @@ def _check_undocumented_init_params(
 
 _TODO_PATTERN = re.compile(r"\[TODO: [^\]]+\]")
 
-# Map section header names to human-friendly labels for messages.
-_SECTION_DISPLAY: dict[str, str] = {
-    "Args": "Args",
-    "Returns": "Returns",
-    "Raises": "Raises",
-    "Yields": "Yields",
-    "Receives": "Receives",
-    "Warns": "Warns",
-    "Other Parameters": "Other Parameters",
-    "Attributes": "Attributes",
-    "Examples": "Examples",
-    "See Also": "See Also",
-}
-
 # Pattern to detect section header lines for context extraction.
 _SECTION_HEADER_LINE = re.compile(
     r"^\s*(Args|Returns|Raises|Yields|Receives|Warns"

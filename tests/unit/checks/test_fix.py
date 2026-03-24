@@ -467,3 +467,15 @@ class TestEdgeCases:
         assert "port: [TODO: describe]" in result
         assert "host: [TODO: describe]" in result
         ast.parse(result)
+
+    def test_crlf_line_endings_preserved(self):
+        r"""Windows \r\n line endings are preserved in scaffolded output."""
+        source = 'def f():\r\n    """Summary."""\r\n    raise ValueError(\'x\')\r\n'
+        result = _scaffold(source, [_finding(line=1, rule="missing-raises")])
+        assert "Raises:" in result
+        assert "\r\n" in result
+        # No bare \n (every \n should be preceded by \r)
+        for i, ch in enumerate(result):
+            if ch == "\n":
+                assert i > 0 and result[i - 1] == "\r"
+        ast.parse(result)

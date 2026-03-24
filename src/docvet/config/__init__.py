@@ -12,7 +12,8 @@ modules. ``EnrichmentConfig`` fields include ``require_returns``,
 ``require_param_agreement``, ``require_deprecation_notice``,
 ``exclude_args_kwargs``, ``check_trivial_docstrings``,
 ``require_return_type``, ``require_init_params``, ``check_extra_raises``,
-``check_extra_yields``, ``check_extra_returns``, and other rule toggles.
+``check_extra_yields``, ``check_extra_returns``, ``scaffold_incomplete``,
+and other rule toggles.
 Validation keys in ``_VALID_ENRICHMENT_KEYS`` are kept alphabetically.
 ``PresenceConfig`` fields include
 ``check_overload_docstrings`` for the overload-has-docstring rule.
@@ -348,6 +349,7 @@ _VALID_ENRICHMENT_KEYS: frozenset[str] = frozenset(
         "require-typed-attributes",
         "require-warns",
         "require-yields",
+        "scaffold-incomplete",
     }
 )
 

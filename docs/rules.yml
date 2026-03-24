@@ -572,6 +572,26 @@
 
     Either location is sufficient — you don't need both.
 
+- id: scaffold-incomplete
+  name: Scaffold Incomplete
+  check: enrichment
+  category: scaffold
+  applies_to: any symbol
+  summary: Docstring contains unfilled [TODO] placeholder markers from docvet fix
+  since: "1.15.0"
+  fix: |
+    Replace the `[TODO: ...]` placeholder markers with real descriptions:
+
+    ```python
+    # Before (scaffold placeholder)
+    Raises:
+        ValueError: [TODO: describe when this is raised]
+
+    # After (filled in)
+    Raises:
+        ValueError: When the input data is empty or None.
+    ```
+
 - id: trivial-docstring
   name: Trivial Docstring
   check: enrichment

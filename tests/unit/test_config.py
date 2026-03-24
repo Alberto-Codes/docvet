@@ -1502,6 +1502,20 @@ def test_load_config_enrichment_no_user_keys_when_section_absent(
     assert cfg.enrichment.user_set_keys == frozenset()
 
 
+def test_load_config_nested_enrichment_scaffold_incomplete_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        """\
+[tool.docvet.enrichment]
+scaffold-incomplete = false
+"""
+    )
+    cfg = load_config()
+    assert cfg.enrichment.scaffold_incomplete is False
+
+
 def test_format_config_toml_roundtrip_with_user_keys():
     """Roundtrip correctness with user-configured values and annotations."""
     config = DocvetConfig(

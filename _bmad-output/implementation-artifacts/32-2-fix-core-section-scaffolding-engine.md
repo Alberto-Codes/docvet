@@ -166,10 +166,13 @@ Claude Opus 4.6 (1M context)
 - Task 3: Added `_check_scaffold_incomplete()` in `_late_rules.py`. Regex `[TODO: ...]` detection with section-context extraction for actionable messages. Config field `scaffold_incomplete: bool = True`. 10 unit tests.
 - Task 4: Integration tests for full roundtrip (enrichment → scaffold → re-check → fill → zero findings). JSON output verification. Dogfooding on own codebase. 4 integration tests.
 - Fixed 2 false positives in own codebase (docstrings that referenced `[TODO: ...]` syntax literally).
+- Code review: AC 10 message format uses "describe the placeholder content" instead of listing specific items (e.g., exception names). Accepted as reasonable simplification — the items are already visible in the scaffolded docstring. Not a defect.
+- Code review: `_late_rules.py` was at 499 lines (1 below 500-line gate). Dead code removal reduced it to 485 lines. Future rule additions to this module should consider splitting.
 
 ### Change Log
 
 - 2026-03-23: Implemented scaffold category, scaffolding engine, scaffold-incomplete rule, integration tests. All quality gates pass.
+- 2026-03-23: Code review fixes — added `scaffold-incomplete` to `_VALID_ENRICHMENT_KEYS`, deleted dead `_SECTION_DISPLAY` dict, added edge case tests (L1 generic fallback, L2 CRLF), created scaffold-incomplete rule docs page, updated enrichment.md and configuration.md.
 
 ### File List
 
@@ -187,6 +190,9 @@ Claude Opus 4.6 (1M context)
 - `tests/unit/test_reporting.py` (modified) — TestScaffoldCategory (11 tests)
 - `tests/unit/test_exports.py` (modified) — Updated __all__ expectations
 - `tests/integration/test_scaffold_roundtrip.py` (new) — 4 integration tests
+- `docs/site/rules/scaffold-incomplete.md` (new) — Rule reference page for scaffold-incomplete
+- `docs/site/checks/enrichment.md` (modified) — Added scaffold-incomplete to rules table and config table
+- `docs/site/configuration.md` (modified) — Added scaffold-incomplete config key to enrichment options
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified) — Story status updates
 
 ## Code Review
@@ -195,15 +201,26 @@ Claude Opus 4.6 (1M context)
 
 ### Reviewer
 
+Claude Opus 4.6 (adversarial code review) + Party Mode consensus (Amelia, Winston, Murat, Paige)
+
 ### Outcome
+
+Changes Requested — 1 HIGH bug, 3 MEDIUM improvements, 3 LOW improvements. All fixed in review pass.
 
 ### Findings Summary
 
 | ID | Severity | Description | Resolution |
 |----|----------|-------------|------------|
+| H1 | HIGH | `scaffold-incomplete` missing from `_VALID_ENRICHMENT_KEYS` — users cannot configure via pyproject.toml | Added to frozenset + added config pipeline integration test |
+| H2 | MEDIUM | Documentation Impact: claimed pages not delivered (scaffold-incomplete rule page, enrichment.md, configuration.md) | Created `docs/site/rules/scaffold-incomplete.md`, updated enrichment.md + configuration.md |
+| M1 | MEDIUM | `_late_rules.py` at 499 lines — 1 line from 500-line module size gate | Dead code removal (M2) reduced to 485 lines. Follow-up concern noted. |
+| M2 | MEDIUM | Dead code: `_SECTION_DISPLAY` identity dict defined but never referenced | Deleted (14 lines removed) |
+| M3 | LOW | AC 10 message format uses generic suffix instead of listing specific items | Accepted as reasonable simplification — items visible in scaffolded docstring |
+| L1 | LOW | Missing test: generic fallback message path in `_check_scaffold_incomplete` | Added `test_generic_fallback_when_todo_before_any_section` |
+| L2 | LOW | Missing test: `\r\n` line ending preservation in `scaffold_missing_sections` | Added `test_crlf_line_endings_preserved` |
 
 ### Verification
 
-- [ ] All acceptance criteria verified
-- [ ] All quality gates pass
-- [ ] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
+- [x] All acceptance criteria verified
+- [x] All quality gates pass
+- [x] Story file complete (AC-to-Test Mapping, Dev Notes, Change Log, File List all filled)
