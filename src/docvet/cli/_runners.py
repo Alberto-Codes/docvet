@@ -1,8 +1,10 @@
-"""CLI check runners and git helpers.
+"""CLI check runners, fix runner, and git helpers.
 
 Each ``_run_*`` function reads files, invokes the corresponding check
-module, and returns findings.  Git helpers (``_get_git_diff``,
-``_get_git_blame``) provide raw VCS data for the freshness runner.
+module, and returns findings.  The ``_run_fix`` runner additionally
+writes scaffolded sections back to files (or collects diffs in dry-run
+mode).  Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
+raw VCS data for the freshness runner.
 
 See Also:
     [`docvet.cli`][]: CLI application and subcommands.
@@ -336,3 +338,98 @@ def _run_griffe(
     if not src_root.is_dir():
         return [], 0
     return _cli_pkg.check_griffe_compat(src_root, files), len(files)
+
+
+# ---------------------------------------------------------------------------
+# Fix runner
+# ---------------------------------------------------------------------------
+
+
+def _run_fix(
+    files: list[Path],
+    config: DocvetConfig,
+    *,
+    dry_run: bool = False,
+    show_progress: bool = False,
+) -> tuple[list[Finding], int, int, list[tuple[str, str, str]]]:
+    """Run the fix pipeline on discovered files.
+
+    For each file: runs enrichment to find missing sections, scaffolds
+    them via ``scaffold_missing_sections``, and either writes the result
+    or collects diffs.  In write mode, re-runs enrichment to collect
+    scaffold-incomplete findings.  In dry-run mode, collects diffs
+    without writing or re-checking.
+
+    Args:
+        files: Discovered Python file paths.
+        config: Loaded docvet configuration.
+        dry_run: When ``True``, collect diffs without writing files
+            or re-running enrichment.
+        show_progress: Display a progress bar on stderr.
+
+    Returns:
+        A tuple of ``(scaffold_findings, files_modified, sections_scaffolded,
+        diffs)`` where *diffs* is a list of ``(path, original, modified)``
+        tuples (only populated in dry-run mode) and *scaffold_findings*
+        is empty in dry-run mode.
+    """
+    from docvet.checks.fix import RULE_TO_SECTION, scaffold_missing_sections
+
+    all_findings: list[Finding] = []
+    files_modified = 0
+    sections_scaffolded = 0
+    diffs: list[tuple[str, str, str]] = []
+
+    with typer.progressbar(
+        files, label="fix", file=sys.stderr, hidden=not show_progress
+    ) as progress:
+        for file_path in progress:
+            source = file_path.read_text(encoding="utf-8")
+            try:
+                tree = _cli_pkg.ast.parse(source, filename=str(file_path))
+            except SyntaxError:
+                typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+                continue
+
+            # Step 1: enrichment to find missing sections.
+            findings = _cli_pkg.check_enrichment(
+                source,
+                tree,
+                config.enrichment,
+                str(file_path),
+                style=config.docstring_style,
+            )
+            scaffoldable = [f for f in findings if f.rule in RULE_TO_SECTION]
+            if not scaffoldable:
+                continue
+
+            # Step 2: scaffold missing sections.
+            modified = scaffold_missing_sections(source, tree, scaffoldable)
+            if modified == source:
+                continue
+
+            section_count = len(scaffoldable)
+            sections_scaffolded += section_count
+            files_modified += 1
+
+            if dry_run:
+                diffs.append((str(file_path), source, modified))
+                continue
+
+            file_path.write_text(modified, encoding="utf-8")
+
+            # Step 3: re-check for scaffold-incomplete findings.
+            try:
+                new_tree = _cli_pkg.ast.parse(modified, filename=str(file_path))
+            except SyntaxError:
+                continue
+            new_findings = _cli_pkg.check_enrichment(
+                modified,
+                new_tree,
+                config.enrichment,
+                str(file_path),
+                style=config.docstring_style,
+            )
+            all_findings.extend(f for f in new_findings if f.category == "scaffold")
+
+    return all_findings, files_modified, sections_scaffolded, diffs
