@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import textwrap
 from typing import Literal
 
@@ -14,6 +15,7 @@ from docvet.config import DocvetConfig
 
 pytestmark = pytest.mark.unit
 
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 _Category = Literal["required", "recommended", "scaffold"]
 
 runner = CliRunner()
@@ -190,10 +192,11 @@ class TestFixSubcommand:
     def test_help_shows_fix_options(self):
         """Fix command help includes --dry-run, --staged, --all."""
         result = runner.invoke(app, ["fix", "--help"])
+        output = _ANSI_RE.sub("", result.output)
         assert result.exit_code == 0
-        assert "--dry-run" in result.output
-        assert "--staged" in result.output
-        assert "--all" in result.output
+        assert "--dry-run" in output
+        assert "--staged" in output
+        assert "--all" in output
 
     def test_dry_run_produces_diff_output(self, tmp_path, monkeypatch):
         """Dry-run prints unified diff to stdout."""
