@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.15.0](https://github.com/Alberto-Codes/docvet/compare/v1.14.1...v1.15.0) (2026-03-27)
+
+
+### Features
+
+* **cli:** add docvet fix subcommand with dry-run and discovery ([#386](https://github.com/Alberto-Codes/docvet/issues/386)) ([7f76477](https://github.com/Alberto-Codes/docvet/commit/7f764771f730e8b026b3b5cb9ab907959335f609))
+* **cli:** add inline suppression comments for findings ([#393](https://github.com/Alberto-Codes/docvet/issues/393)) ([14ba0b7](https://github.com/Alberto-Codes/docvet/commit/14ba0b71d0ef0d42cf749fec8c0b5ea00e2dd749))
+* **enrichment:** add scaffold category, scaffolding engine, and scaffold-incomplete rule ([#385](https://github.com/Alberto-Codes/docvet/issues/385)) ([782cd27](https://github.com/Alberto-Codes/docvet/commit/782cd2774739eba113f322d2088cea9a68b17225))
+* **enrichment:** add scaffold-incomplete enrichment rule ([782cd27](https://github.com/Alberto-Codes/docvet/commit/782cd2774739eba113f322d2088cea9a68b17225))
+
+
+### Bug Fixes
+
+* **cli:** address code review findings for fix subcommand ([7f76477](https://github.com/Alberto-Codes/docvet/commit/7f764771f730e8b026b3b5cb9ab907959335f609))
+* **cli:** prevent uppercase rule IDs from degrading to blanket ([14ba0b7](https://github.com/Alberto-Codes/docvet/commit/14ba0b71d0ef0d42cf749fec8c0b5ea00e2dd749))
+* **config:** address PR [#379](https://github.com/Alberto-Codes/docvet/issues/379) review feedback ([#380](https://github.com/Alberto-Codes/docvet/issues/380)) ([134e428](https://github.com/Alberto-Codes/docvet/commit/134e428ee2a16534b2bdeb14a5cf9e308a13991c))
+* **enrichment:** handle docstring-only stubs, multi-statement stubs, and deprecated abstract decorators ([#391](https://github.com/Alberto-Codes/docvet/issues/391)) ([bc2445d](https://github.com/Alberto-Codes/docvet/commit/bc2445d91212b3662ae897b00c1b41eb5840f37e)), closes [#387](https://github.com/Alberto-Codes/docvet/issues/387) [#388](https://github.com/Alberto-Codes/docvet/issues/388) [#389](https://github.com/Alberto-Codes/docvet/issues/389)
+* **griffe:** replace production assert, fix dep vulns, add vuln handling docs ([#395](https://github.com/Alberto-Codes/docvet/issues/395)) ([7273e56](https://github.com/Alberto-Codes/docvet/commit/7273e5612369bbfb94b89c0e484a810b204b44dc))
+* **test:** move _active_style reset to shared conftest fixture ([#363](https://github.com/Alberto-Codes/docvet/issues/363)) ([b8b6586](https://github.com/Alberto-Codes/docvet/commit/b8b65867f2825d9468aeb27878a146decf44fd31))
+
+
+### Documentation
+
+* **cli:** add missing subcommands to quick references ([#397](https://github.com/Alberto-Codes/docvet/issues/397)) ([d92af72](https://github.com/Alberto-Codes/docvet/commit/d92af726a6c5c4f43f2735f50faad09121fc1e6e)), closes [#396](https://github.com/Alberto-Codes/docvet/issues/396)
+* **enrichment:** add scaffold-incomplete rule page and config docs ([782cd27](https://github.com/Alberto-Codes/docvet/commit/782cd2774739eba113f322d2088cea9a68b17225))
+
 ## [1.14.1](https://github.com/Alberto-Codes/docvet/compare/v1.14.0...v1.14.1) (2026-03-22)
 
 
