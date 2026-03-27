@@ -173,7 +173,7 @@ def _collect_object_findings(
     """Collect docstring findings for a single griffe object.
 
     Returns early if the object has no docstring (callers guarantee one
-    exists, but the guard keeps production code safe).  Otherwise triggers
+    exists, but the guard keeps production code safe). Otherwise, triggers
     docstring parsing, captures any new warning records, and converts them
     to findings.
 
