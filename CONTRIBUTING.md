@@ -159,6 +159,25 @@ GitHub Actions runs these checks on every PR:
 | docvet | `docvet check --all` (all 4 checks) |
 | CodeQL | Static security analysis |
 
+## Dependency Vulnerabilities
+
+CI runs `uv-secure` to scan for known vulnerabilities in the lockfile. If it flags something:
+
+- **Fix exists?** Upgrade the package: `uv lock --upgrade-package <pkg>`. No suppression needed.
+- **No fix?** Add the specific GHSA/CVE ID to the ignore list in `pyproject.toml`:
+
+```toml
+[tool.uv-secure.vulnerability_criteria]
+ignore_vulnerabilities = [
+    "GHSA-xxxx-xxxx-xxxx",  # pkg X.Y.Z — description. No fix available.
+]
+allow_unused_ignores = false
+```
+
+The `allow_unused_ignores = false` setting ensures CI fails once the suppression becomes stale (e.g., after Renovate bumps the package to a patched version), forcing cleanup.
+
+See `.claude/rules/dependency-vulnerabilities.md` for the full triage process.
+
 ## Key Constraints
 
 - Never add runtime dependencies beyond `typer` without maintainer approval
