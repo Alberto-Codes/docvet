@@ -172,8 +172,10 @@ def _collect_object_findings(
 ) -> list[Finding]:
     """Collect docstring findings for a single griffe object.
 
-    Triggers docstring parsing on the object, captures any new warning
-    records added during parsing, and converts them to findings.
+    Returns early if the object has no docstring (callers guarantee one
+    exists, but the guard keeps production code safe).  Otherwise triggers
+    docstring parsing, captures any new warning records, and converts them
+    to findings.
 
     Args:
         obj: A griffe object with a docstring to parse.
@@ -183,8 +185,9 @@ def _collect_object_findings(
         A list of findings from docstring compatibility warnings for
         this object.
     """
+    if obj.docstring is None:  # guaranteed by _walk_objects filter
+        return []
     before = len(handler.records)
-    assert obj.docstring is not None  # guaranteed by _walk_objects filter
     _ = obj.docstring.parsed
     after = len(handler.records)
     findings: list[Finding] = []
