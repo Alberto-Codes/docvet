@@ -11,6 +11,7 @@ import pytest
 from docvet.checks.griffe_compat import (
     _build_finding_from_record,
     _classify_warning,
+    _collect_object_findings,
     _resolve_file_set,
     _walk_objects,
     _WarningCollector,
@@ -339,6 +340,17 @@ def _setup_package_dir(tmp_path: Path, *pkg_names: str) -> Path:
         (pkg_dir / "__init__.py").touch()
         (pkg_dir / "mod.py").write_text("# module")
     return src_root
+
+
+class TestCollectObjectFindings:
+    """Tests for _collect_object_findings helper."""
+
+    def test_none_docstring_returns_empty(self) -> None:
+        """_collect_object_findings returns [] when obj.docstring is None."""
+        obj = MagicMock()
+        obj.docstring = None
+        handler = _WarningCollector()
+        assert _collect_object_findings(obj, handler) == []
 
 
 class TestCheckGriffeCompat:
