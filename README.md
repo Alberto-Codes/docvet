@@ -160,8 +160,14 @@ fail-on = ["enrichment", "freshness", "coverage", "griffe"]
 | `docvet presence` | Check for missing docstrings with coverage metrics |
 | `docvet enrichment` | Check for missing docstring sections |
 | `docvet freshness` | Detect stale docstrings via git |
+| `docvet freshness --mode drift` | Sweep for long-stale docstrings via git blame |
 | `docvet coverage` | Find files invisible to mkdocs |
 | `docvet griffe` | Check mkdocs rendering compatibility |
+| `docvet fix` | Scaffold missing docstring sections |
+| `docvet fix --dry-run` | Preview scaffolding changes without writing files |
+| `docvet config` | Show effective configuration with source annotations |
+| `docvet lsp` | Start LSP server for real-time editor diagnostics |
+| `docvet mcp` | Start MCP server for AI agent integration |
 
 ## Better Docstrings, Better AI
 

@@ -48,10 +48,17 @@ uv run pytest --cov=docvet --cov-report=term-missing  # With coverage
 docvet check                   # Run all checks on git diff files
 docvet check --staged          # Run checks on staged files
 docvet check --all             # Run checks on entire codebase
+docvet presence                # Run presence check only
 docvet enrichment              # Run enrichment check only
 docvet freshness               # Run freshness check only
+docvet freshness --mode drift  # Run freshness drift sweep via git blame
 docvet coverage                # Run coverage check only
 docvet griffe                  # Run griffe compatibility check only
+docvet fix                     # Scaffold missing docstring sections
+docvet fix --dry-run           # Preview scaffolding without writing files
+docvet config                  # Show effective configuration
+docvet lsp                     # Start LSP server for editor diagnostics
+docvet mcp                     # Start MCP server for AI agents
 ```
 
 ## Architecture
