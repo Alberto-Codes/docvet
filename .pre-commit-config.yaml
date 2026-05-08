@@ -21,11 +21,6 @@ repos:
     hooks:
       - id: uv-lock
 
-  - repo: https://github.com/owenlamont/uv-secure
-    rev: 0.17.0
-    hooks:
-      - id: uv-secure
-
   - repo: local
     hooks:
       - id: ty-check

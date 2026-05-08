@@ -1,10 +1,10 @@
 # Dependency Vulnerability Handling
 
-When `uv-secure` flags a vulnerability in CI or pre-commit, follow this process.
+When `uv audit` flags a vulnerability in CI or pre-commit, follow this process.
 
 ## Triage
 
-1. **Check if a fix version exists** — look at the `Fix Versions` column in the uv-secure output
+1. **Check if a fix version exists** — look at the `Fixed in` line in the uv audit output
 2. **Check if it's a direct or transitive dependency** — search `pyproject.toml` for the package name
 
 ## If a Fix Exists
@@ -23,41 +23,28 @@ No suppression needed — take the fix.
 
 ## If No Fix Exists
 
-Suppress the specific vulnerability ID in `pyproject.toml`:
+Use `--ignore-until-fixed` in the CI step (`.github/workflows/ci.yml`):
 
-```toml
-[tool.uv-secure.vulnerability_criteria]
-ignore_vulnerabilities = [
-    "GHSA-xxxx-xxxx-xxxx",  # package-name X.Y.Z — brief description. No fix available.
-]
-allow_unused_ignores = false
+```yaml
+- run: uv audit --ignore-until-fixed GHSA-xxxx-xxxx-xxxx
 ```
 
-### Required Comment Format
+This auto-expires: once the maintainer ships a fix and the lockfile is updated, the ignore has no effect and can be cleaned up.
 
-Every entry in `ignore_vulnerabilities` must have an inline TOML comment with:
-- **Package name and version** affected
-- **Brief description** of the vulnerability (e.g., "ReDoS in AdlLexer")
-- **"No fix available"** to explain why it's suppressed
+For vulnerabilities you want to permanently ignore (e.g., not applicable to your use case), use `--ignore` instead:
 
-### The Safety Net: `allow_unused_ignores = false`
-
-This setting is mandatory. It makes CI fail when a suppressed vulnerability no longer matches any finding — which happens when:
-- Renovate bumps the package to a patched version
-- The vulnerability is withdrawn or reclassified
-
-This forces cleanup of stale entries automatically through CI failure.
+```yaml
+- run: uv audit --ignore GHSA-xxxx-xxxx-xxxx
+```
 
 ### Lifecycle
 
-1. Vuln flagged with no fix -> add GHSA ID + comment to `ignore_vulnerabilities`
-2. Maintainer ships a fix -> Renovate opens a PR to bump the package
-3. After merge, the ignore becomes unused -> CI fails on `allow_unused_ignores`
-4. Remove the stale GHSA ID from `ignore_vulnerabilities` -> CI passes
+1. Vuln flagged with no fix -> add `--ignore-until-fixed GHSA-ID` to CI step
+2. Maintainer ships a fix -> Dependabot opens a PR to bump the package
+3. After merge, the ignore is inert -> remove it from CI step to keep config clean
 
 ## What NOT to Do
 
-- **Don't use `ignore_unfixed = true`** — it's a blanket suppression that hides future unfixed vulns
-- **Don't use `ignore_packages`** without version specifiers — suppresses all vulns for that package
-- **Don't suppress without a comment** — undocumented entries rot silently
-- **Don't leave `allow_unused_ignores` unset or true** — stale entries will accumulate
+- **Don't skip `uv audit` entirely** — it's the only automated vuln check in the pipeline
+- **Don't use `--ignore` for unfixed vulns** — use `--ignore-until-fixed` so it auto-expires
+- **Don't suppress without a comment** — add a YAML comment explaining why
