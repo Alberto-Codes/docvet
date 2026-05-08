@@ -94,8 +94,7 @@ explicit = true
 # uv-secure
 # --------------------------------------------------------------------------- #
 [tool.uv-secure.vulnerability_criteria]
-# Pygments 2.19.2 ReDoS in AdlLexer (GHSA low severity, local-only). No fix available.
-ignore_vulnerabilities = ["GHSA-5239-wwwm-4pmq"]
+ignore_vulnerabilities = []
 allow_unused_ignores = false
 
 # --------------------------------------------------------------------------- #

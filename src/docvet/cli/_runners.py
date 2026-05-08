@@ -4,7 +4,9 @@ Each ``_run_*`` function reads files, invokes the corresponding check
 module, and returns findings.  The ``_run_fix`` runner additionally
 writes scaffolded sections back to files (or collects diffs in dry-run
 mode).  Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
-raw VCS data for the freshness runner.
+raw VCS data for the freshness runner.  Progress display is handled
+by ``_maybe_progressbar``, which avoids the ``click >= 8.2``
+``hidden`` kwarg requirement.
 
 See Also:
     [`docvet.cli`][]: CLI application and subcommands.
@@ -22,7 +24,10 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
+from typing import TypeVar
 
 import typer
 
@@ -32,6 +37,35 @@ from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
 
 from . import DiscoveryMode, FreshnessMode
+
+V = TypeVar("V")
+
+
+@contextmanager
+def _maybe_progressbar(
+    items: Sequence[V],
+    *,
+    label: str,
+    show: bool,
+) -> Iterator[Iterator[V]]:
+    """Wrap items in a typer progress bar, or iterate directly.
+
+    Avoids passing ``hidden`` to ``typer.progressbar`` which relies
+    on a ``click >= 8.2`` parameter not available in all environments.
+
+    Args:
+        items: Items to iterate over.
+        label: Progress bar label.
+        show: When ``True``, display a progress bar on stderr.
+
+    Yields:
+        An iterator over *items*.
+    """
+    if show:
+        with typer.progressbar(items, label=label, file=sys.stderr) as progress:
+            yield progress
+    else:
+        yield iter(items)
 
 
 def _get_git_diff(
@@ -138,12 +172,14 @@ def _run_enrichment(
     Reads each file, parses its AST, and runs all enabled enrichment
     rules. Passes ``config.docstring_style`` to the enrichment checker
     for style-aware section detection and rule gating. Files that fail
-    to parse are skipped with a warning.
+    to parse are skipped with a warning. Uses ``_maybe_progressbar``
+    for click-compatible progress display.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
-        show_progress: Display a progress bar on stderr.
+        show_progress: Display a progress bar on stderr via
+            ``_maybe_progressbar``.
 
     Returns:
         A tuple of ``(findings, symbol_count)`` where *symbol_count*
@@ -151,9 +187,7 @@ def _run_enrichment(
     """
     all_findings: list[Finding] = []
     symbol_count = 0
-    with typer.progressbar(
-        files, label="enrichment", file=sys.stderr, hidden=not show_progress
-    ) as progress:
+    with _maybe_progressbar(files, label="enrichment", show=show_progress) as progress:
         for file_path in progress:
             source = file_path.read_text(encoding="utf-8")
             try:
@@ -184,11 +218,13 @@ def _run_presence(
     Reads each file, parses its AST, and checks for missing docstrings.
     Files that fail to parse are skipped with a warning. Aggregates
     per-file coverage statistics into a single :class:`PresenceStats`.
+    Uses ``_maybe_progressbar`` for click-compatible progress display.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
-        show_progress: Display a progress bar on stderr.
+        show_progress: Display a progress bar on stderr via
+            ``_maybe_progressbar``.
 
     Returns:
         A tuple of ``(findings, stats)`` where *findings* is a list of
@@ -198,9 +234,7 @@ def _run_presence(
     all_findings: list[Finding] = []
     total_documented = 0
     total_total = 0
-    with typer.progressbar(
-        files, label="presence", file=sys.stderr, hidden=not show_progress
-    ) as progress:
+    with _maybe_progressbar(files, label="presence", show=show_progress) as progress:
         for file_path in progress:
             source = file_path.read_text(encoding="utf-8")
             try:
@@ -230,14 +264,16 @@ def _run_freshness(
     For diff mode, reads each file, parses the AST, obtains its git
     diff, and calls ``check_freshness_diff``. For drift mode, reads
     each file, parses the AST, runs ``git blame --line-porcelain``,
-    and calls ``check_freshness_drift``.
+    and calls ``check_freshness_drift``. Uses ``_maybe_progressbar``
+    for click-compatible progress display.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         freshness_mode: The freshness check strategy (diff or drift).
         discovery_mode: Controls which git diff variant to run.
-        show_progress: Display a progress bar on stderr.
+        show_progress: Display a progress bar on stderr via
+            ``_maybe_progressbar``.
 
     Returns:
         A tuple of ``(findings, symbol_count)`` where *symbol_count*
@@ -246,8 +282,8 @@ def _run_freshness(
     if freshness_mode is not FreshnessMode.DIFF:
         all_findings: list[Finding] = []
         symbol_count = 0
-        with typer.progressbar(
-            files, label="freshness", file=sys.stderr, hidden=not show_progress
+        with _maybe_progressbar(
+            files, label="freshness", show=show_progress
         ) as progress:
             for file_path in progress:
                 source = file_path.read_text(encoding="utf-8")
@@ -268,9 +304,7 @@ def _run_freshness(
 
     all_findings: list[Finding] = []
     symbol_count = 0
-    with typer.progressbar(
-        files, label="freshness", file=sys.stderr, hidden=not show_progress
-    ) as progress:
+    with _maybe_progressbar(files, label="freshness", show=show_progress) as progress:
         for file_path in progress:
             source = file_path.read_text(encoding="utf-8")
             try:
@@ -358,14 +392,16 @@ def _run_fix(
     them via ``scaffold_missing_sections``, and either writes the result
     or collects diffs.  In write mode, re-runs enrichment to collect
     scaffold-incomplete findings.  In dry-run mode, collects diffs
-    without writing or re-checking.
+    without writing or re-checking. Uses ``_maybe_progressbar`` for
+    click-compatible progress display.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         dry_run: When ``True``, collect diffs without writing files
             or re-running enrichment.
-        show_progress: Display a progress bar on stderr.
+        show_progress: Display a progress bar on stderr via
+            ``_maybe_progressbar``.
 
     Returns:
         A tuple of ``(scaffold_findings, files_modified, sections_scaffolded,
@@ -380,9 +416,7 @@ def _run_fix(
     sections_scaffolded = 0
     diffs: list[tuple[str, str, str]] = []
 
-    with typer.progressbar(
-        files, label="fix", file=sys.stderr, hidden=not show_progress
-    ) as progress:
+    with _maybe_progressbar(files, label="fix", show=show_progress) as progress:
         for file_path in progress:
             source = file_path.read_text(encoding="utf-8")
             try:
