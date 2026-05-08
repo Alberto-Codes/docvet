@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/Alberto-Codes/docvet/compare/v1.15.0...v1.15.1) (2026-05-08)
+
+
+### Bug Fixes
+
+* **cli:** avoid click&lt;8.2 incompatibility in progressbar hidden kwarg ([#407](https://github.com/Alberto-Codes/docvet/issues/407)) ([00dbb82](https://github.com/Alberto-Codes/docvet/commit/00dbb82f7eee2b1d94d23a2356ed7f8c17175019)), closes [#404](https://github.com/Alberto-Codes/docvet/issues/404)
+
 ## [1.15.0](https://github.com/Alberto-Codes/docvet/compare/v1.14.1...v1.15.0) (2026-03-27)
 
 
