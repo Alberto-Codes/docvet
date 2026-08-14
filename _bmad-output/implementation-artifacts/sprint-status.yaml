@@ -265,11 +265,11 @@ development_status:
   epic-31-retrospective: done  # 2026-03-07
 
   # Epic 32: Linter Lifecycle -- Fix & Suppress
-  epic-32: in-progress
+  epic-32: done
   32-1-fix-feasibility-spike: done
   32-2-fix-core-section-scaffolding-engine: done
   32-3-fix-cli-wiring-subcommand-dry-run-and-discovery: done
-  32-4-inline-suppression-comments: review
+  32-4-inline-suppression-comments: done  # 2026-08-13 — all 10 ACs verified
   epic-32-retrospective: optional
 
   # Epic 33: Ecosystem Visibility & Editor Integration

@@ -1,6 +1,6 @@
 # Story 32.4: Inline Suppression Comments
 
-Status: review
+Status: done
 Branch: `feat/cli-32-4-inline-suppression-comments`
 
 ## Story

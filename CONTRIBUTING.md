@@ -9,6 +9,8 @@ Use the issue templates on the [Issues page](https://github.com/Alberto-Codes/do
 - **Bug Report** -- reproduce steps, environment info, and logs
 - **Feature Request** -- problem statement, proposed solution, acceptance criteria
 - **Enhancement** -- improvements to existing functionality
+- **Chore** -- dependency, toolchain, CI, and packaging maintenance
+- **Refactor** -- internal restructuring with no change in behavior
 
 ## Prerequisites
 
