@@ -1680,11 +1680,11 @@ class TestOutputAndExit:
 
     def _call(self, ctx, findings_by_check, config, file_count, checks):
         """Call _output_and_exit and return the exit code."""
-        from click.exceptions import Exit as ClickExit
-
         from docvet.cli import _output_and_exit
 
-        with pytest.raises(ClickExit) as exc_info:
+        # Catch typer.Exit, not click.exceptions.Exit: typer vendors its own click
+        # copy (typer._click), so the two are distinct classes as of typer 0.27.
+        with pytest.raises(typer.Exit) as exc_info:
             _output_and_exit(ctx, findings_by_check, config, file_count, checks)
         return exc_info.value.exit_code
 
