@@ -81,6 +81,7 @@ class TestSuppressionCliRoundtrip:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         # missing-raises is the only required enrichment finding;
         # suppressing it should yield exit code 0
@@ -103,6 +104,7 @@ class TestSuppressionCliRoundtrip:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "Suppressed" in result.stderr
         assert "missing-raises" in result.stderr
@@ -125,6 +127,7 @@ class TestSuppressionCliRoundtrip:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         data = json.loads(result.stdout)
         assert "suppressed" in data
@@ -152,6 +155,7 @@ class TestSuppressionCliRoundtrip:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         data = json.loads(result.stdout)
         assert len(data["findings"]) == 0
@@ -173,6 +177,7 @@ class TestSuppressionCliRoundtrip:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         data = json.loads(result.stdout)
         # All findings on validate should be suppressed

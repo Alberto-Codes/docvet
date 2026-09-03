@@ -495,10 +495,10 @@ def _validate_string_list(
             :func:`_validate_check_names`.
     """
     _validate_type(data[key], list, section, _TOOL_SECTION)
-    for entry in data[key]:  # type: ignore[union-attr]
+    for entry in data[key]:  # ty: ignore[not-iterable]
         _validate_type(entry, str, section, _TOOL_SECTION)
     if check_names:
-        _validate_check_names(data[key], section)  # type: ignore[arg-type]
+        _validate_check_names(data[key], section)  # ty: ignore[invalid-argument-type]
 
 
 # ---------------------------------------------------------------------------
@@ -571,7 +571,7 @@ def _parse_freshness(data: dict[str, object]) -> FreshnessConfig:
     for key, value in data.items():
         _validate_type(value, int, key, section)
         kwargs[_kebab_to_snake(key)] = value
-    return FreshnessConfig(**kwargs)  # type: ignore[arg-type]
+    return FreshnessConfig(**kwargs)  # ty: ignore[invalid-argument-type]
 
 
 def _parse_enrichment(data: dict[str, object]) -> EnrichmentConfig:
@@ -595,13 +595,13 @@ def _parse_enrichment(data: dict[str, object]) -> EnrichmentConfig:
     for key, value in data.items():
         if key == "require-examples":
             _validate_type(value, list, key, section)
-            for entry in value:  # type: ignore[union-attr]
+            for entry in value:  # ty: ignore[not-iterable]
                 _validate_type(entry, str, key, section)
         else:
             _validate_type(value, bool, key, section)
         kwargs[_kebab_to_snake(key)] = value
     kwargs["user_set_keys"] = raw_user_keys
-    return EnrichmentConfig(**kwargs)  # type: ignore[arg-type]
+    return EnrichmentConfig(**kwargs)  # ty: ignore[invalid-argument-type]
 
 
 def _parse_presence(data: dict[str, object]) -> PresenceConfig:
@@ -632,7 +632,7 @@ def _parse_presence(data: dict[str, object]) -> PresenceConfig:
         else:
             _validate_type(value, bool, key, section)
             kwargs[_kebab_to_snake(key)] = value
-    return PresenceConfig(**kwargs)  # type: ignore[arg-type]
+    return PresenceConfig(**kwargs)  # ty: ignore[invalid-argument-type]
 
 
 def _parse_docvet_section(
@@ -664,15 +664,15 @@ def _parse_docvet_section(
 
     if freshness_data is not None:
         _validate_type(freshness_data, dict, "freshness", _TOOL_SECTION)
-        converted["freshness"] = _parse_freshness(freshness_data)  # type: ignore[arg-type]
+        converted["freshness"] = _parse_freshness(freshness_data)  # ty: ignore[invalid-argument-type]
 
     if enrichment_data is not None:
         _validate_type(enrichment_data, dict, "enrichment", _TOOL_SECTION)
-        converted["enrichment"] = _parse_enrichment(enrichment_data)  # type: ignore[arg-type]
+        converted["enrichment"] = _parse_enrichment(enrichment_data)  # ty: ignore[invalid-argument-type]
 
     if presence_data is not None:
         _validate_type(presence_data, dict, "presence", _TOOL_SECTION)
-        converted["presence"] = _parse_presence(presence_data)  # type: ignore[arg-type]
+        converted["presence"] = _parse_presence(presence_data)  # ty: ignore[invalid-argument-type]
 
     if "docstring_style" in converted:
         _validate_type(

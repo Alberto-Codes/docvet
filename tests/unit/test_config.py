@@ -159,19 +159,19 @@ def test_docvet_defaults_warn_on_has_all_checks():
 def test_freshness_when_mutated_raises_frozen_error():
     cfg = FreshnessConfig()
     with pytest.raises(dataclasses.FrozenInstanceError):
-        cfg.drift_threshold = 99  # type: ignore[misc]
+        cfg.drift_threshold = 99  # ty: ignore[invalid-assignment]
 
 
 def test_enrichment_when_mutated_raises_frozen_error():
     cfg = EnrichmentConfig()
     with pytest.raises(dataclasses.FrozenInstanceError):
-        cfg.require_raises = False  # type: ignore[misc]
+        cfg.require_raises = False  # ty: ignore[invalid-assignment]
 
 
 def test_docvet_when_mutated_raises_frozen_error():
     cfg = DocvetConfig()
     with pytest.raises(dataclasses.FrozenInstanceError):
-        cfg.src_root = "lib"  # type: ignore[misc]
+        cfg.src_root = "lib"  # ty: ignore[invalid-assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -1031,7 +1031,7 @@ def test_presence_defaults_ignore_private_is_true():
 def test_presence_when_mutated_raises_frozen_error():
     cfg = PresenceConfig()
     with pytest.raises(dataclasses.FrozenInstanceError):
-        cfg.enabled = False  # type: ignore[misc]
+        cfg.enabled = False  # ty: ignore[invalid-assignment]
 
 
 def test_docvet_presence_is_presence_config():
@@ -1202,7 +1202,7 @@ def test_get_user_keys_preserves_kebab_case(tmp_path, monkeypatch, write_pyproje
     user_keys, _ = get_user_keys()
     assert "src-root" in user_keys
     assert "enrichment" in user_keys
-    assert user_keys["enrichment"]["require-raises"] is False  # type: ignore[index]
+    assert user_keys["enrichment"]["require-raises"] is False  # ty: ignore[not-subscriptable]
 
 
 # ---------------------------------------------------------------------------

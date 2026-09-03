@@ -115,9 +115,8 @@ def compute_quality(
         in *check_counts*.
     """
     result: dict[str, CheckQuality] = {}
-    for check_name in check_counts:
+    for check_name, items_checked in check_counts.items():
         findings = findings_by_check.get(check_name, [])
-        items_checked = check_counts[check_name]
         if check_name in _SYMBOL_BASED_CHECKS:
             items_with_findings = len({(f.file, f.symbol) for f in findings})
         else:
@@ -512,7 +511,10 @@ def determine_exit_code(
     for check in config.fail_on:
         if findings_by_check.get(check, []):
             return 1
-    if presence_stats is not None and config.presence.min_coverage > 0.0:
-        if presence_stats.percentage < config.presence.min_coverage:
-            return 1
+    if (
+        presence_stats is not None
+        and config.presence.min_coverage > 0.0
+        and presence_stats.percentage < config.presence.min_coverage
+    ):
+        return 1
     return 0

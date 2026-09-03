@@ -350,7 +350,7 @@ class TestExtraRaisesInDocstring:
         tree = ast.parse(textwrap.dedent(source))
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        symbol = [s for s in symbols if s.kind == "class"][0]
+        symbol = next(s for s in symbols if s.kind == "class")
         assert symbol.docstring is not None
         sections = _parse_sections(symbol.docstring)
         config = EnrichmentConfig()
@@ -750,7 +750,7 @@ class TestSkipReverseCheck:
         tree = ast.parse(textwrap.dedent(source))
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        symbol = [s for s in symbols if s.name == "foo"][0]
+        symbol = next(s for s in symbols if s.name == "foo")
         assert symbol.docstring is not None
         sections = _parse_sections(symbol.docstring)
         config = EnrichmentConfig()
@@ -901,7 +901,7 @@ class TestSkipReverseCheck:
         tree = ast.parse(textwrap.dedent(source))
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        target = [s for s in symbols if s.kind in ("function", "method")][0]
+        target = next(s for s in symbols if s.kind in ("function", "method"))
         node = node_index.get(target.line)
         assert node is not None
 
@@ -982,7 +982,7 @@ class TestCategoryAndCrossRule:
             """
             yield 1
         '''
-        symbol, node_index, tree = _make_symbol_and_index(source)
+        _symbol, _node_index, tree = _make_symbol_and_index(source)
         config = EnrichmentConfig(check_extra_raises=True)
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
@@ -1005,7 +1005,7 @@ class TestCategoryAndCrossRule:
             """
             ...
         '''
-        symbol, node_index, tree = _make_symbol_and_index(source)
+        _symbol, _node_index, tree = _make_symbol_and_index(source)
         config = EnrichmentConfig()
 
         findings = check_enrichment(textwrap.dedent(source), tree, config, "test.py")
@@ -1039,7 +1039,7 @@ class TestDocstringOnlyBodySkip:
         tree = ast.parse(textwrap.dedent(source))
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        symbol = [s for s in symbols if s.name == "compute"][0]
+        symbol = next(s for s in symbols if s.name == "compute")
         assert symbol.docstring is not None
         sections = _parse_sections(symbol.docstring)
         config = EnrichmentConfig()
@@ -1143,7 +1143,7 @@ class TestDeprecatedAbstractDecorators:
         tree = ast.parse(textwrap.dedent(source))
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        symbol = [s for s in symbols if s.name == "method"][0]
+        symbol = next(s for s in symbols if s.name == "method")
         assert symbol.docstring is not None
         sections = _parse_sections(symbol.docstring)
         config = EnrichmentConfig()
@@ -1178,7 +1178,7 @@ class TestDeprecatedAbstractDecorators:
         tree = ast.parse(textwrap.dedent(source))
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        target = [s for s in symbols if s.kind in ("function", "method")][0]
+        target = next(s for s in symbols if s.kind in ("function", "method"))
         node = node_index.get(target.line)
         assert node is not None
 
@@ -1206,7 +1206,7 @@ class TestDeprecatedAbstractDecorators:
         tree = ast.parse(textwrap.dedent(source))
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        symbol = [s for s in symbols if s.name == "gen"][0]
+        symbol = next(s for s in symbols if s.name == "gen")
         assert symbol.docstring is not None
         sections = _parse_sections(symbol.docstring)
         config = EnrichmentConfig()

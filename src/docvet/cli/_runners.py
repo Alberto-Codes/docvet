@@ -42,7 +42,7 @@ V = TypeVar("V")
 
 
 @contextmanager
-def _maybe_progressbar(
+def _maybe_progressbar[V](
     items: Sequence[V],
     *,
     label: str,

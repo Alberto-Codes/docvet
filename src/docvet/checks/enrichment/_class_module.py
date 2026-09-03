@@ -277,9 +277,10 @@ def _has_self_assignments(node: ast.ClassDef) -> bool:
         child = stack.pop()
         if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
-        if isinstance(child, (ast.Assign, ast.AnnAssign)):
-            if _has_self_attribute_target(child):
-                return True
+        if isinstance(child, (ast.Assign, ast.AnnAssign)) and (
+            _has_self_attribute_target(child)
+        ):
+            return True
         stack.extend(ast.iter_child_nodes(child))
 
     return False
@@ -300,10 +301,8 @@ def _is_init_module(file_path: str) -> bool:
     Returns:
         ``True`` for ``__init__.py`` paths, ``False`` otherwise.
     """
-    return (
-        file_path == "__init__.py"
-        or file_path.endswith("/__init__.py")
-        or file_path.endswith("\\__init__.py")
+    return file_path == "__init__.py" or file_path.endswith(
+        ("/__init__.py", "\\__init__.py")
     )
 
 
@@ -632,17 +631,16 @@ def _check_missing_cross_references(
     kind_display = _SYMBOL_KIND_DISPLAY.get(symbol.kind, symbol.kind)
 
     # Branch A: module missing See Also: entirely
-    if symbol.kind == "module":
-        if _SEE_ALSO not in sections:
-            display = module_display_name(file_path)
-            return Finding(
-                file=file_path,
-                line=symbol.line,
-                symbol=display,
-                rule="missing-cross-references",
-                message=(f"Module '{display}' has no See Also: section"),
-                category="recommended",
-            )
+    if symbol.kind == "module" and _SEE_ALSO not in sections:
+        display = module_display_name(file_path)
+        return Finding(
+            file=file_path,
+            line=symbol.line,
+            symbol=display,
+            rule="missing-cross-references",
+            message=(f"Module '{display}' has no See Also: section"),
+            category="recommended",
+        )
 
     # Branch B: See Also: exists but lacks cross-reference syntax
     if _SEE_ALSO not in sections:

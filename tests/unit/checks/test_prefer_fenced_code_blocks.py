@@ -343,7 +343,7 @@ Examples:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    symbol = [s for s in symbols if s.kind == "module"][0]
+    symbol = next(s for s in symbols if s.kind == "module")
     assert symbol.docstring is not None
     sections = _parse_sections(symbol.docstring)
     config = EnrichmentConfig()

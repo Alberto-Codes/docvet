@@ -29,18 +29,20 @@ Placing documentation on overloads creates a false sense of coverage while the a
     ```python
     from typing import overload
 
+
     @overload
     def connect(address: str) -> TCPConnection:
         """Connect using a hostname string."""  # (1)!
         ...
+
 
     @overload
     def connect(address: tuple[str, int]) -> TCPConnection:
         """Connect using a (host, port) tuple."""  # (2)!
         ...
 
-    def connect(address: str | tuple[str, int]) -> TCPConnection:
-        ...
+
+    def connect(address: str | tuple[str, int]) -> TCPConnection: ...
     ```
 
     1. This docstring is ignored by `help()`, IDEs, and doc generators.
@@ -51,11 +53,14 @@ Placing documentation on overloads creates a false sense of coverage while the a
     ```python hl_lines="12 13 14 15 16 17 18 19 20"
     from typing import overload
 
+
     @overload
     def connect(address: str) -> TCPConnection: ...
 
+
     @overload
     def connect(address: tuple[str, int]) -> TCPConnection: ...
+
 
     def connect(address: str | tuple[str, int]) -> TCPConnection:
         """Connect to a server.

@@ -460,7 +460,7 @@ class MyClass:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    class_symbol = next(s for s in symbols if s.kind == "class")
     assert class_symbol.docstring is not None
     sections = _parse_sections(class_symbol.docstring)
     config = EnrichmentConfig()
@@ -703,7 +703,7 @@ def connect(host, port, timeout):
 
     param_findings = [f for f in findings if "param" in f.rule]
     assert any(f.rule == "missing-param-in-docstring" for f in param_findings)
-    missing = [f for f in param_findings if f.rule == "missing-param-in-docstring"][0]
+    missing = next(f for f in param_findings if f.rule == "missing-param-in-docstring")
     assert "timeout" in missing.message
 
 

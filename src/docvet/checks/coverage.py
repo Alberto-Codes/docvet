@@ -94,7 +94,7 @@ def check_coverage(src_root: Path, files: Sequence[Path]) -> list[Finding]:
         missing_dirs, key=lambda d: d.relative_to(src_root).as_posix()
     ):
         affected = missing_dirs[dir_path]
-        representative = str(sorted(affected)[0])
+        representative = str(min(affected))
         count = len(affected)
         dir_rel = dir_path.relative_to(src_root).as_posix()
         message = (

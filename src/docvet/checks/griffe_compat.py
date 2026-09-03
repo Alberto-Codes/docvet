@@ -130,7 +130,7 @@ def _walk_objects(
         if current.is_alias:
             continue
         if current.docstring is not None and current.filepath in file_set:
-            yield current
+            yield current  # ty: ignore[invalid-yield]
         stack.extend(current.members.values())
 
 

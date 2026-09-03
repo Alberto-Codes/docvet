@@ -198,9 +198,10 @@ def check_presence(
     # and coverage stats unconditionally (regardless of check_overload_docstrings).
     overload_lines: set[int] = set()
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if _has_overload_decorator(node):
-                overload_lines.add(node.lineno)
+        if isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef)
+        ) and _has_overload_decorator(node):
+            overload_lines.add(node.lineno)
 
     findings: list[Finding] = []
     documented = 0

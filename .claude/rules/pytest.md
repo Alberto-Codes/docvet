@@ -62,7 +62,9 @@ class TestEnrichmentCheck:
 def parse_source():
     def _parse(source: str) -> ast.Module:
         return ast.parse(source)
+
     return _parse
+
 
 @pytest.fixture
 def git_repo(tmp_path):
@@ -87,8 +89,8 @@ def git_repo(tmp_path):
 ```python
 @pytest.fixture
 def make_source():
-    def _make(*, has_raise=False, has_yield=False, has_docstring=True):
-        ...
+    def _make(*, has_raise=False, has_yield=False, has_docstring=True): ...
+
     return _make
 ```
 
@@ -103,11 +105,15 @@ def make_source():
 
 ### Parametrizing with IDs
 ```python
-@pytest.mark.parametrize("source, expected_sections", [
-    (SOURCE_WITH_RAISE, ["Raises"]),
-    (SOURCE_WITH_YIELD, ["Yields"]),
-    (SOURCE_WITH_KWARGS, ["Other Parameters"]),
-], ids=["raises", "yields", "kwargs"])
+@pytest.mark.parametrize(
+    "source, expected_sections",
+    [
+        (SOURCE_WITH_RAISE, ["Raises"]),
+        (SOURCE_WITH_YIELD, ["Yields"]),
+        (SOURCE_WITH_KWARGS, ["Other Parameters"]),
+    ],
+    ids=["raises", "yields", "kwargs"],
+)
 def test_enrichment_detects_missing_sections(source, expected_sections):
     findings = run_enrichment(source)
     assert [f.section for f in findings] == expected_sections

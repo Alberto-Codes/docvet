@@ -20,6 +20,7 @@ A changed signature means the function's calling contract has changed. Callers r
     # Before the diff:
     def fetch_data(url: str) -> dict: ...
 
+
     # After the diff (parameter added, docstring unchanged):
     def fetch_data(url: str, timeout: int = 30) -> dict:
         """Fetch data from a remote URL.

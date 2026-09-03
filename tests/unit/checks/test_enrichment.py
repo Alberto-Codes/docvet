@@ -475,7 +475,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    class_symbol = next(s for s in symbols if s.kind == "class")
     assert class_symbol.docstring is not None
     sections = _parse_sections(class_symbol.docstring)
     config = EnrichmentConfig()
@@ -499,7 +499,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -642,7 +642,7 @@ def foo(**kwargs):
     # Dynamically disable all boolean toggles so this test doesn't break
     # when new rules are added to EnrichmentConfig.
     config = EnrichmentConfig(
-        **{  # type: ignore[arg-type]
+        **{  # ty: ignore[invalid-argument-type]
             f.name: False
             for f in dataclasses.fields(EnrichmentConfig)
             if f.default is True
@@ -741,7 +741,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -764,7 +764,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    class_symbol = next(s for s in symbols if s.kind == "class")
     assert class_symbol.docstring is not None
     sections = _parse_sections(class_symbol.docstring)
     config = EnrichmentConfig()
@@ -928,7 +928,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -951,7 +951,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    class_symbol = next(s for s in symbols if s.kind == "class")
     assert class_symbol.docstring is not None
     sections = _parse_sections(class_symbol.docstring)
     config = EnrichmentConfig()
@@ -1134,7 +1134,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -1157,7 +1157,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    class_symbol = next(s for s in symbols if s.kind == "class")
     assert class_symbol.docstring is not None
     sections = _parse_sections(class_symbol.docstring)
     config = EnrichmentConfig()
@@ -1222,7 +1222,7 @@ def foo():
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    foo_symbol = [s for s in symbols if s.name == "foo"][0]
+    foo_symbol = next(s for s in symbols if s.name == "foo")
     assert foo_symbol.docstring is not None
     sections = _parse_sections(foo_symbol.docstring)
     config = EnrichmentConfig()
@@ -1348,7 +1348,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -1390,7 +1390,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    class_symbol = next(s for s in symbols if s.kind == "class")
     assert class_symbol.docstring is not None
     sections = _parse_sections(class_symbol.docstring)
     config = EnrichmentConfig()
@@ -1976,7 +1976,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -2007,7 +2007,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -2030,7 +2030,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -2090,7 +2090,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -2452,7 +2452,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -2768,7 +2768,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    method_symbol = [s for s in symbols if s.kind == "method"][0]
+    method_symbol = next(s for s in symbols if s.kind == "method")
     assert method_symbol.docstring is not None
     sections = _parse_sections(method_symbol.docstring)
     config = EnrichmentConfig(
@@ -2799,7 +2799,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig(
@@ -2832,7 +2832,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig(
@@ -2863,7 +2863,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig(
@@ -3234,7 +3234,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3261,7 +3261,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3296,7 +3296,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3323,7 +3323,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3350,7 +3350,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig(require_examples=[])
@@ -3393,7 +3393,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3496,7 +3496,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3523,7 +3523,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3623,7 +3623,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()
@@ -3654,7 +3654,7 @@ FOO = 42
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    module_symbol = [s for s in symbols if s.kind == "module"][0]
+    module_symbol = next(s for s in symbols if s.kind == "module")
     assert module_symbol.docstring is not None
     sections = _parse_sections(module_symbol.docstring)
     config = EnrichmentConfig()

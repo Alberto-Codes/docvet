@@ -56,6 +56,7 @@ class TestFixCliIntegration:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode in (0, 1)  # 1 = scaffold findings (expected)
         src = git_repo / "mod.py"
@@ -71,6 +72,7 @@ class TestFixCliIntegration:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         assert "--- a/" in result.stdout
@@ -85,6 +87,7 @@ class TestFixCliIntegration:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert fix_result.returncode in (0, 1)  # 1 = scaffold findings (expected)
         # Step 2: check
@@ -93,6 +96,7 @@ class TestFixCliIntegration:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "scaffold-incomplete" in result.stdout
         assert "missing-raises" not in result.stdout
@@ -129,6 +133,7 @@ class TestFixCliIntegration:
             cwd=git_repo,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode in (0, 1)  # 1 = scaffold findings (expected)
         # Staged file should have been fixed.

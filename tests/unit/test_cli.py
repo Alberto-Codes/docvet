@@ -2917,7 +2917,7 @@ class TestMcpSubcommand:
     def test_mcp_registered_as_typer_command(self):
         """Structural: 'mcp' is a registered command on the typer app."""
         click_app = typer.main.get_command(app)
-        assert "mcp" in click_app.list_commands(ctx=None)  # type: ignore[arg-type]
+        assert "mcp" in click_app.list_commands(ctx=None)  # ty: ignore[unresolved-attribute]
 
 
 # ---------------------------------------------------------------------------
@@ -3015,7 +3015,7 @@ class TestSummaryFlag:
         result = runner.invoke(app, ["--summary", "--format", "json", "check"])
         data = _extract_json(result.output)
         quality = data["quality"]
-        for check_name, cq in quality.items():
+        for cq in quality.values():
             assert "items_checked" in cq
             assert "items_with_findings" in cq
             assert "percentage" in cq

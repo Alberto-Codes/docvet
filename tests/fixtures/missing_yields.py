@@ -22,5 +22,4 @@ def stream_items(items: list[str]) -> Generator[str, None, None]:
     Args:
         items: List of items to stream.
     """
-    for item in items:
-        yield item
+    yield from items

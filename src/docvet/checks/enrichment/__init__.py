@@ -295,9 +295,7 @@ def _should_skip_reverse_check(node: _NodeT) -> bool:
     """
     if _is_abstract(node):
         return True
-    if _is_stub_function(node):
-        return True
-    return False
+    return bool(_is_stub_function(node))
 
 
 from ._class_module import (  # noqa: E402
@@ -432,7 +430,7 @@ def check_enrichment(
         A list of findings from all enabled enrichment rules. Returns an
         empty list when no issues are detected.
     """
-    global _active_style  # noqa: PLW0603
+    global _active_style
     _active_style = style
 
     symbols = get_documented_symbols(tree)
@@ -452,21 +450,20 @@ def check_enrichment(
                 and attr not in config.user_set_keys
             ):
                 continue
-            if getattr(config, attr):
-                if f := check_fn(symbol, sections, node_index, config, file_path):
-                    # Sphinx cross-ref: roles anywhere in body satisfy check.
-                    if (
-                        style == "sphinx"
-                        and attr == "require_cross_references"
-                        and _SPHINX_ROLE_PATTERN.search(symbol.docstring)
-                    ):
-                        continue
-                    findings.append(f)
-                    if attr == "prefer_fenced_code_blocks":
-                        pt = "doctest" if ">>>" in f.message else "rst"
-                        if extra := _check_fenced_code_blocks_extra(
-                            symbol, file_path, pt
-                        ):
-                            findings.append(extra)
+            if getattr(config, attr) and (
+                f := check_fn(symbol, sections, node_index, config, file_path)
+            ):
+                # Sphinx cross-ref: roles anywhere in body satisfy check.
+                if (
+                    style == "sphinx"
+                    and attr == "require_cross_references"
+                    and _SPHINX_ROLE_PATTERN.search(symbol.docstring)
+                ):
+                    continue
+                findings.append(f)
+                if attr == "prefer_fenced_code_blocks":
+                    pt = "doctest" if ">>>" in f.message else "rst"
+                    if extra := _check_fenced_code_blocks_extra(symbol, file_path, pt):
+                        findings.append(extra)
 
     return findings

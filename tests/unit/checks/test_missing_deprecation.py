@@ -337,11 +337,15 @@ class TestCheckMissingDeprecation:
         "nested_def",
         [
             "    def inner():\n        warnings.warn('old', DeprecationWarning)\n",
-            "    async def inner():\n"
-            "        warnings.warn('old', DeprecationWarning)\n",
-            "    class Inner:\n"
-            "        def method(self):\n"
-            "            warnings.warn('old', DeprecationWarning)\n",
+            (
+                "    async def inner():\n"
+                "        warnings.warn('old', DeprecationWarning)\n"
+            ),
+            (
+                "    class Inner:\n"
+                "        def method(self):\n"
+                "            warnings.warn('old', DeprecationWarning)\n"
+            ),
         ],
         ids=["sync-function", "async-function", "nested-class"],
     )
@@ -371,7 +375,7 @@ class TestCheckMissingDeprecation:
             '    """Do something."""\n'
             "    warnings.warn('old', DeprecationWarning)\n"
         )
-        symbol, node_index, tree = _make_symbol_and_index(source)
+        _symbol, _node_index, tree = _make_symbol_and_index(source)
         # With config disabled, orchestrator skips the rule.
         findings = check_enrichment(source, tree, _DISABLED_CONFIG, "test.py")
         deprecation_findings = [f for f in findings if f.rule == "missing-deprecation"]
@@ -387,7 +391,7 @@ class TestCheckMissingDeprecation:
         tree = ast.parse(source)
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        class_symbol = [s for s in symbols if s.kind == "class"][0]
+        class_symbol = next(s for s in symbols if s.kind == "class")
         assert class_symbol.docstring is not None
         sections = _parse_sections(class_symbol.docstring)
         finding = _check_missing_deprecation(
