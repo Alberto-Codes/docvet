@@ -27,7 +27,6 @@ import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TypeVar
 
 import typer
 
@@ -37,8 +36,6 @@ from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
 
 from . import DiscoveryMode, FreshnessMode
-
-V = TypeVar("V")
 
 
 @contextmanager

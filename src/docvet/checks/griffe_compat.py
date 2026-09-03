@@ -25,7 +25,7 @@ import re
 import types
 from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 if TYPE_CHECKING:
     from griffe import Alias as GriffeAlias
@@ -115,7 +115,8 @@ def _walk_objects(
 
     Skips alias objects (avoids AliasResolutionError), objects without
     docstrings (nothing to parse), and objects whose filepath is not in
-    the target file set.
+    the target file set. Past the alias guard each entry is cast to a
+    concrete ``Object`` so the yield type holds without an ignore.
 
     Args:
         obj: The root griffe object (typically a package or module).
@@ -129,9 +130,12 @@ def _walk_objects(
         current = stack.pop()
         if current.is_alias:
             continue
-        if current.docstring is not None and current.filepath in file_set:
-            yield current  # ty: ignore[invalid-yield]
-        stack.extend(current.members.values())
+        # ``is_alias`` is a runtime property ty cannot narrow on; past the
+        # guard, ``current`` is a concrete object.
+        obj_ = cast("GriffeObject", current)
+        if obj_.docstring is not None and obj_.filepath in file_set:
+            yield obj_
+        stack.extend(obj_.members.values())
 
 
 def _build_finding_from_record(
