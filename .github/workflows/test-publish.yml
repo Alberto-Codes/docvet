@@ -11,9 +11,13 @@ jobs:
       id-token: write
     environment: testpypi
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v10
+
+      # Pin the interpreter rather than trust the runner image, matching
+      # ci.yml.
+      - run: uv python install 3.12
 
       - name: Build package
         run: uv build --no-sources
@@ -29,12 +33,14 @@ jobs:
           echo "Wheel size: ${SIZE} bytes — OK"
 
           CONTENTS=$(unzip -l "$WHEEL")
-          if echo "$CONTENTS" | grep -q "tests/"; then
-            echo "::error::Wheel contains tests/ directory"
-            exit 1
-          fi
-          if echo "$CONTENTS" | grep -q "_bmad"; then
-            echo "::error::Wheel contains _bmad files"
+          for UNWANTED in "tests/" "docs/" "scripts/" "_bmad"; do
+            if echo "$CONTENTS" | grep -q "$UNWANTED"; then
+              echo "::error::Wheel contains ${UNWANTED}"
+              exit 1
+            fi
+          done
+          if ! echo "$CONTENTS" | grep -q "docvet/py.typed"; then
+            echo "::error::Wheel omits the py.typed marker"
             exit 1
           fi
           echo "Wheel contents clean — OK"

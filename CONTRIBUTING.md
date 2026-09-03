@@ -49,25 +49,30 @@ uv run docvet --help
 
 ## Pre-Commit Hooks
 
-docvet uses pre-commit hooks to catch issues before they reach CI. Pre-commit is not a project dependency -- if you don't have it yet, see the [install guide](https://pre-commit.com/#install). Then activate the hooks:
+docvet uses pre-commit hooks to catch issues before they reach CI. Pre-commit is not a project dependency -- if you don't have it yet, see the [install guide](https://pre-commit.com/#install). Then activate both hook stages:
 
 ```bash
-pre-commit install
+pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
 
-Seven hooks run automatically on each commit:
+Every Python tool runs through `uv run`, so the version pre-commit uses is the one pinned in `uv.lock` -- the same one CI installs. The commit stage runs the fast gates:
 
 | Hook | What it checks |
 |------|---------------|
-| yamllint | YAML syntax and formatting |
+| pre-commit-hooks | Trailing whitespace, final newlines, merge markers, large files |
 | actionlint | GitHub Actions workflow validity |
-| ruff-check | Python linting |
-| ruff-format | Python code formatting |
+| yamllint | YAML syntax and formatting |
+| ruff-check | Python linting (with auto-fix) |
+| ruff-format | Python formatting, including fenced code blocks in Markdown |
+| uv-lock | `uv.lock` is current with `pyproject.toml` |
 | ty | Type checking |
+| lint-imports | Import boundaries between check modules |
 | pytest | Full test suite |
 | docvet | Docstring quality on staged files |
 
-All hooks must pass before the commit succeeds. The docvet hook runs `docvet check --staged` with all four checks enforced, so docvet dogfoods itself on every commit.
+The push stage adds the slower gates: pytest with the coverage floor, and `uv audit` for dependency vulnerabilities.
+
+All hooks must pass before the commit succeeds. The docvet hook runs `docvet check --staged` with all checks enforced, so docvet dogfoods itself on every commit.
 
 ## Quality Gates
 
