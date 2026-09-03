@@ -44,7 +44,7 @@ class Documented:
 class Undocumented:
     pass
 '''
-        findings, stats = check_presence(source, "app.py", PresenceConfig())
+        findings, _stats = check_presence(source, "app.py", PresenceConfig())
 
         assert len(findings) == 2
         rules = {f.symbol for f in findings}
@@ -679,7 +679,7 @@ class UndocumentedClass:
         enrichment_config = EnrichmentConfig()
 
         # Presence: should find the undocumented symbols
-        presence_findings, stats = check_presence(source, "test.py", config)
+        presence_findings, _stats = check_presence(source, "test.py", config)
         undocumented_symbols = {f.symbol for f in presence_findings}
         assert "undocumented_func" in undocumented_symbols
         assert "UndocumentedClass" in undocumented_symbols

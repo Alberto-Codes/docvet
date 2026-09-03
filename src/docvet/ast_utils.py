@@ -360,15 +360,13 @@ def module_display_name(file_path: str) -> str:
     name = name.lstrip("/")
 
     # Drop .py extension.
-    if name.endswith(".py"):
-        name = name[: -len(".py")]
+    name = name.removesuffix(".py")
 
     # Convert path separators to dots.
     name = name.replace("/", ".")
 
     # Collapse trailing .__init__ to package name.
-    if name.endswith(".__init__"):
-        name = name[: -len(".__init__")]
+    name = name.removesuffix(".__init__")
 
     return name
 

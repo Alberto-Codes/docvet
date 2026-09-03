@@ -20,7 +20,7 @@ pytestmark = pytest.mark.unit
 
 def _run(source: str, **config_kwargs: object) -> list[Finding]:
     """Run presence check and return only overload-has-docstring findings."""
-    config = PresenceConfig(**config_kwargs)  # type: ignore[arg-type]
+    config = PresenceConfig(**config_kwargs)  # ty: ignore[invalid-argument-type]
     findings, _ = check_presence(textwrap.dedent(source), "test.py", config)
     return [f for f in findings if f.rule == "overload-has-docstring"]
 

@@ -27,7 +27,6 @@ import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TypeVar
 
 import typer
 
@@ -38,11 +37,9 @@ from docvet.config import DocvetConfig
 
 from . import DiscoveryMode, FreshnessMode
 
-V = TypeVar("V")
-
 
 @contextmanager
-def _maybe_progressbar(
+def _maybe_progressbar[V](
     items: Sequence[V],
     *,
     label: str,

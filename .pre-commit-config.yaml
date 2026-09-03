@@ -1,52 +1,101 @@
+# Local hooks run through `uv run`, so every tool version tracks uv.lock
+# rather than drifting from a separately pinned pre-commit revision.
+# Commit stage = fast gates; push stage = the coverage gate and the
+# dependency audit, run once before work leaves the machine.
+#
+# actionlint is a Go binary with no lockfile entry. CI pins the same
+# version this mirror does.
+default_stages: [pre-commit]
+
 repos:
-  - repo: https://github.com/adrienverge/yamllint
-    rev: v1.38.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-      - id: yamllint
-        args: [-c, .yamllint.yaml]
+      - id: end-of-file-fixer
+        exclude: ^(_bmad|_bmad-output)/
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^(_bmad|_bmad-output)/
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.11
+    rev: v1.7.12
     hooks:
       - id: actionlint
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.4
-    hooks:
-      - id: ruff-check
-      - id: ruff-format
-
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.10.7
-    hooks:
-      - id: uv-lock
-
   - repo: local
     hooks:
+      - id: yamllint
+        name: yamllint
+        entry: uv run yamllint -c .yamllint.yaml .
+        language: system
+        pass_filenames: false
+        types: [yaml]
+
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      # ruff 0.16 also formats fenced Python blocks in Markdown.
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, markdown]
+
+      - id: uv-lock
+        name: uv lock is current
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$
+
       - id: ty-check
-        name: ty type check
+        name: ty check
         entry: uv run ty check
         language: system
-        types: [python]
         pass_filenames: false
-
-      - id: pytest
-        name: pytest
-        entry: uv run pytest --tb=short -q
-        language: system
         types: [python]
-        pass_filenames: false
 
       - id: lint-imports
-        name: import-linter
+        name: import boundaries hold
         entry: uv run lint-imports
         language: system
-        types: [python]
         pass_filenames: false
+        types: [python]
+
+      - id: pytest
+        name: pytest (fast)
+        entry: uv run pytest --tb=short -q
+        language: system
+        pass_filenames: false
+        types: [python]
 
       - id: docvet
         name: docvet check
         entry: uv run docvet check --staged
         language: system
-        types: [python]
         pass_filenames: false
+        types: [python]
+
+      # ------------------------------------------------------------------- #
+      # pre-push: the slower gates, run once before work leaves the machine
+      # ------------------------------------------------------------------- #
+      - id: pytest-cov
+        name: pytest with coverage gate
+        entry: uv run pytest --cov=docvet --cov-report=term-missing -q
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        types: [python]
+
+      - id: uv-audit
+        name: dependency audit
+        entry: uv audit --preview-features audit-command
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

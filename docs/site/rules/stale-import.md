@@ -21,6 +21,7 @@ While import changes are often cosmetic, they can indicate dependency changes th
     # but docstring doesn't mention the change in behavior:
     from orjson import loads
 
+
     def parse_response(data: bytes) -> dict:
         """Parse a JSON response.
 
@@ -37,6 +38,7 @@ While import changes are often cosmetic, they can indicate dependency changes th
 
     ```python hl_lines="4"
     from orjson import loads
+
 
     def parse_response(data: bytes) -> dict:
         """Parse a JSON response using orjson.

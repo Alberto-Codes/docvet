@@ -416,6 +416,7 @@ Place a `# docvet: ignore-file[rule]` comment before the first `def` or `class`:
 ```python
 # docvet: ignore-file[missing-examples]
 
+
 def foo():
     """Does something."""
     ...
@@ -425,6 +426,7 @@ Suppress all rules for the entire file:
 
 ```python
 # docvet: ignore-file
+
 
 def foo():
     """Does something."""

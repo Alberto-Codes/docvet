@@ -176,7 +176,7 @@ class Foo:
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
     # Find __init__ symbol
-    init_symbol = [s for s in symbols if s.name == "__init__"][0]
+    init_symbol = next(s for s in symbols if s.name == "__init__")
     assert init_symbol.docstring is not None
     sections = _parse_sections(init_symbol.docstring)
     config = EnrichmentConfig()
@@ -203,7 +203,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    repr_symbol = [s for s in symbols if s.name == "__repr__"][0]
+    repr_symbol = next(s for s in symbols if s.name == "__repr__")
     assert repr_symbol.docstring is not None
     sections = _parse_sections(repr_symbol.docstring)
     config = EnrichmentConfig()
@@ -230,7 +230,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    len_symbol = [s for s in symbols if s.name == "__len__"][0]
+    len_symbol = next(s for s in symbols if s.name == "__len__")
     assert len_symbol.docstring is not None
     sections = _parse_sections(len_symbol.docstring)
     config = EnrichmentConfig()
@@ -255,7 +255,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    bool_symbol = [s for s in symbols if s.name == "__bool__"][0]
+    bool_symbol = next(s for s in symbols if s.name == "__bool__")
     assert bool_symbol.docstring is not None
     sections = _parse_sections(bool_symbol.docstring)
     config = EnrichmentConfig()
@@ -396,7 +396,7 @@ class Base:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    compute_symbol = [s for s in symbols if s.name == "compute"][0]
+    compute_symbol = next(s for s in symbols if s.name == "compute")
     assert compute_symbol.docstring is not None
     sections = _parse_sections(compute_symbol.docstring)
     config = EnrichmentConfig()
@@ -478,7 +478,7 @@ class Foo:
     tree = ast.parse(source)
     symbols = get_documented_symbols(tree)
     node_index = _build_node_index(tree)
-    class_symbol = [s for s in symbols if s.kind == "class"][0]
+    class_symbol = next(s for s in symbols if s.kind == "class")
     assert class_symbol.docstring is not None
     sections = _parse_sections(class_symbol.docstring)
     config = EnrichmentConfig()

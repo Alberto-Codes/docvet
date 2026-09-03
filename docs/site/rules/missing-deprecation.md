@@ -24,6 +24,7 @@ Users reading the documentation have no way to know the function is deprecated. 
     ```python
     import warnings
 
+
     def connect(host: str) -> Connection:
         """Connect to the server.
 
@@ -45,6 +46,7 @@ Users reading the documentation have no way to know the function is deprecated. 
 
     ```python hl_lines="5 6"
     import warnings
+
 
     def connect(host: str) -> Connection:
         """Connect to the server.

@@ -206,7 +206,7 @@ class TestMkdocsNavConsistency:
 
     def test_all_nav_entries_exist_on_disk(self) -> None:
         """Every .md path in mkdocs.yml nav has a file on disk."""
-        mkdocs = yaml.load(  # noqa: S506
+        mkdocs = yaml.load(
             _MKDOCS_PATH.read_text(encoding="utf-8"), Loader=_MkdocsLoader
         )
         nav = mkdocs.get("nav", [])

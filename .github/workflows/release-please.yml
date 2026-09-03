@@ -4,21 +4,28 @@ on:
   push:
     branches: [main]
 
+# Least-privilege: read-only by default. Each job escalates for itself.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      HAS_PAT: ${{ secrets.RELEASE_PLEASE_TOKEN != '' }}
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
       upload_url: ${{ steps.release.outputs.upload_url }}
       prs_created: ${{ steps.release.outputs.prs_created }}
-      pr_branch: ${{ steps.release.outputs.prs_created == 'true' && fromJSON(steps.release.outputs.pr).headBranchName || '' }}
+      pr_branch: >-
+        ${{ steps.release.outputs.prs_created == 'true'
+        && fromJSON(steps.release.outputs.pr).headBranchName || '' }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
@@ -26,19 +33,37 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # publish.yml fires on the tag push. A tag pushed with GITHUB_TOKEN
+      # never triggers another workflow, so a release cut without the PAT
+      # would silently skip PyPI. Fail rather than report a success that
+      # is only partly true.
+      - name: Fail a release cut without the PAT
+        if: steps.release.outputs.release_created == 'true' && env.HAS_PAT != 'true'
+        run: |
+          echo "::error::Released ${{ steps.release.outputs.tag_name }} with \
+          GITHUB_TOKEN. The tag will not trigger publish.yml. Set \
+          RELEASE_PLEASE_TOKEN, then push the tag by hand."
+          exit 1
+
   update-lockfile:
     needs: release-please
     if: needs.release-please.outputs.prs_created == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout release-please PR branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           ref: ${{ needs.release-please.outputs.pr_branch }}
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v10.0.1
+
+      # Pin the interpreter rather than trust the runner image, matching
+      # ci.yml.
+      - run: uv python install 3.12
 
       - name: Update uv.lock
         run: uv lock --upgrade-package docvet

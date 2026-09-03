@@ -110,5 +110,4 @@ def generate_numbers(n: int) -> Generator[int, None, None]:
     See Also:
         [`process`][]
     """
-    for i in range(n):
-        yield i
+    yield from range(n)

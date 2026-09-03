@@ -201,7 +201,7 @@ def _publish_diagnostics(
         uri: The document URI.
         source: The full document text.
     """
-    config: DocvetConfig = ls.docvet_config  # type: ignore[attr-defined]
+    config: DocvetConfig = ls.docvet_config  # ty: ignore[unresolved-attribute]
     diagnostics = _check_file(ls, uri, source, config)
     ls.text_document_publish_diagnostics(
         types.PublishDiagnosticsParams(
@@ -274,5 +274,5 @@ def start_server() -> None:
         start_server()
         ```
     """
-    server.docvet_config = load_config()  # type: ignore[attr-defined]
+    server.docvet_config = load_config()  # ty: ignore[unresolved-attribute]
     server.start_io()

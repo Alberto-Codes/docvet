@@ -49,7 +49,9 @@ dependencies = [
 
 [project.optional-dependencies]
 griffe = [
-    "griffe>=1.0,<2",
+    # The `griffe` distribution became a hollow shim at 1.15; the code
+    # lives in `griffelib` 2.x and still imports as `griffe`.
+    "griffelib>=2.2,<3",
 ]
 lsp = [
     "pygls>=2.0,<3",
@@ -96,10 +98,26 @@ explicit = true
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-exclude = [".venv", "__pycache__", "*.egg-info", ".github/test-fixtures"]
+# pre-commit passes explicit paths; honour `exclude` for those too.
+force-exclude = true
+exclude = [
+    ".venv",
+    "__pycache__",
+    "*.egg-info",
+    ".github/test-fixtures",
+    # Vendored BMAD framework and its artifacts hold pseudo-Python in
+    # Markdown; ruff 0.16 formats fenced code blocks by default.
+    "_bmad",
+    "_bmad-output",
+]
 
 [tool.ruff.lint]
-extend-select = ["E501", "I", "D"]
+extend-select = [
+    "E402",  # ruff 0.16.0 dropped it from the default set — keep it on
+    "E501",
+    "I",
+    "D",
+]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 100
@@ -183,7 +201,7 @@ modules = [
 # --------------------------------------------------------------------------- #
 [dependency-groups]
 dev = [
-    "griffe>=1.0,<2",
+    "griffelib>=2.2,<3",
     "mcp>=1.6,<2",
     "pygls>=2.0,<3",
     "pyyaml>=6.0",
@@ -195,4 +213,7 @@ dev = [
     "ruff>=0.11",
     "ty>=0.0.1a33",
     "import-linter>=2.11",
+    # Runs from the lockfile in both pre-commit and CI, so one version
+    # serves both gates.
+    "yamllint>=1.38",
 ]

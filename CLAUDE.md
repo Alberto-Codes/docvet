@@ -132,7 +132,7 @@ Hard-won lessons from the v1.0.0 launch — reference these when modifying workf
 - **OIDC token exchange**: Use `uv publish --index testpypi`, NOT `--publish-url`. The `--publish-url` flag only sets the upload endpoint but mints the OIDC token against PyPI (wrong audience for TestPyPI), causing 503 errors.
 - **TestPyPI index config**: `uv publish --index` requires the index to be defined in `pyproject.toml` with `publish-url`. Without it, uv doesn't know where to upload.
 - **Explicit permissions**: When declaring `permissions:` in a workflow, all unmentioned permissions default to `none`. Always include `contents: read` alongside `id-token: write` or checkout will fail.
-- **attest-action version**: `astral-sh/attest-action@v1` does not exist. Pin to a specific version (currently `@v0.0.4`).
+- **attest-action version**: `astral-sh/attest-action@v1` does not exist. Pin to a specific version (currently `@v0.0.6`).
 
 ## Conventional Commits
 

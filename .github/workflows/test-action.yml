@@ -8,7 +8,7 @@ jobs:
     name: Test annotations (findings expected)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Copy fixture into src/ so docvet --all discovers it
       - name: Stage test fixture for discovery
         run: cp .github/test-fixtures/bad_docstrings.py src/docvet/_test_fixture.py
@@ -24,7 +24,7 @@ jobs:
     name: Test selective checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Stage test fixture for discovery
         run: cp .github/test-fixtures/bad_docstrings.py src/docvet/_test_fixture.py
         shell: bash
@@ -41,7 +41,7 @@ jobs:
     name: Test clean run (zero findings)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # coverage check on a well-structured repo = 0 findings
       # extend-exclude is intact, so fixture is excluded
       - uses: ./
@@ -52,7 +52,7 @@ jobs:
     name: Test version pinning
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./
         with:
           docvet-version: "1.9.0"
@@ -65,7 +65,7 @@ jobs:
     name: Test Python version selection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./
         with:
           python-version: "3.13"

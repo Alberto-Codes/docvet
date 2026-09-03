@@ -420,6 +420,7 @@ class TestImportErrorGuard:
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
         assert result.returncode == 0, f"stdout={result.stdout} stderr={result.stderr}"
         assert "OK" in result.stdout
@@ -620,7 +621,7 @@ class TestRunChecks:
         assert errors == []
 
     def test_with_presence_check(self, py_file: Path, config: DocvetConfig):
-        findings, stats, errors = _run_checks(
+        _findings, stats, _errors = _run_checks(
             [py_file], config, frozenset(["presence"])
         )
 
@@ -631,7 +632,7 @@ class TestRunChecks:
     def test_enrichment_check_produces_findings(
         self, py_file: Path, config: DocvetConfig
     ):
-        findings, stats, errors = _run_checks(
+        findings, stats, _errors = _run_checks(
             [py_file], config, frozenset(["enrichment"])
         )
 

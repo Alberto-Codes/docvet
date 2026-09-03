@@ -257,7 +257,4 @@ def _is_suppressed(finding: Finding, suppression: SuppressionMap) -> bool:
     if line_rules is None and finding.line in suppression.line_directives:
         # None entry = blanket suppression for that line
         return True
-    if line_rules is not None and finding.rule in line_rules:
-        return True
-
-    return False
+    return bool(line_rules is not None and finding.rule in line_rules)

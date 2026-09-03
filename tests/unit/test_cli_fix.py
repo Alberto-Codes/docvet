@@ -40,7 +40,7 @@ class TestRunFix:
         from docvet.cli._runners import _run_fix
 
         config = DocvetConfig(project_root=tmp_path)
-        findings, modified, sections, diffs = _run_fix([src], config)
+        _findings, modified, sections, diffs = _run_fix([src], config)
         assert modified == 1
         assert sections >= 1
         assert "Raises:" in src.read_text()
@@ -65,7 +65,7 @@ class TestRunFix:
         from docvet.cli._runners import _run_fix
 
         config = DocvetConfig(project_root=tmp_path)
-        findings, modified, sections, diffs = _run_fix([src], config)
+        _findings, modified, sections, _diffs = _run_fix([src], config)
         assert modified == 0
         assert sections == 0
         assert src.read_text() == original
@@ -83,7 +83,7 @@ class TestRunFix:
         from docvet.cli._runners import _run_fix
 
         config = DocvetConfig(project_root=tmp_path)
-        findings, modified, sections, diffs = _run_fix([src], config, dry_run=True)
+        _findings, modified, _sections, diffs = _run_fix([src], config, dry_run=True)
         assert modified == 1
         assert len(diffs) == 1
         assert src.read_text() == original  # not modified
@@ -95,7 +95,7 @@ class TestRunFix:
         from docvet.cli._runners import _run_fix
 
         config = DocvetConfig(project_root=tmp_path)
-        findings, modified, sections, diffs = _run_fix([src], config)
+        findings, modified, _sections, _diffs = _run_fix([src], config)
         assert modified == 0
         assert len(findings) == 0
 
@@ -113,7 +113,7 @@ class TestRunFix:
         from docvet.cli._runners import _run_fix
 
         config = DocvetConfig(project_root=tmp_path)
-        findings, modified, sections, diffs = _run_fix([src], config)
+        findings, _modified, _sections, _diffs = _run_fix([src], config)
         scaffold = [f for f in findings if f.category == "scaffold"]
         assert len(scaffold) >= 1
         assert all(f.rule == "scaffold-incomplete" for f in scaffold)
@@ -123,7 +123,7 @@ class TestRunFix:
         from docvet.cli._runners import _run_fix
 
         config = DocvetConfig()
-        findings, modified, sections, diffs = _run_fix([], config)
+        findings, modified, sections, _diffs = _run_fix([], config)
         assert modified == 0
         assert sections == 0
         assert len(findings) == 0
@@ -154,7 +154,9 @@ class TestRunFix:
         from docvet.cli._runners import _run_fix
 
         config = DocvetConfig(project_root=tmp_path)
-        findings, modified, sections, diffs = _run_fix([incomplete, complete], config)
+        _findings, modified, _sections, _diffs = _run_fix(
+            [incomplete, complete], config
+        )
         assert modified == 1
         assert complete.read_text() == complete_text
 

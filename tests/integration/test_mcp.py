@@ -149,7 +149,7 @@ async def _call_tool(
         timeout=_SERVER_TIMEOUT,
     )
     content_block = result.content[0]
-    return json.loads(content_block.text)  # type: ignore[union-attr]
+    return json.loads(content_block.text)  # ty: ignore[unresolved-attribute]
 
 
 # ---------------------------------------------------------------------------
@@ -164,16 +164,16 @@ class TestDocvetCheck:
         """3.2: docvet_check returns findings and summary keys."""
 
         async def _run():
-            async with stdio_client(_server_params()) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await asyncio.wait_for(
-                        session.initialize(), timeout=_SERVER_TIMEOUT
-                    )
-                    return await _call_tool(
-                        session,
-                        "docvet_check",
-                        {"path": str(undocumented_file.parent)},
-                    )
+            async with (
+                stdio_client(_server_params()) as (read, write),
+                ClientSession(read, write) as session,
+            ):
+                await asyncio.wait_for(session.initialize(), timeout=_SERVER_TIMEOUT)
+                return await _call_tool(
+                    session,
+                    "docvet_check",
+                    {"path": str(undocumented_file.parent)},
+                )
 
         content = asyncio.run(_run())
         assert "findings" in content
@@ -184,16 +184,16 @@ class TestDocvetCheck:
         """3.6: docvet_check on a well-documented file returns zero findings."""
 
         async def _run():
-            async with stdio_client(_server_params()) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await asyncio.wait_for(
-                        session.initialize(), timeout=_SERVER_TIMEOUT
-                    )
-                    return await _call_tool(
-                        session,
-                        "docvet_check",
-                        {"path": str(documented_file.parent)},
-                    )
+            async with (
+                stdio_client(_server_params()) as (read, write),
+                ClientSession(read, write) as session,
+            ):
+                await asyncio.wait_for(session.initialize(), timeout=_SERVER_TIMEOUT)
+                return await _call_tool(
+                    session,
+                    "docvet_check",
+                    {"path": str(documented_file.parent)},
+                )
 
         content = asyncio.run(_run())
         assert content["summary"]["total"] == 0
@@ -203,19 +203,19 @@ class TestDocvetCheck:
         """3.7: docvet_check with explicit checks parameter filters results."""
 
         async def _run():
-            async with stdio_client(_server_params()) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await asyncio.wait_for(
-                        session.initialize(), timeout=_SERVER_TIMEOUT
-                    )
-                    return await _call_tool(
-                        session,
-                        "docvet_check",
-                        {
-                            "path": str(undocumented_file.parent),
-                            "checks": ["presence"],
-                        },
-                    )
+            async with (
+                stdio_client(_server_params()) as (read, write),
+                ClientSession(read, write) as session,
+            ):
+                await asyncio.wait_for(session.initialize(), timeout=_SERVER_TIMEOUT)
+                return await _call_tool(
+                    session,
+                    "docvet_check",
+                    {
+                        "path": str(undocumented_file.parent),
+                        "checks": ["presence"],
+                    },
+                )
 
         content = asyncio.run(_run())
         assert "findings" in content
@@ -232,12 +232,12 @@ class TestDocvetRules:
         """3.3: docvet_rules returns all 32 rules with required fields."""
 
         async def _run():
-            async with stdio_client(_server_params()) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await asyncio.wait_for(
-                        session.initialize(), timeout=_SERVER_TIMEOUT
-                    )
-                    return await _call_tool(session, "docvet_rules")
+            async with (
+                stdio_client(_server_params()) as (read, write),
+                ClientSession(read, write) as session,
+            ):
+                await asyncio.wait_for(session.initialize(), timeout=_SERVER_TIMEOUT)
+                return await _call_tool(session, "docvet_rules")
 
         content = asyncio.run(_run())
         assert "rules" in content
@@ -276,16 +276,16 @@ class TestResponseParity:
 
         # Run MCP check
         async def _run():
-            async with stdio_client(_server_params()) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await asyncio.wait_for(
-                        session.initialize(), timeout=_SERVER_TIMEOUT
-                    )
-                    return await _call_tool(
-                        session,
-                        "docvet_check",
-                        {"path": str(project_dir)},
-                    )
+            async with (
+                stdio_client(_server_params()) as (read, write),
+                ClientSession(read, write) as session,
+            ):
+                await asyncio.wait_for(session.initialize(), timeout=_SERVER_TIMEOUT)
+                return await _call_tool(
+                    session,
+                    "docvet_check",
+                    {"path": str(project_dir)},
+                )
 
         mcp_data = asyncio.run(_run())
 
@@ -322,14 +322,14 @@ class TestCleanShutdown:
         """3.5: Server shuts down cleanly when client disconnects."""
 
         async def _run():
-            async with stdio_client(_server_params()) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await asyncio.wait_for(
-                        session.initialize(), timeout=_SERVER_TIMEOUT
-                    )
-                    # Call a tool to confirm server is working
-                    await _call_tool(session, "docvet_rules")
-                    # Session and client exit cleanly via context managers
+            async with (
+                stdio_client(_server_params()) as (read, write),
+                ClientSession(read, write) as session,
+            ):
+                await asyncio.wait_for(session.initialize(), timeout=_SERVER_TIMEOUT)
+                # Call a tool to confirm server is working
+                await _call_tool(session, "docvet_rules")
+                # Session and client exit cleanly via context managers
             # If we get here without error, the server shut down cleanly
             return True
 

@@ -176,11 +176,10 @@ def _matches_double_star(normalized: str, pattern: str) -> bool:
         return True
     if pattern.startswith("**/") and fnmatch.fnmatch(normalized, pattern[3:]):
         return True
-    if "/**/" in pattern and fnmatch.fnmatch(
-        normalized, pattern.replace("/**/", "/", 1)
-    ):
-        return True
-    return False
+    return bool(
+        "/**/" in pattern
+        and fnmatch.fnmatch(normalized, pattern.replace("/**/", "/", 1))
+    )
 
 
 def _is_excluded(rel_path: str, exclude: list[str]) -> bool:

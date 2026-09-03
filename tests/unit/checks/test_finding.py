@@ -45,7 +45,7 @@ def test_finding_is_frozen_raises_on_mutation():
     )
 
     with pytest.raises(FrozenInstanceError):
-        finding.rule = "different-rule"  # type: ignore[misc]
+        finding.rule = "different-rule"  # ty: ignore[invalid-assignment]
 
 
 def test_finding_is_hashable():
@@ -268,5 +268,5 @@ def test_finding_rejects_invalid_category():
             symbol="test",
             rule="missing-raises",
             message="test message",
-            category="invalid",  # type: ignore[arg-type]
+            category="invalid",  # ty: ignore[invalid-argument-type]
         )

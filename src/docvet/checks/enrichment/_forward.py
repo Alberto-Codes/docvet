@@ -175,9 +175,7 @@ def _is_meaningful_return(node: ast.Return) -> bool:
     """
     if node.value is None:
         return False
-    if isinstance(node.value, ast.Constant) and node.value.value is None:
-        return False
-    return True
+    return not (isinstance(node.value, ast.Constant) and node.value.value is None)
 
 
 def _is_property(node: _NodeT) -> bool:
@@ -347,9 +345,7 @@ def _should_skip_returns_check(
     if _is_stub_function(node):
         return True
     # @overload (defensive — 34.4 owns overload detection)
-    if _has_decorator(node, "overload"):
-        return True
-    return False
+    return bool(_has_decorator(node, "overload"))
 
 
 def _check_missing_returns(

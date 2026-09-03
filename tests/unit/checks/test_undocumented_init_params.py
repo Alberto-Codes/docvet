@@ -302,7 +302,7 @@ def test_sphinx_param_in_class_docstring_no_finding():
             self.host = host
             self.port = port
     '''
-    symbol, sections, node_index = _make_class_symbol_and_index(source)
+    symbol, _sections, node_index = _make_class_symbol_and_index(source)
     # Sphinx mode: _parse_sections maps :param -> "Args"
     sphinx_sections = _parse_sections(symbol.docstring, style="sphinx")
     config = EnrichmentConfig(require_init_params=True)

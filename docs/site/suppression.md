@@ -34,6 +34,7 @@ Place a comment before the first `def` or `class`:
 ```python
 # docvet: ignore-file[missing-examples]
 
+
 def helper():
     """Internal helper — examples not needed."""
     ...
@@ -75,9 +76,11 @@ The suppression comment must be on the **`def`/`class` keyword line** — the sa
 
 These are all equivalent:
 
+<!-- fmt:off -->
 ```python
 # docvet: ignore[missing-raises]
 #docvet:ignore[missing-raises]
 #  docvet:  ignore[missing-raises]
 # docvet: ignore[ missing-raises ]
 ```
+<!-- fmt:on -->

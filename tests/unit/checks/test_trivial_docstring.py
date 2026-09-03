@@ -291,7 +291,7 @@ class TestTrivialDocstringEdgeCases:
 
         symbols = get_documented_symbols(tree)
         node_index = _build_node_index(tree)
-        mod_symbol = [s for s in symbols if s.kind == "module"][0]
+        mod_symbol = next(s for s in symbols if s.kind == "module")
         assert mod_symbol.docstring is not None
         sections = _parse_sections(mod_symbol.docstring)
         result = _check_trivial_docstring(

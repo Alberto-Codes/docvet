@@ -25,7 +25,7 @@ from __future__ import annotations
 import ast
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from docvet.ast_utils import Symbol, map_lines_to_symbols, module_display_name
@@ -442,8 +442,8 @@ def _build_drift_finding(
     """
     code_max = max(code_ts)
     doc_max = max(doc_ts)
-    code_date = datetime.fromtimestamp(code_max, tz=timezone.utc).date().isoformat()
-    doc_date = datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
+    code_date = datetime.fromtimestamp(code_max, tz=UTC).date().isoformat()
+    doc_date = datetime.fromtimestamp(doc_max, tz=UTC).date().isoformat()
     days = (code_max - doc_max) // 86400
     kind = sym.kind.capitalize()
     display = module_display_name(file_path) if sym.kind == "module" else sym.name
@@ -472,7 +472,7 @@ def _build_age_finding(
         An age finding with the last-modified date and day count.
     """
     doc_max = max(doc_ts)
-    doc_date = datetime.fromtimestamp(doc_max, tz=timezone.utc).date().isoformat()
+    doc_date = datetime.fromtimestamp(doc_max, tz=UTC).date().isoformat()
     days = (effective_now - doc_max) // 86400
     kind = sym.kind.capitalize()
     display = module_display_name(file_path) if sym.kind == "module" else sym.name
