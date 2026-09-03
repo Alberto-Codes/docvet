@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.2](https://github.com/Alberto-Codes/docvet/compare/v1.15.1...v1.15.2) (2026-09-03)
+
+
+### Bug Fixes
+
+* **griffe:** depend on griffelib 2.x instead of the hollow griffe 1.15 shim ([74779e7](https://github.com/Alberto-Codes/docvet/commit/74779e7e4649a88a0b0f7225d42d1e5b685c73ad))
+
+
+### Documentation
+
+* **contributing:** list chore and refactor issue templates ([939fceb](https://github.com/Alberto-Codes/docvet/commit/939fceb247813afbf99339b3ff4c60a39ec6cfa2))
+
 ## [1.15.1](https://github.com/Alberto-Codes/docvet/compare/v1.15.0...v1.15.1) (2026-05-08)
 
 
