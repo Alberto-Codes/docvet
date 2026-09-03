@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
       - run: uv python install 3.12
@@ -43,7 +43,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
       - run: uv python install 3.12
@@ -63,7 +63,7 @@ jobs:
         python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           cache-suffix: ${{ matrix.os }}-py${{ matrix.python-version }}

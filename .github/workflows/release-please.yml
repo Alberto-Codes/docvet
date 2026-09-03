@@ -59,7 +59,7 @@ jobs:
           ref: ${{ needs.release-please.outputs.pr_branch }}
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.0.1
 
       # Pin the interpreter rather than trust the runner image, matching
       # ci.yml.
