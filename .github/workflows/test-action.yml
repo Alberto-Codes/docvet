@@ -42,9 +42,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # Only griffe faults this fixture, so the exit code separates a griffe
-      # check that ran from one skipped for a missing extra. Installing plain
-      # docvet makes this job pass with exit 0 and no findings.
+      # Proves the action installs the griffe extra. Two things are
+      # load-bearing and must not be dropped:
+      #   - checks: "griffe" below. The fixture is not griffe-only —
+      #     enrichment also reports extra-param-in-docstring on it — so
+      #     without this input the job would exit non-zero on enrichment
+      #     alone even with griffe uninstalled, a false green.
+      #   - fail-on in this repo's [tool.docvet] lists griffe, which is what
+      #     turns griffe findings into exit 1. Drop griffe from fail-on and
+      #     this job becomes a no-op that passes for the wrong reason.
+      # With plain docvet the griffe check is skipped, docvet exits 0, the
+      # docvet-run step succeeds, and the verify step below fails the job.
       - name: Stage griffe fixture for discovery
         run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
         shell: bash

@@ -1,10 +1,14 @@
-"""Test fixture whose docstring fault only the griffe check can see.
+"""Test fixture that makes the griffe check report a required finding.
 
 The ``phantom`` entry below documents a parameter the signature does not
 have. Griffe's Google-style parser warns about it while loading the
-module, which docvet reports as ``griffe-unknown-param``. No other check
-inspects a docstring against its signature this way, so a finding here
-proves the griffe check actually ran rather than being skipped.
+module, which docvet reports as ``griffe-unknown-param`` (required).
+
+This fault is not griffe's alone: the enrichment check independently
+reports ``extra-param-in-docstring`` on the same function. So a finding
+here does not by itself prove griffe ran. The ``test-griffe`` job in
+``.github/workflows/test-action.yml`` gets that proof from its
+``checks: "griffe"`` input, which runs the griffe subcommand on its own.
 """
 
 
