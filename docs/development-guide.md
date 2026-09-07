@@ -139,8 +139,9 @@ Examples:
   `cwd` the call already passes. Git exports `GIT_DIR` and `GIT_INDEX_FILE` into hook
   processes and those override `cwd`, so without this the suite — which the `pre-push`
   hook runs — would drive tests against the repository being pushed instead of the
-  `tmp_path` repo, failing and rewriting the real index. Tests must therefore pass `cwd`
-  rather than rely on ambient git variables. Regression test:
+  `tmp_path` repo: the tests fail, the real index is rewritten, and fixture `git config`
+  calls write `core.worktree` and a test identity into the real repository. Tests must
+  therefore pass `cwd` rather than rely on ambient git variables. Regression test:
   `tests/integration/test_git_env_isolation.py`
 
 ## Code Style
