@@ -77,6 +77,30 @@ jobs:
           jq -e '.findings[] | select(.rule == "griffe-unknown-param")' griffe-findings.json
         shell: bash
 
+  test-griffe-available-by-default:
+    name: Test griffe is installed on the default path
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Do not delete this job as redundant. It is deliberately the only one
+      # that runs the action on its documented default — no inputs, so
+      # checks "all" — and asserts griffe is there. Every other griffe
+      # assertion in this workflow passes an explicit checks: "griffe", so
+      # they would all stay green if someone made the extra conditional on
+      # the checks list (the "don't pay for what you don't run" edit that
+      # will eventually be proposed), while checks: "all" silently stopped
+      # installing griffe. That is exactly the defect this workflow exists
+      # to catch: a consumer taking the default and losing the check without
+      # being told. The install step is unconditional today, so this job
+      # proves nothing new right now — it is a guard against that one edit.
+      # continue-on-error keeps the griffe assertion from riding on the repo
+      # being finding-free under every other check.
+      - uses: ./
+        continue-on-error: true
+      - name: Verify griffe is importable
+        run: python -c "import griffe"
+        shell: bash
+
   test-clean:
     name: Test clean run (zero findings)
     runs-on: ubuntu-latest
