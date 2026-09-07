@@ -134,6 +134,14 @@ Examples:
 - **Global fixtures:** `tests/conftest.py` (available to all tests)
 - **Integration fixtures:** `tests/integration/conftest.py` (git-only, never in root conftest)
 - **File fixtures:** `tests/fixtures/*.py` (known docstring issues)
+- **Git environment isolation:** an autouse fixture in `tests/conftest.py` strips every
+  inherited `GIT_*` variable, so each `git` subprocess resolves its repository from the
+  `cwd` the call already passes. Git exports `GIT_DIR` and `GIT_INDEX_FILE` into hook
+  processes and those override `cwd`, so without this the suite — which the `pre-push`
+  hook runs — would drive tests against the repository being pushed instead of the
+  `tmp_path` repo, failing and rewriting the real index. Tests must therefore pass `cwd`
+  rather than rely on ambient git variables. Regression test:
+  `tests/integration/test_git_env_isolation.py`
 
 ## Code Style
 
