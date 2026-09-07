@@ -50,7 +50,8 @@ jobs:
       #     alone even with griffe uninstalled, a false green.
       #   - fail-on in this repo's [tool.docvet] lists griffe, which is what
       #     turns griffe findings into exit 1. Drop griffe from fail-on and
-      #     this job becomes a no-op that passes for the wrong reason.
+      #     docvet exits 0 whether or not griffe is installed, so this job
+      #     goes red either way and stops telling the two apart.
       # With plain docvet the griffe check is skipped, docvet exits 0, the
       # docvet-run step succeeds, and the verify step below fails the job.
       - name: Stage griffe fixture for discovery
