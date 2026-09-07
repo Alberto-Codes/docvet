@@ -42,7 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # Proves the action installs the griffe extra. Two things are
+      # Proves the griffe check actually ran and faulted the fixture, and
+      # that the action turns that into a non-zero exit. Three things are
       # load-bearing and must not be dropped:
       #   - checks: "griffe" below. The fixture is not griffe-only —
       #     enrichment also reports extra-param-in-docstring on it — so
@@ -52,8 +53,10 @@ jobs:
       #     turns griffe findings into exit 1. Drop griffe from fail-on and
       #     docvet exits 0 whether or not griffe is installed, so this job
       #     goes red either way and stops telling the two apart.
-      # With plain docvet the griffe check is skipped, docvet exits 0, the
-      # docvet-run step succeeds, and the verify step below fails the job.
+      #   - the griffe-unknown-param assertion. Exit code alone cannot tell
+      #     "the check ran and faulted the fixture" from "docvet crashed
+      #     before checking anything": both surface as outcome = failure.
+      #     Only griffe produces that rule, and a crash emits no findings.
       - name: Stage griffe fixture for discovery
         run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
         shell: bash
@@ -64,6 +67,11 @@ jobs:
         id: docvet-run
       - name: Verify non-zero exit (griffe findings expected)
         run: test "${{ steps.docvet-run.outcome }}" = "failure"
+        shell: bash
+      - name: Verify the griffe check reported griffe-unknown-param
+        run: |
+          docvet --format json griffe --all > griffe-findings.json || true
+          jq -e '.findings[] | select(.rule == "griffe-unknown-param")' griffe-findings.json
         shell: bash
 
   test-clean:
@@ -93,8 +101,8 @@ jobs:
       # there as well. docvet 1.9.0 declares the extra as griffe>=1.0,<2,
       # which resolves to griffe 1.15.0 — the last real 1.x release, before
       # the distribution became a meta-package at 2.0.0. Same shape as
-      # test-griffe: checks "griffe" isolates the rendering findings, and
-      # griffe in this repo's fail-on turns them into a non-zero exit.
+      # test-griffe, including the griffe-unknown-param assertion that a
+      # crash cannot satisfy; see that job for why each piece is load-bearing.
       - name: Stage griffe fixture for discovery
         run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
         shell: bash
@@ -106,6 +114,11 @@ jobs:
         id: docvet-griffe-run
       - name: Verify non-zero exit (griffe findings expected on the pinned path)
         run: test "${{ steps.docvet-griffe-run.outcome }}" = "failure"
+        shell: bash
+      - name: Verify the pinned griffe check reported griffe-unknown-param
+        run: |
+          docvet --format json griffe --all > griffe-findings.json || true
+          jq -e '.findings[] | select(.rule == "griffe-unknown-param")' griffe-findings.json
         shell: bash
 
   test-python-version:

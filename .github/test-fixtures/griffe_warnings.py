@@ -6,9 +6,11 @@ module, which docvet reports as ``griffe-unknown-param`` (required).
 
 This fault is not griffe's alone: the enrichment check independently
 reports ``extra-param-in-docstring`` on the same function. So a finding
-here does not by itself prove griffe ran. The ``test-griffe`` job in
-``.github/workflows/test-action.yml`` gets that proof from its
-``checks: "griffe"`` input, which runs the griffe subcommand on its own.
+here does not by itself prove griffe ran. Every job in
+``.github/workflows/test-action.yml`` that stages this fixture gets that
+proof by passing ``checks: "griffe"``, which runs the griffe subcommand
+on its own, and by asserting on the ``griffe-unknown-param`` rule that
+only griffe reports. Keep both in any job added later.
 """
 
 
