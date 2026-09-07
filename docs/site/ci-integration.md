@@ -67,7 +67,9 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
 
 === "With griffe"
 
-    Install griffe before running docvet to enable rendering compatibility checks:
+    The rendering compatibility check needs no extra setup. The action
+    installs `docvet[griffe]`, so griffe runs whether it is selected
+    explicitly or reached through the default `checks: 'all'`:
 
     ```yaml
     jobs:
@@ -75,12 +77,18 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v6
-          - uses: actions/setup-python@v6
-            with:
-              python-version: '3.12'
-          - run: pip install griffe
           - uses: Alberto-Codes/docvet@v1
+            with:
+              checks: 'griffe'
     ```
+
+    !!! warning "Behavior change"
+
+        Earlier releases installed plain `docvet`, which has no griffe
+        dependency, so the griffe check was skipped and the run still
+        reported success. A workflow that never added its own
+        `pip install griffe` may now report griffe findings for the first
+        time. Those are the check finally running, not new problems.
 
 ### Outputs
 

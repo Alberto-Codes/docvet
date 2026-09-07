@@ -52,10 +52,13 @@ runs:
           DOCVET_VERSION="${{ inputs.version }}"
         fi
 
+        # The griffe extra is not optional here: the `checks` input offers
+        # griffe and defaults to "all", and docvet skips that check without
+        # a warning the caller ever sees when griffe is not importable.
         if [ "$DOCVET_VERSION" = "latest" ]; then
-          pip install docvet
+          pip install "docvet[griffe]"
         else
-          pip install "docvet==$DOCVET_VERSION"
+          pip install "docvet[griffe]==$DOCVET_VERSION"
         fi
       shell: bash
     - name: Run docvet

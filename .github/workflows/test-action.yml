@@ -37,6 +37,37 @@ jobs:
         run: test "${{ steps.docvet-run.outcome }}" = "failure"
         shell: bash
 
+  test-griffe:
+    name: Test griffe check runs (findings expected)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Only griffe faults this fixture, so the exit code separates a griffe
+      # check that ran from one skipped for a missing extra. Installing plain
+      # docvet makes this job pass with exit 0 and no findings.
+      - name: Stage griffe fixture for discovery
+        run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
+        shell: bash
+      - uses: ./
+        with:
+          checks: "griffe"
+        continue-on-error: true
+        id: docvet-run
+      - name: Verify non-zero exit (griffe findings expected)
+        run: test "${{ steps.docvet-run.outcome }}" = "failure"
+        shell: bash
+
+  test-griffe-available-by-default:
+    name: Test griffe is installed on the default path
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # No inputs: the documented default is checks "all", which offers griffe.
+      - uses: ./
+      - name: Verify griffe is importable
+        run: python -c "import griffe"
+        shell: bash
+
   test-clean:
     name: Test clean run (zero findings)
     runs-on: ubuntu-latest

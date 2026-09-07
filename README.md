@@ -121,15 +121,7 @@ Select specific checks or pin a version:
     python-version: '3.13'
 ```
 
-For griffe rendering checks, install griffe before running docvet:
-
-```yaml
-- uses: actions/setup-python@v6
-  with:
-    python-version: '3.12'
-- run: pip install griffe
-- uses: Alberto-Codes/docvet@v1
-```
+The griffe rendering check needs no setup: the action installs `docvet[griffe]`, so every check the `checks` input offers is available. Earlier releases installed plain `docvet` and skipped griffe silently, so a workflow that never added its own `pip install griffe` may start reporting griffe findings — that check finally running, not new problems.
 
 ## AI Agent Integration
 
