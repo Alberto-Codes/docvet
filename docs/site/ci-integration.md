@@ -28,7 +28,10 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
 
 The action installs `docvet[griffe]`, with or without `docvet-version`, so the
 rendering compatibility check needs no extra setup and is reached through the
-default `checks: 'all'` along with every other check.
+default `checks: 'all'` along with every other check. Note that docvet releases
+before 1.7.0 declare that extra without an upper bound, so pinning one installs
+whatever griffe publishes at the time rather than a version docvet was released
+against.
 
 === "Basic"
 

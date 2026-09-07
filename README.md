@@ -121,7 +121,7 @@ Select specific checks or pin a version:
     python-version: '3.13'
 ```
 
-The griffe rendering check needs no setup: the action installs `docvet[griffe]`, pinned or not, so every check the `checks` input offers is available.
+The griffe rendering check needs no setup: the action installs `docvet[griffe]`, pinned or not, so every check the `checks` input offers is available. Note that docvet releases before 1.7.0 declare that extra without an upper bound, so pinning one installs whatever griffe publishes at the time rather than a version docvet was released against.
 
 > **Behavior change — this can turn a passing build red.**
 >

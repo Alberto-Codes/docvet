@@ -42,9 +42,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # Proves the griffe check actually ran and faulted the fixture, and
-      # that the action turns that into a non-zero exit. Three things are
-      # load-bearing and must not be dropped:
+      # Proves the action installs a working griffe extra, and that griffe
+      # findings become a non-zero exit. Three things are load-bearing and
+      # must not be dropped:
       #   - checks: "griffe" below. The fixture is not griffe-only —
       #     enrichment also reports extra-param-in-docstring on it — so
       #     without this input the job would exit non-zero on enrichment
@@ -54,9 +54,12 @@ jobs:
       #     docvet exits 0 whether or not griffe is installed, so this job
       #     goes red either way and stops telling the two apart.
       #   - the griffe-unknown-param assertion. Exit code alone cannot tell
-      #     "the check ran and faulted the fixture" from "docvet crashed
-      #     before checking anything": both surface as outcome = failure.
-      #     Only griffe produces that rule, and a crash emits no findings.
+      #     "the check ran" from "docvet crashed before checking anything":
+      #     both surface as outcome = failure. That step does not read the
+      #     action's own output — the action's merged JSON is a temp file it
+      #     deletes — it runs docvet's griffe check directly in the
+      #     environment the action built, so it proves griffe is importable
+      #     there and that the check reports the rule only griffe produces.
       - name: Stage griffe fixture for discovery
         run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
         shell: bash
