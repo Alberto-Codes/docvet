@@ -26,6 +26,13 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
 
 ### Usage
 
+Without `docvet-version`, the action installs `docvet[griffe]`, so the rendering
+compatibility check needs no extra setup and is reached through the default
+`checks: 'all'` along with every other check. Pinning `docvet-version` installs
+plain `docvet` and leaves the rendering check skipped — every release before
+1.15.2 declares the extra as `griffe>=1.0,<2`, which now resolves to a hollow
+shim rather than a working griffe — so a pinned run has to install griffe itself.
+
 === "Basic"
 
     ```yaml
@@ -64,24 +71,6 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
             with:
               docvet-version: '1.9.0'
     ```
-
-=== "With griffe"
-
-    The rendering compatibility check needs no extra setup. The action
-    installs `docvet[griffe]`, so griffe is reached through the default
-    `checks: 'all'` along with every other check:
-
-    ```yaml
-    jobs:
-      docvet:
-        runs-on: ubuntu-latest
-        steps:
-          - uses: actions/checkout@v6
-          - uses: Alberto-Codes/docvet@v1
-    ```
-
-    To run the rendering check on its own, select it the same way as any
-    other check: `checks: 'griffe'`.
 
 !!! warning "Behavior change — this can turn a passing build red"
 

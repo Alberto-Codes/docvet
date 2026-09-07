@@ -103,6 +103,19 @@ jobs:
       - name: Verify installed version
         run: docvet --version | grep -q "1.9.0"
         shell: bash
+      # Regression guard for the pinned install line in action.yml. Adding
+      # [griffe] there looks like an obvious symmetry fix but is silently
+      # harmful: every release before 1.15.2 declares the extra as
+      # griffe>=1.0,<2, which now resolves to the hollow griffe 1.15 shim.
+      # docvet would then see griffe as importable, suppress its "check
+      # skipped" warning, and either report nothing or crash on griffe.load.
+      - name: Verify griffe is NOT installed on the pinned path
+        run: |
+          if python -c "import griffe" 2>/dev/null; then
+            echo "::error::pinned install pulled in griffe; see action.yml install step"
+            exit 1
+          fi
+        shell: bash
 
   test-python-version:
     name: Test Python version selection
