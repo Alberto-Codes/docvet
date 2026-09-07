@@ -121,7 +121,7 @@ Select specific checks or pin a version:
     python-version: '3.13'
 ```
 
-The griffe rendering check needs no setup on the default (unpinned) path: the action installs `docvet[griffe]`, so every check the `checks` input offers is available. Pinning `docvet-version` installs plain `docvet` and leaves the rendering check skipped — every release before 1.15.2 declares the extra as `griffe>=1.0,<2`, which now resolves to a hollow shim rather than a working griffe — so a pinned run has to install griffe itself.
+The griffe rendering check needs no setup on the default (unpinned) path: the action installs `docvet[griffe]`, so every check the `checks` input offers is available. Pinning `docvet-version` installs plain `docvet` — for every version you might pin, not just older ones — so the rendering check stays skipped until you add your own install step. Install `griffelib>=2.2,<3`, not `griffe`: the `griffe` distribution has been a hollow shim since 1.15, while `griffelib` carries the real code and still imports as `griffe`.
 
 > **Behavior change — this can turn a passing build red.**
 >
