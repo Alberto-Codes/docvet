@@ -27,6 +27,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # exactly the pattern that reaches for the ambient git environment.
 INNER_SUITE = "tests/integration/test_fix_cli.py"
 
+# Deliberately unlike the "Test" / "test@test.com" identity the inner
+# suite writes into its own temp repos, so a stray write from the inner
+# suite lands as a visible difference rather than an identical value.
+SENTINEL_NAME = "Scratch Sentinel"
+SENTINEL_EMAIL = "scratch-sentinel@example.invalid"
+
 
 def _git(*args: str, cwd: Path, env: dict[str, str]) -> subprocess.CompletedProcess:
     """Run a git command with an explicit environment."""
@@ -38,6 +44,19 @@ def _git(*args: str, cwd: Path, env: dict[str, str]) -> subprocess.CompletedProc
         text=True,
         check=True,
     )
+
+
+def _config(key: str, *, cwd: Path, env: dict[str, str]) -> str | None:
+    """Read a local config key, or ``None`` when it is unset."""
+    result = subprocess.run(
+        ["git", "config", "--local", "--get", key],
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
 
 
 @pytest.fixture
@@ -52,8 +71,8 @@ def scratch_repo(tmp_path, clean_env) -> Path:
     repo = tmp_path / "scratch"
     repo.mkdir()
     _git("init", cwd=repo, env=clean_env)
-    _git("config", "user.email", "test@test.com", cwd=repo, env=clean_env)
-    _git("config", "user.name", "Test", cwd=repo, env=clean_env)
+    _git("config", "user.email", SENTINEL_EMAIL, cwd=repo, env=clean_env)
+    _git("config", "user.name", SENTINEL_NAME, cwd=repo, env=clean_env)
     (repo / "tracked.py").write_text('"""Track a file."""\n')
     _git("add", "tracked.py", cwd=repo, env=clean_env)
     _git("commit", "-m", "init", cwd=repo, env=clean_env)
@@ -105,4 +124,22 @@ def test_suite_under_hook_env_passes_and_spares_the_outer_repo(scratch_repo, cle
     log = _git("log", "--oneline", cwd=scratch_repo, env=clean_env)
     assert len(log.stdout.strip().splitlines()) == 1, (
         f"the suite committed to the outer repository:\n{log.stdout}"
+    )
+
+    # Config pollution is its own corruption mode: a stray `git config`
+    # writes core.worktree pointing at a temp directory that is deleted
+    # when the run ends, after which every command in the repository
+    # fails with "fatal: Invalid path". It leaves index and log clean, so
+    # the assertions above cannot see it.
+    worktree = _config("core.worktree", cwd=scratch_repo, env=clean_env)
+    assert worktree is None, (
+        f"the suite set core.worktree on the outer repository: {worktree}"
+    )
+
+    identity = (
+        _config("user.name", cwd=scratch_repo, env=clean_env),
+        _config("user.email", cwd=scratch_repo, env=clean_env),
+    )
+    assert identity == (SENTINEL_NAME, SENTINEL_EMAIL), (
+        f"the suite rewrote the outer repository's identity: {identity}"
     )
