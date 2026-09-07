@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import os
 from typing import Literal
 
 import pytest
@@ -10,6 +11,22 @@ import pytest
 from docvet.checks import Finding
 
 _Category = Literal["required", "recommended", "scaffold"]
+
+
+@pytest.fixture(autouse=True)
+def isolated_git_env(monkeypatch):
+    """Strip inherited ``GIT_*`` variables from the test environment.
+
+    Tests build throwaway repositories and shell out to ``git`` with a
+    ``cwd``. Git overrides that ``cwd`` when ``GIT_DIR`` or
+    ``GIT_INDEX_FILE`` is set, so a suite launched from a git hook —
+    which is how the ``pre-push`` hook runs it — would drive those
+    commands against the repository being pushed instead of the temp
+    repository, failing the tests and rewriting the real index.
+    """
+    for name in list(os.environ):
+        if name.startswith("GIT_"):
+            monkeypatch.delenv(name, raising=False)
 
 
 @pytest.fixture
