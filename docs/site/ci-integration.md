@@ -26,14 +26,9 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
 
 ### Usage
 
-Without `docvet-version`, the action installs `docvet[griffe]`, so the rendering
-compatibility check needs no extra setup and is reached through the default
-`checks: 'all'` along with every other check. Pinning `docvet-version` installs
-plain `docvet` — for every version you might pin, not just older ones — so the
-rendering check stays skipped until you add your own install step. Install
-`griffelib>=2.2,<3`, not `griffe`: the `griffe` distribution has been a hollow
-shim since 1.15, while `griffelib` carries the real code and still imports as
-`griffe`.
+The action installs `docvet[griffe]`, with or without `docvet-version`, so the
+rendering compatibility check needs no extra setup and is reached through the
+default `checks: 'all'` along with every other check.
 
 === "Basic"
 

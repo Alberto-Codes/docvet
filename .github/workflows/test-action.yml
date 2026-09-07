@@ -66,20 +66,6 @@ jobs:
         run: test "${{ steps.docvet-run.outcome }}" = "failure"
         shell: bash
 
-  test-griffe-available-by-default:
-    name: Test griffe is installed on the default path
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      # No inputs: the documented default is checks "all", which offers griffe.
-      # continue-on-error keeps this job's assertion about griffe availability
-      # from riding on the repo being finding-free under every other check.
-      - uses: ./
-        continue-on-error: true
-      - name: Verify griffe is importable
-        run: python -c "import griffe"
-        shell: bash
-
   test-clean:
     name: Test clean run (zero findings)
     runs-on: ubuntu-latest
@@ -103,18 +89,23 @@ jobs:
       - name: Verify installed version
         run: docvet --version | grep -q "1.9.0"
         shell: bash
-      # Regression guard for the pinned install line in action.yml. Adding
-      # [griffe] there looks like an obvious symmetry fix but is silently
-      # harmful: every release before 1.15.2 declares the extra as
-      # griffe>=1.0,<2, which now resolves to the hollow griffe 1.15 shim.
-      # docvet would then see griffe as importable, suppress its "check
-      # skipped" warning, and either report nothing or crash on griffe.load.
-      - name: Verify griffe is NOT installed on the pinned path
-        run: |
-          if python -c "import griffe" 2>/dev/null; then
-            echo "::error::pinned install pulled in griffe; see action.yml install step"
-            exit 1
-          fi
+      # The pinned path requests the extra too, so the griffe check must run
+      # there as well. docvet 1.9.0 declares the extra as griffe>=1.0,<2,
+      # which resolves to griffe 1.15.0 — the last real 1.x release, before
+      # the distribution became a meta-package at 2.0.0. Same shape as
+      # test-griffe: checks "griffe" isolates the rendering findings, and
+      # griffe in this repo's fail-on turns them into a non-zero exit.
+      - name: Stage griffe fixture for discovery
+        run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
+        shell: bash
+      - uses: ./
+        with:
+          docvet-version: "1.9.0"
+          checks: "griffe"
+        continue-on-error: true
+        id: docvet-griffe-run
+      - name: Verify non-zero exit (griffe findings expected on the pinned path)
+        run: test "${{ steps.docvet-griffe-run.outcome }}" = "failure"
         shell: bash
 
   test-python-version:

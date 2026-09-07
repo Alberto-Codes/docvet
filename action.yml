@@ -52,21 +52,15 @@ runs:
           DOCVET_VERSION="${{ inputs.version }}"
         fi
 
-        # The griffe extra is not optional on the latest path: the `checks`
-        # input offers griffe and defaults to "all", and docvet skips that
-        # check without a warning the caller ever sees when griffe is not
-        # importable. It is deliberately absent from the pinned path for every
-        # pinned version: releases before 1.15.2 declare the extra as
-        # `griffe>=1.0,<2`, which now resolves to the hollow griffe 1.15 shim,
-        # so docvet would import it successfully, suppress the skip warning,
-        # and then report nothing or crash. Telling the safe pins from the
-        # broken ones would mean version-comparison logic in this script, so a
-        # pinned consumer who wants the rendering check installs `griffelib`
-        # themselves.
+        # The griffe extra is not optional: the `checks` input offers griffe
+        # and defaults to "all", and docvet skips that check without a warning
+        # the caller ever sees when griffe is not importable. Every docvet
+        # release resolves the extra to a working library — griffelib 2.x on
+        # current releases, griffe 1.x on older pins — so both paths request it.
         if [ "$DOCVET_VERSION" = "latest" ]; then
           pip install "docvet[griffe]"
         else
-          pip install "docvet==$DOCVET_VERSION"
+          pip install "docvet[griffe]==$DOCVET_VERSION"
         fi
       shell: bash
     - name: Run docvet
