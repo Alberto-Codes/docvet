@@ -83,21 +83,21 @@ The `Alberto-Codes/docvet` action installs docvet and runs it in a single step. 
     To run the rendering check on its own, select it the same way as any
     other check: `checks: 'griffe'`.
 
-    !!! warning "Behavior change — this can turn a passing build red"
+!!! warning "Behavior change — this can turn a passing build red"
 
-        Earlier releases installed plain `docvet`, which has no griffe
-        dependency, so the griffe check was skipped and contributed zero
-        findings. It now runs.
+    Earlier releases installed plain `docvet`, which has no griffe
+    dependency, so the griffe check was skipped and contributed zero
+    findings. It now runs.
 
-        `determine_exit_code` (`src/docvet/reporting.py`) returns 1 as
-        soon as any check listed in `fail-on` reports findings. So if your
-        `pyproject.toml` has `griffe` in `[tool.docvet] fail-on`, your job
-        goes from green to failing with no change on your side. This
-        repository's own `ci.yml` docvet job is exactly such a consumer.
+    `determine_exit_code` (`src/docvet/reporting.py`) returns 1 as
+    soon as any check listed in `fail-on` reports findings. So if your
+    `pyproject.toml` has `griffe` in `[tool.docvet] fail-on`, your job
+    goes from green to failing with no change on your side. This
+    repository's own `ci.yml` docvet job is exactly such a consumer.
 
-        These are not new problems — it is the check finally running on
-        docstrings that were always broken. To get back to green, fix the
-        griffe findings or remove `griffe` from `fail-on`.
+    These are not new problems — it is the check finally running on
+    docstrings that were always broken. To get back to green, fix the
+    griffe findings or remove `griffe` from `fail-on`.
 
 ### Outputs
 

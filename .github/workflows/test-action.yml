@@ -71,7 +71,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # No inputs: the documented default is checks "all", which offers griffe.
+      # continue-on-error keeps this job's assertion about griffe availability
+      # from riding on the repo being finding-free under every other check.
       - uses: ./
+        continue-on-error: true
       - name: Verify griffe is importable
         run: python -c "import griffe"
         shell: bash
