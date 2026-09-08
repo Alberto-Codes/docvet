@@ -15,7 +15,7 @@ Freshness checks are excluded by default because they require git
 context; griffe is excluded when not installed. Per-file git diffs
 prevent cross-file hunk contamination in freshness mode; those git
 commands run with :func:`docvet.discovery.git_env` so an inherited
-``GIT_DIR`` cannot redirect them away from the project root. And
+``GIT_DIR`` cannot redirect them away from the project root, and
 ``SystemExit`` from invalid configuration is caught and returned as
 a structured error rather than crashing the server.
 
