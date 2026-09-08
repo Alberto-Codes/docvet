@@ -5,6 +5,13 @@ mode: git diff (default), staged files, explicit file list, or full
 codebase scan.  All modes return a sorted ``list[Path]`` of absolute
 file paths.
 
+Every git subcommand runs with the environment built by
+:func:`git_env`, which strips the location variables git exports into
+hook processes. Without that, an inherited ``GIT_DIR`` — which inside a
+git worktree points at ``.git/worktrees/<name>`` — would override
+cwd-based discovery and make ``git ls-files`` report paths relative to
+the worktree root instead of the source root.
+
 Exclude patterns support four dispatch branches following ``.gitignore``
 semantics, each handled by a dedicated matcher: trailing-slash directory
 patterns (``build/``) via :func:`_matches_trailing_slash`, double-star
@@ -34,6 +41,7 @@ from __future__ import annotations
 
 import enum
 import fnmatch
+import os
 import subprocess
 import sys
 from collections.abc import Iterable, Sequence
@@ -82,8 +90,61 @@ class DiscoveryMode(enum.Enum):
 # ---------------------------------------------------------------------------
 
 
+# Git environment variables that override git's own cwd-based repository
+# discovery.  Git exports these when it invokes a hook, and inside a
+# worktree ``GIT_DIR`` points at ``.git/worktrees/<name>``.  A child git
+# process that inherits them stops resolving the repository (and the
+# path prefix) from its working directory, so ``git ls-files`` run from
+# ``<root>/src`` emits worktree-root-relative paths such as
+# ``src/pkg/mod.py`` instead of ``pkg/mod.py``.  Joining those onto the
+# source root produces a doubled root (``<root>/src/src/pkg/mod.py``).
+_GIT_LOCATION_ENV_VARS = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_PREFIX",
+    "GIT_NAMESPACE",
+)
+
+
+def git_env() -> dict[str, str]:
+    """Build a subprocess environment with git location overrides removed.
+
+    Docvet always intends "the repository containing this working
+    directory" when it shells out to git.  Inherited location variables
+    defeat that: a pre-commit hook runs with ``GIT_DIR`` set, and inside
+    a git worktree that value points at ``.git/worktrees/<name>`` rather
+    than at the checkout.  Stripping them restores cwd-based discovery,
+    so git resolves the repository, the working tree, the index, and the
+    cwd-relative path prefix from the directory docvet passes as ``cwd``.
+
+    Returns:
+        A copy of ``os.environ`` with every git location-override
+        variable removed. All other environment variables are preserved
+        so git configuration such as ``GIT_CONFIG_GLOBAL`` still applies.
+
+    Examples:
+        Run git so it discovers the repository from *cwd*:
+
+        ```python
+        subprocess.run(["git", "status"], cwd=root, env=git_env())
+        ```
+    """
+    env = dict(os.environ)
+    for name in _GIT_LOCATION_ENV_VARS:
+        env.pop(name, None)
+    return env
+
+
 def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | None:
     """Run a git command and return stripped, non-empty stdout lines.
+
+    Git runs with the environment from :func:`git_env`, so it discovers
+    the repository, working tree, index, and path prefix from *cwd*
+    rather than from any ``GIT_DIR`` inherited from a git hook.
 
     Args:
         args: Git subcommand and arguments (e.g. ``["diff", "--name-only"]``).
@@ -110,6 +171,7 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | No
         text=True,
         check=False,
         cwd=cwd,
+        env=git_env(),
     )
     if result.returncode != 0:
         if warn:
