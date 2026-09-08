@@ -32,16 +32,12 @@ pytestmark = pytest.mark.unit
 
 # Git location-override variables docvet must strip before shelling out
 # to git, so a hook-inherited GIT_DIR cannot redirect the child process
-# away from the working directory docvet passes as ``cwd``.
+# away from the working directory docvet passes as ``cwd``.  GIT_INDEX_FILE
+# is not one of them: it selects the index git chose for the hook.
 _GIT_OVERRIDES = (
     "GIT_DIR",
     "GIT_WORK_TREE",
     "GIT_COMMON_DIR",
-    "GIT_INDEX_FILE",
-    "GIT_OBJECT_DIRECTORY",
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_PREFIX",
-    "GIT_NAMESPACE",
 )
 
 
@@ -1044,7 +1040,8 @@ def test_get_git_diff_strips_inherited_git_dir(mocker, monkeypatch):
     from docvet.cli import _get_git_diff
 
     monkeypatch.setenv("GIT_DIR", "/elsewhere/.git/worktrees/wt")
-    monkeypatch.setenv("GIT_INDEX_FILE", "/elsewhere/.git/index")
+    monkeypatch.setenv("GIT_WORK_TREE", "/elsewhere")
+    monkeypatch.setenv("GIT_COMMON_DIR", "/elsewhere/.git")
     mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
     mock_subprocess.return_value.returncode = 0
     mock_subprocess.return_value.stdout = ""
@@ -1053,7 +1050,30 @@ def test_get_git_diff_strips_inherited_git_dir(mocker, monkeypatch):
 
     env = mock_subprocess.call_args.kwargs["env"]
     assert "GIT_DIR" not in env
-    assert "GIT_INDEX_FILE" not in env
+    assert "GIT_WORK_TREE" not in env
+    assert "GIT_COMMON_DIR" not in env
+
+
+def test_get_git_diff_preserves_inherited_git_index_file(mocker, monkeypatch):
+    """A hook-supplied GIT_INDEX_FILE reaches git for staged diffs.
+
+    During a partial commit git points the hook at a temporary
+    ``next-index`` holding exactly the tree being committed. Dropping it
+    would make ``--staged`` diff the real index instead.
+    """
+    from docvet.cli import _get_git_diff
+
+    monkeypatch.setenv("GIT_DIR", "/elsewhere/.git/worktrees/wt")
+    monkeypatch.setenv("GIT_INDEX_FILE", "/elsewhere/.git/next-index-4242.lock")
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = ""
+
+    _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.STAGED)
+
+    env = mock_subprocess.call_args.kwargs["env"]
+    assert env["GIT_INDEX_FILE"] == "/elsewhere/.git/next-index-4242.lock"
+    assert "GIT_DIR" not in env
 
 
 def test_get_git_blame_strips_inherited_git_dir(mocker, monkeypatch):

@@ -11,7 +11,9 @@ those onto the source root yields a doubled root such as
 ``FileNotFoundError`` while reading it.
 
 These tests pin that discovery resolves the same real files whether or
-not ``GIT_DIR`` is set.
+not ``GIT_DIR`` is set, and that ``GIT_INDEX_FILE`` — which selects the
+index git hands the hook rather than where the repository lives — still
+reaches git untouched.
 """
 
 from __future__ import annotations
@@ -123,8 +125,8 @@ def test_git_env_strips_location_overrides(monkeypatch: pytest.MonkeyPatch) -> N
     """``git_env`` drops location overrides and keeps everything else."""
     monkeypatch.setenv("GIT_DIR", "/somewhere/.git/worktrees/wt")
     monkeypatch.setenv("GIT_WORK_TREE", "/somewhere")
-    monkeypatch.setenv("GIT_INDEX_FILE", "/somewhere/.git/index")
-    monkeypatch.setenv("GIT_PREFIX", "src/")
+    monkeypatch.setenv("GIT_COMMON_DIR", "/somewhere/.git")
+    monkeypatch.setenv("GIT_INDEX_FILE", "/somewhere/.git/next-index-4242.lock")
     monkeypatch.setenv("GIT_AUTHOR_NAME", "Preserved")
     monkeypatch.setenv("DOCVET_SENTINEL", "kept")
 
@@ -132,7 +134,39 @@ def test_git_env_strips_location_overrides(monkeypatch: pytest.MonkeyPatch) -> N
 
     assert "GIT_DIR" not in env
     assert "GIT_WORK_TREE" not in env
-    assert "GIT_INDEX_FILE" not in env
-    assert "GIT_PREFIX" not in env
+    assert "GIT_COMMON_DIR" not in env
+    # GIT_INDEX_FILE selects *which* index git reads, not where the
+    # repository is; a partial commit points the hook at a temporary
+    # next-index, and docvet must vet that tree, not the real index.
+    assert env["GIT_INDEX_FILE"] == "/somewhere/.git/next-index-4242.lock"
     assert env["GIT_AUTHOR_NAME"] == "Preserved"
     assert env["DOCVET_SENTINEL"] == "kept"
+
+
+def test_staged_discovery_honours_hook_supplied_index(
+    worktree_repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """STAGED discovery reads the index git points the hook at.
+
+    Mirrors a partial commit: git stages the whole tree into a
+    temporary ``next-index`` holding exactly what is being committed
+    and exports ``GIT_INDEX_FILE`` for the pre-commit hook. Reading the
+    real index instead would report a different, wrong file set.
+    """
+    worktree, git_dir = worktree_repo
+    (worktree / "src" / "pkg" / "mod.py").write_text('"""Mod changed."""\n')
+    (worktree / "src" / "pkg" / "other.py").write_text('"""Other."""\n')
+    config = DocvetConfig(project_root=worktree, src_root="src", exclude=[])
+
+    # Real index: only other.py is staged.
+    _git(["add", "src/pkg/other.py"], cwd=worktree)
+    # Temporary index standing in for a partial commit of mod.py only.
+    next_index = git_dir / "next-index-test"
+    monkeypatch.setenv("GIT_INDEX_FILE", str(next_index))
+    _git(["read-tree", "HEAD"], cwd=worktree)
+    _git(["add", "src/pkg/mod.py"], cwd=worktree)
+    monkeypatch.setenv("GIT_DIR", str(git_dir))
+
+    discovered = discover_files(config, DiscoveryMode.STAGED)
+
+    assert discovered == [worktree / "src" / "pkg" / "mod.py"]
