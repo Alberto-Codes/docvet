@@ -4,7 +4,9 @@ Each ``_run_*`` function reads files, invokes the corresponding check
 module, and returns findings.  The ``_run_fix`` runner additionally
 writes scaffolded sections back to files (or collects diffs in dry-run
 mode).  Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
-raw VCS data for the freshness runner.  Progress display is handled
+raw VCS data for the freshness runner, each running git through
+:func:`docvet.discovery.git_env` so an inherited ``GIT_DIR`` cannot
+redirect it away from the project root.  Progress display is handled
 by ``_maybe_progressbar``, which avoids the ``click >= 8.2``
 ``hidden`` kwarg requirement.
 
@@ -35,6 +37,7 @@ from docvet.checks import Finding
 from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
 
+from ..discovery import git_env
 from . import DiscoveryMode, FreshnessMode
 
 
@@ -73,7 +76,10 @@ def _get_git_diff(
     """Get git diff output for a single file.
 
     Runs the appropriate ``git diff`` variant based on the discovery
-    mode and returns the raw unified diff output.
+    mode and returns the raw unified diff output. Git runs with the
+    environment from :func:`docvet.discovery.git_env`, so it resolves
+    the repository from *project_root* even when the caller inherited
+    a ``GIT_DIR`` from a git hook.
 
     Args:
         file_path: Absolute path to the file.
@@ -97,6 +103,7 @@ def _get_git_diff(
         text=True,
         check=False,
         cwd=project_root,
+        env=git_env(),
     )
     if result.returncode != 0:
         return ""
@@ -107,7 +114,9 @@ def _get_git_blame(file_path: Path, project_root: Path) -> str:
     """Get git blame porcelain output for a single file.
 
     Runs ``git blame --line-porcelain`` and returns the raw output
-    for drift/age analysis.
+    for drift/age analysis. Git runs with the environment from
+    :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR`` cannot
+    point it at a different repository than *project_root*.
 
     Args:
         file_path: Absolute path to the file.
@@ -123,6 +132,7 @@ def _get_git_blame(file_path: Path, project_root: Path) -> str:
         text=True,
         check=False,
         cwd=project_root,
+        env=git_env(),
     )
     if result.returncode != 0:
         return ""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,23 @@ from docvet.config import DocvetConfig, PresenceConfig, load_config
 from docvet.discovery import DiscoveryMode
 
 pytestmark = pytest.mark.unit
+
+
+# Git location-override variables docvet must strip before shelling out
+# to git, so a hook-inherited GIT_DIR cannot redirect the child process
+# away from the working directory docvet passes as ``cwd``.  GIT_INDEX_FILE
+# is not one of them: it selects the index git chose for the hook.
+_GIT_OVERRIDES = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+)
+
+
+def _git_env_without_overrides() -> dict[str, str]:
+    """Build the environment docvet is expected to hand to git."""
+    return {k: v for k, v in os.environ.items() if k not in _GIT_OVERRIDES}
+
 
 runner = CliRunner()
 
@@ -926,6 +944,7 @@ def test_get_git_diff_when_diff_mode_runs_git_diff(mocker):
         text=True,
         check=False,
         cwd=Path("/project"),
+        env=_git_env_without_overrides(),
     )
 
 
@@ -943,6 +962,7 @@ def test_get_git_diff_when_files_mode_runs_git_diff(mocker):
         text=True,
         check=False,
         cwd=Path("/project"),
+        env=_git_env_without_overrides(),
     )
 
 
@@ -960,6 +980,7 @@ def test_get_git_diff_when_staged_mode_runs_git_diff_cached(mocker):
         text=True,
         check=False,
         cwd=Path("/project"),
+        env=_git_env_without_overrides(),
     )
 
 
@@ -977,6 +998,7 @@ def test_get_git_diff_when_all_mode_runs_git_diff_head(mocker):
         text=True,
         check=False,
         cwd=Path("/project"),
+        env=_git_env_without_overrides(),
     )
 
 
@@ -1009,7 +1031,63 @@ def test_get_git_blame_runs_correct_command(mocker):
         text=True,
         check=False,
         cwd=Path("/project"),
+        env=_git_env_without_overrides(),
     )
+
+
+def test_get_git_diff_strips_inherited_git_dir(mocker, monkeypatch):
+    """An inherited GIT_DIR never reaches the git child process."""
+    from docvet.cli import _get_git_diff
+
+    monkeypatch.setenv("GIT_DIR", "/elsewhere/.git/worktrees/wt")
+    monkeypatch.setenv("GIT_WORK_TREE", "/elsewhere")
+    monkeypatch.setenv("GIT_COMMON_DIR", "/elsewhere/.git")
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = ""
+
+    _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.DIFF)
+
+    env = mock_subprocess.call_args.kwargs["env"]
+    assert "GIT_DIR" not in env
+    assert "GIT_WORK_TREE" not in env
+    assert "GIT_COMMON_DIR" not in env
+
+
+def test_get_git_diff_preserves_inherited_git_index_file(mocker, monkeypatch):
+    """A hook-supplied GIT_INDEX_FILE reaches git for staged diffs.
+
+    During a partial commit git points the hook at a temporary
+    ``next-index`` holding exactly the tree being committed. Dropping it
+    would make ``--staged`` diff the real index instead.
+    """
+    from docvet.cli import _get_git_diff
+
+    monkeypatch.setenv("GIT_DIR", "/elsewhere/.git/worktrees/wt")
+    monkeypatch.setenv("GIT_INDEX_FILE", "/elsewhere/.git/next-index-4242.lock")
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = ""
+
+    _get_git_diff(Path("/f.py"), Path("/project"), DiscoveryMode.STAGED)
+
+    env = mock_subprocess.call_args.kwargs["env"]
+    assert env["GIT_INDEX_FILE"] == "/elsewhere/.git/next-index-4242.lock"
+    assert "GIT_DIR" not in env
+
+
+def test_get_git_blame_strips_inherited_git_dir(mocker, monkeypatch):
+    """Run git blame without an inherited GIT_DIR redirecting it."""
+    from docvet.cli import _get_git_blame
+
+    monkeypatch.setenv("GIT_DIR", "/elsewhere/.git/worktrees/wt")
+    mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
+    mock_subprocess.return_value.returncode = 0
+    mock_subprocess.return_value.stdout = ""
+
+    _get_git_blame(Path("/f.py"), Path("/project"))
+
+    assert "GIT_DIR" not in mock_subprocess.call_args.kwargs["env"]
 
 
 def test_get_git_blame_returns_stdout_on_success(mocker):

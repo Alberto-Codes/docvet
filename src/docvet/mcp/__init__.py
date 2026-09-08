@@ -13,7 +13,9 @@ module-level server instance, a single public ``start_server()``
 function, and internal helpers for check dispatch and serialization.
 Freshness checks are excluded by default because they require git
 context; griffe is excluded when not installed. Per-file git diffs
-prevent cross-file hunk contamination in freshness mode, and
+prevent cross-file hunk contamination in freshness mode; those git
+commands run with :func:`docvet.discovery.git_env` so an inherited
+``GIT_DIR`` cannot redirect them away from the project root, and
 ``SystemExit`` from invalid configuration is caught and returned as
 a structured error rather than crashing the server.
 
@@ -61,7 +63,7 @@ from docvet.checks import (
 )
 from docvet.checks.freshness import check_freshness_diff
 from docvet.config import _VALID_CHECK_NAMES, DocvetConfig, load_config
-from docvet.discovery import DiscoveryMode, discover_files
+from docvet.discovery import DiscoveryMode, discover_files, git_env
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -194,8 +196,11 @@ def _run_freshness(
 
     Verifies git is available, then retrieves a per-file diff for each
     file and runs freshness checks. Per-file diffs prevent cross-file
-    hunk contamination. Returns findings and an optional error message
-    when git is unavailable.
+    hunk contamination. Both git invocations use
+    :func:`docvet.discovery.git_env`, so they resolve the repository
+    from ``config.project_root`` rather than from an inherited
+    ``GIT_DIR``. Returns findings and an optional error message when
+    git is unavailable.
 
     Args:
         files: List of absolute paths to Python files.
@@ -211,6 +216,7 @@ def _run_freshness(
             capture_output=True,
             check=True,
             cwd=str(config.project_root),
+            env=git_env(),
         )
     except (FileNotFoundError, subprocess.CalledProcessError):
         return [], (
@@ -232,6 +238,7 @@ def _run_freshness(
             text=True,
             check=False,
             cwd=str(config.project_root),
+            env=git_env(),
         )
         findings.extend(check_freshness_diff(str(file_path), result.stdout, tree))
     return findings, None
