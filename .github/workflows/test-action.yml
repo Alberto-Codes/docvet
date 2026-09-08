@@ -37,6 +37,70 @@ jobs:
         run: test "${{ steps.docvet-run.outcome }}" = "failure"
         shell: bash
 
+  test-griffe:
+    name: Test griffe check runs (findings expected)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Proves the action installs a working griffe extra, and that griffe
+      # findings become a non-zero exit. Three things are load-bearing and
+      # must not be dropped:
+      #   - checks: "griffe" below. The fixture is not griffe-only —
+      #     enrichment also reports extra-param-in-docstring on it — so
+      #     without this input the job would exit non-zero on enrichment
+      #     alone even with griffe uninstalled, a false green.
+      #   - fail-on in this repo's [tool.docvet] lists griffe, which is what
+      #     turns griffe findings into exit 1. Drop griffe from fail-on and
+      #     docvet exits 0 whether or not griffe is installed, so this job
+      #     goes red either way and stops telling the two apart.
+      #   - the griffe-unknown-param assertion. Exit code alone cannot tell
+      #     "the check ran" from "docvet crashed before checking anything":
+      #     both surface as outcome = failure. That step does not read the
+      #     action's own output — the action's merged JSON is a temp file it
+      #     deletes — it runs docvet's griffe check directly in the
+      #     environment the action built, so it proves griffe is importable
+      #     there and that the check reports the rule only griffe produces.
+      - name: Stage griffe fixture for discovery
+        run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
+        shell: bash
+      - uses: ./
+        with:
+          checks: "griffe"
+        continue-on-error: true
+        id: docvet-run
+      - name: Verify non-zero exit (griffe findings expected)
+        run: test "${{ steps.docvet-run.outcome }}" = "failure"
+        shell: bash
+      - name: Verify the griffe check reported griffe-unknown-param
+        run: |
+          docvet --format json griffe --all > griffe-findings.json || true
+          jq -e '.findings[] | select(.rule == "griffe-unknown-param")' griffe-findings.json
+        shell: bash
+
+  test-griffe-available-by-default:
+    name: Test griffe is installed on the default path
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Do not delete this job as redundant. It is deliberately the only one
+      # that runs the action on its documented default — no inputs, so
+      # checks "all" — and asserts griffe is there. Every other griffe
+      # assertion in this workflow passes an explicit checks: "griffe", so
+      # they would all stay green if someone made the extra conditional on
+      # the checks list (the "don't pay for what you don't run" edit that
+      # will eventually be proposed), while checks: "all" silently stopped
+      # installing griffe. That is exactly the defect this workflow exists
+      # to catch: a consumer taking the default and losing the check without
+      # being told. The install step is unconditional today, so this job
+      # proves nothing new right now — it is a guard against that one edit.
+      # continue-on-error keeps the griffe assertion from riding on the repo
+      # being finding-free under every other check.
+      - uses: ./
+        continue-on-error: true
+      - name: Verify griffe is importable
+        run: python -c "import griffe"
+        shell: bash
+
   test-clean:
     name: Test clean run (zero findings)
     runs-on: ubuntu-latest
@@ -59,6 +123,29 @@ jobs:
           checks: "coverage"
       - name: Verify installed version
         run: docvet --version | grep -q "1.9.0"
+        shell: bash
+      # The pinned path requests the extra too, so the griffe check must run
+      # there as well. docvet 1.9.0 declares the extra as griffe>=1.0,<2,
+      # which resolves to griffe 1.15.0 — the last real 1.x release, before
+      # the distribution became a meta-package at 2.0.0. Same shape as
+      # test-griffe, including the griffe-unknown-param assertion that a
+      # crash cannot satisfy; see that job for why each piece is load-bearing.
+      - name: Stage griffe fixture for discovery
+        run: cp .github/test-fixtures/griffe_warnings.py src/docvet/_test_fixture.py
+        shell: bash
+      - uses: ./
+        with:
+          docvet-version: "1.9.0"
+          checks: "griffe"
+        continue-on-error: true
+        id: docvet-griffe-run
+      - name: Verify non-zero exit (griffe findings expected on the pinned path)
+        run: test "${{ steps.docvet-griffe-run.outcome }}" = "failure"
+        shell: bash
+      - name: Verify the pinned griffe check reported griffe-unknown-param
+        run: |
+          docvet --format json griffe --all > griffe-findings.json || true
+          jq -e '.findings[] | select(.rule == "griffe-unknown-param")' griffe-findings.json
         shell: bash
 
   test-python-version:

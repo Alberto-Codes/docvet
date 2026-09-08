@@ -52,10 +52,19 @@ runs:
           DOCVET_VERSION="${{ inputs.version }}"
         fi
 
+        # The griffe extra is not optional: the `checks` input offers griffe
+        # and defaults to "all", and docvet skips that check without a warning
+        # the caller ever sees when griffe is not importable, so both paths
+        # request it. What the extra resolves to depends on the version pinned:
+        # 1.15.2 and later declare griffelib>=2.2,<3; 1.7.0 through 1.15.1
+        # declare griffe>=1.0,<2, which lands on griffe 1.15.0, the last 1.x
+        # release; 1.0.0 through 1.6.4 leave it unbounded at griffe>=1.0 and
+        # so draw the griffe 2.x meta-package, which pulls griffelib in turn.
+        # All three provide an importable `griffe`.
         if [ "$DOCVET_VERSION" = "latest" ]; then
-          pip install docvet
+          pip install "docvet[griffe]"
         else
-          pip install "docvet==$DOCVET_VERSION"
+          pip install "docvet[griffe]==$DOCVET_VERSION"
         fi
       shell: bash
     - name: Run docvet

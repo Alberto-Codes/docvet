@@ -121,15 +121,13 @@ Select specific checks or pin a version:
     python-version: '3.13'
 ```
 
-For griffe rendering checks, install griffe before running docvet:
+The griffe rendering check needs no setup: the action installs `docvet[griffe]`, pinned or not, so every check the `checks` input offers is available. Note that docvet releases before 1.7.0 declare that extra without an upper bound, so pinning one installs whatever griffe publishes at the time rather than a version docvet was released against.
 
-```yaml
-- uses: actions/setup-python@v6
-  with:
-    python-version: '3.12'
-- run: pip install griffe
-- uses: Alberto-Codes/docvet@v1
-```
+> **Behavior change — this can turn a passing build red.**
+>
+> Earlier releases installed plain `docvet`, so the griffe check was skipped and contributed zero findings. It now runs. `determine_exit_code` (`src/docvet/reporting.py`) returns 1 as soon as any check listed in `fail-on` reports findings, so if your `pyproject.toml` has `griffe` in `[tool.docvet] fail-on`, your build goes from green to failing with no change on your side. This repository's own `ci.yml` docvet job is exactly such a consumer.
+>
+> These are not new problems — it is the check finally running on docstrings that were always broken. To get back to green, fix the griffe findings or remove `griffe` from `fail-on`.
 
 ## AI Agent Integration
 
