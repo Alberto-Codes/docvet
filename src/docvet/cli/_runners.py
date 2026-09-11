@@ -363,7 +363,7 @@ def _griffe_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
     ``griffe`` is listed in ``fail-on`` *and* ``fail-on-unavailable``
     is enabled, which makes the run exit non-zero rather than
     reporting success for a gate that never ran. With the opt-in off
-    the record still records ``in_fail_on`` so the caller can be
+    the record still records ``configured_gate`` so the caller can be
     warned that a configured gate never executed.
 
     Args:
@@ -381,13 +381,13 @@ def _griffe_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
         remedy = "pip install 'docvet[griffe]', or drop griffe from fail-on"
     else:
         return None
-    in_fail_on = "griffe" in config.fail_on
+    configured_gate = "griffe" in config.fail_on
     return UnavailableCheck(
         check="griffe",
         reason=reason,
         remedy=remedy,
-        blocking=in_fail_on and config.fail_on_unavailable,
-        in_fail_on=in_fail_on,
+        blocking=configured_gate and config.fail_on_unavailable,
+        configured_gate=configured_gate,
     )
 
 
@@ -403,9 +403,12 @@ def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
     false`` configures a gate that can never run, and the floor is
     named in the reason so the report says which threshold went
     unmeasured. A disabled check nobody gates on is an ordinary
-    opt-out and is not reported. The record is *blocking* only when
-    ``fail-on-unavailable`` is enabled, so the same opt-in governs it
-    as :func:`_griffe_unavailability`.
+    opt-out and is not reported. Either way the record carries
+    ``configured_gate``, which reports the gate the config asked for
+    rather than ``fail-on`` membership — the floor gates presence
+    without that list ever naming it. The record is *blocking* only
+    when ``fail-on-unavailable`` is enabled, so the same opt-in
+    governs it as :func:`_griffe_unavailability`.
 
     Args:
         config: Loaded docvet configuration.
@@ -438,7 +441,7 @@ def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
         reason=reason,
         remedy=remedy,
         blocking=config.fail_on_unavailable,
-        in_fail_on=True,
+        configured_gate=True,
     )
 
 
@@ -455,12 +458,14 @@ def _write_unavailable_notice(
     unconditional warning naming the check, why it could not run, that
     this check did not fail the run because the setting is off, how to
     make it an error, and that this becomes an error in a future
-    major. Both say "configured to gate the run" rather than naming
-    ``fail-on``, because a ``min-coverage`` floor configures a gate
-    without listing the check there. The notice speaks only for this
-    check: it is written mid-run, so another ``fail-on`` check or a
-    coverage shortfall can still fail the run. A check that gates
-    nothing reports a skip line only when *note* is set.
+    major. That second branch keys off the record's
+    ``configured_gate`` flag, and both messages say "configured to
+    gate the run" rather than naming ``fail-on``, because a
+    ``min-coverage`` floor configures a gate without listing the check
+    there. The notice speaks only for this check: it is written
+    mid-run, so another ``fail-on`` check or a coverage shortfall can
+    still fail the run. A check that gates nothing reports a skip line
+    only when *note* is set.
 
     Args:
         unavailable: The check that could not execute.
@@ -473,7 +478,7 @@ def _write_unavailable_notice(
             f" but could not run ({unavailable.reason})\n"
             f"  remedy: {unavailable.remedy}\n"
         )
-    elif unavailable.in_fail_on:
+    elif unavailable.configured_gate:
         sys.stderr.write(
             f"warning: {unavailable.check} check was configured to gate the run"
             f" but could not run ({unavailable.reason}),"

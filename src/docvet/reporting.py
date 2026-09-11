@@ -86,12 +86,15 @@ class UnavailableCheck:
         blocking (bool): ``True`` when this check failing to run must
             fail the run — the check was configured as a gate *and*
             ``fail-on-unavailable`` is enabled.
-        in_fail_on (bool): ``True`` when the config asked this check
-            to gate the run: listed in ``fail-on``, or — for presence
-            — enforcing a ``min-coverage`` floor, which gates without
-            appearing in ``fail-on``. A configured gate that is not
-            *blocking* is the opt-out path: the gate never executed,
-            the run still exits 0, and the caller is warned loudly.
+        configured_gate (bool): ``True`` when the config asked this
+            check to gate the run: listed in ``fail-on``, or — for
+            presence — enforcing a ``min-coverage`` floor, which gates
+            without appearing in ``fail-on``. Named for the gate the
+            config configured rather than for ``fail-on`` membership,
+            because the floor gates a check that list never names. A
+            configured gate that is not *blocking* is the opt-out
+            path: the gate never executed, the run still exits 0, and
+            the caller is warned loudly.
 
     Examples:
         Describe a griffe check that could not run:
@@ -102,7 +105,7 @@ class UnavailableCheck:
             reason="griffe not installed",
             remedy="pip install 'docvet[griffe]'",
             blocking=True,
-            in_fail_on=True,
+            configured_gate=True,
         )
         ```
     """
@@ -111,7 +114,7 @@ class UnavailableCheck:
     reason: str
     remedy: str
     blocking: bool
-    in_fail_on: bool = False
+    configured_gate: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -624,7 +627,7 @@ def determine_run_outcome(
         from docvet.config import DocvetConfig
 
         uc = UnavailableCheck(
-            "griffe", "griffe not installed", "...", True, in_fail_on=True
+            "griffe", "griffe not installed", "...", True, configured_gate=True
         )
         outcome = determine_run_outcome(
             {},
@@ -671,7 +674,7 @@ def determine_run_outcome(
             ),
         )
 
-    advisory = [u for u in unavailable if u.in_fail_on]
+    advisory = [u for u in unavailable if u.configured_gate]
     if advisory:
         detail = "; ".join(f"{u.check} ({u.reason})" for u in advisory)
         return RunOutcome(

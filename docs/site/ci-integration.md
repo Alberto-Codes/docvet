@@ -269,14 +269,14 @@ JSON output carries the same information in a `run` object, so an agent or a scr
         "reason": "griffe not installed",
         "remedy": "pip install 'docvet[griffe]', or drop griffe from fail-on",
         "blocking": true,
-        "in_fail_on": true
+        "configured_gate": true
       }
     ]
   }
 }
 ```
 
-`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `in_fail_on` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"in_fail_on": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
+`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `configured_gate` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`, so the field is named for the gate rather than for membership of that list; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"configured_gate": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
 
 ```text
 no check in fail-on reported findings, but these checks in fail-on could not run and fail-on-unavailable is off: griffe (griffe not installed)

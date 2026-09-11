@@ -172,7 +172,7 @@ class TestOptInBlocksUnavailableCheck:
                 "reason": "griffe not installed",
                 "remedy": "pip install 'docvet[griffe]', or drop griffe from fail-on",
                 "blocking": True,
-                "in_fail_on": True,
+                "configured_gate": True,
             }
         ]
         assert json.loads(result.stdout)["findings"] == []
@@ -255,7 +255,7 @@ class TestDefaultWarnsButDoesNotBlock:
                 "reason": "griffe not installed",
                 "remedy": "pip install 'docvet[griffe]', or drop griffe from fail-on",
                 "blocking": False,
-                "in_fail_on": True,
+                "configured_gate": True,
             }
         ]
 
@@ -286,7 +286,7 @@ class TestAdvisoryCheckUnavailable:
                 "reason": "griffe not installed",
                 "remedy": "pip install 'docvet[griffe]', or drop griffe from fail-on",
                 "blocking": False,
-                "in_fail_on": False,
+                "configured_gate": False,
             }
         ]
 
@@ -377,7 +377,7 @@ class TestDisabledPresenceGate:
                     " presence from fail-on"
                 ),
                 "blocking": False,
-                "in_fail_on": True,
+                "configured_gate": True,
             }
         ]
         assert "presence (disabled by configuration)" in run["exit_reason"]
@@ -463,7 +463,7 @@ class TestDisabledPresenceWithCoverageFloor:
                     " min-coverage"
                 ),
                 "blocking": False,
-                "in_fail_on": True,
+                "configured_gate": True,
             }
         ]
         assert "95.0% min-coverage floor was never measured" in run["exit_reason"]

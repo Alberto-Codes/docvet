@@ -1136,14 +1136,16 @@ class TestScaffoldCategory:
 # ---------------------------------------------------------------------------
 
 
-def _unavailable(*, blocking: bool, in_fail_on: bool | None = None) -> UnavailableCheck:
+def _unavailable(
+    *, blocking: bool, configured_gate: bool | None = None
+) -> UnavailableCheck:
     """Build a griffe UnavailableCheck for outcome tests.
 
     Args:
         blocking: Whether the record must fail the run.
-        in_fail_on: Whether the check is listed in ``fail-on``.
-            Defaults to *blocking*, since a blocking record is always
-            in ``fail-on``.
+        configured_gate: Whether the config asked the check to gate the
+            run. Defaults to *blocking*, since a blocking record is
+            always a configured gate.
 
     Returns:
         The constructed :class:`UnavailableCheck`.
@@ -1153,7 +1155,7 @@ def _unavailable(*, blocking: bool, in_fail_on: bool | None = None) -> Unavailab
         reason="griffe not installed",
         remedy="pip install 'docvet[griffe]'",
         blocking=blocking,
-        in_fail_on=blocking if in_fail_on is None else in_fail_on,
+        configured_gate=blocking if configured_gate is None else configured_gate,
     )
 
 
@@ -1191,7 +1193,7 @@ class TestDetermineRunOutcome:
         outcome = determine_run_outcome(
             {},
             DocvetConfig(fail_on=["griffe"]),
-            unavailable=[_unavailable(blocking=False, in_fail_on=True)],
+            unavailable=[_unavailable(blocking=False, configured_gate=True)],
         )
         assert outcome.exit_code == 0
         assert outcome.status == RUN_STATUS_PASSED
@@ -1203,7 +1205,7 @@ class TestDetermineRunOutcome:
         outcome = determine_run_outcome(
             {},
             DocvetConfig(fail_on=["enrichment"]),
-            unavailable=[_unavailable(blocking=False, in_fail_on=False)],
+            unavailable=[_unavailable(blocking=False, configured_gate=False)],
         )
         assert outcome.exit_code == 0
         assert outcome.status == RUN_STATUS_PASSED
@@ -1262,7 +1264,7 @@ class TestFormatJsonRunBlock:
                 "reason": "griffe not installed",
                 "remedy": "pip install 'docvet[griffe]'",
                 "blocking": True,
-                "in_fail_on": True,
+                "configured_gate": True,
             }
         ]
 

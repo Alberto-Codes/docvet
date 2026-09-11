@@ -171,7 +171,7 @@ runs:
         UNAVAILABLE=""
         BLOCKING=""
         if [ -s "$MERGED_OUTPUT" ]; then
-          UNAVAILABLE=$(jq -r '[(.run.unavailable_checks // [])[] | select(.in_fail_on)][] | "\(.check): \(.reason) — remedy: \(.remedy)"' "$MERGED_OUTPUT")
+          UNAVAILABLE=$(jq -r '[(.run.unavailable_checks // [])[] | select(.configured_gate)][] | "\(.check): \(.reason) — remedy: \(.remedy)"' "$MERGED_OUTPUT")
           BLOCKING=$(jq -r '[(.run.unavailable_checks // [])[] | select(.blocking)] | length' "$MERGED_OUTPUT")
         fi
         if [ -n "$UNAVAILABLE" ]; then

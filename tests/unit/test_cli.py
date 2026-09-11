@@ -1528,7 +1528,7 @@ def test_check_reports_unavailable_status_in_json_when_opted_in(tmp_path, mocker
     assert run["exit_code"] == 1
     assert run["unavailable_checks"][0]["check"] == "griffe"
     assert run["unavailable_checks"][0]["blocking"] is True
-    assert run["unavailable_checks"][0]["in_fail_on"] is True
+    assert run["unavailable_checks"][0]["configured_gate"] is True
 
 
 def test_check_reports_passed_status_in_json_by_default(tmp_path, mocker):
@@ -1540,7 +1540,7 @@ def test_check_reports_passed_status_in_json_by_default(tmp_path, mocker):
     assert run["exit_code"] == 0
     assert run["unavailable_checks"][0]["check"] == "griffe"
     assert run["unavailable_checks"][0]["blocking"] is False
-    assert run["unavailable_checks"][0]["in_fail_on"] is True
+    assert run["unavailable_checks"][0]["configured_gate"] is True
 
 
 # ---------------------------------------------------------------------------
