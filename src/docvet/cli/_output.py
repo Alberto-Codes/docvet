@@ -2,7 +2,9 @@
 
 Handles the unified output pipeline for all CLI commands: applies inline
 suppression filters, resolves output format, dispatches to formatters,
-writes quality summaries, and exits with appropriate codes.
+writes quality summaries, and exits with the code from
+[`determine_run_outcome`][docvet.reporting.determine_run_outcome], which
+also supplies the ``run`` status block carried by JSON output.
 
 See Also:
     [`docvet.cli`][]: CLI application and subcommands.
@@ -21,6 +23,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import typer
@@ -34,7 +37,7 @@ from docvet.cli._suppression import (
     parse_suppression_directives,
 )
 from docvet.config import DocvetConfig
-from docvet.reporting import CheckQuality
+from docvet.reporting import CheckQuality, RunOutcome, UnavailableCheck
 
 
 def _emit_findings(
@@ -48,6 +51,8 @@ def _emit_findings(
     min_coverage: float = 0.0,
     quality: dict[str, CheckQuality] | None = None,
     suppressed: list[Finding] | None = None,
+    run: RunOutcome | None = None,
+    unavailable: Sequence[UnavailableCheck] = (),
 ) -> None:
     """Write findings to stdout or a file in the resolved format.
 
@@ -66,6 +71,8 @@ def _emit_findings(
         min_coverage: Coverage threshold from config for JSON output.
         quality: Per-check quality data for JSON output, or *None*.
         suppressed: Suppressed findings for JSON output, or *None*.
+        run: Run outcome for JSON output, or *None*.
+        unavailable: Checks that could not execute, for JSON output.
     """
     if resolved_fmt == "json":
         json_output = _cli_pkg.format_json(
@@ -75,6 +82,8 @@ def _emit_findings(
             min_coverage=min_coverage,
             quality=quality,
             suppressed=suppressed,
+            run=run,
+            unavailable=unavailable,
         )
         if output_path:
             Path(output_path).write_text(json_output)
@@ -199,6 +208,7 @@ def _output_and_exit(
     *,
     presence_stats: PresenceStats | None = None,
     check_counts: dict[str, int] | None = None,
+    unavailable: Sequence[UnavailableCheck] = (),
 ) -> None:
     """Resolve output options, apply suppressions, emit findings, and exit.
 
@@ -222,9 +232,13 @@ def _output_and_exit(
             when the presence check did not run.
         check_counts: Per-check item counts for quality computation,
             or *None* when ``--summary`` is not active.
+        unavailable: Checks that could not execute during this run.
+            A check listed in ``fail-on`` that could not execute fails
+            the run only when ``fail-on-unavailable`` is enabled.
 
     Raises:
-        typer.Exit: With code 0 when no fail-on findings, code 1 otherwise.
+        typer.Exit: With the exit code from
+            :func:`~docvet.reporting.determine_run_outcome`.
     """
     output_path = ctx.obj.get("output")
     verbose = ctx.obj.get("verbose", False)
@@ -270,7 +284,15 @@ def _output_and_exit(
     if summary and check_counts is not None:
         quality = _cli_pkg.compute_quality(findings_by_check, check_counts)
 
-    # 8. Resolve format, emit findings, exit
+    # 8. Resolve the run outcome so the exit code and JSON status agree
+    outcome = _cli_pkg.determine_run_outcome(
+        findings_by_check,
+        config,
+        presence_stats=presence_stats,
+        unavailable=unavailable,
+    )
+
+    # 9. Resolve format, emit findings
     resolved_fmt = _resolve_format(fmt_opt, output_path)
     _emit_findings(
         resolved_fmt,
@@ -282,14 +304,12 @@ def _output_and_exit(
         min_coverage=config.presence.min_coverage,
         quality=quality if resolved_fmt == "json" else None,
         suppressed=all_suppressed if resolved_fmt == "json" else None,
+        run=outcome if resolved_fmt == "json" else None,
+        unavailable=unavailable,
     )
 
-    # 9. Quality summary to stderr (after findings, before exit)
+    # 10. Quality summary to stderr (after findings, before exit)
     if summary and not quiet and quality is not None:
         sys.stderr.write(_cli_pkg.format_quality_summary(quality))
 
-    raise typer.Exit(
-        _cli_pkg.determine_exit_code(
-            findings_by_check, config, presence_stats=presence_stats
-        )
-    )
+    raise typer.Exit(outcome.exit_code)

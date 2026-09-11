@@ -642,6 +642,49 @@ def test_load_config_overlap_auto_subtracts_from_warn_on(
     assert "freshness" not in cfg.warn_on
 
 
+# ---------------------------------------------------------------------------
+# fail-on-unavailable (issue #442)
+# ---------------------------------------------------------------------------
+
+
+def test_load_config_fail_on_unavailable_defaults_to_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["griffe"]\n')
+    assert load_config().fail_on_unavailable is False
+
+
+def test_load_config_fail_on_unavailable_reads_true(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["griffe"]\nfail-on-unavailable = true\n')
+    cfg = load_config()
+    assert cfg.fail_on_unavailable is True
+    assert cfg.fail_on == ["griffe"]
+
+
+def test_load_config_fail_on_unavailable_reads_explicit_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\nfail-on-unavailable = false\n")
+    assert load_config().fail_on_unavailable is False
+
+
+def test_load_config_fail_on_unavailable_rejects_non_bool(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on-unavailable = "yes"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    err = capsys.readouterr().err
+    assert "fail-on-unavailable" in err
+    assert "bool" in err
+
+
 def test_load_config_multiple_unknown_keys_reported(
     tmp_path, monkeypatch, write_pyproject, capsys
 ):

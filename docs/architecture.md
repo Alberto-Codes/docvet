@@ -46,7 +46,7 @@ The Typer-based CLI entry point. Contains:
 
 ### config.py (Implemented)
 
-Reads `[tool.docvet]` from `pyproject.toml`. Missing section defaults to sensible values (not an error). Configuration keys include `src-root`, `package-name`, `exclude`, `fail-on`, `warn-on`, and per-check settings. Validates keys, types, and check names with stderr warnings.
+Reads `[tool.docvet]` from `pyproject.toml`. Missing section defaults to sensible values (not an error). Configuration keys include `src-root`, `package-name`, `exclude`, `fail-on`, `fail-on-unavailable`, `warn-on`, and per-check settings. Validates keys, types, and check names with stderr warnings.
 
 ### discovery.py (Implemented)
 

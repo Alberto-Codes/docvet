@@ -3,7 +3,10 @@
 Each ``_run_*`` function reads files, invokes the corresponding check
 module, and returns findings.  The ``_run_fix`` runner additionally
 writes scaffolded sections back to files (or collects diffs in dry-run
-mode).  Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
+mode).  ``_griffe_unavailability`` is the single source of truth for
+whether the griffe check can execute at all, and
+``_write_unavailable_notice`` reports a check that could not run.
+Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
 raw VCS data for the freshness runner, each running git through
 :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR`` cannot
 redirect it away from the project root.  Progress display is handled
@@ -36,6 +39,7 @@ import docvet.cli as _cli_pkg
 from docvet.checks import Finding
 from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
+from docvet.reporting import UnavailableCheck
 
 from ..discovery import git_env
 from . import DiscoveryMode, FreshnessMode
@@ -151,9 +155,11 @@ def _write_timing(
     *,
     verbose: bool,
     quiet: bool,
-    enabled: bool = True,
 ) -> None:
     """Write a per-check timing line to stderr when verbose.
+
+    Only called for checks that actually ran; a check that could not
+    execute is reported by :func:`_write_unavailable_notice` instead.
 
     Args:
         name: Check name (e.g. ``"enrichment"``).
@@ -161,10 +167,8 @@ def _write_timing(
         elapsed: Elapsed time in seconds.
         verbose: Whether verbose mode is active.
         quiet: Whether quiet mode is active.
-        enabled: Extra gate — set to *False* to suppress output
-            (used for griffe when not installed).
     """
-    if enabled and verbose and not quiet:
+    if verbose and not quiet:
         sys.stderr.write(f"{name}: {file_count} files in {elapsed:.1f}s\n")
 
 
@@ -347,33 +351,99 @@ def _run_coverage(files: list[Path], config: DocvetConfig) -> tuple[list[Finding
     return _cli_pkg.check_coverage(src_root, files), package_count
 
 
-def _run_griffe(
-    files: list[Path],
-    config: DocvetConfig,
+def _griffe_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
+    """Report why the griffe check cannot execute, if it cannot.
+
+    Griffe cannot run when the package is not importable, or when
+    ``docstring-style`` is ``"sphinx"`` (griffe's Google parser cannot
+    read RST field lists). The returned record is *blocking* only when
+    ``griffe`` is listed in ``fail-on`` *and* ``fail-on-unavailable``
+    is enabled, which makes the run exit non-zero rather than
+    reporting success for a gate that never ran. With the opt-in off
+    the record still records ``in_fail_on`` so the caller can be
+    warned that a configured gate never executed.
+
+    Args:
+        config: Loaded docvet configuration.
+
+    Returns:
+        An :class:`~docvet.reporting.UnavailableCheck` describing the
+        obstacle, or *None* when griffe can run.
+    """
+    if config.docstring_style == "sphinx":
+        reason = "incompatible with sphinx docstring style"
+        remedy = 'set docstring-style to "google", or drop griffe from fail-on'
+    elif importlib.util.find_spec("griffe") is None:
+        reason = "griffe not installed"
+        remedy = "pip install 'docvet[griffe]', or drop griffe from fail-on"
+    else:
+        return None
+    in_fail_on = "griffe" in config.fail_on
+    return UnavailableCheck(
+        check="griffe",
+        reason=reason,
+        remedy=remedy,
+        blocking=in_fail_on and config.fail_on_unavailable,
+        in_fail_on=in_fail_on,
+    )
+
+
+def _write_unavailable_notice(
+    unavailable: UnavailableCheck,
     *,
-    verbose: bool = False,
-    quiet: bool = False,
-) -> tuple[list[Finding], int]:
+    note: bool,
+) -> None:
+    """Write a stderr notice for a check that could not execute.
+
+    A blocking check reports an error with its remedy, since the run
+    exits non-zero because of it. A check that is listed in
+    ``fail-on`` but not blocking — ``fail-on-unavailable`` is off —
+    reports an unconditional warning naming the check, why it could
+    not run, that the run still exits 0 because the setting is off,
+    how to make it an error, and that this becomes an error in a
+    future major. A check that is in neither reports a skip line only
+    when *note* is set.
+
+    Args:
+        unavailable: The check that could not execute.
+        note: Whether to write the skip line for a check that is not
+            listed in ``fail-on``.
+    """
+    if unavailable.blocking:
+        sys.stderr.write(
+            f"error: {unavailable.check} check is in fail-on but could not run"
+            f" ({unavailable.reason})\n"
+            f"  remedy: {unavailable.remedy}\n"
+        )
+    elif unavailable.in_fail_on:
+        sys.stderr.write(
+            f"warning: {unavailable.check} check is in fail-on but could not run"
+            f" ({unavailable.reason}), so that gate never executed\n"
+            f"  remedy: {unavailable.remedy}\n"
+            "  exiting 0 anyway because fail-on-unavailable is off; set"
+            " fail-on-unavailable = true under [tool.docvet] (or pass"
+            " --fail-on-unavailable) to make this an error\n"
+            "  a future major release will make this an error by default\n"
+        )
+    elif note:
+        sys.stderr.write(f"{unavailable.check}: skipped ({unavailable.reason})\n")
+
+
+def _run_griffe(files: list[Path], config: DocvetConfig) -> tuple[list[Finding], int]:
     """Run the griffe compatibility check on discovered files.
 
-    Checks if griffe is installed, resolves the source root from
-    configuration, and runs ``check_griffe_compat``.
+    Returns no findings when griffe cannot execute; callers decide
+    what that means for the run via :func:`_griffe_unavailability`.
 
     Args:
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
-        verbose: Whether verbose mode is enabled.
-        quiet: Whether quiet mode is enabled.
 
     Returns:
         A tuple of ``(findings, file_count)`` where *file_count*
         is the number of files checked by griffe.
     """
-    if importlib.util.find_spec("griffe") is None:
-        if "griffe" in config.fail_on:
-            typer.echo("warning: griffe check skipped (griffe not installed)", err=True)
-        elif verbose and not quiet:
-            typer.echo("griffe: skipped (griffe not installed)", err=True)
+    if _griffe_unavailability(config) is not None:
         return [], 0
     src_root = config.project_root / config.src_root
     if not src_root.is_dir():

@@ -26,6 +26,12 @@ from docvet.cli import (
 )
 from docvet.config import DocvetConfig, PresenceConfig, load_config
 from docvet.discovery import DiscoveryMode
+from docvet.reporting import (
+    RUN_STATUS_FINDINGS,
+    RUN_STATUS_PASSED,
+    RUN_STATUS_UNAVAILABLE,
+    RunOutcome,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -522,9 +528,7 @@ def test_check_when_invoked_passes_config_to_run_stubs(mocker):
         fake_files, fake_config, discovery_mode=DiscoveryMode.DIFF, show_progress=False
     )
     mock_coverage.assert_called_once_with(fake_files, fake_config)
-    mock_griffe.assert_called_once_with(
-        fake_files, fake_config, verbose=False, quiet=False
-    )
+    mock_griffe.assert_called_once_with(fake_files, fake_config)
 
 
 def test_check_when_discovery_returns_empty_does_not_call_stubs(mocker):
@@ -596,9 +600,7 @@ def test_griffe_when_invoked_calls_discover_and_run_griffe(mocker):
     mock_run = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
     runner.invoke(app, ["griffe"])
     mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
-    mock_run.assert_called_once_with(
-        [Path("/fake/file.py")], ANY, verbose=False, quiet=False
-    )
+    mock_run.assert_called_once_with([Path("/fake/file.py")], ANY)
 
 
 def test_griffe_subcommand_sphinx_mode_skips_with_message(mocker):
@@ -1341,13 +1343,14 @@ def test_run_griffe_passes_discovered_files(tmp_path, mocker):
     mock_check.assert_called_once_with(ANY, files)
 
 
-def test_run_griffe_when_griffe_not_installed_skips_silently(mocker):
+def test_run_griffe_when_griffe_not_installed_skips_without_failing(mocker):
     mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["griffe"])
+    output = result.output + getattr(result, "stderr", "")
     assert result.exit_code == 0
-    assert _non_timing_lines(result.output) == []
+    assert "griffe: skipped (griffe not installed)" in output
     mock_check.assert_not_called()
 
 
@@ -1361,7 +1364,24 @@ def test_run_griffe_when_griffe_not_installed_and_verbose_emits_note(mocker):
     mock_check.assert_not_called()
 
 
-def test_run_griffe_when_griffe_not_installed_and_fail_on_emits_warning(mocker):
+def test_run_griffe_when_griffe_not_installed_and_fail_on_opt_in_fails_the_run(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=True)
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert result.exit_code == 1
+    assert (
+        "error: griffe check is in fail-on but could not run (griffe not installed)"
+        in output
+    )
+    assert "remedy: pip install 'docvet[griffe]'" in output
+    mock_check.assert_not_called()
+
+
+def test_run_griffe_when_griffe_not_installed_and_fail_on_warns_but_exits_zero(mocker):
     mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
     fake_config = DocvetConfig(fail_on=["griffe"])
@@ -1369,7 +1389,30 @@ def test_run_griffe_when_griffe_not_installed_and_fail_on_emits_warning(mocker):
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["griffe"])
     output = result.output + getattr(result, "stderr", "")
-    assert "warning: griffe check skipped (griffe not installed)" in output
+    assert result.exit_code == 0
+    assert "error:" not in output
+    assert (
+        "warning: griffe check is in fail-on but could not run"
+        " (griffe not installed), so that gate never executed" in output
+    )
+    assert "remedy: pip install 'docvet[griffe]'" in output
+    assert "exiting 0 anyway because fail-on-unavailable is off" in output
+    assert "fail-on-unavailable = true" in output
+    assert "a future major release will make this an error" in output
+    mock_check.assert_not_called()
+
+
+def test_fail_on_unavailable_flag_turns_the_warning_into_an_error(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"])
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["--fail-on-unavailable", "griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert result.exit_code == 1
+    assert "error: griffe check is in fail-on but could not run" in output
+    assert "warning: griffe" not in output
     mock_check.assert_not_called()
 
 
@@ -1410,10 +1453,11 @@ def test_check_command_includes_griffe_findings(tmp_path, mocker):
     assert "griffe-unknown-param" in result.output
 
 
-def test_check_passes_verbose_to_run_griffe(mocker):
+def test_check_runs_griffe_when_available(mocker):
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
     mock_griffe = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
     runner.invoke(app, ["--verbose", "check"])
-    mock_griffe.assert_called_once_with(ANY, ANY, verbose=True, quiet=False)
+    mock_griffe.assert_called_once_with(ANY, ANY)
 
 
 def test_griffe_when_invoked_with_all_calls_discover_with_all_mode(mocker):
@@ -1437,14 +1481,62 @@ def test_run_griffe_when_griffe_not_installed_fail_on_takes_priority_over_verbos
 ):
     mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
-    fake_config = DocvetConfig(fail_on=["griffe"])
+    fake_config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=True)
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["--verbose", "griffe"])
     output = result.output + getattr(result, "stderr", "")
-    assert "warning: griffe check skipped (griffe not installed)" in output
+    assert "error: griffe check is in fail-on but could not run" in output
     assert "griffe: skipped (griffe not installed)" not in output
     mock_check.assert_not_called()
+
+
+def _patch_check_run(mocker, tmp_path, *, fail_on_unavailable: bool):
+    """Patch every check runner so ``check`` exercises only griffe.
+
+    Args:
+        mocker: pytest-mock fixture.
+        tmp_path: Project root for the fake config.
+        fail_on_unavailable: Value for the opt-in setting.
+    """
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    mocker.patch(
+        "docvet.cli.load_config",
+        return_value=DocvetConfig(
+            fail_on=["griffe"],
+            fail_on_unavailable=fail_on_unavailable,
+            project_root=tmp_path,
+        ),
+    )
+    mocker.patch("docvet.cli.discover_files", return_value=[])
+    mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/fake.py")])
+    mocker.patch("docvet.cli._run_presence", return_value=([], PresenceStats(1, 1)))
+    for runner_name in ("_run_enrichment", "_run_freshness", "_run_coverage"):
+        mocker.patch(f"docvet.cli.{runner_name}", return_value=([], 0))
+
+
+def test_check_reports_unavailable_status_in_json_when_opted_in(tmp_path, mocker):
+    _patch_check_run(mocker, tmp_path, fail_on_unavailable=True)
+    result = runner.invoke(app, ["--format", "json", "check", "--all"])
+    assert result.exit_code == 1
+    run = json.loads(result.stdout)["run"]
+    assert run["status"] == RUN_STATUS_UNAVAILABLE
+    assert run["exit_code"] == 1
+    assert run["unavailable_checks"][0]["check"] == "griffe"
+    assert run["unavailable_checks"][0]["blocking"] is True
+    assert run["unavailable_checks"][0]["in_fail_on"] is True
+
+
+def test_check_reports_passed_status_in_json_by_default(tmp_path, mocker):
+    _patch_check_run(mocker, tmp_path, fail_on_unavailable=False)
+    result = runner.invoke(app, ["--format", "json", "check", "--all"])
+    assert result.exit_code == 0
+    run = json.loads(result.stdout)["run"]
+    assert run["status"] == RUN_STATUS_PASSED
+    assert run["exit_code"] == 0
+    assert run["unavailable_checks"][0]["check"] == "griffe"
+    assert run["unavailable_checks"][0]["blocking"] is False
+    assert run["unavailable_checks"][0]["in_fail_on"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -1742,8 +1834,9 @@ class TestOutputAndExit:
             "docvet.cli.format_json", return_value='{"findings":[]}\n'
         )
         self.mock_write_report = mocker.patch("docvet.cli.write_report")
-        self.mock_determine_exit_code = mocker.patch(
-            "docvet.cli.determine_exit_code", return_value=0
+        self.passed_outcome = RunOutcome(0, RUN_STATUS_PASSED, "passed")
+        self.mock_determine_run_outcome = mocker.patch(
+            "docvet.cli.determine_run_outcome", return_value=self.passed_outcome
         )
 
     def _make_ctx(self, verbose=False, fmt=None, output=None):
@@ -1872,37 +1965,37 @@ class TestOutputAndExit:
         self.mock_format_verbose_header.assert_not_called()
 
     def test_exit_code_1_when_fail_on_check_has_findings(self, make_finding):
-        self.mock_determine_exit_code.return_value = 1
+        self.mock_determine_run_outcome.return_value = RunOutcome(
+            1, RUN_STATUS_FINDINGS, "findings"
+        )
         finding = make_finding()
         ctx = self._make_ctx()
         config = DocvetConfig(fail_on=["enrichment"])
         code = self._call(ctx, {"enrichment": [finding]}, config, 1, ["enrichment"])
         assert code == 1
-        self.mock_determine_exit_code.assert_called_once_with(
-            {"enrichment": [finding]}, config, presence_stats=None
+        self.mock_determine_run_outcome.assert_called_once_with(
+            {"enrichment": [finding]}, config, presence_stats=None, unavailable=()
         )
 
     def test_exit_code_0_when_fail_on_check_has_no_findings(self):
-        self.mock_determine_exit_code.return_value = 0
         ctx = self._make_ctx()
         config = DocvetConfig(fail_on=["enrichment"])
         findings_by_check = {"enrichment": []}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(
-            findings_by_check, config, presence_stats=None
+        self.mock_determine_run_outcome.assert_called_once_with(
+            findings_by_check, config, presence_stats=None, unavailable=()
         )
 
     def test_exit_code_0_when_fail_on_is_empty(self, make_finding):
-        self.mock_determine_exit_code.return_value = 0
         finding = make_finding()
         ctx = self._make_ctx()
         config = DocvetConfig()
         findings_by_check = {"enrichment": [finding]}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(
-            findings_by_check, config, presence_stats=None
+        self.mock_determine_run_outcome.assert_called_once_with(
+            findings_by_check, config, presence_stats=None, unavailable=()
         )
 
     def test_no_color_env_var_suppresses_ansi(self, monkeypatch, make_finding):
@@ -1935,15 +2028,14 @@ class TestOutputAndExit:
     def test_standalone_subcommand_exit_code_when_check_not_in_fail_on(
         self, make_finding
     ):
-        self.mock_determine_exit_code.return_value = 0
         finding = make_finding()
         ctx = self._make_ctx()
         config = DocvetConfig(fail_on=["freshness"])
         findings_by_check = {"enrichment": [finding]}
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
-        self.mock_determine_exit_code.assert_called_once_with(
-            findings_by_check, config, presence_stats=None
+        self.mock_determine_run_outcome.assert_called_once_with(
+            findings_by_check, config, presence_stats=None, unavailable=()
         )
 
     def test_format_json_calls_format_json_with_findings(self, capsys, make_finding):
@@ -1958,6 +2050,8 @@ class TestOutputAndExit:
             min_coverage=0.0,
             quality=None,
             suppressed=[],
+            run=self.passed_outcome,
+            unavailable=(),
         )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'
@@ -1967,7 +2061,14 @@ class TestOutputAndExit:
         ctx = self._make_ctx(fmt="json")
         self._call(ctx, {"enrichment": []}, DocvetConfig(), 5, ["enrichment"])
         self.mock_format_json.assert_called_once_with(
-            [], 5, presence_stats=None, min_coverage=0.0, quality=None, suppressed=[]
+            [],
+            5,
+            presence_stats=None,
+            min_coverage=0.0,
+            quality=None,
+            suppressed=[],
+            run=self.passed_outcome,
+            unavailable=(),
         )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'
@@ -2319,13 +2420,6 @@ def test_coverage_subcommand_quiet_suppresses_summary():
     result = runner.invoke(app, ["coverage", "--all", "-q"])
     assert result.exit_code == 0
     assert "Vetted" not in result.output
-
-
-def test_griffe_subcommand_quiet_passes_quiet_to_run_griffe(mocker):
-    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
-    mock_run = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
-    runner.invoke(app, ["griffe", "--all", "-q"])
-    mock_run.assert_called_once_with(ANY, ANY, verbose=False, quiet=True)
 
 
 # ---------------------------------------------------------------------------

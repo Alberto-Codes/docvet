@@ -60,8 +60,9 @@ The `--format json` option produces a structured JSON object for programmatic co
 - The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"scaffold"` maps to `"medium"`, `"recommended"` maps to `"low"`. It is a convenience alias, not a separate signal.
 - The `summary` object includes `total`, `by_category` (with `required`, `recommended`, and `scaffold` counts), and `files_checked`.
 - A `suppressed` array is included containing findings that were suppressed by inline `# docvet: ignore` comments. Each entry has the same seven fields as a finding.
+- A `run` object reports the outcome of the run itself: `status` (`"passed"`, `"findings"`, or `"unavailable"`), `exit_code`, `exit_reason`, and an `unavailable_checks` array listing every check that could not execute. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
-- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check.
+- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check — or when a `fail_on` check could not run and `fail-on-unavailable` is enabled.
 
 ### Quality Summary (`--summary`)
 
@@ -247,7 +248,7 @@ docvet griffe --all
 Loads packages with the griffe parser and captures warnings that would cause broken rendering in mkdocs-material sites. Detects unknown parameters, missing type annotations, and docstring format issues.
 
 !!! note
-    Requires the optional `griffe` extra: `pip install docvet[griffe]`
+    Requires the optional `griffe` extra: `pip install docvet[griffe]`. Without it the check is skipped; when `griffe` is listed in `fail-on` that warns loudly and still exits 0 unless `fail-on-unavailable` is enabled — see [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
 
 ### `docvet fix`
 

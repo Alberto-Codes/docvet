@@ -7,8 +7,9 @@ display via :func:`format_quality_summary`. Produces an unconditional
 summary line for stderr (with optional coverage percentage from the
 presence check), groups findings by file, calculates summary statistics
 (with required, recommended, and scaffold category breakdowns), and
-determines the CLI exit code based on finding severity and coverage
-threshold enforcement.
+determines the CLI run outcome via :func:`determine_run_outcome` from
+findings, coverage threshold enforcement, and checks that could not
+execute.
 
 Examples:
     Generate a terminal report via the CLI:
@@ -63,6 +64,80 @@ _UNIT_BY_CHECK: dict[str, str] = {
 }
 
 _SYMBOL_BASED_CHECKS: frozenset[str] = frozenset({"enrichment", "freshness"})
+
+# ---------------------------------------------------------------------------
+# Run status contract
+# ---------------------------------------------------------------------------
+
+RUN_STATUS_PASSED = "passed"
+RUN_STATUS_FINDINGS = "findings"
+RUN_STATUS_UNAVAILABLE = "unavailable"
+
+
+@dataclasses.dataclass(frozen=True)
+class UnavailableCheck:
+    """A check that could not execute during this run.
+
+    Attributes:
+        check (str): Check name, e.g. ``"griffe"``.
+        reason (str): Short phrase explaining why the check could not
+            run, e.g. ``"griffe not installed"``.
+        remedy (str): One-line instruction for making the check run.
+        blocking (bool): ``True`` when this check failing to run must
+            fail the run — the check is listed in ``fail-on`` *and*
+            ``fail-on-unavailable`` is enabled.
+        in_fail_on (bool): ``True`` when the check is listed in
+            ``fail-on``. A check that is in ``fail-on`` but not
+            *blocking* is the opt-out path: the gate never executed,
+            the run still exits 0, and the caller is warned loudly.
+
+    Examples:
+        Describe a griffe check that could not run:
+
+        ```python
+        uc = UnavailableCheck(
+            check="griffe",
+            reason="griffe not installed",
+            remedy="pip install 'docvet[griffe]'",
+            blocking=True,
+            in_fail_on=True,
+        )
+        ```
+    """
+
+    check: str
+    reason: str
+    remedy: str
+    blocking: bool
+    in_fail_on: bool = False
+
+
+@dataclasses.dataclass(frozen=True)
+class RunOutcome:
+    """Exit code and machine-readable status for a completed run.
+
+    Attributes:
+        exit_code (int): Process exit code (0 or 1).
+        status (str): One of :data:`RUN_STATUS_PASSED`,
+            :data:`RUN_STATUS_FINDINGS`, or
+            :data:`RUN_STATUS_UNAVAILABLE`.
+        reason (str): Human-readable explanation of *status*.
+
+    Examples:
+        Describe a clean run:
+
+        ```python
+        outcome = RunOutcome(
+            exit_code=0,
+            status=RUN_STATUS_PASSED,
+            reason="no check in fail-on was unavailable or reported findings",
+        )
+        ```
+    """
+
+    exit_code: int
+    status: str
+    reason: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -279,6 +354,8 @@ def format_json(
     min_coverage: float = 0.0,
     quality: dict[str, CheckQuality] | None = None,
     suppressed: list[Finding] | None = None,
+    run: RunOutcome | None = None,
+    unavailable: Sequence[UnavailableCheck] = (),
 ) -> str:
     """Format findings as a structured JSON object.
 
@@ -293,8 +370,11 @@ def format_json(
     percentage, threshold, and pass/fail status. When *quality* is
     provided, a ``quality`` object is added with per-check percentage
     breakdowns. When *suppressed* is provided, a ``suppressed`` array
-    is added alongside ``findings``. Always returns a valid JSON object,
-    even when there are no findings.
+    is added alongside ``findings``. When *run* is provided, a ``run``
+    object is added carrying ``status``, ``exit_code``, ``exit_reason``,
+    and an ``unavailable_checks`` array (empty when every check ran),
+    so consumers can tell a clean run from one that skipped a check.
+    Always returns a valid JSON object, even when there are no findings.
 
     Args:
         findings: List of findings to format.
@@ -307,6 +387,9 @@ def format_json(
             was not used.
         suppressed: Suppressed findings list, or *None* when
             suppression data is not requested.
+        run: Run outcome for the ``run`` object, or *None* to omit it.
+        unavailable: Checks that could not execute, reported inside
+            the ``run`` object.
 
     Returns:
         JSON string with ``indent=2`` formatting.
@@ -373,6 +456,16 @@ def format_json(
         }
     if quality is not None:
         obj["quality"] = {name: dataclasses.asdict(cq) for name, cq in quality.items()}
+    if run is not None:
+        obj["run"] = {
+            "status": run.status,
+            "exit_code": run.exit_code,
+            "exit_reason": run.reason,
+            "unavailable_checks": [
+                dataclasses.asdict(u)
+                for u in sorted(unavailable, key=lambda u: u.check)
+            ],
+        }
     return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -485,36 +578,117 @@ def write_report(
     output.write_text(content)
 
 
-def determine_exit_code(
+def determine_run_outcome(
     findings_by_check: dict[str, list[Finding]],
     config: DocvetConfig,
     *,
     presence_stats: PresenceStats | None = None,
-) -> int:
-    """Determine the CLI exit code based on findings and fail_on config.
+    unavailable: Sequence[UnavailableCheck] = (),
+) -> RunOutcome:
+    """Determine the exit code and run status for a completed run.
 
-    Returns 1 if any ``fail_on`` check has findings, or if the
-    presence coverage threshold (compared via
-    :attr:`PresenceStats.percentage`) is configured and not met.
-    Returns 0 otherwise.
+    A check listed in ``fail-on`` that could not execute fails the run
+    with :data:`RUN_STATUS_UNAVAILABLE` when ``fail-on-unavailable``
+    is enabled: the gate was configured, so a run that never executed
+    it cannot report success. That behaviour is opt-in, so by default
+    such a run still exits 0 (the caller is warned loudly instead).
+    Unavailable checks that are not in ``fail-on`` never affect the
+    exit code. Otherwise the run fails with :data:`RUN_STATUS_FINDINGS` when a
+    ``fail-on`` check produced findings or the presence coverage
+    threshold (compared via :attr:`PresenceStats.percentage`) is
+    configured and not met.
 
     Args:
         findings_by_check: Findings grouped by check name.
         config: The docvet configuration with fail_on list.
         presence_stats: Aggregate presence coverage stats, or *None*
             when the presence check did not run.
+        unavailable: Checks that could not execute during this run.
 
     Returns:
-        1 if any fail_on check has findings or coverage is below
-        threshold, 0 otherwise.
+        The :class:`RunOutcome` for this run.
+
+    Examples:
+        A configured gate that could not run fails:
+
+        ```python
+        from docvet.config import DocvetConfig
+
+        uc = UnavailableCheck(
+            "griffe", "griffe not installed", "...", True, in_fail_on=True
+        )
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["griffe"], fail_on_unavailable=True),
+            unavailable=[uc],
+        )
+        # outcome.exit_code == 1, outcome.status == "unavailable"
+        ```
     """
-    for check in config.fail_on:
-        if findings_by_check.get(check, []):
-            return 1
+    blocking = [u for u in unavailable if u.blocking]
+    if blocking:
+        detail = "; ".join(f"{u.check} ({u.reason})" for u in blocking)
+        return RunOutcome(
+            exit_code=1,
+            status=RUN_STATUS_UNAVAILABLE,
+            reason=f"checks configured in fail-on could not run: {detail}",
+        )
+
+    failed = [c for c in config.fail_on if findings_by_check.get(c, [])]
+    if failed:
+        return RunOutcome(
+            exit_code=1,
+            status=RUN_STATUS_FINDINGS,
+            reason=f"checks configured in fail-on have findings: {', '.join(failed)}",
+        )
+
     if (
         presence_stats is not None
         and config.presence.min_coverage > 0.0
         and presence_stats.percentage < config.presence.min_coverage
     ):
-        return 1
-    return 0
+        return RunOutcome(
+            exit_code=1,
+            status=RUN_STATUS_FINDINGS,
+            reason=(
+                f"docstring coverage {presence_stats.percentage:.1f}% is below the"
+                f" {config.presence.min_coverage:.1f}% threshold"
+            ),
+        )
+
+    return RunOutcome(
+        exit_code=0,
+        status=RUN_STATUS_PASSED,
+        reason="no check in fail-on was unavailable or reported findings",
+    )
+
+
+def determine_exit_code(
+    findings_by_check: dict[str, list[Finding]],
+    config: DocvetConfig,
+    *,
+    presence_stats: PresenceStats | None = None,
+    unavailable: Sequence[UnavailableCheck] = (),
+) -> int:
+    """Determine the CLI exit code based on findings and fail_on config.
+
+    Thin wrapper over :func:`determine_run_outcome` for callers that
+    only need the exit code.
+
+    Args:
+        findings_by_check: Findings grouped by check name.
+        config: The docvet configuration with fail_on list.
+        presence_stats: Aggregate presence coverage stats, or *None*
+            when the presence check did not run.
+        unavailable: Checks that could not execute during this run.
+
+    Returns:
+        1 if a fail_on check could not run or has findings, or if
+        coverage is below threshold, 0 otherwise.
+    """
+    return determine_run_outcome(
+        findings_by_check,
+        config,
+        presence_stats=presence_stats,
+        unavailable=unavailable,
+    ).exit_code

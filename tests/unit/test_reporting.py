@@ -10,9 +10,15 @@ import typer
 from docvet.checks import Finding
 from docvet.config import DocvetConfig, PresenceConfig
 from docvet.reporting import (
+    RUN_STATUS_FINDINGS,
+    RUN_STATUS_PASSED,
+    RUN_STATUS_UNAVAILABLE,
     CheckQuality,
+    RunOutcome,
+    UnavailableCheck,
     compute_quality,
     determine_exit_code,
+    determine_run_outcome,
     format_json,
     format_markdown,
     format_quality_summary,
@@ -1124,3 +1130,137 @@ class TestScaffoldCategory:
         findings = [make_finding(category="required")]
         result = format_summary(5, ["enrichment"], findings, 1.0)
         assert "scaffold" not in result
+
+
+# ---------------------------------------------------------------------------
+# determine_run_outcome tests (issue #442)
+# ---------------------------------------------------------------------------
+
+
+def _unavailable(*, blocking: bool, in_fail_on: bool | None = None) -> UnavailableCheck:
+    """Build a griffe UnavailableCheck for outcome tests.
+
+    Args:
+        blocking: Whether the record must fail the run.
+        in_fail_on: Whether the check is listed in ``fail-on``.
+            Defaults to *blocking*, since a blocking record is always
+            in ``fail-on``.
+
+    Returns:
+        The constructed :class:`UnavailableCheck`.
+    """
+    return UnavailableCheck(
+        check="griffe",
+        reason="griffe not installed",
+        remedy="pip install 'docvet[griffe]'",
+        blocking=blocking,
+        in_fail_on=blocking if in_fail_on is None else in_fail_on,
+    )
+
+
+class TestDetermineRunOutcome:
+    """Tests for determine_run_outcome."""
+
+    def test_clean_run_passes(self):
+        outcome = determine_run_outcome({}, DocvetConfig(fail_on=["griffe"]))
+        assert outcome == RunOutcome(
+            exit_code=0,
+            status=RUN_STATUS_PASSED,
+            reason="no check in fail-on was unavailable or reported findings",
+        )
+
+    def test_blocking_unavailable_check_fails_the_run(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["griffe"]),
+            unavailable=[_unavailable(blocking=True)],
+        )
+        assert outcome.exit_code == 1
+        assert outcome.status == RUN_STATUS_UNAVAILABLE
+        assert "griffe (griffe not installed)" in outcome.reason
+
+    def test_advisory_unavailable_check_does_not_fail_the_run(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["enrichment"]),
+            unavailable=[_unavailable(blocking=False)],
+        )
+        assert outcome.exit_code == 0
+        assert outcome.status == RUN_STATUS_PASSED
+
+    def test_fail_on_check_that_never_ran_passes_when_opt_in_is_off(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["griffe"]),
+            unavailable=[_unavailable(blocking=False, in_fail_on=True)],
+        )
+        assert outcome.exit_code == 0
+        assert outcome.status == RUN_STATUS_PASSED
+        assert outcome.reason == (
+            "no check in fail-on was unavailable or reported findings"
+        )
+
+    def test_unavailability_outranks_findings(self, make_finding):
+        outcome = determine_run_outcome(
+            {"enrichment": [make_finding()]},
+            DocvetConfig(fail_on=["enrichment", "griffe"]),
+            unavailable=[_unavailable(blocking=True)],
+        )
+        assert outcome.status == RUN_STATUS_UNAVAILABLE
+
+    def test_findings_status_names_the_failing_checks(self, make_finding):
+        outcome = determine_run_outcome(
+            {"enrichment": [make_finding()]},
+            DocvetConfig(fail_on=["enrichment"]),
+        )
+        assert outcome.exit_code == 1
+        assert outcome.status == RUN_STATUS_FINDINGS
+        assert "enrichment" in outcome.reason
+
+    def test_coverage_shortfall_reports_the_threshold(self):
+        from docvet.checks.presence import PresenceStats
+
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(presence=PresenceConfig(min_coverage=90.0)),
+            presence_stats=PresenceStats(documented=1, total=2),
+        )
+        assert outcome.exit_code == 1
+        assert outcome.status == RUN_STATUS_FINDINGS
+        assert "50.0%" in outcome.reason
+        assert "90.0%" in outcome.reason
+
+    def test_determine_exit_code_agrees_with_outcome(self):
+        config = DocvetConfig(fail_on=["griffe"])
+        unavailable = [_unavailable(blocking=True)]
+        assert determine_exit_code({}, config, unavailable=unavailable) == 1
+
+
+class TestFormatJsonRunBlock:
+    """Tests for the ``run`` object in JSON output."""
+
+    def test_run_block_omitted_when_outcome_not_supplied(self):
+        assert "run" not in json.loads(format_json([], 1))
+
+    def test_run_block_carries_status_and_exit_reason(self):
+        outcome = RunOutcome(1, RUN_STATUS_UNAVAILABLE, "griffe could not run")
+        result = json.loads(
+            format_json([], 1, run=outcome, unavailable=[_unavailable(blocking=True)])
+        )
+        assert result["run"]["status"] == RUN_STATUS_UNAVAILABLE
+        assert result["run"]["exit_code"] == 1
+        assert result["run"]["exit_reason"] == "griffe could not run"
+        assert result["run"]["unavailable_checks"] == [
+            {
+                "check": "griffe",
+                "reason": "griffe not installed",
+                "remedy": "pip install 'docvet[griffe]'",
+                "blocking": True,
+                "in_fail_on": True,
+            }
+        ]
+
+    def test_unavailable_checks_is_empty_when_every_check_ran(self):
+        outcome = RunOutcome(0, RUN_STATUS_PASSED, "clean")
+        result = json.loads(format_json([], 1, run=outcome))
+        assert result["run"]["unavailable_checks"] == []

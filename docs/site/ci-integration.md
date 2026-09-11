@@ -88,6 +88,14 @@ against.
     docstrings that were always broken. To get back to green, fix the
     griffe findings or remove `griffe` from `fail-on`.
 
+The action installs `docvet[griffe]`, so the rendering compatibility check runs
+on the default `checks: all` path with no extra step. Running docvet directly
+rather than through the action requires the extra:
+
+```yaml
+      - run: pip install 'docvet[griffe]'
+```
+
 ### Outputs
 
 The action sets step outputs that downstream steps can consume:
@@ -193,7 +201,7 @@ docvet uses `fail-on` and `warn-on` to control whether findings cause a non-zero
 | Exit Code | Meaning |
 |-----------|---------|
 | **0** | No findings in `fail-on` checks — CI passes |
-| **1** | One or more findings in a `fail-on` check — CI fails |
+| **1** | A `fail-on` check produced findings, or (with `fail-on-unavailable`) could not run — CI fails |
 | **2** | Usage error (invalid arguments or configuration) |
 
 ### How `fail-on` works
@@ -207,6 +215,65 @@ warn-on = ["griffe", "coverage"]       # findings here → reported only
 ```
 
 Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet always exits 0 regardless of findings. To use docvet as a CI gate, you must add at least one check to `fail-on`.
+
+### Checks that cannot run
+
+A check listed in `fail-on` that cannot execute never certified the gate you configured. By default docvet says so loudly on stderr and still exits 0:
+
+```text
+warning: griffe check is in fail-on but could not run (griffe not installed), so that gate never executed
+  remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
+  exiting 0 anyway because fail-on-unavailable is off; set fail-on-unavailable = true under [tool.docvet] (or pass --fail-on-unavailable) to make this an error
+  a future major release will make this an error by default
+```
+
+The warning is always printed, including under `--quiet`.
+
+To make it an error, opt in:
+
+```toml
+[tool.docvet]
+fail-on = ["griffe"]
+fail-on-unavailable = true
+```
+
+or pass the flag for a single run:
+
+```bash
+docvet --fail-on-unavailable check --all
+```
+
+With the opt-in on, the same situation exits 1 and the notice is an error:
+
+```text
+error: griffe check is in fail-on but could not run (griffe not installed)
+  remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
+```
+
+The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). A check that is unavailable but **not** listed in `fail-on` stays a quiet skip either way: the run exits 0 and reports the skip only under `--verbose`.
+
+JSON output carries the same information in a `run` object, so an agent or a script can tell an incomplete run from a clean one — even on the default path, where the exit code alone cannot:
+
+```json
+{
+  "run": {
+    "status": "unavailable",
+    "exit_code": 1,
+    "exit_reason": "checks configured in fail-on could not run: griffe (griffe not installed)",
+    "unavailable_checks": [
+      {
+        "check": "griffe",
+        "reason": "griffe not installed",
+        "remedy": "pip install 'docvet[griffe]', or drop griffe from fail-on",
+        "blocking": true,
+        "in_fail_on": true
+      }
+    ]
+  }
+}
+```
+
+`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `in_fail_on` says the check was configured as a gate; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"in_fail_on": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it.
 
 !!! tip "Default `warn-on` overlap"
     The default `warn-on` list includes all four checks. If you add a check to `fail-on`, docvet silently removes it from the default `warn-on` — no warnings, no findings lost. Warnings only appear when you explicitly set both `fail-on` and `warn-on` with overlapping checks.

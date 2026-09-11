@@ -151,7 +151,8 @@ def format_config_toml(
     """Format effective config as copy-paste-ready TOML.
 
     Renders the top-level ``[tool.docvet]`` keys (including
-    ``docstring-style``) inline, then delegates each nested section
+    ``docstring-style`` and ``fail-on-unavailable``) inline, then
+    delegates each nested section
     (freshness, enrichment — including ``require-returns``,
     ``require-param-agreement``, ``require-deprecation-notice``,
     ``exclude-args-kwargs``, ``check-extra-raises``,
@@ -178,6 +179,7 @@ def format_config_toml(
         ("docstring_style", "docstring-style"),
         ("exclude", "exclude"),
         ("fail_on", "fail-on"),
+        ("fail_on_unavailable", "fail-on-unavailable"),
         ("warn_on", "warn-on"),
     ]
     for attr, kebab in top_fields:

@@ -4,7 +4,9 @@ Loads and validates the ``[tool.docvet]`` configuration table from
 ``pyproject.toml``. Supports ``extend-exclude`` for additive pattern
 merging on top of defaults or an explicit ``exclude`` list, and
 ``docstring-style`` for switching between Google and Sphinx/RST
-conventions. Uses composable validation helpers
+conventions. ``fail-on-unavailable`` opts a project in to failing the
+run when a check listed in ``fail-on`` could not execute at all.
+Uses composable validation helpers
 (``_validate_string_list``, ``_resolve_fail_warn``) to keep individual
 parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
 ``PresenceConfig`` dataclasses with sensible defaults for all check
@@ -261,6 +263,13 @@ class DocvetConfig:
             Defaults to ``["tests", "scripts"]``.
         fail_on (list[str]): Check names that cause exit code 1.
             Defaults to ``[]``.
+        fail_on_unavailable (bool): Whether a check listed in
+            *fail_on* that could not execute (griffe not installed,
+            or a docstring style its parser cannot read) fails the
+            run. Defaults to ``False``, which keeps exit code 0 and
+            warns loudly instead. Opt in to make an unrunnable gate
+            an error. The default is expected to flip in a future
+            major release.
         warn_on (list[str]): Check names reported without failing.
             Defaults to all five checks.
         freshness (FreshnessConfig): Freshness check settings.
@@ -289,6 +298,9 @@ class DocvetConfig:
     docstring_style: str = "google"
     exclude: list[str] = field(default_factory=lambda: ["tests", "scripts"])
     fail_on: list[str] = field(default_factory=list)
+    # Opt-in today; the captain will decide when a future major flips
+    # this default so an unrunnable gate fails by default.
+    fail_on_unavailable: bool = False
     warn_on: list[str] = field(
         default_factory=lambda: [
             "presence",
@@ -316,6 +328,7 @@ _VALID_TOP_KEYS: frozenset[str] = frozenset(
         "exclude",
         "extend-exclude",
         "fail-on",
+        "fail-on-unavailable",
         "warn-on",
         "freshness",
         "enrichment",
@@ -643,10 +656,10 @@ def _parse_docvet_section(
     Converts kebab-case keys to snake_case, validates types for all
     top-level keys, and delegates nested sections (``freshness``,
     ``enrichment``, ``presence``) to their respective parsers.
-    Validates ``docstring-style`` against ``_VALID_DOCSTRING_STYLES``.
-    List-of-string fields (``exclude``, ``extend-exclude``,
-    ``fail-on``, ``warn-on``) are validated via
-    :func:`_validate_string_list`.
+    Validates ``docstring-style`` against ``_VALID_DOCSTRING_STYLES``
+    and ``fail-on-unavailable`` as a bool. List-of-string fields
+    (``exclude``, ``extend-exclude``, ``fail-on``, ``warn-on``) are
+    validated via :func:`_validate_string_list`.
 
     Args:
         data: Mutable copy of the raw TOML ``[tool.docvet]`` section.
@@ -697,6 +710,13 @@ def _parse_docvet_section(
         _validate_string_list(converted, "extend_exclude", "extend-exclude")
     if "fail_on" in converted:
         _validate_string_list(converted, "fail_on", "fail-on", check_names=True)
+    if "fail_on_unavailable" in converted:
+        _validate_type(
+            converted["fail_on_unavailable"],
+            bool,
+            "fail-on-unavailable",
+            _TOOL_SECTION,
+        )
     if "warn_on" in converted:
         _validate_string_list(converted, "warn_on", "warn-on", check_names=True)
 
@@ -847,8 +867,9 @@ def load_config(path: Path | None = None) -> DocvetConfig:
     the final :class:`DocvetConfig`. Reads ``docstring-style`` and
     passes it through to the config. Delegates ``fail-on``/``warn-on``
     resolution (including overlap detection and filtering) to
-    :func:`_resolve_fail_warn`. Nested ``presence`` section is parsed
-    via :func:`_parse_presence`.
+    :func:`_resolve_fail_warn`, and ``fail-on-unavailable`` falls back
+    to the dataclass default when absent. Nested ``presence`` section
+    is parsed via :func:`_parse_presence`.
 
     Args:
         path: Explicit path to a ``pyproject.toml``. When *None*,
@@ -877,6 +898,7 @@ def load_config(path: Path | None = None) -> DocvetConfig:
 
     fail_on, warn_on = _resolve_fail_warn(parsed, defaults)
 
+    raw_fail_unavailable = parsed.get("fail_on_unavailable")
     raw_pkg = parsed.get("package_name")
     raw_style = parsed.get("docstring_style")
     raw_exclude = parsed.get("exclude")
@@ -899,6 +921,11 @@ def load_config(path: Path | None = None) -> DocvetConfig:
         docstring_style=raw_style if isinstance(raw_style, str) else "google",
         exclude=base_exclude,
         fail_on=fail_on,
+        fail_on_unavailable=(
+            raw_fail_unavailable
+            if isinstance(raw_fail_unavailable, bool)
+            else defaults.fail_on_unavailable
+        ),
         warn_on=warn_on,
         freshness=(
             raw_freshness

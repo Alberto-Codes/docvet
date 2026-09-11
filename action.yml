@@ -141,6 +141,9 @@ runs:
                   recommended: (map(.summary.by_category.recommended) | add)
                 },
                 files_checked: (map(.summary.files_checked) | max)
+              },
+              run: {
+                unavailable_checks: (map(.run.unavailable_checks // []) | add | unique)
               }
             }' "${PARTIAL_FILES[@]}" > "$MERGED_OUTPUT"
           fi
@@ -159,16 +162,52 @@ runs:
           jq -r '.findings[] | "::warning file=\(.file | gsub(":";"%3A") | gsub(",";"%2C")),line=\(.line),title=\(.rule)::\(.message | gsub("%";"%25") | gsub("\n";"%0A") | gsub("\r";"%0D"))"' "$MERGED_OUTPUT"
         fi
 
+        # Surface gates that never executed: without this, a run whose
+        # configured check could not start reads as "no findings". Only
+        # checks listed in fail-on are annotated — an unavailable check
+        # outside fail-on is a routine skip. Whether that gate also
+        # failed the run is docvet's call, carried as `blocking`, which
+        # is set by the opt-in fail-on-unavailable setting.
+        UNAVAILABLE=""
+        BLOCKING=""
+        if [ -s "$MERGED_OUTPUT" ]; then
+          UNAVAILABLE=$(jq -r '[(.run.unavailable_checks // [])[] | select(.in_fail_on)][] | "\(.check): \(.reason) — remedy: \(.remedy)"' "$MERGED_OUTPUT")
+          BLOCKING=$(jq -r '[(.run.unavailable_checks // [])[] | select(.blocking)] | length' "$MERGED_OUTPUT")
+        fi
+        if [ -n "$UNAVAILABLE" ]; then
+          if [ "${BLOCKING:-0}" -gt 0 ]; then
+            LEVEL="error"
+          else
+            LEVEL="warning"
+          fi
+          while IFS= read -r LINE; do
+            echo "::${LEVEL}::docvet gate in fail-on could not run — ${LINE}"
+          done <<< "$UNAVAILABLE"
+          if [ "${BLOCKING:-0}" -eq 0 ]; then
+            echo "::${LEVEL}::set fail-on-unavailable = true under [tool.docvet] to fail the build when a configured check cannot run"
+          fi
+        fi
+
         # Write step summary
         {
           echo "### Docvet Findings"
           echo ""
+          if [ -n "$UNAVAILABLE" ]; then
+            echo "**Gates in \`fail-on\` that could not run:**"
+            echo ""
+            while IFS= read -r LINE; do
+              echo "- ${LINE}"
+            done <<< "$UNAVAILABLE"
+            echo ""
+          fi
           if [ "$TOTAL" -gt 0 ]; then
             echo "Found **${TOTAL}** findings (up to 10 shown as inline annotations)."
             echo ""
             echo "| File | Line | Rule | Message | Severity |"
             echo "|------|------|------|---------|----------|"
             jq -r '.findings[] | "| `\(.file)` | \(.line) | `\(.rule)` | \(.message | gsub("\\|";"\\\\|")) | \(.severity) |"' "$MERGED_OUTPUT"
+          elif [ -n "$UNAVAILABLE" ]; then
+            echo "No findings from the checks that ran."
           else
             echo "No findings. All docstrings pass quality checks."
           fi

@@ -5,7 +5,11 @@ Defines the ``typer.Typer`` app with subcommands for each check layer
 ``lsp``, ``mcp``), the ``fix`` scaffolding command, the combined
 ``check`` entry point, and the ``config`` introspection command.  Check runners are in ``_runners``
 and the output pipeline is in ``_output``.  This module retains enums,
-discovery helpers, the app callback, and all typer subcommands.
+discovery helpers, the app callback, and all typer subcommands.  A check
+that cannot execute is reported to ``_output_and_exit`` as unavailable
+rather than as a check that ran and found nothing; whether that fails
+the run is governed by the opt-in ``fail-on-unavailable`` setting and
+its ``--fail-on-unavailable`` flag.
 
 Examples:
     Run all checks on changed files:
@@ -38,6 +42,7 @@ See Also:
 from __future__ import annotations
 
 import ast  # noqa: F401 – re-exported for test mocks
+import dataclasses
 import enum
 import importlib.metadata
 import importlib.util
@@ -78,8 +83,10 @@ from docvet.config import (
 from docvet.discovery import DiscoveryMode, discover_files
 from docvet.reporting import (
     CheckQuality,  # noqa: F401 – re-exported for test mocks
+    UnavailableCheck,  # noqa: F401 – re-exported for test mocks
     compute_quality,  # noqa: F401 – re-exported for test mocks
     determine_exit_code,  # noqa: F401 – re-exported for test mocks
+    determine_run_outcome,  # noqa: F401 – re-exported for test mocks
     format_json,  # noqa: F401 – re-exported for test mocks
     format_markdown,  # noqa: F401 – re-exported for test mocks
     format_quality_summary,  # noqa: F401 – re-exported for test mocks
@@ -283,6 +290,7 @@ from ._output import (  # noqa: E402
 from ._runners import (  # noqa: E402
     _get_git_blame,  # noqa: F401 – re-exported for tests
     _get_git_diff,  # noqa: F401 – re-exported for tests
+    _griffe_unavailability,
     _run_coverage,
     _run_enrichment,
     _run_fix,
@@ -290,6 +298,7 @@ from ._runners import (  # noqa: E402
     _run_griffe,
     _run_presence,
     _write_timing,
+    _write_unavailable_notice,
 )
 
 # ---------------------------------------------------------------------------
@@ -338,6 +347,15 @@ def main(
     output: Annotated[
         Path | None, typer.Option("--output", help="Write report to file.")
     ] = None,
+    fail_on_unavailable: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-unavailable",
+            help="Exit 1 when a check listed in fail-on could not run"
+            " (e.g. griffe is not installed). Default: off — such a run"
+            " warns and still exits 0.",
+        ),
+    ] = False,
     config: ConfigOption = None,
     version: Annotated[
         bool | None,
@@ -354,6 +372,10 @@ def main(
     Stores all global options in ``ctx.obj`` so subcommands can access
     them. The ``config`` path is stored as ``config_path`` for use by
     subcommands that need the raw pyproject.toml location.
+    ``--fail-on-unavailable`` is folded into the loaded
+    :class:`~docvet.config.DocvetConfig` so every check path sees one
+    resolved setting; the flag can only turn the behaviour on, never
+    off, so config stays authoritative when the flag is absent.
 
     Args:
         ctx: Typer invocation context.
@@ -362,6 +384,10 @@ def main(
         summary: Print quality percentages after findings.
         fmt: Output format (terminal, markdown, or json).
         output: Optional file path for report output.
+        fail_on_unavailable: Fail the run when a check listed in
+            ``fail-on`` could not execute. Overrides
+            ``fail-on-unavailable`` in ``[tool.docvet]`` when passed;
+            off by default.
         config: Explicit path to a ``pyproject.toml``.
         version: Show version and exit.
 
@@ -384,9 +410,12 @@ def main(
         return
 
     try:
-        ctx.obj["docvet_config"] = load_config(config)
+        loaded = load_config(config)
     except FileNotFoundError:
         raise typer.BadParameter(f"Config file not found: {config}") from None
+    if fail_on_unavailable:
+        loaded = dataclasses.replace(loaded, fail_on_unavailable=True)
+    ctx.obj["docvet_config"] = loaded
 
 
 # ---------------------------------------------------------------------------
@@ -420,10 +449,12 @@ def check(
     griffe (if installed and compatible) checks in sequence. Each check
     runner returns a ``(findings, item_count)`` tuple; item counts are
     collected into ``check_counts`` for per-check quality percentage
-    computation when ``--summary`` is active. Griffe is auto-skipped
-    when ``docstring-style`` is ``"sphinx"`` (incompatible parser). Griffe
-    is only included in ``check_counts`` when the ``griffe`` package is
-    importable and the docstring style is compatible. Coverage percentage is derived
+    computation when ``--summary`` is active. Griffe is skipped when it
+    is not installed or ``docstring-style`` is ``"sphinx"`` (incompatible
+    parser), and is then reported as unavailable rather than counted as
+    a check that ran. When ``griffe`` is listed in ``fail-on`` that
+    warns loudly and still exits 0, unless ``fail-on-unavailable`` is
+    enabled, which makes it exit 1. Coverage percentage is derived
     from :attr:`PresenceStats.percentage`. Displays a progress bar on
     stderr when connected to a TTY. Uses three-tier verbosity:
     ``--quiet`` suppresses all non-finding stderr output, default shows
@@ -482,29 +513,16 @@ def check(
     elapsed = time.perf_counter() - start
     _write_timing("coverage", file_count, elapsed, verbose=verbose, quiet=quiet)
 
-    griffe_installed = importlib.util.find_spec("griffe") is not None
-    griffe_skipped_style = config.docstring_style == "sphinx"
-    if griffe_skipped_style:
-        griffe_findings: list[Finding] = []
-        griffe_count = 0
-        if verbose:
-            sys.stderr.write(
-                "  griffe: skipped (incompatible with sphinx docstring style)\n"
-            )
+    griffe_unavailable = _griffe_unavailability(config)
+    griffe_findings: list[Finding] = []
+    griffe_count = 0
+    if griffe_unavailable is not None:
+        _write_unavailable_notice(griffe_unavailable, note=verbose and not quiet)
     else:
         start = time.perf_counter()
-        griffe_findings, griffe_count = _run_griffe(
-            discovered, config, verbose=verbose, quiet=quiet
-        )
+        griffe_findings, griffe_count = _run_griffe(discovered, config)
         elapsed = time.perf_counter() - start
-        _write_timing(
-            "griffe",
-            file_count,
-            elapsed,
-            verbose=verbose,
-            quiet=quiet,
-            enabled=griffe_installed,
-        )
+        _write_timing("griffe", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     total_elapsed = time.perf_counter() - total_start
 
@@ -512,7 +530,7 @@ def check(
     if config.presence.enabled:
         checks.append("presence")
     checks.extend(["enrichment", "freshness", "coverage"])
-    if griffe_installed and not griffe_skipped_style:
+    if griffe_unavailable is None:
         checks.append("griffe")
 
     coverage_pct: float | None = None
@@ -549,7 +567,7 @@ def check(
         "freshness": freshness_count,
         "coverage": coverage_count,
     }
-    if griffe_installed and not griffe_skipped_style:
+    if griffe_unavailable is None:
         check_counts["griffe"] = griffe_count
     _output_and_exit(
         ctx,
@@ -559,6 +577,7 @@ def check(
         checks,
         presence_stats=agg_stats,
         check_counts=check_counts,
+        unavailable=[griffe_unavailable] if griffe_unavailable else [],
     )
 
 
@@ -863,9 +882,12 @@ def griffe(
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count. Passes file count to ``_output_and_exit``
-    for ``--summary`` quality percentage computation. Auto-skips with
-    exit code 0 when ``docstring-style`` is ``"sphinx"`` (griffe's
-    Google parser is incompatible with RST docstrings).
+    for ``--summary`` quality percentage computation. Skips the check
+    when griffe is not installed or ``docstring-style`` is ``"sphinx"``
+    (griffe's Google parser is incompatible with RST docstrings); the
+    skip exits non-zero only when ``griffe`` is listed in ``fail-on``
+    *and* ``fail-on-unavailable`` is enabled, and otherwise warns and
+    exits 0.
 
     Args:
         ctx: Typer invocation context.
@@ -875,9 +897,6 @@ def griffe(
         staged: Run on staged files.
         all_files: Run on entire codebase.
         files: Run on specific files via ``--files``.
-
-    Raises:
-        typer.Exit: When ``docstring-style`` is ``"sphinx"`` (exit 0).
     """
     files = _merge_file_args(files_pos, files)
     discovery_mode = _resolve_discovery_mode(staged, all_files, files)
@@ -888,17 +907,20 @@ def griffe(
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
 
-    if config.docstring_style == "sphinx":
-        typer.echo(
-            "Griffe check skipped: incompatible with sphinx docstring style",
-            err=True,
+    unavailable = _griffe_unavailability(config)
+    if unavailable is not None:
+        _write_unavailable_notice(unavailable, note=not quiet)
+        _output_and_exit(
+            ctx,
+            {"griffe": []},
+            config,
+            len(discovered),
+            ["griffe"],
+            unavailable=[unavailable],
         )
-        raise typer.Exit(0)
 
     start = time.perf_counter()
-    findings, griffe_file_count = _run_griffe(
-        discovered, config, verbose=verbose, quiet=quiet
-    )
+    findings, griffe_file_count = _run_griffe(discovered, config)
     elapsed = time.perf_counter() - start
     if not quiet:
         sys.stderr.write(format_summary(len(discovered), ["griffe"], findings, elapsed))

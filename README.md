@@ -70,6 +70,8 @@ src/mypackage/api.py:1: missing-init Package directory missing __init__.py (invi
 
 Configure via `[tool.docvet]` in your `pyproject.toml`. All checks run and print findings. Checks listed in `fail-on` cause a non-zero exit code; unlisted checks are treated as warnings.
 
+A check in `fail-on` that cannot run — most often `griffe` without the `docvet[griffe]` extra — never certified the gate you configured. docvet warns loudly on stderr and still exits 0. Set `fail-on-unavailable = true` (or pass `--fail-on-unavailable`) to make that an error instead; a future major release will make it the default. Unavailable checks outside `fail-on` stay a quiet skip.
+
 ```toml
 [tool.docvet]
 exclude = ["tests", "scripts"]
