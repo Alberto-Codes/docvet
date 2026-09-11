@@ -15,6 +15,7 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 | `--summary` | flag | off | Print per-check quality percentages after findings |
 | `--format` | `terminal` \| `markdown` \| `json` | `terminal` | Output format |
 | `--output` | `PATH` | stdout | Write report to file |
+| `--fail-on-unavailable` | flag | off | Exit 1 when a check listed in `fail-on` could not run. Only enables the behavior — config stays authoritative when the flag is absent. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) |
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
 | `--version` | flag | | Show version and exit |
 

@@ -29,7 +29,7 @@ inputs:
     default: ''
 outputs:
   badge_message:
-    description: 'Badge message for shields.io (e.g., "passing" or "N findings")'
+    description: 'Badge message for shields.io (e.g., "passing", "N findings", or "gate unavailable")'
     value: ${{ steps.run-docvet.outputs.badge_message }}
   badge_color:
     description: 'Badge color for shields.io (brightgreen, yellow, orange, or red)'

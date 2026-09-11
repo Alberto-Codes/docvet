@@ -13,7 +13,12 @@ docvet griffe --all
     pip install docvet[griffe]
     ```
 
-    When griffe is not installed, docvet skips this check gracefully — no error, no finding, just a silent skip.
+    When griffe is not installed, docvet skips this check — no findings from it.
+    The skip is reported rather than hidden: the `docvet griffe` subcommand says so,
+    and `docvet check` warns when `griffe` is listed in `fail-on`, since that gate
+    never ran. See
+    [Checks that cannot run](../ci-integration.md#checks-that-cannot-run) for the
+    full contract, including the `fail-on-unavailable` opt-in that makes it an error.
 
 ## Rules
 

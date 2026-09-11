@@ -148,7 +148,7 @@ These keys go under `[tool.docvet.presence]`:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enabled` | `bool` | `true` | Enable or disable the presence check |
+| `enabled` | `bool` | `true` | Enable or disable the presence check. Turning it off while `presence` is in `fail-on` or `min-coverage` is above 0 is reported as a gate that cannot run — see [Checks that cannot run](ci-integration.md#checks-that-cannot-run) |
 | `min-coverage` | `float` | `0.0` | Minimum docstring coverage percentage (0.0–100.0). When set above 0, the summary includes a pass/fail indicator. |
 | `ignore-init` | `bool` | `true` | Skip `__init__` methods when checking for missing docstrings |
 | `ignore-magic` | `bool` | `true` | Skip dunder methods (`__repr__`, `__str__`, etc.) |
