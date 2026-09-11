@@ -127,7 +127,7 @@ The griffe rendering check needs no setup: the action installs `docvet[griffe]`,
 
 > **Behavior change — this can turn a passing build red.**
 >
-> Earlier releases installed plain `docvet`, so the griffe check was skipped and contributed zero findings. It now runs. `determine_exit_code` (`src/docvet/reporting.py`) returns 1 as soon as any check listed in `fail-on` reports findings, so if your `pyproject.toml` has `griffe` in `[tool.docvet] fail-on`, your build goes from green to failing with no change on your side. This repository's own `ci.yml` docvet job is exactly such a consumer.
+> Earlier releases installed plain `docvet`, so the griffe check was skipped and contributed zero findings. It now runs. `determine_run_outcome` (`src/docvet/reporting.py`) returns exit code 1 as soon as any check listed in `fail-on` reports findings, so if your `pyproject.toml` has `griffe` in `[tool.docvet] fail-on`, your build goes from green to failing with no change on your side. This repository's own `ci.yml` docvet job is exactly such a consumer.
 >
 > These are not new problems — it is the check finally running on docstrings that were always broken. To get back to green, fix the griffe findings or remove `griffe` from `fail-on`.
 

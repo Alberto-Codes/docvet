@@ -290,7 +290,7 @@ docvet --format json config       # JSON output
 docvet config --show-defaults     # same as plain `docvet config`
 ```
 
-Prints the merged config (user values + built-in defaults) so you can see exactly which settings are active and where they come from. Each value is annotated with `# (user)` or `# (default)`.
+Prints the merged config (user values + built-in defaults) so you can see exactly which settings are active and where they come from. Each value is annotated with `# (user)` or `# (default)`, or with the flag that supplied it when a global command-line flag overrode both — `docvet --fail-on-unavailable config` shows `fail-on-unavailable = true  # (--fail-on-unavailable)`.
 
 **TOML output** (default):
 

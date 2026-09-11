@@ -17,7 +17,6 @@ from docvet.reporting import (
     RunOutcome,
     UnavailableCheck,
     compute_quality,
-    determine_exit_code,
     determine_run_outcome,
     format_json,
     format_markdown,
@@ -464,24 +463,24 @@ class TestWriteReportJson:
 
 
 # ---------------------------------------------------------------------------
-# determine_exit_code tests (Task 11)
+# determine_run_outcome exit-code tests (Task 11)
 # ---------------------------------------------------------------------------
 
 
 class TestDetermineExitCode:
-    """Tests for determine_exit_code."""
+    """Tests for the exit code produced by determine_run_outcome."""
 
     def test_fail_on_check_with_findings_returns_1(self, make_finding):
         """AC#14: Returns 1 when fail_on check has findings."""
         findings_by_check = {"enrichment": [make_finding()], "freshness": []}
         config = DocvetConfig(fail_on=["enrichment"])
-        assert determine_exit_code(findings_by_check, config) == 1
+        assert determine_run_outcome(findings_by_check, config).exit_code == 1
 
     def test_empty_fail_on_returns_0(self, make_finding):
         """AC#15: Returns 0 when fail_on is empty regardless of findings."""
         findings_by_check = {"enrichment": [make_finding()]}
         config = DocvetConfig(fail_on=[])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_all_empty_findings_returns_0(self):
         """AC#16: Returns 0 when all findings lists are empty."""
@@ -490,31 +489,31 @@ class TestDetermineExitCode:
             "freshness": [],
         }
         config = DocvetConfig(fail_on=["enrichment", "freshness"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_findings_in_non_fail_on_returns_0(self, make_finding):
         """AC#17: Returns 0 when findings are in a non-fail_on check."""
         findings_by_check = {"freshness": [make_finding()]}
         config = DocvetConfig(fail_on=["enrichment"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_fail_on_with_missing_key_and_present_findings(self, make_finding):
         """AC#22: Returns 1 if any fail_on check has findings, missing keys don't matter."""
         findings_by_check = {"enrichment": [make_finding()]}
         config = DocvetConfig(fail_on=["enrichment", "freshness"])
-        assert determine_exit_code(findings_by_check, config) == 1
+        assert determine_run_outcome(findings_by_check, config).exit_code == 1
 
     def test_fail_on_check_not_in_findings_returns_0(self):
         """fail_on check name not present in findings_by_check returns 0."""
         findings_by_check: dict[str, list[Finding]] = {}
         config = DocvetConfig(fail_on=["enrichment"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_empty_findings_dict_with_fail_on_returns_0(self):
         """Completely empty findings_by_check with non-empty fail_on returns 0."""
         findings_by_check: dict[str, list[Finding]] = {}
         config = DocvetConfig(fail_on=["enrichment", "freshness"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
 
 # ---------------------------------------------------------------------------
@@ -705,7 +704,7 @@ class TestFormatJsonWithPresence:
 
 
 class TestDetermineExitCodeWithPresence:
-    """Tests for determine_exit_code with presence_stats."""
+    """Tests for determine_run_outcome exit codes with presence_stats."""
 
     def test_returns_1_when_coverage_below_threshold(self):
         """10.21: Returns 1 when coverage below threshold."""
@@ -713,7 +712,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=87, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 1
 
     def test_returns_0_when_coverage_meets_threshold(self):
@@ -722,7 +721,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=96, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 0
 
     def test_returns_0_when_coverage_exactly_at_threshold(self):
@@ -731,7 +730,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=95, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 0
 
     def test_returns_1_when_coverage_just_below_threshold(self):
@@ -740,7 +739,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=94, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 1
 
     def test_returns_0_when_no_threshold(self):
@@ -749,13 +748,13 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig()
         stats = PresenceStats(documented=10, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 0
 
     def test_returns_0_when_no_stats(self):
         """No stats means presence was not run."""
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
-        result = determine_exit_code({}, config)
+        result = determine_run_outcome({}, config).exit_code
         assert result == 0
 
 
@@ -1229,11 +1228,6 @@ class TestDetermineRunOutcome:
         assert outcome.status == RUN_STATUS_FINDINGS
         assert "50.0%" in outcome.reason
         assert "90.0%" in outcome.reason
-
-    def test_determine_exit_code_agrees_with_outcome(self):
-        config = DocvetConfig(fail_on=["griffe"])
-        unavailable = [_unavailable(blocking=True)]
-        assert determine_exit_code({}, config, unavailable=unavailable) == 1
 
 
 class TestFormatJsonRunBlock:

@@ -1,8 +1,10 @@
 """TOML and JSON formatting for docvet configuration display.
 
 Renders the effective ``DocvetConfig`` as copy-paste-ready TOML or
-structured JSON for the ``docvet config`` command. Pure functions —
-only read config, no mutation.
+structured JSON for the ``docvet config`` command. TOML annotates each
+key with where its value came from — the project's ``pyproject.toml``,
+the built-in defaults, or a command-line flag that overrode both. Pure
+functions — only read config, no mutation.
 
 See Also:
     [`docvet.config`][]: Configuration loading and dataclasses.
@@ -23,6 +25,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections.abc import Collection
 
 from . import DocvetConfig, _snake_to_kebab
 
@@ -56,20 +59,34 @@ def _get_annotation(
     kebab_key: str,
     user_keys: dict[str, object],
     section_keys: dict[str, object] | None = None,
+    cli_overrides: Collection[str] = (),
 ) -> str:
     """Return a source annotation comment for a config key.
+
+    A key whose effective value came from a command-line flag is
+    annotated with that flag rather than ``# (user)`` or
+    ``# (default)``, so the annotation never claims a flag-supplied
+    value is the built-in default.  Flags that override configuration
+    are named after their kebab-case key, so the flag name is the key
+    with a ``--`` prefix.
 
     Args:
         kebab_key: The kebab-case key to annotate.
         user_keys: Top-level raw user config dict.
         section_keys: Nested section user keys, or *None* for
             top-level lookup.
+        cli_overrides: Top-level kebab-case keys whose value was
+            supplied by a command-line flag.  Only consulted for
+            top-level keys.
 
     Returns:
-        An inline TOML comment: ``"# (user)"`` or ``"# (default)"``.
+        An inline TOML comment: ``"# (user)"``, ``"# (default)"``, or
+        ``"# (--<flag>)"``.
     """
     if section_keys is not None:
         return "# (user)" if kebab_key in section_keys else "# (default)"
+    if kebab_key in cli_overrides:
+        return f"# (--{kebab_key})"
     return "# (user)" if kebab_key in user_keys else "# (default)"
 
 
@@ -147,6 +164,7 @@ def _convert_keys_to_kebab(d: dict[str, object]) -> dict[str, object]:
 def format_config_toml(
     config: DocvetConfig,
     user_keys: dict[str, object],
+    cli_overrides: Collection[str] = (),
 ) -> str:
     """Format effective config as copy-paste-ready TOML.
 
@@ -162,11 +180,15 @@ def format_config_toml(
     :func:`_get_annotation`. Omits ``package-name`` when its value is
     ``None`` and ``project_root`` (runtime-only). When
     ``extend-exclude`` appears in *user_keys*, the merged ``exclude``
-    list is annotated accordingly.
+    list is annotated accordingly.  Keys named in *cli_overrides* are
+    annotated with the flag that supplied them.
 
     Args:
         config: The effective :class:`DocvetConfig`.
         user_keys: Raw ``[tool.docvet]`` dict with kebab-case keys.
+        cli_overrides: Top-level kebab-case keys whose effective value
+            came from a command-line flag rather than from
+            *user_keys* or the built-in defaults.
 
     Returns:
         A TOML-formatted string suitable for ``pyproject.toml``.
@@ -186,7 +208,7 @@ def format_config_toml(
         value = getattr(config, attr)
         if attr == "package_name" and value is None:
             continue
-        annotation = _get_annotation(kebab, user_keys)
+        annotation = _get_annotation(kebab, user_keys, cli_overrides=cli_overrides)
         if attr == "exclude" and has_extend:
             annotation = "# (merged from exclude + extend-exclude)"
         lines.append(f"{kebab} = {_fmt_toml_value(value)}  {annotation}")

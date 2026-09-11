@@ -1273,6 +1273,51 @@ def test_format_config_toml_user_keys_annotated():
         pytest.fail("fail-on line not found")
 
 
+def _annotation_for(output: str, kebab_key: str) -> str:
+    """Return the inline annotation rendered for a top-level TOML key."""
+    for line in output.splitlines():
+        if line.startswith(f"{kebab_key} "):
+            return line.split("#", 1)[1].strip()
+    pytest.fail(f"{kebab_key} line not found")
+
+
+def test_format_config_toml_cli_override_names_the_flag():
+    config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=True)
+    output = format_config_toml(
+        config, {"fail-on": ["griffe"]}, ["fail-on-unavailable"]
+    )
+    assert _annotation_for(output, "fail-on-unavailable") == "(--fail-on-unavailable)"
+
+
+def test_format_config_toml_cli_override_beats_a_user_key():
+    config = DocvetConfig(fail_on_unavailable=True)
+    user_keys: dict[str, object] = {"fail-on-unavailable": False}
+    output = format_config_toml(config, user_keys, ["fail-on-unavailable"])
+    assert _annotation_for(output, "fail-on-unavailable") == "(--fail-on-unavailable)"
+
+
+def test_format_config_toml_without_cli_override_uses_user_or_default():
+    config = DocvetConfig(fail_on_unavailable=True)
+    from_user = format_config_toml(config, {"fail-on-unavailable": True})
+    assert _annotation_for(from_user, "fail-on-unavailable") == "(user)"
+
+    from_default = format_config_toml(DocvetConfig(), {})
+    assert _annotation_for(from_default, "fail-on-unavailable") == "(default)"
+
+
+def test_format_config_toml_cli_override_does_not_leak_to_other_keys():
+    config = DocvetConfig(fail_on_unavailable=True)
+    output = format_config_toml(config, {}, ["fail-on-unavailable"])
+    assert _annotation_for(output, "fail-on") == "(default)"
+    assert _annotation_for(output, "src-root") == "(default)"
+
+
+def test_format_config_toml_cli_override_stays_valid_toml():
+    config = DocvetConfig(fail_on_unavailable=True)
+    output = format_config_toml(config, {}, ["fail-on-unavailable"])
+    assert tomllib.loads(output)["tool"]["docvet"]["fail-on-unavailable"] is True
+
+
 def test_format_config_toml_nested_user_keys():
     config = DocvetConfig(
         enrichment=EnrichmentConfig(require_raises=False),

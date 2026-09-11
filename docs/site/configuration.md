@@ -75,9 +75,9 @@ fail-on = ["griffe"]
 fail-on-unavailable = true
 ```
 
-Now a `fail-on` check that cannot execute exits 1. `--fail-on-unavailable` turns it on for a single run without editing `pyproject.toml`; the flag can only enable the behavior, so config stays authoritative when the flag is absent.
+Now a `fail-on` check that cannot execute exits 1. `--fail-on-unavailable` turns it on for a single run without editing `pyproject.toml`; the flag can only enable the behavior, so config stays authoritative when the flag is absent. `docvet --fail-on-unavailable config` annotates the key with `# (--fail-on-unavailable)` so the flag is visible as the value's source.
 
-An unavailable check that is not in `fail-on` is unaffected either way — it stays a quiet skip. A future major release is expected to make `fail-on-unavailable` default to `true`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) for the stderr and JSON contract.
+An unavailable check that is not in `fail-on` is unaffected either way — it is reported as a skip and never fails the run. A future major release is expected to make `fail-on-unavailable` default to `true`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) for the stderr and JSON contract.
 
 ### `extend-exclude`
 

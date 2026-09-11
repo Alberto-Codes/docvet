@@ -3281,3 +3281,15 @@ class TestConfigCommand:
     def test_config_appears_in_help(self):
         result = runner.invoke(app, ["--help"])
         assert "config" in result.output
+
+    def test_fail_on_unavailable_flag_is_annotated_as_the_source(self, tmp_path):
+        """A flag-supplied value names the flag, not the built-in default."""
+        toml_file = tmp_path / "pyproject.toml"
+        toml_file.write_text("[tool.docvet]\nfail-on = ['griffe']\n")
+        result = runner.invoke(
+            app,
+            ["--config", str(toml_file), "--fail-on-unavailable", "config"],
+        )
+        assert result.exit_code == 0
+        assert "fail-on-unavailable = true  # (--fail-on-unavailable)" in result.output
+        assert "fail-on-unavailable = true  # (default)" not in result.output

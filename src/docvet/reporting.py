@@ -661,34 +661,3 @@ def determine_run_outcome(
         status=RUN_STATUS_PASSED,
         reason="no check in fail-on was unavailable or reported findings",
     )
-
-
-def determine_exit_code(
-    findings_by_check: dict[str, list[Finding]],
-    config: DocvetConfig,
-    *,
-    presence_stats: PresenceStats | None = None,
-    unavailable: Sequence[UnavailableCheck] = (),
-) -> int:
-    """Determine the CLI exit code based on findings and fail_on config.
-
-    Thin wrapper over :func:`determine_run_outcome` for callers that
-    only need the exit code.
-
-    Args:
-        findings_by_check: Findings grouped by check name.
-        config: The docvet configuration with fail_on list.
-        presence_stats: Aggregate presence coverage stats, or *None*
-            when the presence check did not run.
-        unavailable: Checks that could not execute during this run.
-
-    Returns:
-        1 if a fail_on check could not run or has findings, or if
-        coverage is below threshold, 0 otherwise.
-    """
-    return determine_run_outcome(
-        findings_by_check,
-        config,
-        presence_stats=presence_stats,
-        unavailable=unavailable,
-    ).exit_code

@@ -85,7 +85,6 @@ from docvet.reporting import (
     CheckQuality,  # noqa: F401 – re-exported for test mocks
     UnavailableCheck,  # noqa: F401 – re-exported for test mocks
     compute_quality,  # noqa: F401 – re-exported for test mocks
-    determine_exit_code,  # noqa: F401 – re-exported for test mocks
     determine_run_outcome,  # noqa: F401 – re-exported for test mocks
     format_json,  # noqa: F401 – re-exported for test mocks
     format_markdown,  # noqa: F401 – re-exported for test mocks
@@ -375,7 +374,10 @@ def main(
     ``--fail-on-unavailable`` is folded into the loaded
     :class:`~docvet.config.DocvetConfig` so every check path sees one
     resolved setting; the flag can only turn the behaviour on, never
-    off, so config stays authoritative when the flag is absent.
+    off, so config stays authoritative when the flag is absent. The
+    keys it supplied are recorded in ``ctx.obj["cli_overrides"]`` so
+    ``docvet config`` can name the flag as the value's source instead
+    of mislabelling it as the built-in default.
 
     Args:
         ctx: Typer invocation context.
@@ -413,8 +415,11 @@ def main(
         loaded = load_config(config)
     except FileNotFoundError:
         raise typer.BadParameter(f"Config file not found: {config}") from None
+    cli_overrides: list[str] = []
     if fail_on_unavailable:
         loaded = dataclasses.replace(loaded, fail_on_unavailable=True)
+        cli_overrides.append("fail-on-unavailable")
+    ctx.obj["cli_overrides"] = cli_overrides
     ctx.obj["docvet_config"] = loaded
 
 
@@ -1106,8 +1111,10 @@ def config(
 
     Prints the merged config (user values + defaults) in TOML or JSON
     format. Each value is annotated with ``# (user)`` or
-    ``# (default)`` to show its source. Respects the global
-    ``--config`` flag via ``ctx.obj["config_path"]``.
+    ``# (default)`` to show its source, or with the flag that supplied
+    it (for example ``# (--fail-on-unavailable)``) when a global
+    command-line flag overrode both. Respects the global ``--config``
+    flag via ``ctx.obj["config_path"]``.
 
     Args:
         ctx: Typer invocation context.
@@ -1124,4 +1131,8 @@ def config(
     if fmt == "json":
         typer.echo(format_config_json(docvet_config, user_keys))
     else:
-        typer.echo(format_config_toml(docvet_config, user_keys))
+        typer.echo(
+            format_config_toml(
+                docvet_config, user_keys, ctx.obj.get("cli_overrides", ())
+            )
+        )

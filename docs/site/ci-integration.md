@@ -78,8 +78,9 @@ against.
     dependency, so the griffe check was skipped and contributed zero
     findings. It now runs.
 
-    `determine_exit_code` (`src/docvet/reporting.py`) returns 1 as
-    soon as any check listed in `fail-on` reports findings. So if your
+    `determine_run_outcome` (`src/docvet/reporting.py`) returns exit
+    code 1 as soon as any check listed in `fail-on` reports findings.
+    So if your
     `pyproject.toml` has `griffe` in `[tool.docvet] fail-on`, your job
     goes from green to failing with no change on your side. This
     repository's own `ci.yml` docvet job is exactly such a consumer.
@@ -250,7 +251,7 @@ error: griffe check is in fail-on but could not run (griffe not installed)
   remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
 ```
 
-The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). A check that is unavailable but **not** listed in `fail-on` stays a quiet skip either way: the run exits 0 and reports the skip only under `--verbose`.
+The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). A check that is unavailable but **not** listed in `fail-on` never fails the run either way: it exits 0. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
 
 JSON output carries the same information in a `run` object, so an agent or a script can tell an incomplete run from a clean one — even on the default path, where the exit code alone cannot:
 
