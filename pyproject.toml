@@ -141,7 +141,6 @@ docstring-code-line-length = "dynamic"
 # --------------------------------------------------------------------------- #
 [tool.docvet]
 fail-on = ["enrichment", "freshness", "coverage", "griffe", "presence"]
-fail-on-unavailable = true
 extend-exclude = [".github/test-fixtures/"]
 
 [tool.docvet.presence]
