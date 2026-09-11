@@ -371,7 +371,7 @@ class TestDisabledPresenceGate:
         assert run["unavailable_checks"] == [
             {
                 "check": "presence",
-                "reason": "disabled by configuration",
+                "reason": "disabled by configuration, so its fail-on gate never ran",
                 "remedy": (
                     "set enabled = true under [tool.docvet.presence], or drop"
                     " presence from fail-on"
@@ -380,7 +380,10 @@ class TestDisabledPresenceGate:
                 "configured_gate": True,
             }
         ]
-        assert "presence (disabled by configuration)" in run["exit_reason"]
+        assert (
+            "presence (disabled by configuration, so its fail-on gate never ran)"
+            in run["exit_reason"]
+        )
         assert "no check in fail-on was unavailable" not in run["exit_reason"]
 
     def test_opt_in_fails_the_run(self, repo):
@@ -395,7 +398,10 @@ class TestDisabledPresenceGate:
         assert result.returncode == 1
         run = _run_block(result)
         assert run["status"] == "unavailable"
-        assert "presence (disabled by configuration)" in run["exit_reason"]
+        assert (
+            "presence (disabled by configuration, so its fail-on gate never ran)"
+            in run["exit_reason"]
+        )
         assert run["unavailable_checks"][0]["blocking"] is True
 
     def test_warning_survives_quiet_on_the_default_path(self, repo):
@@ -404,7 +410,8 @@ class TestDisabledPresenceGate:
         assert result.returncode == 0
         assert (
             "warning: presence check was configured to gate the run but could not run"
-            " (disabled by configuration), so that gate never executed" in result.stderr
+            " (disabled by configuration, so its fail-on gate never ran),"
+            " so that gate never executed" in result.stderr
         )
         assert "set enabled = true under [tool.docvet.presence]" in result.stderr
 
@@ -570,3 +577,103 @@ class TestBlockedRunWithFindings:
         assert run["status"] == "unavailable"
         assert "griffe (incompatible with sphinx docstring style)" in run["exit_reason"]
         assert "also have findings" not in run["exit_reason"]
+
+
+class TestPresenceGatedTwice:
+    """Both presence gates configured must yield one complete remedy."""
+
+    @staticmethod
+    def _add_undocumented_symbol(repo) -> None:
+        """Give the presence check something it would have flagged."""
+        (repo / "src" / "bare.py").write_text("def helper(x):\n    return x\n")
+
+    _BOTH_GATES_REMEDY = (
+        "set enabled = true under [tool.docvet.presence], or drop both"
+        " min-coverage and presence from fail-on"
+    )
+
+    def test_record_names_both_gates_and_both_actions(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            min_coverage=100.0,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 1
+        run = _run_block(result)
+        assert run["status"] == "unavailable"
+        assert run["unavailable_checks"] == [
+            {
+                "check": "presence",
+                "reason": (
+                    "disabled by configuration, so the 100.0% min-coverage floor"
+                    " was never measured and its fail-on gate never ran"
+                ),
+                "remedy": self._BOTH_GATES_REMEDY,
+                "blocking": True,
+                "configured_gate": True,
+            }
+        ]
+
+    def test_remedy_is_printed_on_the_blocking_error(self, repo):
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            min_coverage=100.0,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "check", "--all")
+        assert result.returncode == 1
+        assert f"  remedy: {self._BOTH_GATES_REMEDY}\n" in result.stderr
+
+    def test_remedy_is_printed_on_the_default_path_warning(self, repo):
+        _write_config(
+            repo, fail_on=["presence"], presence_enabled=False, min_coverage=100.0
+        )
+        result = _run(repo, "check", "--all")
+        assert result.returncode == 0
+        assert f"  remedy: {self._BOTH_GATES_REMEDY}\n" in result.stderr
+
+    def test_following_the_remedy_unblocks_the_run(self, repo):
+        """Dropping both named settings must pass, not fail differently."""
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            min_coverage=100.0,
+            fail_on_unavailable=True,
+        )
+        blocked = _run(repo, "--format", "json", "check", "--all")
+        assert blocked.returncode == 1
+        assert _run_block(blocked)["unavailable_checks"][0]["remedy"] == (
+            self._BOTH_GATES_REMEDY
+        )
+
+        _write_config(
+            repo, fail_on=[], presence_enabled=False, fail_on_unavailable=True
+        )
+        after = _run(repo, "--format", "json", "check", "--all")
+        assert after.returncode == 0
+        run = _run_block(after)
+        assert run["status"] == "passed"
+        assert run["unavailable_checks"] == []
+
+    def test_dropping_only_min_coverage_still_reports_the_fail_on_gate(self, repo):
+        """The remedy never offers an action that leaves a gate in place."""
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 1
+        remedy = _run_block(result)["unavailable_checks"][0]["remedy"]
+        assert remedy.endswith("or drop presence from fail-on")
+        assert "min-coverage" not in remedy

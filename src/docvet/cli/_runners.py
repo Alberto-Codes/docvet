@@ -399,11 +399,12 @@ def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
     settings gate the run on it: listing ``presence`` in ``fail-on``,
     and setting a ``min-coverage`` floor, which
     :func:`~docvet.reporting.determine_run_outcome` enforces without
-    consulting ``fail-on`` at all. Either one alongside ``enabled =
-    false`` configures a gate that can never run, and the floor is
-    named in the reason so the report says which threshold went
-    unmeasured. A disabled check nobody gates on is an ordinary
-    opt-out and is not reported. Either way the record carries
+    consulting ``fail-on`` at all. They are independent, so the reason
+    and remedy are composed from every gate that applies rather than
+    picking one: with both configured the remedy names both settings
+    to drop, since dropping either alone leaves the other still
+    gating a check that cannot run. A disabled check nobody gates on
+    is an ordinary opt-out and is not reported. The record carries
     ``configured_gate``, which reports the gate the config asked for
     rather than ``fail-on`` membership — the floor gates presence
     without that list ever naming it. The record is *blocking* only
@@ -420,22 +421,22 @@ def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
     """
     if config.presence.enabled:
         return None
-    in_fail_on = "presence" in config.fail_on
     floor = config.presence.min_coverage
-    if not in_fail_on and floor <= 0.0:
-        return None
+    unenforced: list[str] = []
+    drop: list[str] = []
     if floor > 0.0:
-        reason = (
-            "disabled by configuration, so the"
-            f" {floor:.1f}% min-coverage floor was never measured"
-        )
-        remedy = "set enabled = true under [tool.docvet.presence], or drop min-coverage"
-    else:
-        reason = "disabled by configuration"
-        remedy = (
-            "set enabled = true under [tool.docvet.presence], or drop"
-            " presence from fail-on"
-        )
+        unenforced.append(f"the {floor:.1f}% min-coverage floor was never measured")
+        drop.append("min-coverage")
+    if "presence" in config.fail_on:
+        unenforced.append("its fail-on gate never ran")
+        drop.append("presence from fail-on")
+    if not unenforced:
+        return None
+    reason = f"disabled by configuration, so {' and '.join(unenforced)}"
+    dropped = " and ".join(drop)
+    if len(drop) > 1:
+        dropped = f"both {dropped}"
+    remedy = f"set enabled = true under [tool.docvet.presence], or drop {dropped}"
     return UnavailableCheck(
         check="presence",
         reason=reason,
