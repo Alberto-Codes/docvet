@@ -29,10 +29,10 @@ inputs:
     default: ''
 outputs:
   badge_message:
-    description: 'Badge message for shields.io (e.g., "passing" or "N findings")'
+    description: 'Badge message for shields.io (e.g., "passing", "N findings", or "gate unavailable")'
     value: ${{ steps.run-docvet.outputs.badge_message }}
   badge_color:
-    description: 'Badge color for shields.io (brightgreen, yellow, or red)'
+    description: 'Badge color for shields.io (brightgreen, yellow, orange, or red)'
     value: ${{ steps.run-docvet.outputs.badge_color }}
   total_findings:
     description: 'Total number of findings'
@@ -141,6 +141,9 @@ runs:
                   recommended: (map(.summary.by_category.recommended) | add)
                 },
                 files_checked: (map(.summary.files_checked) | max)
+              },
+              run: {
+                unavailable_checks: (map(.run.unavailable_checks // []) | add | unique)
               }
             }' "${PARTIAL_FILES[@]}" > "$MERGED_OUTPUT"
           fi
@@ -159,16 +162,52 @@ runs:
           jq -r '.findings[] | "::warning file=\(.file | gsub(":";"%3A") | gsub(",";"%2C")),line=\(.line),title=\(.rule)::\(.message | gsub("%";"%25") | gsub("\n";"%0A") | gsub("\r";"%0D"))"' "$MERGED_OUTPUT"
         fi
 
+        # Surface gates that never executed: without this, a run whose
+        # configured check could not start reads as "no findings". Only
+        # checks the config gates on are annotated — an unavailable
+        # check nothing gates on is a routine skip. Whether that gate
+        # also failed the run is docvet's call, carried as `blocking`,
+        # which is set by the opt-in fail-on-unavailable setting.
+        UNAVAILABLE=""
+        BLOCKING=""
+        if [ -s "$MERGED_OUTPUT" ]; then
+          UNAVAILABLE=$(jq -r '[(.run.unavailable_checks // [])[] | select(.configured_gate)][] | "\(.check): \(.reason) — remedy: \(.remedy)"' "$MERGED_OUTPUT")
+          BLOCKING=$(jq -r '[(.run.unavailable_checks // [])[] | select(.blocking)] | length' "$MERGED_OUTPUT")
+        fi
+        if [ -n "$UNAVAILABLE" ]; then
+          if [ "${BLOCKING:-0}" -gt 0 ]; then
+            LEVEL="error"
+          else
+            LEVEL="warning"
+          fi
+          while IFS= read -r LINE; do
+            echo "::${LEVEL}::docvet configured gate could not run — ${LINE}"
+          done <<< "$UNAVAILABLE"
+          if [ "${BLOCKING:-0}" -eq 0 ]; then
+            echo "::${LEVEL}::set fail-on-unavailable = true under [tool.docvet] to fail the build when a configured check cannot run"
+          fi
+        fi
+
         # Write step summary
         {
           echo "### Docvet Findings"
           echo ""
+          if [ -n "$UNAVAILABLE" ]; then
+            echo "**Configured gates that could not run:**"
+            echo ""
+            while IFS= read -r LINE; do
+              echo "- ${LINE}"
+            done <<< "$UNAVAILABLE"
+            echo ""
+          fi
           if [ "$TOTAL" -gt 0 ]; then
             echo "Found **${TOTAL}** findings (up to 10 shown as inline annotations)."
             echo ""
             echo "| File | Line | Rule | Message | Severity |"
             echo "|------|------|------|---------|----------|"
             jq -r '.findings[] | "| `\(.file)` | \(.line) | `\(.rule)` | \(.message | gsub("\\|";"\\\\|")) | \(.severity) |"' "$MERGED_OUTPUT"
+          elif [ -n "$UNAVAILABLE" ]; then
+            echo "No findings from the checks that ran."
           else
             echo "No findings. All docstrings pass quality checks."
           fi
@@ -177,7 +216,18 @@ runs:
         # Compute badge outputs (legacy mode exits early at line 71, so this only runs in new mode)
         BADGE_TOTAL=${TOTAL:-0}
         echo "total_findings=${BADGE_TOTAL}" >> "$GITHUB_OUTPUT"
-        if [ "$BADGE_TOTAL" -eq 0 ]; then
+        # A gate that could not run failed the build, so the badge must not
+        # read "passing" just because that gate produced no findings. The
+        # badge names the worst thing that happened without dropping what a
+        # narrower badge would have shown, so a run with both an unrunnable
+        # gate and findings keeps the count and the failure colour.
+        if [ "${BLOCKING:-0}" -gt 0 ] && [ "$BADGE_TOTAL" -gt 0 ]; then
+          echo "badge_message=${BADGE_TOTAL} findings, gate unavailable" >> "$GITHUB_OUTPUT"
+          echo "badge_color=red" >> "$GITHUB_OUTPUT"
+        elif [ "${BLOCKING:-0}" -gt 0 ]; then
+          echo "badge_message=gate unavailable" >> "$GITHUB_OUTPUT"
+          echo "badge_color=orange" >> "$GITHUB_OUTPUT"
+        elif [ "$BADGE_TOTAL" -eq 0 ]; then
           echo "badge_message=passing" >> "$GITHUB_OUTPUT"
           echo "badge_color=brightgreen" >> "$GITHUB_OUTPUT"
         elif [ "$(jq '.summary.by_category.required // 0' "$MERGED_OUTPUT")" -eq 0 ]; then

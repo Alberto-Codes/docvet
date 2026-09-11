@@ -56,6 +56,8 @@ age-threshold = 90
 
 Key options: `exclude` filters directories, `fail-on` controls which checks cause a non-zero exit code.
 
+A check in `fail-on` that cannot run — most often `griffe` without the `docvet[griffe]` extra — warns loudly on stderr and still exits 0. Set `fail-on-unavailable = true` (or pass `--fail-on-unavailable`) to make it exit 1 instead. With `--format json`, the `run` object reports `status` (`passed`, `findings`, or `unavailable`), `exit_reason`, and an `unavailable_checks` array carrying a remedy for each. Read `run.status` and `run.unavailable_checks` rather than inferring completion from an empty findings list.
+
 ## What Each Check Does
 
 - **enrichment** -- Flags functions, classes, and modules missing required docstring sections (Raises, Yields, Receives, Warns, Attributes, Examples, cross-references, and more). 10 rules.

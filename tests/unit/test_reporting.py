@@ -10,9 +10,14 @@ import typer
 from docvet.checks import Finding
 from docvet.config import DocvetConfig, PresenceConfig
 from docvet.reporting import (
+    RUN_STATUS_FINDINGS,
+    RUN_STATUS_PASSED,
+    RUN_STATUS_UNAVAILABLE,
     CheckQuality,
+    RunOutcome,
+    UnavailableCheck,
     compute_quality,
-    determine_exit_code,
+    determine_run_outcome,
     format_json,
     format_markdown,
     format_quality_summary,
@@ -458,24 +463,24 @@ class TestWriteReportJson:
 
 
 # ---------------------------------------------------------------------------
-# determine_exit_code tests (Task 11)
+# determine_run_outcome exit-code tests (Task 11)
 # ---------------------------------------------------------------------------
 
 
 class TestDetermineExitCode:
-    """Tests for determine_exit_code."""
+    """Tests for the exit code produced by determine_run_outcome."""
 
     def test_fail_on_check_with_findings_returns_1(self, make_finding):
         """AC#14: Returns 1 when fail_on check has findings."""
         findings_by_check = {"enrichment": [make_finding()], "freshness": []}
         config = DocvetConfig(fail_on=["enrichment"])
-        assert determine_exit_code(findings_by_check, config) == 1
+        assert determine_run_outcome(findings_by_check, config).exit_code == 1
 
     def test_empty_fail_on_returns_0(self, make_finding):
         """AC#15: Returns 0 when fail_on is empty regardless of findings."""
         findings_by_check = {"enrichment": [make_finding()]}
         config = DocvetConfig(fail_on=[])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_all_empty_findings_returns_0(self):
         """AC#16: Returns 0 when all findings lists are empty."""
@@ -484,31 +489,31 @@ class TestDetermineExitCode:
             "freshness": [],
         }
         config = DocvetConfig(fail_on=["enrichment", "freshness"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_findings_in_non_fail_on_returns_0(self, make_finding):
         """AC#17: Returns 0 when findings are in a non-fail_on check."""
         findings_by_check = {"freshness": [make_finding()]}
         config = DocvetConfig(fail_on=["enrichment"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_fail_on_with_missing_key_and_present_findings(self, make_finding):
         """AC#22: Returns 1 if any fail_on check has findings, missing keys don't matter."""
         findings_by_check = {"enrichment": [make_finding()]}
         config = DocvetConfig(fail_on=["enrichment", "freshness"])
-        assert determine_exit_code(findings_by_check, config) == 1
+        assert determine_run_outcome(findings_by_check, config).exit_code == 1
 
     def test_fail_on_check_not_in_findings_returns_0(self):
         """fail_on check name not present in findings_by_check returns 0."""
         findings_by_check: dict[str, list[Finding]] = {}
         config = DocvetConfig(fail_on=["enrichment"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
     def test_empty_findings_dict_with_fail_on_returns_0(self):
         """Completely empty findings_by_check with non-empty fail_on returns 0."""
         findings_by_check: dict[str, list[Finding]] = {}
         config = DocvetConfig(fail_on=["enrichment", "freshness"])
-        assert determine_exit_code(findings_by_check, config) == 0
+        assert determine_run_outcome(findings_by_check, config).exit_code == 0
 
 
 # ---------------------------------------------------------------------------
@@ -699,7 +704,7 @@ class TestFormatJsonWithPresence:
 
 
 class TestDetermineExitCodeWithPresence:
-    """Tests for determine_exit_code with presence_stats."""
+    """Tests for determine_run_outcome exit codes with presence_stats."""
 
     def test_returns_1_when_coverage_below_threshold(self):
         """10.21: Returns 1 when coverage below threshold."""
@@ -707,7 +712,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=87, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 1
 
     def test_returns_0_when_coverage_meets_threshold(self):
@@ -716,7 +721,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=96, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 0
 
     def test_returns_0_when_coverage_exactly_at_threshold(self):
@@ -725,7 +730,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=95, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 0
 
     def test_returns_1_when_coverage_just_below_threshold(self):
@@ -734,7 +739,7 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
         stats = PresenceStats(documented=94, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 1
 
     def test_returns_0_when_no_threshold(self):
@@ -743,13 +748,13 @@ class TestDetermineExitCodeWithPresence:
 
         config = DocvetConfig()
         stats = PresenceStats(documented=10, total=100)
-        result = determine_exit_code({}, config, presence_stats=stats)
+        result = determine_run_outcome({}, config, presence_stats=stats).exit_code
         assert result == 0
 
     def test_returns_0_when_no_stats(self):
         """No stats means presence was not run."""
         config = DocvetConfig(presence=PresenceConfig(min_coverage=95.0))
-        result = determine_exit_code({}, config)
+        result = determine_run_outcome({}, config).exit_code
         assert result == 0
 
 
@@ -1124,3 +1129,146 @@ class TestScaffoldCategory:
         findings = [make_finding(category="required")]
         result = format_summary(5, ["enrichment"], findings, 1.0)
         assert "scaffold" not in result
+
+
+# ---------------------------------------------------------------------------
+# determine_run_outcome tests (issue #442)
+# ---------------------------------------------------------------------------
+
+
+def _unavailable(
+    *, blocking: bool, configured_gate: bool | None = None
+) -> UnavailableCheck:
+    """Build a griffe UnavailableCheck for outcome tests.
+
+    Args:
+        blocking: Whether the record must fail the run.
+        configured_gate: Whether the config asked the check to gate the
+            run. Defaults to *blocking*, since a blocking record is
+            always a configured gate.
+
+    Returns:
+        The constructed :class:`UnavailableCheck`.
+    """
+    return UnavailableCheck(
+        check="griffe",
+        reason="griffe not installed",
+        remedy="pip install 'docvet[griffe]'",
+        blocking=blocking,
+        configured_gate=blocking if configured_gate is None else configured_gate,
+    )
+
+
+class TestDetermineRunOutcome:
+    """Tests for determine_run_outcome."""
+
+    def test_clean_run_passes(self):
+        outcome = determine_run_outcome({}, DocvetConfig(fail_on=["griffe"]))
+        assert outcome == RunOutcome(
+            exit_code=0,
+            status=RUN_STATUS_PASSED,
+            reason="no check in fail-on was unavailable or reported findings",
+        )
+
+    def test_blocking_unavailable_check_fails_the_run(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["griffe"]),
+            unavailable=[_unavailable(blocking=True)],
+        )
+        assert outcome.exit_code == 1
+        assert outcome.status == RUN_STATUS_UNAVAILABLE
+        assert "griffe (griffe not installed)" in outcome.reason
+
+    def test_advisory_unavailable_check_does_not_fail_the_run(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["enrichment"]),
+            unavailable=[_unavailable(blocking=False)],
+        )
+        assert outcome.exit_code == 0
+        assert outcome.status == RUN_STATUS_PASSED
+
+    def test_fail_on_check_that_never_ran_passes_when_opt_in_is_off(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["griffe"]),
+            unavailable=[_unavailable(blocking=False, configured_gate=True)],
+        )
+        assert outcome.exit_code == 0
+        assert outcome.status == RUN_STATUS_PASSED
+        assert "griffe (griffe not installed)" in outcome.reason
+        assert "fail-on-unavailable is off" in outcome.reason
+        assert "no check in fail-on was unavailable" not in outcome.reason
+
+    def test_advisory_check_outside_fail_on_keeps_the_clean_reason(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["enrichment"]),
+            unavailable=[_unavailable(blocking=False, configured_gate=False)],
+        )
+        assert outcome.exit_code == 0
+        assert outcome.status == RUN_STATUS_PASSED
+        assert outcome.reason == (
+            "no check in fail-on was unavailable or reported findings"
+        )
+
+    def test_unavailability_outranks_findings(self, make_finding):
+        outcome = determine_run_outcome(
+            {"enrichment": [make_finding()]},
+            DocvetConfig(fail_on=["enrichment", "griffe"]),
+            unavailable=[_unavailable(blocking=True)],
+        )
+        assert outcome.status == RUN_STATUS_UNAVAILABLE
+
+    def test_findings_status_names_the_failing_checks(self, make_finding):
+        outcome = determine_run_outcome(
+            {"enrichment": [make_finding()]},
+            DocvetConfig(fail_on=["enrichment"]),
+        )
+        assert outcome.exit_code == 1
+        assert outcome.status == RUN_STATUS_FINDINGS
+        assert "enrichment" in outcome.reason
+
+    def test_coverage_shortfall_reports_the_threshold(self):
+        from docvet.checks.presence import PresenceStats
+
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(presence=PresenceConfig(min_coverage=90.0)),
+            presence_stats=PresenceStats(documented=1, total=2),
+        )
+        assert outcome.exit_code == 1
+        assert outcome.status == RUN_STATUS_FINDINGS
+        assert "50.0%" in outcome.reason
+        assert "90.0%" in outcome.reason
+
+
+class TestFormatJsonRunBlock:
+    """Tests for the ``run`` object in JSON output."""
+
+    def test_run_block_omitted_when_outcome_not_supplied(self):
+        assert "run" not in json.loads(format_json([], 1))
+
+    def test_run_block_carries_status_and_exit_reason(self):
+        outcome = RunOutcome(1, RUN_STATUS_UNAVAILABLE, "griffe could not run")
+        result = json.loads(
+            format_json([], 1, run=outcome, unavailable=[_unavailable(blocking=True)])
+        )
+        assert result["run"]["status"] == RUN_STATUS_UNAVAILABLE
+        assert result["run"]["exit_code"] == 1
+        assert result["run"]["exit_reason"] == "griffe could not run"
+        assert result["run"]["unavailable_checks"] == [
+            {
+                "check": "griffe",
+                "reason": "griffe not installed",
+                "remedy": "pip install 'docvet[griffe]'",
+                "blocking": True,
+                "configured_gate": True,
+            }
+        ]
+
+    def test_unavailable_checks_is_empty_when_every_check_ran(self):
+        outcome = RunOutcome(0, RUN_STATUS_PASSED, "clean")
+        result = json.loads(format_json([], 1, run=outcome))
+        assert result["run"]["unavailable_checks"] == []

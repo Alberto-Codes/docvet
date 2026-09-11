@@ -78,8 +78,9 @@ against.
     dependency, so the griffe check was skipped and contributed zero
     findings. It now runs.
 
-    `determine_exit_code` (`src/docvet/reporting.py`) returns 1 as
-    soon as any check listed in `fail-on` reports findings. So if your
+    `determine_run_outcome` (`src/docvet/reporting.py`) returns exit
+    code 1 as soon as any check listed in `fail-on` reports findings.
+    So if your
     `pyproject.toml` has `griffe` in `[tool.docvet] fail-on`, your job
     goes from green to failing with no change on your side. This
     repository's own `ci.yml` docvet job is exactly such a consumer.
@@ -88,15 +89,25 @@ against.
     docstrings that were always broken. To get back to green, fix the
     griffe findings or remove `griffe` from `fail-on`.
 
+The action installs `docvet[griffe]`, so the rendering compatibility check runs
+on the default `checks: all` path with no extra step. Running docvet directly
+rather than through the action requires the extra:
+
+```yaml
+      - run: pip install 'docvet[griffe]'
+```
+
 ### Outputs
 
 The action sets step outputs that downstream steps can consume:
 
 | Output | Description | Example |
 |--------|-------------|---------|
-| `badge_message` | shields.io badge message | `"passing"` or `"3 findings"` |
-| `badge_color` | shields.io badge color | `brightgreen`, `yellow`, or `red` |
+| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, `"gate unavailable"`, or `"3 findings, gate unavailable"` |
+| `badge_color` | shields.io badge color | `brightgreen`, `yellow`, `red`, or `orange` |
 | `total_findings` | Total findings count | `0`, `3` |
+
+A gate listed in `fail-on` that could not run and failed the build (`fail-on-unavailable` on) publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. When such a run also has findings, the badge keeps the count and the failure colour (`3 findings, gate unavailable` / `red`), so it never hides what a findings-only badge would have shown. The badge is unchanged on the default path, where such a run still exits 0.
 
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
@@ -193,7 +204,7 @@ docvet uses `fail-on` and `warn-on` to control whether findings cause a non-zero
 | Exit Code | Meaning |
 |-----------|---------|
 | **0** | No findings in `fail-on` checks — CI passes |
-| **1** | One or more findings in a `fail-on` check — CI fails |
+| **1** | A `fail-on` check produced findings, or (with `fail-on-unavailable`) could not run — CI fails |
 | **2** | Usage error (invalid arguments or configuration) |
 
 ### How `fail-on` works
@@ -207,6 +218,69 @@ warn-on = ["griffe", "coverage"]       # findings here → reported only
 ```
 
 Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet always exits 0 regardless of findings. To use docvet as a CI gate, you must add at least one check to `fail-on`.
+
+### Checks that cannot run
+
+A check listed in `fail-on` that cannot execute never certified the gate you configured. By default docvet says so loudly on stderr and still exits 0:
+
+```text
+warning: griffe check was configured to gate the run but could not run (griffe not installed), so that gate never executed
+  remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
+  this did not fail the run because fail-on-unavailable is off; set fail-on-unavailable = true under [tool.docvet] (or pass --fail-on-unavailable) to make it an error
+  a future major release will make this an error by default
+```
+
+The warning is always printed, including under `--quiet`. It speaks only for that check — it is written mid-run, so another `fail-on` check with findings or a `min-coverage` shortfall can still fail the run.
+
+To make it an error, opt in:
+
+```toml
+[tool.docvet]
+fail-on = ["griffe"]
+fail-on-unavailable = true
+```
+
+or pass the flag for a single run:
+
+```bash
+docvet --fail-on-unavailable check --all
+```
+
+With the opt-in on, the same situation exits 1 and the notice is an error:
+
+```text
+error: griffe check was configured to gate the run but could not run (griffe not installed)
+  remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
+```
+
+The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). The presence check cannot run when it is switched off with `[tool.docvet.presence] enabled = false` while something still gates on it — `presence` listed in `fail-on`, or a `min-coverage` floor, which `determine_run_outcome` enforces without consulting `fail-on` at all. Either way the gate was configured never to execute, and the reason names the floor that went unmeasured. A check disabled with nothing gating on it is an ordinary opt-out and is not reported. A check that is unavailable but **not** listed in `fail-on` never fails the run either way: it exits 0. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
+
+JSON output carries the same information in a `run` object, so an agent or a script can tell an incomplete run from a clean one — even on the default path, where the exit code alone cannot:
+
+```json
+{
+  "run": {
+    "status": "unavailable",
+    "exit_code": 1,
+    "exit_reason": "checks configured in fail-on could not run: griffe (griffe not installed)",
+    "unavailable_checks": [
+      {
+        "check": "griffe",
+        "reason": "griffe not installed",
+        "remedy": "pip install 'docvet[griffe]', or drop griffe from fail-on",
+        "blocking": true,
+        "configured_gate": true
+      }
+    ]
+  }
+}
+```
+
+`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `configured_gate` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`, so the field is named for the gate rather than for membership of that list; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"configured_gate": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
+
+```text
+no check in fail-on reported findings, but these checks in fail-on could not run and fail-on-unavailable is off: griffe (griffe not installed)
+```
 
 !!! tip "Default `warn-on` overlap"
     The default `warn-on` list includes all four checks. If you add a check to `fail-on`, docvet silently removes it from the default `warn-on` — no warnings, no findings lost. Warnings only appear when you explicitly set both `fail-on` and `warn-on` with overlapping checks.
@@ -285,6 +359,8 @@ For teams that want a live badge showing pass/fail status from the latest CI run
 | All checks pass | `passing` | ![brightgreen](https://img.shields.io/badge/-brightgreen-brightgreen) |
 | Only recommended findings | `N findings` | ![yellow](https://img.shields.io/badge/-yellow-yellow) |
 | Required findings present | `N findings` | ![red](https://img.shields.io/badge/-red-red) |
+| A gate in `fail-on` could not run and failed the build | `gate unavailable` | ![orange](https://img.shields.io/badge/-orange-orange) |
+| That gate plus findings | `N findings, gate unavailable` | ![red](https://img.shields.io/badge/-red-red) |
 
 !!! tip "Freshness checks need git history"
     If your workflow includes the `freshness` check (or `checks: "all"`), add `fetch-depth: 0` to your checkout step for full `git blame` support. See [Annotation behavior](#annotation-behavior) above for details.

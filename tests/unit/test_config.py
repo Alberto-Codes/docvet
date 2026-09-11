@@ -642,6 +642,49 @@ def test_load_config_overlap_auto_subtracts_from_warn_on(
     assert "freshness" not in cfg.warn_on
 
 
+# ---------------------------------------------------------------------------
+# fail-on-unavailable (issue #442)
+# ---------------------------------------------------------------------------
+
+
+def test_load_config_fail_on_unavailable_defaults_to_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["griffe"]\n')
+    assert load_config().fail_on_unavailable is False
+
+
+def test_load_config_fail_on_unavailable_reads_true(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on = ["griffe"]\nfail-on-unavailable = true\n')
+    cfg = load_config()
+    assert cfg.fail_on_unavailable is True
+    assert cfg.fail_on == ["griffe"]
+
+
+def test_load_config_fail_on_unavailable_reads_explicit_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject("[tool.docvet]\nfail-on-unavailable = false\n")
+    assert load_config().fail_on_unavailable is False
+
+
+def test_load_config_fail_on_unavailable_rejects_non_bool(
+    tmp_path, monkeypatch, write_pyproject, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject('[tool.docvet]\nfail-on-unavailable = "yes"\n')
+    with pytest.raises(SystemExit):
+        load_config()
+    err = capsys.readouterr().err
+    assert "fail-on-unavailable" in err
+    assert "bool" in err
+
+
 def test_load_config_multiple_unknown_keys_reported(
     tmp_path, monkeypatch, write_pyproject, capsys
 ):
@@ -1230,6 +1273,51 @@ def test_format_config_toml_user_keys_annotated():
         pytest.fail("fail-on line not found")
 
 
+def _annotation_for(output: str, kebab_key: str) -> str:
+    """Return the inline annotation rendered for a top-level TOML key."""
+    for line in output.splitlines():
+        if line.startswith(f"{kebab_key} "):
+            return line.split("#", 1)[1].strip()
+    pytest.fail(f"{kebab_key} line not found")
+
+
+def test_format_config_toml_cli_override_names_the_flag():
+    config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=True)
+    output = format_config_toml(
+        config, {"fail-on": ["griffe"]}, ["fail-on-unavailable"]
+    )
+    assert _annotation_for(output, "fail-on-unavailable") == "(--fail-on-unavailable)"
+
+
+def test_format_config_toml_cli_override_beats_a_user_key():
+    config = DocvetConfig(fail_on_unavailable=True)
+    user_keys: dict[str, object] = {"fail-on-unavailable": False}
+    output = format_config_toml(config, user_keys, ["fail-on-unavailable"])
+    assert _annotation_for(output, "fail-on-unavailable") == "(--fail-on-unavailable)"
+
+
+def test_format_config_toml_without_cli_override_uses_user_or_default():
+    config = DocvetConfig(fail_on_unavailable=True)
+    from_user = format_config_toml(config, {"fail-on-unavailable": True})
+    assert _annotation_for(from_user, "fail-on-unavailable") == "(user)"
+
+    from_default = format_config_toml(DocvetConfig(), {})
+    assert _annotation_for(from_default, "fail-on-unavailable") == "(default)"
+
+
+def test_format_config_toml_cli_override_does_not_leak_to_other_keys():
+    config = DocvetConfig(fail_on_unavailable=True)
+    output = format_config_toml(config, {}, ["fail-on-unavailable"])
+    assert _annotation_for(output, "fail-on") == "(default)"
+    assert _annotation_for(output, "src-root") == "(default)"
+
+
+def test_format_config_toml_cli_override_stays_valid_toml():
+    config = DocvetConfig(fail_on_unavailable=True)
+    output = format_config_toml(config, {}, ["fail-on-unavailable"])
+    assert tomllib.loads(output)["tool"]["docvet"]["fail-on-unavailable"] is True
+
+
 def test_format_config_toml_nested_user_keys():
     config = DocvetConfig(
         enrichment=EnrichmentConfig(require_raises=False),
@@ -1326,6 +1414,20 @@ def test_format_config_json_structure():
     assert "config" in parsed
     assert "user_configured" in parsed
     assert isinstance(parsed["user_configured"], list)
+
+
+def test_format_config_json_cli_override_names_the_flag_source():
+    config = DocvetConfig(fail_on_unavailable=True)
+    parsed = json.loads(format_config_json(config, {}, ["fail-on-unavailable"]))
+    assert parsed["config"]["fail-on-unavailable"] is True
+    assert parsed["cli_overridden"] == ["fail-on-unavailable"]
+    assert parsed["user_configured"] == []
+
+
+def test_format_config_json_cli_overridden_is_empty_without_flags():
+    parsed = json.loads(format_config_json(DocvetConfig(), {"fail-on": ["griffe"]}))
+    assert parsed["cli_overridden"] == []
+    assert parsed["user_configured"] == ["fail-on"]
 
 
 def test_format_config_json_kebab_case_keys():
