@@ -6,10 +6,11 @@ Defines the ``typer.Typer`` app with subcommands for each check layer
 ``check`` entry point, and the ``config`` introspection command.  Check runners are in ``_runners``
 and the output pipeline is in ``_output``.  This module retains enums,
 discovery helpers, the app callback, and all typer subcommands.  A check
-that cannot execute is reported to ``_output_and_exit`` as unavailable
-rather than as a check that ran and found nothing; whether that fails
-the run is governed by the opt-in ``fail-on-unavailable`` setting and
-its ``--fail-on-unavailable`` flag.
+that cannot execute — griffe unusable, or a presence gate switched off
+— is reported to ``_output_and_exit`` as unavailable rather than as a
+check that ran and found nothing; whether that fails the run is
+governed by the opt-in ``fail-on-unavailable`` setting and its
+``--fail-on-unavailable`` flag.
 
 Examples:
     Run all checks on changed files:
@@ -290,6 +291,7 @@ from ._runners import (  # noqa: E402
     _get_git_blame,  # noqa: F401 – re-exported for tests
     _get_git_diff,  # noqa: F401 – re-exported for tests
     _griffe_unavailability,
+    _presence_unavailability,
     _run_coverage,
     _run_enrichment,
     _run_fix,
@@ -456,10 +458,13 @@ def check(
     collected into ``check_counts`` for per-check quality percentage
     computation when ``--summary`` is active. Griffe is skipped when it
     is not installed or ``docstring-style`` is ``"sphinx"`` (incompatible
-    parser), and is then reported as unavailable rather than counted as
-    a check that ran. When ``griffe`` is listed in ``fail-on`` that
-    warns loudly and still exits 0, unless ``fail-on-unavailable`` is
-    enabled, which makes it exit 1. Coverage percentage is derived
+    parser), and a presence gate is skipped when ``enabled`` is
+    ``false``; either is then reported as unavailable rather than
+    counted as a check that ran. When the skipped check is listed in
+    ``fail-on`` that warns loudly and still exits 0, unless
+    ``fail-on-unavailable`` is enabled, which makes it exit 1. A check
+    disabled outside ``fail-on`` is an ordinary opt-out and is not
+    reported. Coverage percentage is derived
     from :attr:`PresenceStats.percentage`. Displays a progress bar on
     stderr when connected to a TTY. Uses three-tier verbosity:
     ``--quiet`` suppresses all non-finding stderr output, default shows
@@ -491,6 +496,9 @@ def check(
     # Presence (runs first — skip if disabled)
     presence_findings: list[Finding] = []
     agg_stats: PresenceStats | None = None
+    presence_unavailable = _presence_unavailability(config)
+    if presence_unavailable is not None:
+        _write_unavailable_notice(presence_unavailable, note=verbose and not quiet)
     if config.presence.enabled:
         start = time.perf_counter()
         presence_findings, agg_stats = _run_presence(
@@ -582,7 +590,9 @@ def check(
         checks,
         presence_stats=agg_stats,
         check_counts=check_counts,
-        unavailable=[griffe_unavailable] if griffe_unavailable else [],
+        unavailable=[
+            u for u in (presence_unavailable, griffe_unavailable) if u is not None
+        ],
     )
 
 

@@ -103,11 +103,11 @@ The action sets step outputs that downstream steps can consume:
 
 | Output | Description | Example |
 |--------|-------------|---------|
-| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, or `"gate unavailable"` |
+| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, `"gate unavailable"`, or `"3 findings, gate unavailable"` |
 | `badge_color` | shields.io badge color | `brightgreen`, `yellow`, `red`, or `orange` |
 | `total_findings` | Total findings count | `0`, `3` |
 
-A gate listed in `fail-on` that could not run and failed the build (`fail-on-unavailable` on) publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. The badge is unchanged on the default path, where such a run still exits 0.
+A gate listed in `fail-on` that could not run and failed the build (`fail-on-unavailable` on) publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. When such a run also has findings, the badge keeps the count and the failure colour (`3 findings, gate unavailable` / `red`), so it never hides what a findings-only badge would have shown. The badge is unchanged on the default path, where such a run still exits 0.
 
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
@@ -253,7 +253,7 @@ error: griffe check is in fail-on but could not run (griffe not installed)
   remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
 ```
 
-The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). A check that is unavailable but **not** listed in `fail-on` never fails the run either way: it exits 0. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
+The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). The presence check cannot run when it is switched off with `[tool.docvet.presence] enabled = false` while `presence` is listed in `fail-on` — a gate configured never to execute. A check disabled that way but *not* in `fail-on` is an ordinary opt-out and is not reported. A check that is unavailable but **not** listed in `fail-on` never fails the run either way: it exits 0. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
 
 JSON output carries the same information in a `run` object, so an agent or a script can tell an incomplete run from a clean one — even on the default path, where the exit code alone cannot:
 
@@ -359,6 +359,8 @@ For teams that want a live badge showing pass/fail status from the latest CI run
 | All checks pass | `passing` | ![brightgreen](https://img.shields.io/badge/-brightgreen-brightgreen) |
 | Only recommended findings | `N findings` | ![yellow](https://img.shields.io/badge/-yellow-yellow) |
 | Required findings present | `N findings` | ![red](https://img.shields.io/badge/-red-red) |
+| A gate in `fail-on` could not run and failed the build | `gate unavailable` | ![orange](https://img.shields.io/badge/-orange-orange) |
+| That gate plus findings | `N findings, gate unavailable` | ![red](https://img.shields.io/badge/-red-red) |
 
 !!! tip "Freshness checks need git history"
     If your workflow includes the `freshness` check (or `checks: "all"`), add `fetch-depth: 0` to your checkout step for full `git blame` support. See [Annotation behavior](#annotation-behavior) above for details.

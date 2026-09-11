@@ -48,6 +48,7 @@ def _write_config(
     fail_on: list[str],
     docstring_style: str = "google",
     fail_on_unavailable: bool | None = None,
+    presence_enabled: bool | None = None,
 ) -> None:
     """Write a ``[tool.docvet]`` section with the given policy.
 
@@ -57,6 +58,8 @@ def _write_config(
         docstring_style: Value for ``docstring-style``.
         fail_on_unavailable: Value for ``fail-on-unavailable``, or
             *None* to omit the key and exercise the default.
+        presence_enabled: Value for ``[tool.docvet.presence] enabled``,
+            or *None* to omit the section entirely.
     """
     checks = ", ".join(f'"{c}"' for c in fail_on)
     opt_in = (
@@ -64,12 +67,17 @@ def _write_config(
         if fail_on_unavailable is None
         else f"fail-on-unavailable = {str(fail_on_unavailable).lower()}\n"
     )
+    presence = (
+        ""
+        if presence_enabled is None
+        else (f"\n[tool.docvet.presence]\nenabled = {str(presence_enabled).lower()}\n")
+    )
     (repo / "pyproject.toml").write_text(
         "[tool.docvet]\n"
         'src-root = "src"\n'
         "exclude = []\n"
         f'docstring-style = "{docstring_style}"\n'
-        f"fail-on = [{checks}]\n" + opt_in
+        f"fail-on = [{checks}]\n" + opt_in + presence
     )
 
 
@@ -325,3 +333,84 @@ class TestAllChecksAvailable:
         run = _run_block(result)
         assert run["status"] == "findings"
         assert run["unavailable_checks"] == []
+
+
+class TestDisabledPresenceGate:
+    """A presence gate switched off certified nothing."""
+
+    @staticmethod
+    def _add_undocumented_symbol(repo) -> None:
+        """Give the presence check something it would have flagged."""
+        (repo / "src" / "bare.py").write_text("def helper(x):\n    return x\n")
+
+    def test_json_names_the_disabled_gate_instead_of_claiming_a_clean_pass(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(repo, fail_on=["presence"], presence_enabled=False)
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 0
+        run = _run_block(result)
+        assert run["status"] == "passed"
+        assert run["unavailable_checks"] == [
+            {
+                "check": "presence",
+                "reason": "disabled by configuration",
+                "remedy": (
+                    "set enabled = true under [tool.docvet.presence], or drop"
+                    " presence from fail-on"
+                ),
+                "blocking": False,
+                "in_fail_on": True,
+            }
+        ]
+        assert "presence (disabled by configuration)" in run["exit_reason"]
+        assert "no check in fail-on was unavailable" not in run["exit_reason"]
+
+    def test_opt_in_fails_the_run(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 1
+        run = _run_block(result)
+        assert run["status"] == "unavailable"
+        assert "presence (disabled by configuration)" in run["exit_reason"]
+        assert run["unavailable_checks"][0]["blocking"] is True
+
+    def test_warning_survives_quiet_on_the_default_path(self, repo):
+        _write_config(repo, fail_on=["presence"], presence_enabled=False)
+        result = _run(repo, "--quiet", "check", "--all")
+        assert result.returncode == 0
+        assert (
+            "warning: presence check is in fail-on but could not run"
+            " (disabled by configuration), so that gate never executed" in result.stderr
+        )
+        assert "set enabled = true under [tool.docvet.presence]" in result.stderr
+
+    def test_disabled_presence_outside_fail_on_is_an_ordinary_opt_out(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo,
+            fail_on=["enrichment"],
+            presence_enabled=False,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 0
+        run = _run_block(result)
+        assert run["status"] == "passed"
+        assert run["unavailable_checks"] == []
+
+    def test_enabled_presence_gate_is_never_reported_unavailable(self, repo):
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=True,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 0
+        assert _run_block(result)["unavailable_checks"] == []

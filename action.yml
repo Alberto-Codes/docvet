@@ -217,10 +217,14 @@ runs:
         BADGE_TOTAL=${TOTAL:-0}
         echo "total_findings=${BADGE_TOTAL}" >> "$GITHUB_OUTPUT"
         # A gate that could not run failed the build, so the badge must not
-        # read "passing" just because that gate produced no findings. This
-        # mirrors determine_run_outcome, which gives a blocking unavailable
-        # check precedence over the findings count.
-        if [ "${BLOCKING:-0}" -gt 0 ]; then
+        # read "passing" just because that gate produced no findings. The
+        # badge names the worst thing that happened without dropping what a
+        # narrower badge would have shown, so a run with both an unrunnable
+        # gate and findings keeps the count and the failure colour.
+        if [ "${BLOCKING:-0}" -gt 0 ] && [ "$BADGE_TOTAL" -gt 0 ]; then
+          echo "badge_message=${BADGE_TOTAL} findings, gate unavailable" >> "$GITHUB_OUTPUT"
+          echo "badge_color=red" >> "$GITHUB_OUTPUT"
+        elif [ "${BLOCKING:-0}" -gt 0 ]; then
           echo "badge_message=gate unavailable" >> "$GITHUB_OUTPUT"
           echo "badge_color=orange" >> "$GITHUB_OUTPUT"
         elif [ "$BADGE_TOTAL" -eq 0 ]; then

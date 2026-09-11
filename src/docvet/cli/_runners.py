@@ -5,7 +5,9 @@ module, and returns findings.  The ``_run_fix`` runner additionally
 writes scaffolded sections back to files (or collects diffs in dry-run
 mode).  ``_griffe_unavailability`` is the single source of truth for
 whether the griffe check can execute at all, and
-``_write_unavailable_notice`` reports a check that could not run.
+``_presence_unavailability`` the same for a presence gate switched
+off with ``enabled = false``; ``_write_unavailable_notice`` reports a
+check that could not run.
 Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
 raw VCS data for the freshness runner, each running git through
 :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR`` cannot
@@ -385,6 +387,39 @@ def _griffe_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
         remedy=remedy,
         blocking=in_fail_on and config.fail_on_unavailable,
         in_fail_on=in_fail_on,
+    )
+
+
+def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
+    """Report why a configured presence gate cannot execute, if it cannot.
+
+    Presence is the one check with an ``enabled`` switch, so
+    ``[tool.docvet.presence] enabled = false`` alongside ``presence``
+    in ``fail-on`` configures a gate that can never run. Only that
+    contradiction is reported: a disabled check nobody gates on is an
+    ordinary opt-out, not a gate claiming a pass it never earned. The
+    record is *blocking* only when ``fail-on-unavailable`` is enabled,
+    so the same opt-in governs it as :func:`_griffe_unavailability`.
+
+    Args:
+        config: Loaded docvet configuration.
+
+    Returns:
+        An :class:`~docvet.reporting.UnavailableCheck` describing the
+        obstacle, or *None* when the presence gate can run or was
+        never configured as one.
+    """
+    if config.presence.enabled or "presence" not in config.fail_on:
+        return None
+    return UnavailableCheck(
+        check="presence",
+        reason="disabled by configuration",
+        remedy=(
+            "set enabled = true under [tool.docvet.presence], or drop"
+            " presence from fail-on"
+        ),
+        blocking=config.fail_on_unavailable,
+        in_fail_on=True,
     )
 
 
