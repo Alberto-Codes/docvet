@@ -84,10 +84,12 @@ class UnavailableCheck:
             run, e.g. ``"griffe not installed"``.
         remedy (str): One-line instruction for making the check run.
         blocking (bool): ``True`` when this check failing to run must
-            fail the run — the check is listed in ``fail-on`` *and*
+            fail the run — the check was configured as a gate *and*
             ``fail-on-unavailable`` is enabled.
-        in_fail_on (bool): ``True`` when the check is listed in
-            ``fail-on``. A check that is in ``fail-on`` but not
+        in_fail_on (bool): ``True`` when the config asked this check
+            to gate the run: listed in ``fail-on``, or — for presence
+            — enforcing a ``min-coverage`` floor, which gates without
+            appearing in ``fail-on``. A configured gate that is not
             *blocking* is the opt-out path: the gate never executed,
             the run still exits 0, and the caller is warned loudly.
 
@@ -599,7 +601,11 @@ def determine_run_outcome(
     configured and not met. A run that passes while a ``fail-on``
     check could not execute names that check in its *reason*, so the
     reason never contradicts the ``unavailable_checks`` it is emitted
-    beside.
+    beside. *status* reports which condition blocked the run, not
+    everything that happened: a blocked run that also has ``fail-on``
+    findings stays :data:`RUN_STATUS_UNAVAILABLE` and names both facts
+    in its *reason*, so consumers read the findings total rather than
+    inferring it from *status*.
 
     Args:
         findings_by_check: Findings grouped by check name.
@@ -628,16 +634,22 @@ def determine_run_outcome(
         # outcome.exit_code == 1, outcome.status == "unavailable"
         ```
     """
+    failed = [c for c in config.fail_on if findings_by_check.get(c, [])]
     blocking = [u for u in unavailable if u.blocking]
     if blocking:
         detail = "; ".join(f"{u.check} ({u.reason})" for u in blocking)
+        reason = f"checks configured in fail-on could not run: {detail}"
+        if failed:
+            reason += (
+                "; checks configured in fail-on also have findings:"
+                f" {', '.join(failed)}"
+            )
         return RunOutcome(
             exit_code=1,
             status=RUN_STATUS_UNAVAILABLE,
-            reason=f"checks configured in fail-on could not run: {detail}",
+            reason=reason,
         )
 
-    failed = [c for c in config.fail_on if findings_by_check.get(c, [])]
     if failed:
         return RunOutcome(
             exit_code=1,

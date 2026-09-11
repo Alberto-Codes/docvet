@@ -49,6 +49,7 @@ def _write_config(
     docstring_style: str = "google",
     fail_on_unavailable: bool | None = None,
     presence_enabled: bool | None = None,
+    min_coverage: float | None = None,
 ) -> None:
     """Write a ``[tool.docvet]`` section with the given policy.
 
@@ -59,7 +60,10 @@ def _write_config(
         fail_on_unavailable: Value for ``fail-on-unavailable``, or
             *None* to omit the key and exercise the default.
         presence_enabled: Value for ``[tool.docvet.presence] enabled``,
-            or *None* to omit the section entirely.
+            or *None* to omit the key.
+        min_coverage: Value for ``[tool.docvet.presence] min-coverage``,
+            or *None* to omit the key. The presence section is written
+            when either presence key is given.
     """
     checks = ", ".join(f'"{c}"' for c in fail_on)
     opt_in = (
@@ -67,11 +71,13 @@ def _write_config(
         if fail_on_unavailable is None
         else f"fail-on-unavailable = {str(fail_on_unavailable).lower()}\n"
     )
-    presence = (
-        ""
-        if presence_enabled is None
-        else (f"\n[tool.docvet.presence]\nenabled = {str(presence_enabled).lower()}\n")
-    )
+    presence = ""
+    if presence_enabled is not None or min_coverage is not None:
+        presence = "\n[tool.docvet.presence]\n"
+        if presence_enabled is not None:
+            presence += f"enabled = {str(presence_enabled).lower()}\n"
+        if min_coverage is not None:
+            presence += f"min-coverage = {min_coverage}\n"
     (repo / "pyproject.toml").write_text(
         "[tool.docvet]\n"
         'src-root = "src"\n'
@@ -129,7 +135,10 @@ class TestOptInBlocksUnavailableCheck:
         _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 1
-        assert "error: griffe check is in fail-on but could not run" in result.stderr
+        assert (
+            "error: griffe check was configured to gate the run but could not run"
+            in result.stderr
+        )
 
     def test_stderr_names_the_remedy(self, repo, tmp_path):
         _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
@@ -142,7 +151,10 @@ class TestOptInBlocksUnavailableCheck:
             repo, "--fail-on-unavailable", "check", "--all", env=_hide_griffe(tmp_path)
         )
         assert result.returncode == 1
-        assert "error: griffe check is in fail-on but could not run" in result.stderr
+        assert (
+            "error: griffe check was configured to gate the run but could not run"
+            in result.stderr
+        )
 
     def test_json_distinguishes_unavailable_from_findings(self, repo, tmp_path):
         _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
@@ -199,7 +211,7 @@ class TestDefaultWarnsButDoesNotBlock:
         _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert (
-            "warning: griffe check is in fail-on but could not run"
+            "warning: griffe check was configured to gate the run but could not run"
             " (griffe not installed), so that gate never executed" in result.stderr
         )
 
@@ -221,7 +233,10 @@ class TestDefaultWarnsButDoesNotBlock:
         _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "--quiet", "check", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 0
-        assert "warning: griffe check is in fail-on but could not run" in result.stderr
+        assert (
+            "warning: griffe check was configured to gate the run but could not run"
+            in result.stderr
+        )
 
     def test_json_reports_unavailable_but_a_passing_run(self, repo, tmp_path):
         _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
@@ -248,7 +263,10 @@ class TestDefaultWarnsButDoesNotBlock:
         _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "griffe", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 0
-        assert "warning: griffe check is in fail-on but could not run" in result.stderr
+        assert (
+            "warning: griffe check was configured to gate the run but could not run"
+            in result.stderr
+        )
 
 
 class TestAdvisoryCheckUnavailable:
@@ -385,7 +403,7 @@ class TestDisabledPresenceGate:
         result = _run(repo, "--quiet", "check", "--all")
         assert result.returncode == 0
         assert (
-            "warning: presence check is in fail-on but could not run"
+            "warning: presence check was configured to gate the run but could not run"
             " (disabled by configuration), so that gate never executed" in result.stderr
         )
         assert "set enabled = true under [tool.docvet.presence]" in result.stderr
@@ -414,3 +432,141 @@ class TestDisabledPresenceGate:
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 0
         assert _run_block(result)["unavailable_checks"] == []
+
+
+class TestDisabledPresenceWithCoverageFloor:
+    """A ``min-coverage`` floor gates the run without using ``fail-on``."""
+
+    @staticmethod
+    def _add_undocumented_symbol(repo) -> None:
+        """Give the presence check something it would have flagged."""
+        (repo / "src" / "bare.py").write_text("def helper(x):\n    return x\n")
+
+    def test_unmeasured_floor_is_reported_instead_of_a_clean_pass(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo, fail_on=["enrichment"], presence_enabled=False, min_coverage=95.0
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 0
+        run = _run_block(result)
+        assert run["status"] == "passed"
+        assert run["unavailable_checks"] == [
+            {
+                "check": "presence",
+                "reason": (
+                    "disabled by configuration, so the 95.0% min-coverage"
+                    " floor was never measured"
+                ),
+                "remedy": (
+                    "set enabled = true under [tool.docvet.presence], or drop"
+                    " min-coverage"
+                ),
+                "blocking": False,
+                "in_fail_on": True,
+            }
+        ]
+        assert "95.0% min-coverage floor was never measured" in run["exit_reason"]
+
+    def test_opt_in_fails_the_run_without_presence_in_fail_on(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo,
+            fail_on=["enrichment"],
+            presence_enabled=False,
+            min_coverage=95.0,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 1
+        run = _run_block(result)
+        assert run["status"] == "unavailable"
+        assert "95.0% min-coverage floor was never measured" in run["exit_reason"]
+
+    def test_no_floor_and_no_fail_on_entry_stays_an_ordinary_opt_out(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo,
+            fail_on=["enrichment"],
+            presence_enabled=False,
+            min_coverage=0.0,
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 0
+        assert _run_block(result)["unavailable_checks"] == []
+
+    def test_enabled_presence_measures_the_floor_and_fails_below_it(self, repo):
+        self._add_undocumented_symbol(repo)
+        _write_config(
+            repo, fail_on=["enrichment"], presence_enabled=True, min_coverage=95.0
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 1
+        run = _run_block(result)
+        assert run["status"] == "findings"
+        assert "below the 95.0% threshold" in run["exit_reason"]
+        assert run["unavailable_checks"] == []
+
+
+class TestBlockedRunWithFindings:
+    """A blocked run names the findings it also has."""
+
+    def test_exit_reason_names_the_gate_and_the_findings(self, repo):
+        _write_config(
+            repo,
+            fail_on=["griffe", "enrichment"],
+            docstring_style="sphinx",
+            fail_on_unavailable=True,
+        )
+        (repo / "src" / "bad.py").write_text(
+            textwrap.dedent(
+                '''\
+                """Provide a module whose function is missing a Raises section.
+
+                Examples:
+                    Call the function to see the failure.
+
+                See Also:
+                    [`docvet`][]: Docstring quality checks.
+                """
+
+
+                def validate(data):
+                    """Validate input data.
+
+                    Args:
+                        data: Payload to validate.
+                    """
+                    if not data:
+                        raise ValueError("empty")
+                '''
+            )
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 1
+        payload = json.loads(result.stdout)
+        run = payload["run"]
+        assert run["status"] == "unavailable"
+        assert "griffe (incompatible with sphinx docstring style)" in run["exit_reason"]
+        assert (
+            "checks configured in fail-on also have findings: enrichment"
+            in run["exit_reason"]
+        )
+        assert payload["summary"]["total"] > 0
+
+    def test_blocked_run_names_only_the_gate_when_no_fail_on_check_has_findings(
+        self, repo
+    ):
+        _write_config(
+            repo,
+            fail_on=["griffe"],
+            docstring_style="sphinx",
+            fail_on_unavailable=True,
+        )
+        result = _run(repo, "--format", "json", "check", "--all")
+        assert result.returncode == 1
+        run = _run_block(result)
+        assert run["status"] == "unavailable"
+        assert "griffe (incompatible with sphinx docstring style)" in run["exit_reason"]
+        assert "also have findings" not in run["exit_reason"]

@@ -6,7 +6,8 @@ writes scaffolded sections back to files (or collects diffs in dry-run
 mode).  ``_griffe_unavailability`` is the single source of truth for
 whether the griffe check can execute at all, and
 ``_presence_unavailability`` the same for a presence gate switched
-off with ``enabled = false``; ``_write_unavailable_notice`` reports a
+off with ``enabled = false`` while ``fail-on`` or a ``min-coverage``
+floor still gates on it; ``_write_unavailable_notice`` reports a
 check that could not run.
 Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
 raw VCS data for the freshness runner, each running git through
@@ -394,12 +395,17 @@ def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
     """Report why a configured presence gate cannot execute, if it cannot.
 
     Presence is the one check with an ``enabled`` switch, so
-    ``[tool.docvet.presence] enabled = false`` alongside ``presence``
-    in ``fail-on`` configures a gate that can never run. Only that
-    contradiction is reported: a disabled check nobody gates on is an
-    ordinary opt-out, not a gate claiming a pass it never earned. The
-    record is *blocking* only when ``fail-on-unavailable`` is enabled,
-    so the same opt-in governs it as :func:`_griffe_unavailability`.
+    ``[tool.docvet.presence] enabled = false`` turns it off. Two
+    settings gate the run on it: listing ``presence`` in ``fail-on``,
+    and setting a ``min-coverage`` floor, which
+    :func:`~docvet.reporting.determine_run_outcome` enforces without
+    consulting ``fail-on`` at all. Either one alongside ``enabled =
+    false`` configures a gate that can never run, and the floor is
+    named in the reason so the report says which threshold went
+    unmeasured. A disabled check nobody gates on is an ordinary
+    opt-out and is not reported. The record is *blocking* only when
+    ``fail-on-unavailable`` is enabled, so the same opt-in governs it
+    as :func:`_griffe_unavailability`.
 
     Args:
         config: Loaded docvet configuration.
@@ -409,15 +415,28 @@ def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
         obstacle, or *None* when the presence gate can run or was
         never configured as one.
     """
-    if config.presence.enabled or "presence" not in config.fail_on:
+    if config.presence.enabled:
         return None
-    return UnavailableCheck(
-        check="presence",
-        reason="disabled by configuration",
-        remedy=(
+    in_fail_on = "presence" in config.fail_on
+    floor = config.presence.min_coverage
+    if not in_fail_on and floor <= 0.0:
+        return None
+    if floor > 0.0:
+        reason = (
+            "disabled by configuration, so the"
+            f" {floor:.1f}% min-coverage floor was never measured"
+        )
+        remedy = "set enabled = true under [tool.docvet.presence], or drop min-coverage"
+    else:
+        reason = "disabled by configuration"
+        remedy = (
             "set enabled = true under [tool.docvet.presence], or drop"
             " presence from fail-on"
-        ),
+        )
+    return UnavailableCheck(
+        check="presence",
+        reason=reason,
+        remedy=remedy,
         blocking=config.fail_on_unavailable,
         in_fail_on=True,
     )
@@ -431,31 +450,34 @@ def _write_unavailable_notice(
     """Write a stderr notice for a check that could not execute.
 
     A blocking check reports an error with its remedy, since the run
-    exits non-zero because of it. A check that is listed in
-    ``fail-on`` but not blocking — ``fail-on-unavailable`` is off —
-    reports an unconditional warning naming the check, why it could
-    not run, that this check did not fail the run because the setting
-    is off, how to make it an error, and that this becomes an error in
-    a future major. The notice speaks only for this check: it is
-    written mid-run, so another ``fail-on`` check or a coverage
-    shortfall can still fail the run. A check that is in neither
-    reports a skip line only when *note* is set.
+    exits non-zero because of it. A check configured as a gate but not
+    blocking — ``fail-on-unavailable`` is off — reports an
+    unconditional warning naming the check, why it could not run, that
+    this check did not fail the run because the setting is off, how to
+    make it an error, and that this becomes an error in a future
+    major. Both say "configured to gate the run" rather than naming
+    ``fail-on``, because a ``min-coverage`` floor configures a gate
+    without listing the check there. The notice speaks only for this
+    check: it is written mid-run, so another ``fail-on`` check or a
+    coverage shortfall can still fail the run. A check that gates
+    nothing reports a skip line only when *note* is set.
 
     Args:
         unavailable: The check that could not execute.
-        note: Whether to write the skip line for a check that is not
-            listed in ``fail-on``.
+        note: Whether to write the skip line for a check that gates
+            nothing.
     """
     if unavailable.blocking:
         sys.stderr.write(
-            f"error: {unavailable.check} check is in fail-on but could not run"
-            f" ({unavailable.reason})\n"
+            f"error: {unavailable.check} check was configured to gate the run"
+            f" but could not run ({unavailable.reason})\n"
             f"  remedy: {unavailable.remedy}\n"
         )
     elif unavailable.in_fail_on:
         sys.stderr.write(
-            f"warning: {unavailable.check} check is in fail-on but could not run"
-            f" ({unavailable.reason}), so that gate never executed\n"
+            f"warning: {unavailable.check} check was configured to gate the run"
+            f" but could not run ({unavailable.reason}),"
+            " so that gate never executed\n"
             f"  remedy: {unavailable.remedy}\n"
             "  this did not fail the run because fail-on-unavailable is off;"
             " set fail-on-unavailable = true under [tool.docvet] (or pass"

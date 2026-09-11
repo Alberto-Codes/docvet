@@ -32,7 +32,7 @@ outputs:
     description: 'Badge message for shields.io (e.g., "passing" or "N findings")'
     value: ${{ steps.run-docvet.outputs.badge_message }}
   badge_color:
-    description: 'Badge color for shields.io (brightgreen, yellow, or red)'
+    description: 'Badge color for shields.io (brightgreen, yellow, orange, or red)'
     value: ${{ steps.run-docvet.outputs.badge_color }}
   total_findings:
     description: 'Total number of findings'
@@ -164,10 +164,10 @@ runs:
 
         # Surface gates that never executed: without this, a run whose
         # configured check could not start reads as "no findings". Only
-        # checks listed in fail-on are annotated — an unavailable check
-        # outside fail-on is a routine skip. Whether that gate also
-        # failed the run is docvet's call, carried as `blocking`, which
-        # is set by the opt-in fail-on-unavailable setting.
+        # checks the config gates on are annotated — an unavailable
+        # check nothing gates on is a routine skip. Whether that gate
+        # also failed the run is docvet's call, carried as `blocking`,
+        # which is set by the opt-in fail-on-unavailable setting.
         UNAVAILABLE=""
         BLOCKING=""
         if [ -s "$MERGED_OUTPUT" ]; then
@@ -181,7 +181,7 @@ runs:
             LEVEL="warning"
           fi
           while IFS= read -r LINE; do
-            echo "::${LEVEL}::docvet gate in fail-on could not run — ${LINE}"
+            echo "::${LEVEL}::docvet configured gate could not run — ${LINE}"
           done <<< "$UNAVAILABLE"
           if [ "${BLOCKING:-0}" -eq 0 ]; then
             echo "::${LEVEL}::set fail-on-unavailable = true under [tool.docvet] to fail the build when a configured check cannot run"
@@ -193,7 +193,7 @@ runs:
           echo "### Docvet Findings"
           echo ""
           if [ -n "$UNAVAILABLE" ]; then
-            echo "**Gates in \`fail-on\` that could not run:**"
+            echo "**Configured gates that could not run:**"
             echo ""
             while IFS= read -r LINE; do
               echo "- ${LINE}"

@@ -224,7 +224,7 @@ Without a `[tool.docvet]` section, `fail-on` defaults to `[]` — meaning docvet
 A check listed in `fail-on` that cannot execute never certified the gate you configured. By default docvet says so loudly on stderr and still exits 0:
 
 ```text
-warning: griffe check is in fail-on but could not run (griffe not installed), so that gate never executed
+warning: griffe check was configured to gate the run but could not run (griffe not installed), so that gate never executed
   remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
   this did not fail the run because fail-on-unavailable is off; set fail-on-unavailable = true under [tool.docvet] (or pass --fail-on-unavailable) to make it an error
   a future major release will make this an error by default
@@ -249,11 +249,11 @@ docvet --fail-on-unavailable check --all
 With the opt-in on, the same situation exits 1 and the notice is an error:
 
 ```text
-error: griffe check is in fail-on but could not run (griffe not installed)
+error: griffe check was configured to gate the run but could not run (griffe not installed)
   remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
 ```
 
-The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). The presence check cannot run when it is switched off with `[tool.docvet.presence] enabled = false` while `presence` is listed in `fail-on` — a gate configured never to execute. A check disabled that way but *not* in `fail-on` is an ordinary opt-out and is not reported. A check that is unavailable but **not** listed in `fail-on` never fails the run either way: it exits 0. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
+The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). The presence check cannot run when it is switched off with `[tool.docvet.presence] enabled = false` while something still gates on it — `presence` listed in `fail-on`, or a `min-coverage` floor, which `determine_run_outcome` enforces without consulting `fail-on` at all. Either way the gate was configured never to execute, and the reason names the floor that went unmeasured. A check disabled with nothing gating on it is an ordinary opt-out and is not reported. A check that is unavailable but **not** listed in `fail-on` never fails the run either way: it exits 0. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
 
 JSON output carries the same information in a `run` object, so an agent or a script can tell an incomplete run from a clean one — even on the default path, where the exit code alone cannot:
 
@@ -276,7 +276,7 @@ JSON output carries the same information in a `run` object, so an agent or a scr
 }
 ```
 
-`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `in_fail_on` says the check was configured as a gate; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"in_fail_on": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
+`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `in_fail_on` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"in_fail_on": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
 
 ```text
 no check in fail-on reported findings, but these checks in fail-on could not run and fail-on-unavailable is off: griffe (griffe not installed)

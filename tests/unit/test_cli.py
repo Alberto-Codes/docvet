@@ -1374,8 +1374,8 @@ def test_run_griffe_when_griffe_not_installed_and_fail_on_opt_in_fails_the_run(m
     output = result.output + getattr(result, "stderr", "")
     assert result.exit_code == 1
     assert (
-        "error: griffe check is in fail-on but could not run (griffe not installed)"
-        in output
+        "error: griffe check was configured to gate the run but could not run"
+        " (griffe not installed)" in output
     )
     assert "remedy: pip install 'docvet[griffe]'" in output
     mock_check.assert_not_called()
@@ -1392,7 +1392,7 @@ def test_run_griffe_when_griffe_not_installed_and_fail_on_warns_but_exits_zero(m
     assert result.exit_code == 0
     assert "error:" not in output
     assert (
-        "warning: griffe check is in fail-on but could not run"
+        "warning: griffe check was configured to gate the run but could not run"
         " (griffe not installed), so that gate never executed" in output
     )
     assert "remedy: pip install 'docvet[griffe]'" in output
@@ -1411,7 +1411,9 @@ def test_fail_on_unavailable_flag_turns_the_warning_into_an_error(mocker):
     result = runner.invoke(app, ["--fail-on-unavailable", "griffe"])
     output = result.output + getattr(result, "stderr", "")
     assert result.exit_code == 1
-    assert "error: griffe check is in fail-on but could not run" in output
+    assert (
+        "error: griffe check was configured to gate the run but could not run" in output
+    )
     assert "warning: griffe" not in output
     mock_check.assert_not_called()
 
@@ -1486,7 +1488,9 @@ def test_run_griffe_when_griffe_not_installed_fail_on_takes_priority_over_verbos
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["--verbose", "griffe"])
     output = result.output + getattr(result, "stderr", "")
-    assert "error: griffe check is in fail-on but could not run" in output
+    assert (
+        "error: griffe check was configured to gate the run but could not run" in output
+    )
     assert "griffe: skipped (griffe not installed)" not in output
     mock_check.assert_not_called()
 
