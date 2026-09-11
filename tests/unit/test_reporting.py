@@ -1195,6 +1195,18 @@ class TestDetermineRunOutcome:
         )
         assert outcome.exit_code == 0
         assert outcome.status == RUN_STATUS_PASSED
+        assert "griffe (griffe not installed)" in outcome.reason
+        assert "fail-on-unavailable is off" in outcome.reason
+        assert "no check in fail-on was unavailable" not in outcome.reason
+
+    def test_advisory_check_outside_fail_on_keeps_the_clean_reason(self):
+        outcome = determine_run_outcome(
+            {},
+            DocvetConfig(fail_on=["enrichment"]),
+            unavailable=[_unavailable(blocking=False, in_fail_on=False)],
+        )
+        assert outcome.exit_code == 0
+        assert outcome.status == RUN_STATUS_PASSED
         assert outcome.reason == (
             "no check in fail-on was unavailable or reported findings"
         )

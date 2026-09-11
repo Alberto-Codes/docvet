@@ -325,11 +325,12 @@ The TOML output is copy-paste-ready — you can paste it directly into your `pyp
     "freshness": { "drift-threshold": 30, "age-threshold": 90 },
     "enrichment": { "require-raises": false, "require-yields": true }
   },
-  "user_configured": ["fail-on", "enrichment.require-raises"]
+  "user_configured": ["fail-on", "enrichment.require-raises"],
+  "cli_overridden": []
 }
 ```
 
-The `user_configured` array lists which keys were explicitly set in your `pyproject.toml`.
+The `user_configured` array lists which keys were explicitly set in your `pyproject.toml`. The `cli_overridden` array lists keys whose value came from a command-line flag instead — `docvet --fail-on-unavailable --format json config` reports `"cli_overridden": ["fail-on-unavailable"]`, so a flag-supplied value is never mistaken for the built-in default.
 
 When no `pyproject.toml` is found, a note is printed to stderr and all built-in defaults are shown.
 

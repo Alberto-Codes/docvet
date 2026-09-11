@@ -276,19 +276,26 @@ def format_config_toml(
 def format_config_json(
     config: DocvetConfig,
     user_keys: dict[str, object],
+    cli_overrides: Collection[str] = (),
 ) -> str:
     """Format effective config as a JSON string.
 
     Produces a JSON object with ``"config"`` (all effective values,
-    kebab-case keys, ``project_root`` and ``user_set_keys`` excluded) and
+    kebab-case keys, ``project_root`` and ``user_set_keys`` excluded),
     ``"user_configured"`` (list of dot-separated kebab-case paths for
-    user-set keys). Key conversion is handled by
-    :func:`_convert_keys_to_kebab`. Omits ``package-name`` when its
-    value is ``None``.
+    user-set keys), and ``"cli_overridden"`` (keys whose value came
+    from a command-line flag).  Without that third list a reader would
+    take a flag-supplied value for the built-in default, since it
+    appears in neither the config file nor ``user_configured``. Key
+    conversion is handled by :func:`_convert_keys_to_kebab`. Omits
+    ``package-name`` when its value is ``None``.
 
     Args:
         config: The effective :class:`DocvetConfig`.
         user_keys: Raw ``[tool.docvet]`` dict with kebab-case keys.
+        cli_overrides: Top-level kebab-case keys whose effective value
+            came from a command-line flag rather than from *user_keys*
+            or the built-in defaults.
 
     Returns:
         A pretty-printed JSON string.
@@ -316,5 +323,6 @@ def format_config_json(
     output = {
         "config": converted,
         "user_configured": sorted(user_configured),
+        "cli_overridden": sorted(cli_overrides),
     }
     return json.dumps(output, indent=2)

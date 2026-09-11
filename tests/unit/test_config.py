@@ -1416,6 +1416,20 @@ def test_format_config_json_structure():
     assert isinstance(parsed["user_configured"], list)
 
 
+def test_format_config_json_cli_override_names_the_flag_source():
+    config = DocvetConfig(fail_on_unavailable=True)
+    parsed = json.loads(format_config_json(config, {}, ["fail-on-unavailable"]))
+    assert parsed["config"]["fail-on-unavailable"] is True
+    assert parsed["cli_overridden"] == ["fail-on-unavailable"]
+    assert parsed["user_configured"] == []
+
+
+def test_format_config_json_cli_overridden_is_empty_without_flags():
+    parsed = json.loads(format_config_json(DocvetConfig(), {"fail-on": ["griffe"]}))
+    assert parsed["cli_overridden"] == []
+    assert parsed["user_configured"] == ["fail-on"]
+
+
 def test_format_config_json_kebab_case_keys():
     config = DocvetConfig()
     output = format_config_json(config, {})

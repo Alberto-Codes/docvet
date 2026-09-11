@@ -103,9 +103,11 @@ The action sets step outputs that downstream steps can consume:
 
 | Output | Description | Example |
 |--------|-------------|---------|
-| `badge_message` | shields.io badge message | `"passing"` or `"3 findings"` |
-| `badge_color` | shields.io badge color | `brightgreen`, `yellow`, or `red` |
+| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, or `"gate unavailable"` |
+| `badge_color` | shields.io badge color | `brightgreen`, `yellow`, `red`, or `orange` |
 | `total_findings` | Total findings count | `0`, `3` |
+
+A gate listed in `fail-on` that could not run and failed the build (`fail-on-unavailable` on) publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. The badge is unchanged on the default path, where such a run still exits 0.
 
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
@@ -224,11 +226,11 @@ A check listed in `fail-on` that cannot execute never certified the gate you con
 ```text
 warning: griffe check is in fail-on but could not run (griffe not installed), so that gate never executed
   remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
-  exiting 0 anyway because fail-on-unavailable is off; set fail-on-unavailable = true under [tool.docvet] (or pass --fail-on-unavailable) to make this an error
+  this did not fail the run because fail-on-unavailable is off; set fail-on-unavailable = true under [tool.docvet] (or pass --fail-on-unavailable) to make it an error
   a future major release will make this an error by default
 ```
 
-The warning is always printed, including under `--quiet`.
+The warning is always printed, including under `--quiet`. It speaks only for that check — it is written mid-run, so another `fail-on` check with findings or a `min-coverage` shortfall can still fail the run.
 
 To make it an error, opt in:
 
@@ -274,7 +276,11 @@ JSON output carries the same information in a `run` object, so an agent or a scr
 }
 ```
 
-`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `in_fail_on` says the check was configured as a gate; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"in_fail_on": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it.
+`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `in_fail_on` says the check was configured as a gate; `blocking` says that fact actually failed the run, which requires `fail-on-unavailable`. With the opt-in off, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"in_fail_on": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
+
+```text
+no check in fail-on reported findings, but these checks in fail-on could not run and fail-on-unavailable is off: griffe (griffe not installed)
+```
 
 !!! tip "Default `warn-on` overlap"
     The default `warn-on` list includes all four checks. If you add a check to `fail-on`, docvet silently removes it from the default `warn-on` — no warnings, no findings lost. Warnings only appear when you explicitly set both `fail-on` and `warn-on` with overlapping checks.

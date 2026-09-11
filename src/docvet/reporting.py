@@ -596,7 +596,10 @@ def determine_run_outcome(
     exit code. Otherwise the run fails with :data:`RUN_STATUS_FINDINGS` when a
     ``fail-on`` check produced findings or the presence coverage
     threshold (compared via :attr:`PresenceStats.percentage`) is
-    configured and not met.
+    configured and not met. A run that passes while a ``fail-on``
+    check could not execute names that check in its *reason*, so the
+    reason never contradicts the ``unavailable_checks`` it is emitted
+    beside.
 
     Args:
         findings_by_check: Findings grouped by check name.
@@ -653,6 +656,18 @@ def determine_run_outcome(
             reason=(
                 f"docstring coverage {presence_stats.percentage:.1f}% is below the"
                 f" {config.presence.min_coverage:.1f}% threshold"
+            ),
+        )
+
+    advisory = [u for u in unavailable if u.in_fail_on]
+    if advisory:
+        detail = "; ".join(f"{u.check} ({u.reason})" for u in advisory)
+        return RunOutcome(
+            exit_code=0,
+            status=RUN_STATUS_PASSED,
+            reason=(
+                "no check in fail-on reported findings, but these checks in"
+                f" fail-on could not run and fail-on-unavailable is off: {detail}"
             ),
         )
 

@@ -216,7 +216,14 @@ runs:
         # Compute badge outputs (legacy mode exits early at line 71, so this only runs in new mode)
         BADGE_TOTAL=${TOTAL:-0}
         echo "total_findings=${BADGE_TOTAL}" >> "$GITHUB_OUTPUT"
-        if [ "$BADGE_TOTAL" -eq 0 ]; then
+        # A gate that could not run failed the build, so the badge must not
+        # read "passing" just because that gate produced no findings. This
+        # mirrors determine_run_outcome, which gives a blocking unavailable
+        # check precedence over the findings count.
+        if [ "${BLOCKING:-0}" -gt 0 ]; then
+          echo "badge_message=gate unavailable" >> "$GITHUB_OUTPUT"
+          echo "badge_color=orange" >> "$GITHUB_OUTPUT"
+        elif [ "$BADGE_TOTAL" -eq 0 ]; then
           echo "badge_message=passing" >> "$GITHUB_OUTPUT"
           echo "badge_color=brightgreen" >> "$GITHUB_OUTPUT"
         elif [ "$(jq '.summary.by_category.required // 0' "$MERGED_OUTPUT")" -eq 0 ]; then

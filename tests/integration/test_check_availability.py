@@ -195,10 +195,15 @@ class TestDefaultWarnsButDoesNotBlock:
             " (griffe not installed), so that gate never executed" in result.stderr
         )
 
-    def test_warning_explains_the_exit_code_and_the_opt_in(self, repo, tmp_path):
+    def test_warning_explains_the_gate_did_not_fail_and_the_opt_in(
+        self, repo, tmp_path
+    ):
         _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
-        assert "exiting 0 anyway because fail-on-unavailable is off" in result.stderr
+        assert (
+            "this did not fail the run because fail-on-unavailable is off"
+            in result.stderr
+        )
         assert "fail-on-unavailable = true" in result.stderr
         assert "--fail-on-unavailable" in result.stderr
         assert "a future major release will make this an error" in result.stderr
@@ -219,6 +224,8 @@ class TestDefaultWarnsButDoesNotBlock:
         run = _run_block(result)
         assert run["status"] == "passed"
         assert run["exit_code"] == 0
+        assert "griffe (griffe not installed)" in run["exit_reason"]
+        assert "fail-on-unavailable is off" in run["exit_reason"]
         assert run["unavailable_checks"] == [
             {
                 "check": "griffe",

@@ -399,10 +399,12 @@ def _write_unavailable_notice(
     exits non-zero because of it. A check that is listed in
     ``fail-on`` but not blocking — ``fail-on-unavailable`` is off —
     reports an unconditional warning naming the check, why it could
-    not run, that the run still exits 0 because the setting is off,
-    how to make it an error, and that this becomes an error in a
-    future major. A check that is in neither reports a skip line only
-    when *note* is set.
+    not run, that this check did not fail the run because the setting
+    is off, how to make it an error, and that this becomes an error in
+    a future major. The notice speaks only for this check: it is
+    written mid-run, so another ``fail-on`` check or a coverage
+    shortfall can still fail the run. A check that is in neither
+    reports a skip line only when *note* is set.
 
     Args:
         unavailable: The check that could not execute.
@@ -420,9 +422,9 @@ def _write_unavailable_notice(
             f"warning: {unavailable.check} check is in fail-on but could not run"
             f" ({unavailable.reason}), so that gate never executed\n"
             f"  remedy: {unavailable.remedy}\n"
-            "  exiting 0 anyway because fail-on-unavailable is off; set"
-            " fail-on-unavailable = true under [tool.docvet] (or pass"
-            " --fail-on-unavailable) to make this an error\n"
+            "  this did not fail the run because fail-on-unavailable is off;"
+            " set fail-on-unavailable = true under [tool.docvet] (or pass"
+            " --fail-on-unavailable) to make it an error\n"
             "  a future major release will make this an error by default\n"
         )
     elif note:

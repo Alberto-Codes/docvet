@@ -1396,7 +1396,7 @@ def test_run_griffe_when_griffe_not_installed_and_fail_on_warns_but_exits_zero(m
         " (griffe not installed), so that gate never executed" in output
     )
     assert "remedy: pip install 'docvet[griffe]'" in output
-    assert "exiting 0 anyway because fail-on-unavailable is off" in output
+    assert "this did not fail the run because fail-on-unavailable is off" in output
     assert "fail-on-unavailable = true" in output
     assert "a future major release will make this an error" in output
     mock_check.assert_not_called()
@@ -3293,3 +3293,32 @@ class TestConfigCommand:
         assert result.exit_code == 0
         assert "fail-on-unavailable = true  # (--fail-on-unavailable)" in result.output
         assert "fail-on-unavailable = true  # (default)" not in result.output
+
+    def test_fail_on_unavailable_flag_is_named_in_json_output(self, tmp_path):
+        """JSON carries the same provenance as the TOML annotation."""
+        toml_file = tmp_path / "pyproject.toml"
+        toml_file.write_text("[tool.docvet]\nfail-on = ['griffe']\n")
+        result = runner.invoke(
+            app,
+            [
+                "--config",
+                str(toml_file),
+                "--fail-on-unavailable",
+                "--format",
+                "json",
+                "config",
+            ],
+        )
+        assert result.exit_code == 0
+        parsed = json.loads(result.output)
+        assert parsed["cli_overridden"] == ["fail-on-unavailable"]
+        assert "fail-on-unavailable" not in parsed["user_configured"]
+
+    def test_config_json_reports_no_cli_overrides_without_the_flag(self, tmp_path):
+        toml_file = tmp_path / "pyproject.toml"
+        toml_file.write_text("[tool.docvet]\nfail-on = ['griffe']\n")
+        result = runner.invoke(
+            app, ["--config", str(toml_file), "--format", "json", "config"]
+        )
+        assert result.exit_code == 0
+        assert json.loads(result.output)["cli_overridden"] == []

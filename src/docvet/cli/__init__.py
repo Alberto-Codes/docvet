@@ -1113,7 +1113,8 @@ def config(
     format. Each value is annotated with ``# (user)`` or
     ``# (default)`` to show its source, or with the flag that supplied
     it (for example ``# (--fail-on-unavailable)``) when a global
-    command-line flag overrode both. Respects the global ``--config``
+    command-line flag overrode both; JSON carries the same provenance
+    in its ``cli_overridden`` array. Respects the global ``--config``
     flag via ``ctx.obj["config_path"]``.
 
     Args:
@@ -1128,11 +1129,8 @@ def config(
         )
     docvet_config: DocvetConfig = ctx.obj["docvet_config"]
     fmt = ctx.obj.get("format")
+    cli_overrides = ctx.obj.get("cli_overrides", ())
     if fmt == "json":
-        typer.echo(format_config_json(docvet_config, user_keys))
+        typer.echo(format_config_json(docvet_config, user_keys, cli_overrides))
     else:
-        typer.echo(
-            format_config_toml(
-                docvet_config, user_keys, ctx.obj.get("cli_overrides", ())
-            )
-        )
+        typer.echo(format_config_toml(docvet_config, user_keys, cli_overrides))
