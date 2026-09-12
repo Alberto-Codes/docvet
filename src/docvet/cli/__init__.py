@@ -8,9 +8,12 @@ and the output pipeline is in ``_output``.  This module retains enums,
 discovery helpers, the app callback, and all typer subcommands.  A check
 that cannot execute — griffe unusable, or a presence gate switched off
 — is reported to ``_output_and_exit`` as unavailable rather than as a
-check that ran and found nothing; whether that fails the run is
-governed by the opt-in ``fail-on-unavailable`` setting and its
-``--fail-on-unavailable`` flag.
+check that ran and found nothing.  Whether that fails the run is
+governed by ``fail-on-unavailable``, which defaults to ``True`` so a
+configured gate that never executed cannot report success; the
+tri-state ``--fail-on-unavailable/--no-fail-on-unavailable`` flag pair
+overrides it for a single run, and ``--no-fail-on-unavailable`` opts
+back out to a warning and exit 0.
 
 Examples:
     Run all checks on changed files:

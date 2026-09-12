@@ -1301,6 +1301,16 @@ def test_format_config_toml_cli_override_names_the_flag():
     assert _annotation_for(output, "fail-on-unavailable") == "(--fail-on-unavailable)"
 
 
+def test_format_config_toml_cli_override_to_false_names_the_negative_flag():
+    config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=False)
+    output = format_config_toml(
+        config, {"fail-on": ["griffe"]}, ["fail-on-unavailable"]
+    )
+    assert (
+        _annotation_for(output, "fail-on-unavailable") == "(--no-fail-on-unavailable)"
+    )
+
+
 def test_format_config_toml_cli_override_beats_a_user_key():
     config = DocvetConfig(fail_on_unavailable=True)
     user_keys: dict[str, object] = {"fail-on-unavailable": False}

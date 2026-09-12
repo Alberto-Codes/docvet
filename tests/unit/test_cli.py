@@ -3336,6 +3336,25 @@ class TestConfigCommand:
         assert "fail-on-unavailable = true  # (--fail-on-unavailable)" in result.output
         assert "fail-on-unavailable = true  # (default)" not in result.output
 
+    def test_no_fail_on_unavailable_flag_is_annotated_with_its_own_spelling(
+        self, tmp_path
+    ):
+        """The annotation names the spelling that produced the value."""
+        toml_file = tmp_path / "pyproject.toml"
+        toml_file.write_text("[tool.docvet]\nfail-on = ['griffe']\n")
+        result = runner.invoke(
+            app,
+            ["--config", str(toml_file), "--no-fail-on-unavailable", "config"],
+        )
+        assert result.exit_code == 0
+        assert (
+            "fail-on-unavailable = false  # (--no-fail-on-unavailable)" in result.output
+        )
+        assert "fail-on-unavailable = false  # (--fail-on-unavailable)" not in (
+            result.output
+        )
+        assert "fail-on-unavailable = false  # (default)" not in result.output
+
     def test_fail_on_unavailable_flag_is_named_in_json_output(self, tmp_path):
         """JSON carries the same provenance as the TOML annotation."""
         toml_file = tmp_path / "pyproject.toml"
