@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.16.0](https://github.com/Alberto-Codes/docvet/compare/v1.15.2...v1.16.0) (2026-09-11)
+
+
+### Features
+
+* **cli:** add opt-in fail-on-unavailable policy for gates that cannot run ([#447](https://github.com/Alberto-Codes/docvet/issues/447)) ([6c0e013](https://github.com/Alberto-Codes/docvet/commit/6c0e01384d4946d388e7dd8da759ec0b0809b143))
+
+
+### Bug Fixes
+
+* **ci:** install the griffe extra in the docvet GitHub Action ([#444](https://github.com/Alberto-Codes/docvet/issues/444)) ([9c50fd4](https://github.com/Alberto-Codes/docvet/commit/9c50fd4acbd32bae18e5597e5ec76340eeb0c1fd))
+
 ## [1.15.2](https://github.com/Alberto-Codes/docvet/compare/v1.15.1...v1.15.2) (2026-09-03)
 
 
