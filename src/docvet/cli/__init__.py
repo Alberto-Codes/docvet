@@ -464,10 +464,12 @@ def check(
     is not installed or ``docstring-style`` is ``"sphinx"`` (incompatible
     parser), and a presence gate is skipped when ``enabled`` is
     ``false``; either is then reported as unavailable rather than
-    counted as a check that ran. When the skipped check is listed in
-    ``fail-on`` that warns loudly and still exits 0, unless
-    ``fail-on-unavailable`` is enabled, which makes it exit 1. A check
-    disabled outside ``fail-on`` is an ordinary opt-out and is not
+    counted as a check that ran. When the config gated on the skipped
+    check -- listed in ``fail-on``, or a ``min-coverage`` floor gating
+    presence -- that gate certified nothing, so the run reports an
+    error and exits 1; ``fail-on-unavailable = false`` (or
+    ``--no-fail-on-unavailable``) opts back out to a warning and exit
+    0. A check nothing gates on is an ordinary opt-out and is not
     reported. Coverage percentage is derived
     from :attr:`PresenceStats.percentage`. Displays a progress bar on
     stderr when connected to a TTY. Uses three-tier verbosity:
@@ -903,10 +905,11 @@ def griffe(
     file discovery count. Passes file count to ``_output_and_exit``
     for ``--summary`` quality percentage computation. Skips the check
     when griffe is not installed or ``docstring-style`` is ``"sphinx"``
-    (griffe's Google parser is incompatible with RST docstrings); the
-    skip exits non-zero only when ``griffe`` is listed in ``fail-on``
-    *and* ``fail-on-unavailable`` is enabled, and otherwise warns and
-    exits 0.
+    (griffe's Google parser is incompatible with RST docstrings). When
+    ``griffe`` is listed in ``fail-on`` the skip exits 1, since that
+    gate never ran, unless ``fail-on-unavailable = false`` (or
+    ``--no-fail-on-unavailable``) opts back out to a warning and exit
+    0. A skip with ``griffe`` outside ``fail-on`` never fails the run.
 
     Args:
         ctx: Typer invocation context.

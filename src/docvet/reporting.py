@@ -602,8 +602,9 @@ def determine_run_outcome(
     a run (the caller is warned loudly instead). The reason names the
     gate as "configured to gate the run" rather than naming ``fail-on``,
     because a ``min-coverage`` floor gates presence without that list
-    ever mentioning it. Unavailable checks that are not in ``fail-on`` never
-    affect the exit code. Otherwise the run fails with :data:`RUN_STATUS_FINDINGS` when a
+    ever mentioning it. An unavailable check that nothing gates on --
+    neither ``fail-on`` membership nor a ``min-coverage`` floor -- never
+    affects the exit code. Otherwise the run fails with :data:`RUN_STATUS_FINDINGS` when a
     ``fail-on`` check produced findings or the presence coverage
     threshold (compared via :attr:`PresenceStats.percentage`) is
     configured and not met. A run that passes while a ``fail-on``

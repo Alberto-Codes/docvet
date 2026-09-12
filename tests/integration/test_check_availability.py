@@ -3,8 +3,9 @@
 A check listed in ``fail-on`` that cannot execute never certified the
 gate it was asked to certify, so by default that fails the run. A
 project that opts out with ``fail-on-unavailable = false`` still exits
-0 but warns loudly. A check that is unavailable and not listed in
-``fail-on`` stays a quiet skip either way.
+0 but warns loudly. A check that is unavailable and that nothing gates
+on stays a quiet skip either way -- and a ``min-coverage`` floor gates
+``presence`` without ``fail-on`` ever naming it.
 
 Each test drives the installed ``docvet`` console script in a temp git
 repo and asserts on the process exit code and its JSON output.
@@ -198,6 +199,16 @@ class TestDefaultBlocksUnavailableCheck:
         )
         assert "this project" not in result.stderr
         assert "this project" not in _run_block(result)["exit_reason"]
+
+    def test_blocking_error_survives_quiet(self, repo, tmp_path):
+        _write_config(repo, fail_on=["griffe"])
+        result = _run(repo, "--quiet", "check", "--all", env=_hide_griffe(tmp_path))
+        assert result.returncode == 1
+        assert (
+            "error: griffe check was configured to gate the run but could not run"
+            " (griffe not installed)" in result.stderr
+        )
+        assert "pip install 'docvet[griffe]'" in result.stderr
 
     def test_json_distinguishes_unavailable_from_findings(self, repo, tmp_path):
         _write_config(repo, fail_on=["griffe"])

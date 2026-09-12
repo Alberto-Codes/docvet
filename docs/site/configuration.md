@@ -80,7 +80,7 @@ fail-on-unavailable = false
 
 `--fail-on-unavailable` and `--no-fail-on-unavailable` override the setting for a single run without editing `pyproject.toml`; config stays authoritative when neither flag is passed. `docvet --no-fail-on-unavailable config` annotates the key with `# (--no-fail-on-unavailable)` so the flag is visible as the value's source.
 
-An unavailable check that is not in `fail-on` is unaffected either way — it is reported as a skip and never fails the run. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) for the stderr and JSON contract.
+An unavailable check that nothing gates on is unaffected either way — it is reported as a skip and never fails the run. `fail-on` membership is not the test: a `min-coverage` floor gates `presence` without that list ever naming it, so switching presence off while a floor is set fails the run even though `fail-on` does not mention `presence`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) for the stderr and JSON contract.
 
 ### `extend-exclude`
 
