@@ -61,7 +61,7 @@ These keys go under `[tool.docvet.presence]`:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enabled` | `bool` | `true` | Enable or disable the presence check |
+| `enabled` | `bool` | `true` | Enable or disable the presence check. Turning it off while something still gates on presence fails the run by default — see [Checks that cannot run](../ci-integration.md#checks-that-cannot-run) |
 | `min-coverage` | `float` | `0.0` | Minimum coverage percentage (0.0–100.0). When set above 0, the summary includes a pass/fail indicator. |
 | `ignore-init` | `bool` | `true` | Skip `__init__` methods |
 | `ignore-magic` | `bool` | `true` | Skip dunder methods (`__repr__`, `__str__`, etc.) |

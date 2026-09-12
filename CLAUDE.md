@@ -124,7 +124,7 @@ Dev: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-randomly`, `ruff`, `ty`
 - **Feature branches**: `feat/<scope>-<description>`, squash-merged to main via PR
 - **release-please**: `googleapis/release-please-action@v4` on push to `main`. Config in `release-please-config.json`. Manifest in `.release-please-manifest.json`.
 - **Publishing**: OIDC trusted publishing to PyPI (no API tokens). Triggered by `release: [published]` event.
-- **Floating tag**: `v1` tag updated on each release for GitHub Action consumers.
+- **Floating tag**: `v1` tag updated on each release whose major version is still 1, for GitHub Action consumers. A 2.x release leaves `v1` where it is rather than handing `docvet@v1` consumers a breaking action.
 
 ## CI/CD Pipeline Lessons
 
