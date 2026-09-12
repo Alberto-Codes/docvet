@@ -361,10 +361,11 @@ def _griffe_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
     ``docstring-style`` is ``"sphinx"`` (griffe's Google parser cannot
     read RST field lists). The returned record is *blocking* only when
     ``griffe`` is listed in ``fail-on`` *and* ``fail-on-unavailable``
-    is enabled, which makes the run exit non-zero rather than
-    reporting success for a gate that never ran. With the opt-in off
-    the record still records ``configured_gate`` so the caller can be
-    warned that a configured gate never executed.
+    is enabled (the default), which makes the run exit non-zero rather
+    than reporting success for a gate that never ran. When a project
+    opts out with ``fail-on-unavailable = false`` the record still
+    records ``configured_gate`` so the caller can be warned that a
+    configured gate never executed.
 
     Args:
         config: Loaded docvet configuration.
@@ -408,7 +409,7 @@ def _presence_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
     ``configured_gate``, which reports the gate the config asked for
     rather than ``fail-on`` membership — the floor gates presence
     without that list ever naming it. The record is *blocking* only
-    when ``fail-on-unavailable`` is enabled, so the same opt-in
+    when ``fail-on-unavailable`` is enabled, so the same setting
     governs it as :func:`_griffe_unavailability`.
 
     Args:
@@ -455,11 +456,14 @@ def _write_unavailable_notice(
 
     A blocking check reports an error with its remedy, since the run
     exits non-zero because of it. A check configured as a gate but not
-    blocking — ``fail-on-unavailable`` is off — reports an
-    unconditional warning naming the check, why it could not run, that
-    this check did not fail the run because the setting is off, how to
-    make it an error, and that this becomes an error in a future
-    major. That second branch keys off the record's
+    blocking — ``fail-on-unavailable`` is disabled for this run —
+    reports an unconditional warning naming the check, why it could not
+    run, that this check did not fail the run because the setting is
+    disabled, and how to re-enable it. The warning describes the
+    effective setting rather than where it came from, because
+    ``--no-fail-on-unavailable`` reaches this branch with no
+    ``fail-on-unavailable`` key in ``pyproject.toml`` at all. That
+    second branch keys off the record's
     ``configured_gate`` flag, and both messages say "configured to
     gate the run" rather than naming ``fail-on``, because a
     ``min-coverage`` floor configures a gate without listing the check
@@ -485,10 +489,10 @@ def _write_unavailable_notice(
             f" but could not run ({unavailable.reason}),"
             " so that gate never executed\n"
             f"  remedy: {unavailable.remedy}\n"
-            "  this did not fail the run because fail-on-unavailable is off;"
-            " set fail-on-unavailable = true under [tool.docvet] (or pass"
-            " --fail-on-unavailable) to make it an error\n"
-            "  a future major release will make this an error by default\n"
+            "  this did not fail the run because fail-on-unavailable is"
+            " disabled for this run; set fail-on-unavailable = true under"
+            " [tool.docvet] (or pass --fail-on-unavailable) to make it an"
+            " error\n"
         )
     elif note:
         sys.stderr.write(f"{unavailable.check}: skipped ({unavailable.reason})\n")

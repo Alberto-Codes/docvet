@@ -1364,27 +1364,12 @@ def test_run_griffe_when_griffe_not_installed_and_verbose_emits_note(mocker):
     mock_check.assert_not_called()
 
 
-def test_run_griffe_when_griffe_not_installed_and_fail_on_opt_in_fails_the_run(mocker):
+def test_run_griffe_when_griffe_not_installed_and_opted_out_warns_but_exits_zero(
+    mocker,
+):
     mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
-    fake_config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=True)
-    mocker.patch("docvet.cli.load_config", return_value=fake_config)
-    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
-    result = runner.invoke(app, ["griffe"])
-    output = result.output + getattr(result, "stderr", "")
-    assert result.exit_code == 1
-    assert (
-        "error: griffe check was configured to gate the run but could not run"
-        " (griffe not installed)" in output
-    )
-    assert "remedy: pip install 'docvet[griffe]'" in output
-    mock_check.assert_not_called()
-
-
-def test_run_griffe_when_griffe_not_installed_and_fail_on_warns_but_exits_zero(mocker):
-    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
-    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
-    fake_config = DocvetConfig(fail_on=["griffe"])
+    fake_config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=False)
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["griffe"])
@@ -1396,16 +1381,37 @@ def test_run_griffe_when_griffe_not_installed_and_fail_on_warns_but_exits_zero(m
         " (griffe not installed), so that gate never executed" in output
     )
     assert "remedy: pip install 'docvet[griffe]'" in output
-    assert "this did not fail the run because fail-on-unavailable is off" in output
-    assert "fail-on-unavailable = true" in output
-    assert "a future major release will make this an error" in output
+    assert (
+        "this did not fail the run because fail-on-unavailable is disabled"
+        " for this run" in output
+    )
+    assert "--fail-on-unavailable" in output
+    assert "this project" not in output
     mock_check.assert_not_called()
 
 
-def test_fail_on_unavailable_flag_turns_the_warning_into_an_error(mocker):
+def test_run_griffe_when_griffe_not_installed_and_fail_on_errors_by_default(mocker):
     mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
     fake_config = DocvetConfig(fail_on=["griffe"])
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert result.exit_code == 1
+    assert (
+        "error: griffe check was configured to gate the run but could not run"
+        " (griffe not installed)" in output
+    )
+    assert "remedy: pip install 'docvet[griffe]'" in output
+    assert "warning: griffe" not in output
+    mock_check.assert_not_called()
+
+
+def test_fail_on_unavailable_flag_overrides_an_opt_out_config(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=False)
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["--fail-on-unavailable", "griffe"])
@@ -1415,6 +1421,23 @@ def test_fail_on_unavailable_flag_turns_the_warning_into_an_error(mocker):
         "error: griffe check was configured to gate the run but could not run" in output
     )
     assert "warning: griffe" not in output
+    mock_check.assert_not_called()
+
+
+def test_no_fail_on_unavailable_flag_overrides_the_default(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"])
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["--no-fail-on-unavailable", "griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert result.exit_code == 0
+    assert "error:" not in output
+    assert (
+        "warning: griffe check was configured to gate the run but could not run"
+        in output
+    )
     mock_check.assert_not_called()
 
 
@@ -1495,21 +1518,29 @@ def test_run_griffe_when_griffe_not_installed_fail_on_takes_priority_over_verbos
     mock_check.assert_not_called()
 
 
-def _patch_check_run(mocker, tmp_path, *, fail_on_unavailable: bool):
+def _patch_check_run(mocker, tmp_path, *, fail_on_unavailable: bool | None = None):
     """Patch every check runner so ``check`` exercises only griffe.
 
     Args:
         mocker: pytest-mock fixture.
         tmp_path: Project root for the fake config.
-        fail_on_unavailable: Value for the opt-in setting.
+        fail_on_unavailable: Value for ``fail-on-unavailable``, or
+            *None* to leave :class:`DocvetConfig`'s own default in
+            place so the caller exercises the real default rather than
+            a restatement of it.
     """
+    overrides: dict[str, Any] = (
+        {}
+        if fail_on_unavailable is None
+        else {"fail_on_unavailable": fail_on_unavailable}
+    )
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
     mocker.patch(
         "docvet.cli.load_config",
         return_value=DocvetConfig(
             fail_on=["griffe"],
-            fail_on_unavailable=fail_on_unavailable,
             project_root=tmp_path,
+            **overrides,
         ),
     )
     mocker.patch("docvet.cli.discover_files", return_value=[])
@@ -1519,8 +1550,8 @@ def _patch_check_run(mocker, tmp_path, *, fail_on_unavailable: bool):
         mocker.patch(f"docvet.cli.{runner_name}", return_value=([], 0))
 
 
-def test_check_reports_unavailable_status_in_json_when_opted_in(tmp_path, mocker):
-    _patch_check_run(mocker, tmp_path, fail_on_unavailable=True)
+def test_check_reports_unavailable_status_in_json_by_default(tmp_path, mocker):
+    _patch_check_run(mocker, tmp_path)
     result = runner.invoke(app, ["--format", "json", "check", "--all"])
     assert result.exit_code == 1
     run = json.loads(result.stdout)["run"]
@@ -1531,7 +1562,7 @@ def test_check_reports_unavailable_status_in_json_when_opted_in(tmp_path, mocker
     assert run["unavailable_checks"][0]["configured_gate"] is True
 
 
-def test_check_reports_passed_status_in_json_by_default(tmp_path, mocker):
+def test_check_reports_passed_status_in_json_when_opted_out(tmp_path, mocker):
     _patch_check_run(mocker, tmp_path, fail_on_unavailable=False)
     result = runner.invoke(app, ["--format", "json", "check", "--all"])
     assert result.exit_code == 0
@@ -3297,6 +3328,25 @@ class TestConfigCommand:
         assert result.exit_code == 0
         assert "fail-on-unavailable = true  # (--fail-on-unavailable)" in result.output
         assert "fail-on-unavailable = true  # (default)" not in result.output
+
+    def test_no_fail_on_unavailable_flag_is_annotated_with_its_own_spelling(
+        self, tmp_path
+    ):
+        """The annotation names the spelling that produced the value."""
+        toml_file = tmp_path / "pyproject.toml"
+        toml_file.write_text("[tool.docvet]\nfail-on = ['griffe']\n")
+        result = runner.invoke(
+            app,
+            ["--config", str(toml_file), "--no-fail-on-unavailable", "config"],
+        )
+        assert result.exit_code == 0
+        assert (
+            "fail-on-unavailable = false  # (--no-fail-on-unavailable)" in result.output
+        )
+        assert "fail-on-unavailable = false  # (--fail-on-unavailable)" not in (
+            result.output
+        )
+        assert "fail-on-unavailable = false  # (default)" not in result.output
 
     def test_fail_on_unavailable_flag_is_named_in_json_output(self, tmp_path):
         """JSON carries the same provenance as the TOML annotation."""

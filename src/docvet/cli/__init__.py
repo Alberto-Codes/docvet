@@ -8,9 +8,12 @@ and the output pipeline is in ``_output``.  This module retains enums,
 discovery helpers, the app callback, and all typer subcommands.  A check
 that cannot execute — griffe unusable, or a presence gate switched off
 — is reported to ``_output_and_exit`` as unavailable rather than as a
-check that ran and found nothing; whether that fails the run is
-governed by the opt-in ``fail-on-unavailable`` setting and its
-``--fail-on-unavailable`` flag.
+check that ran and found nothing.  Whether that fails the run is
+governed by ``fail-on-unavailable``, which defaults to ``True`` so a
+configured gate that never executed cannot report success; the
+tri-state ``--fail-on-unavailable/--no-fail-on-unavailable`` flag pair
+overrides it for a single run, and ``--no-fail-on-unavailable`` opts
+back out to a warning and exit 0.
 
 Examples:
     Run all checks on changed files:
@@ -349,14 +352,14 @@ def main(
         Path | None, typer.Option("--output", help="Write report to file.")
     ] = None,
     fail_on_unavailable: Annotated[
-        bool,
+        bool | None,
         typer.Option(
-            "--fail-on-unavailable",
+            "--fail-on-unavailable/--no-fail-on-unavailable",
             help="Exit 1 when a check listed in fail-on could not run"
-            " (e.g. griffe is not installed). Default: off — such a run"
-            " warns and still exits 0.",
+            " (e.g. griffe is not installed). Default: on — pass"
+            " --no-fail-on-unavailable to warn and exit 0 instead.",
         ),
-    ] = False,
+    ] = None,
     config: ConfigOption = None,
     version: Annotated[
         bool | None,
@@ -373,13 +376,13 @@ def main(
     Stores all global options in ``ctx.obj`` so subcommands can access
     them. The ``config`` path is stored as ``config_path`` for use by
     subcommands that need the raw pyproject.toml location.
-    ``--fail-on-unavailable`` is folded into the loaded
-    :class:`~docvet.config.DocvetConfig` so every check path sees one
-    resolved setting; the flag can only turn the behaviour on, never
-    off, so config stays authoritative when the flag is absent. The
-    keys it supplied are recorded in ``ctx.obj["cli_overrides"]`` so
-    ``docvet config`` can name the flag as the value's source instead
-    of mislabelling it as the built-in default.
+    ``--fail-on-unavailable/--no-fail-on-unavailable`` is folded into
+    the loaded :class:`~docvet.config.DocvetConfig` so every check path
+    sees one resolved setting; it is tri-state, so config stays
+    authoritative when neither form is passed. The keys it supplied are
+    recorded in ``ctx.obj["cli_overrides"]`` so ``docvet config`` can
+    name the flag as the value's source instead of mislabelling it as
+    the built-in default.
 
     Args:
         ctx: Typer invocation context.
@@ -390,8 +393,9 @@ def main(
         output: Optional file path for report output.
         fail_on_unavailable: Fail the run when a check listed in
             ``fail-on`` could not execute. Overrides
-            ``fail-on-unavailable`` in ``[tool.docvet]`` when passed;
-            off by default.
+            ``fail-on-unavailable`` in ``[tool.docvet]`` when either
+            form is passed; *None* when neither was, leaving config
+            (which itself defaults to on) authoritative.
         config: Explicit path to a ``pyproject.toml``.
         version: Show version and exit.
 
@@ -418,8 +422,8 @@ def main(
     except FileNotFoundError:
         raise typer.BadParameter(f"Config file not found: {config}") from None
     cli_overrides: list[str] = []
-    if fail_on_unavailable:
-        loaded = dataclasses.replace(loaded, fail_on_unavailable=True)
+    if fail_on_unavailable is not None:
+        loaded = dataclasses.replace(loaded, fail_on_unavailable=fail_on_unavailable)
         cli_overrides.append("fail-on-unavailable")
     ctx.obj["cli_overrides"] = cli_overrides
     ctx.obj["docvet_config"] = loaded
@@ -460,10 +464,12 @@ def check(
     is not installed or ``docstring-style`` is ``"sphinx"`` (incompatible
     parser), and a presence gate is skipped when ``enabled`` is
     ``false``; either is then reported as unavailable rather than
-    counted as a check that ran. When the skipped check is listed in
-    ``fail-on`` that warns loudly and still exits 0, unless
-    ``fail-on-unavailable`` is enabled, which makes it exit 1. A check
-    disabled outside ``fail-on`` is an ordinary opt-out and is not
+    counted as a check that ran. When the config gated on the skipped
+    check -- listed in ``fail-on``, or a ``min-coverage`` floor gating
+    presence -- that gate certified nothing, so the run reports an
+    error and exits 1; ``fail-on-unavailable = false`` (or
+    ``--no-fail-on-unavailable``) opts back out to a warning and exit
+    0. A check nothing gates on is an ordinary opt-out and is not
     reported. Coverage percentage is derived
     from :attr:`PresenceStats.percentage`. Displays a progress bar on
     stderr when connected to a TTY. Uses three-tier verbosity:
@@ -899,10 +905,11 @@ def griffe(
     file discovery count. Passes file count to ``_output_and_exit``
     for ``--summary`` quality percentage computation. Skips the check
     when griffe is not installed or ``docstring-style`` is ``"sphinx"``
-    (griffe's Google parser is incompatible with RST docstrings); the
-    skip exits non-zero only when ``griffe`` is listed in ``fail-on``
-    *and* ``fail-on-unavailable`` is enabled, and otherwise warns and
-    exits 0.
+    (griffe's Google parser is incompatible with RST docstrings). When
+    ``griffe`` is listed in ``fail-on`` the skip exits 1, since that
+    gate never ran, unless ``fail-on-unavailable = false`` (or
+    ``--no-fail-on-unavailable``) opts back out to a warning and exit
+    0. A skip with ``griffe`` outside ``fail-on`` never fails the run.
 
     Args:
         ctx: Typer invocation context.

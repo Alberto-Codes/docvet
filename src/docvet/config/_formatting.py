@@ -60,6 +60,7 @@ def _get_annotation(
     user_keys: dict[str, object],
     section_keys: dict[str, object] | None = None,
     cli_overrides: Collection[str] = (),
+    value: object = None,
 ) -> str:
     """Return a source annotation comment for a config key.
 
@@ -68,7 +69,9 @@ def _get_annotation(
     ``# (default)``, so the annotation never claims a flag-supplied
     value is the built-in default.  Flags that override configuration
     are named after their kebab-case key, so the flag name is the key
-    with a ``--`` prefix.
+    with a ``--`` prefix — except that a boolean key overridden to
+    ``False`` names the negative form of the pair (``--no-<key>``),
+    which is the spelling that can actually produce that value.
 
     Args:
         kebab_key: The kebab-case key to annotate.
@@ -78,15 +81,18 @@ def _get_annotation(
         cli_overrides: Top-level kebab-case keys whose value was
             supplied by a command-line flag.  Only consulted for
             top-level keys.
+        value: The key's effective value, used to pick which spelling
+            of a tri-state boolean flag to name.
 
     Returns:
-        An inline TOML comment: ``"# (user)"``, ``"# (default)"``, or
-        ``"# (--<flag>)"``.
+        An inline TOML comment: ``"# (user)"``, ``"# (default)"``,
+        ``"# (--<flag>)"``, or ``"# (--no-<flag>)"``.
     """
     if section_keys is not None:
         return "# (user)" if kebab_key in section_keys else "# (default)"
     if kebab_key in cli_overrides:
-        return f"# (--{kebab_key})"
+        negation = "no-" if value is False else ""
+        return f"# (--{negation}{kebab_key})"
     return "# (user)" if kebab_key in user_keys else "# (default)"
 
 
@@ -181,7 +187,10 @@ def format_config_toml(
     ``None`` and ``project_root`` (runtime-only). When
     ``extend-exclude`` appears in *user_keys*, the merged ``exclude``
     list is annotated accordingly.  Keys named in *cli_overrides* are
-    annotated with the flag that supplied them.
+    annotated with the flag that supplied them, so the effective value
+    is passed to :func:`_get_annotation` alongside the key: a boolean
+    overridden to ``False`` is annotated with the negative spelling of
+    the flag pair rather than the positive one.
 
     Args:
         config: The effective :class:`DocvetConfig`.
@@ -208,7 +217,9 @@ def format_config_toml(
         value = getattr(config, attr)
         if attr == "package_name" and value is None:
             continue
-        annotation = _get_annotation(kebab, user_keys, cli_overrides=cli_overrides)
+        annotation = _get_annotation(
+            kebab, user_keys, cli_overrides=cli_overrides, value=value
+        )
         if attr == "exclude" and has_extend:
             annotation = "# (merged from exclude + extend-exclude)"
         lines.append(f"{kebab} = {_fmt_toml_value(value)}  {annotation}")

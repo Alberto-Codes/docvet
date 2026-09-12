@@ -1189,17 +1189,18 @@ class TestDetermineRunOutcome:
         assert outcome.exit_code == 0
         assert outcome.status == RUN_STATUS_PASSED
 
-    def test_fail_on_check_that_never_ran_passes_when_opt_in_is_off(self):
+    def test_fail_on_check_that_never_ran_passes_when_opted_out(self):
         outcome = determine_run_outcome(
             {},
-            DocvetConfig(fail_on=["griffe"]),
+            DocvetConfig(fail_on=["griffe"], fail_on_unavailable=False),
             unavailable=[_unavailable(blocking=False, configured_gate=True)],
         )
         assert outcome.exit_code == 0
         assert outcome.status == RUN_STATUS_PASSED
         assert "griffe (griffe not installed)" in outcome.reason
-        assert "fail-on-unavailable is off" in outcome.reason
+        assert "fail-on-unavailable disabled" in outcome.reason
         assert "no check in fail-on was unavailable" not in outcome.reason
+        assert "this project" not in outcome.reason
 
     def test_advisory_check_outside_fail_on_keeps_the_clean_reason(self):
         outcome = determine_run_outcome(

@@ -15,7 +15,7 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 | `--summary` | flag | off | Print per-check quality percentages after findings |
 | `--format` | `terminal` \| `markdown` \| `json` | `terminal` | Output format |
 | `--output` | `PATH` | stdout | Write report to file |
-| `--fail-on-unavailable` | flag | off | Exit 1 when a check listed in `fail-on` could not run. Only enables the behavior — config stays authoritative when the flag is absent. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) |
+| `--fail-on-unavailable` / `--no-fail-on-unavailable` | flag | on | Exit 1 when a check listed in `fail-on` could not run. Either form overrides config for that run; config stays authoritative when neither is passed. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) |
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
 | `--version` | flag | | Show version and exit |
 
@@ -63,7 +63,7 @@ The `--format json` option produces a structured JSON object for programmatic co
 - A `suppressed` array is included containing findings that were suppressed by inline `# docvet: ignore` comments. Each entry has the same seven fields as a finding.
 - A `run` object reports the outcome of the run itself: `status` (`"passed"`, `"findings"`, or `"unavailable"`), `exit_code`, `exit_reason`, and an `unavailable_checks` array listing every check that could not execute. `status` names **which condition blocked the run**, not everything that happened — a run blocked by a gate that could not execute reports `"unavailable"` even when it also has findings, and `exit_reason` then names both facts. Read `summary.total` to decide whether there is anything to fix, regardless of `status`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
-- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check — or when a `fail_on` check could not run and `fail-on-unavailable` is enabled.
+- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check — or when a `fail_on` check could not run at all, unless the project set `fail-on-unavailable = false`. In JSON output `run.status` tells `findings` and `unavailable` apart.
 
 ### Quality Summary (`--summary`)
 
@@ -249,7 +249,7 @@ docvet griffe --all
 Loads packages with the griffe parser and captures warnings that would cause broken rendering in mkdocs-material sites. Detects unknown parameters, missing type annotations, and docstring format issues.
 
 !!! note
-    Requires the optional `griffe` extra: `pip install docvet[griffe]`. Without it the check is skipped; when `griffe` is listed in `fail-on` that warns loudly and still exits 0 unless `fail-on-unavailable` is enabled — see [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
+    Requires the optional `griffe` extra: `pip install docvet[griffe]`. Without it the check is skipped; when `griffe` is listed in `fail-on` that exits 1 unless the project set `fail-on-unavailable = false`, which warns loudly and exits 0 instead — see [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
 
 ### `docvet fix`
 
@@ -291,7 +291,7 @@ docvet --format json config       # JSON output
 docvet config --show-defaults     # same as plain `docvet config`
 ```
 
-Prints the merged config (user values + built-in defaults) so you can see exactly which settings are active and where they come from. Each value is annotated with `# (user)` or `# (default)`, or with the flag that supplied it when a global command-line flag overrode both — `docvet --fail-on-unavailable config` shows `fail-on-unavailable = true  # (--fail-on-unavailable)`.
+Prints the merged config (user values + built-in defaults) so you can see exactly which settings are active and where they come from. Each value is annotated with `# (user)` or `# (default)`, or with the flag that supplied it when a global command-line flag overrode both — `docvet --no-fail-on-unavailable config` shows `fail-on-unavailable = false  # (--no-fail-on-unavailable)`, naming the spelling that produced the value.
 
 **TOML output** (default):
 
@@ -331,7 +331,7 @@ The TOML output is copy-paste-ready — you can paste it directly into your `pyp
 }
 ```
 
-The `user_configured` array lists which keys were explicitly set in your `pyproject.toml`. The `cli_overridden` array lists keys whose value came from a command-line flag instead — `docvet --fail-on-unavailable --format json config` reports `"cli_overridden": ["fail-on-unavailable"]`, so a flag-supplied value is never mistaken for the built-in default.
+The `user_configured` array lists which keys were explicitly set in your `pyproject.toml`. The `cli_overridden` array lists keys whose value came from a command-line flag instead — `docvet --no-fail-on-unavailable --format json config` reports `"cli_overridden": ["fail-on-unavailable"]`, so a flag-supplied value is never mistaken for the built-in default.
 
 When no `pyproject.toml` is found, a note is printed to stderr and all built-in defaults are shown.
 

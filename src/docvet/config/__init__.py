@@ -4,8 +4,9 @@ Loads and validates the ``[tool.docvet]`` configuration table from
 ``pyproject.toml``. Supports ``extend-exclude`` for additive pattern
 merging on top of defaults or an explicit ``exclude`` list, and
 ``docstring-style`` for switching between Google and Sphinx/RST
-conventions. ``fail-on-unavailable`` opts a project in to failing the
-run when a check listed in ``fail-on`` could not execute at all.
+conventions. ``fail-on-unavailable`` defaults to ``True`` so a check
+listed in ``fail-on`` that could not execute at all fails the run;
+set it to ``False`` to opt back out of that.
 Uses composable validation helpers
 (``_validate_string_list``, ``_resolve_fail_warn``) to keep individual
 parsers focused. Exposes ``EnrichmentConfig``, ``FreshnessConfig``, and
@@ -266,10 +267,11 @@ class DocvetConfig:
         fail_on_unavailable (bool): Whether a check listed in
             *fail_on* that could not execute (griffe not installed,
             or a docstring style its parser cannot read) fails the
-            run. Defaults to ``False``, which keeps exit code 0 and
-            warns loudly instead. Opt in to make an unrunnable gate
-            an error. The default is expected to flip in a future
-            major release.
+            run. Defaults to ``True``: a gate the project configured
+            cannot certify success without executing, so the run
+            exits 1 and reports ``status = "unavailable"``. Set it to
+            ``False`` to opt back out and have such a run warn on
+            stderr and exit 0 instead.
         warn_on (list[str]): Check names reported without failing.
             Defaults to all five checks.
         freshness (FreshnessConfig): Freshness check settings.
@@ -298,9 +300,9 @@ class DocvetConfig:
     docstring_style: str = "google"
     exclude: list[str] = field(default_factory=lambda: ["tests", "scripts"])
     fail_on: list[str] = field(default_factory=list)
-    # Opt-in today; the captain will decide when a future major flips
-    # this default so an unrunnable gate fails by default.
-    fail_on_unavailable: bool = False
+    # A configured gate that never ran cannot certify success, so this
+    # fails the run by default; set it False to opt back out.
+    fail_on_unavailable: bool = True
     warn_on: list[str] = field(
         default_factory=lambda: [
             "presence",
