@@ -1529,7 +1529,7 @@ def _patch_check_run(mocker, tmp_path, *, fail_on_unavailable: bool | None = Non
             place so the caller exercises the real default rather than
             a restatement of it.
     """
-    overrides = (
+    overrides: dict[str, Any] = (
         {}
         if fail_on_unavailable is None
         else {"fail_on_unavailable": fail_on_unavailable}
