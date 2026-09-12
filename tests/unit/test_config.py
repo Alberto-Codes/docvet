@@ -647,12 +647,24 @@ def test_load_config_overlap_auto_subtracts_from_warn_on(
 # ---------------------------------------------------------------------------
 
 
-def test_load_config_fail_on_unavailable_defaults_to_false(
+def test_load_config_fail_on_unavailable_defaults_to_true(
     tmp_path, monkeypatch, write_pyproject
 ):
     monkeypatch.chdir(tmp_path)
     write_pyproject('[tool.docvet]\nfail-on = ["griffe"]\n')
-    assert load_config().fail_on_unavailable is False
+    assert load_config().fail_on_unavailable is True
+
+
+def test_load_config_fail_on_unavailable_reads_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nfail-on = ["griffe"]\nfail-on-unavailable = false\n'
+    )
+    cfg = load_config()
+    assert cfg.fail_on_unavailable is False
+    assert cfg.fail_on == ["griffe"]
 
 
 def test_load_config_fail_on_unavailable_reads_true(

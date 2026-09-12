@@ -1,10 +1,10 @@
 """Integration tests for the unavailable-check policy (issue #442).
 
 A check listed in ``fail-on`` that cannot execute never certified the
-gate it was asked to certify. With the opt-in ``fail-on-unavailable``
-enabled that fails the run; with it off — the default — the run still
-exits 0 but warns loudly. A check that is unavailable and not listed
-in ``fail-on`` stays a quiet skip either way.
+gate it was asked to certify, so by default that fails the run. A
+project that opts out with ``fail-on-unavailable = false`` still exits
+0 but warns loudly. A check that is unavailable and not listed in
+``fail-on`` stays a quiet skip either way.
 
 Each test drives the installed ``docvet`` console script in a temp git
 repo and asserts on the process exit code and its JSON output.
@@ -58,7 +58,8 @@ def _write_config(
         fail_on: Check names to list in ``fail-on``.
         docstring_style: Value for ``docstring-style``.
         fail_on_unavailable: Value for ``fail-on-unavailable``, or
-            *None* to omit the key and exercise the default.
+            *None* to omit the key and exercise the default, which is
+            on.
         presence_enabled: Value for ``[tool.docvet.presence] enabled``,
             or *None* to omit the key.
         min_coverage: Value for ``[tool.docvet.presence] min-coverage``,
@@ -128,11 +129,11 @@ def _run_block(result):
     return json.loads(result.stdout)["run"]
 
 
-class TestOptInBlocksUnavailableCheck:
-    """With ``fail-on-unavailable`` on, an unrunnable gate fails."""
+class TestDefaultBlocksUnavailableCheck:
+    """By default an unrunnable gate listed in ``fail-on`` fails."""
 
     def test_exits_non_zero_when_griffe_is_unavailable(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
+        _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 1
         assert (
@@ -141,12 +142,14 @@ class TestOptInBlocksUnavailableCheck:
         )
 
     def test_stderr_names_the_remedy(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
+        _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert "pip install 'docvet[griffe]'" in result.stderr
 
-    def test_cli_flag_turns_the_behaviour_on_without_config(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"])
+    def test_cli_flag_turns_the_behaviour_on_over_an_opt_out_config(
+        self, repo, tmp_path
+    ):
+        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
         result = _run(
             repo, "--fail-on-unavailable", "check", "--all", env=_hide_griffe(tmp_path)
         )
@@ -156,8 +159,24 @@ class TestOptInBlocksUnavailableCheck:
             in result.stderr
         )
 
+    def test_cli_flag_turns_the_behaviour_off_without_config(self, repo, tmp_path):
+        _write_config(repo, fail_on=["griffe"])
+        result = _run(
+            repo,
+            "--no-fail-on-unavailable",
+            "check",
+            "--all",
+            env=_hide_griffe(tmp_path),
+        )
+        assert result.returncode == 0
+        assert "error:" not in result.stderr
+        assert (
+            "warning: griffe check was configured to gate the run but could not run"
+            in result.stderr
+        )
+
     def test_json_distinguishes_unavailable_from_findings(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
+        _write_config(repo, fail_on=["griffe"])
         result = _run(
             repo, "--format", "json", "check", "--all", env=_hide_griffe(tmp_path)
         )
@@ -178,12 +197,7 @@ class TestOptInBlocksUnavailableCheck:
         assert json.loads(result.stdout)["findings"] == []
 
     def test_sphinx_style_also_blocks_a_configured_griffe_gate(self, repo):
-        _write_config(
-            repo,
-            fail_on=["griffe"],
-            docstring_style="sphinx",
-            fail_on_unavailable=True,
-        )
+        _write_config(repo, fail_on=["griffe"], docstring_style="sphinx")
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 1
         run = _run_block(result)
@@ -193,44 +207,40 @@ class TestOptInBlocksUnavailableCheck:
         )
 
     def test_griffe_subcommand_exits_non_zero(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
+        _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "griffe", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 1
 
 
-class TestDefaultWarnsButDoesNotBlock:
-    """With the setting off, a configured gate that never ran warns."""
+class TestOptOutWarnsButDoesNotBlock:
+    """With ``fail-on-unavailable = false``, the gate only warns."""
 
-    def test_exits_zero_by_default(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"])
+    def test_exits_zero_when_opted_out(self, repo, tmp_path):
+        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 0
         assert "error:" not in result.stderr
 
     def test_warning_names_the_check_and_the_reason(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"])
+        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert (
             "warning: griffe check was configured to gate the run but could not run"
             " (griffe not installed), so that gate never executed" in result.stderr
         )
 
-    def test_warning_explains_the_gate_did_not_fail_and_the_opt_in(
-        self, repo, tmp_path
-    ):
-        _write_config(repo, fail_on=["griffe"])
+    def test_warning_explains_the_opt_out_and_how_to_undo_it(self, repo, tmp_path):
+        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert (
-            "this did not fail the run because fail-on-unavailable is off"
-            in result.stderr
+            "this did not fail the run because this project opted out with"
+            " fail-on-unavailable = false" in result.stderr
         )
-        assert "fail-on-unavailable = true" in result.stderr
         assert "--fail-on-unavailable" in result.stderr
-        assert "a future major release will make this an error" in result.stderr
         assert "pip install 'docvet[griffe]'" in result.stderr
 
     def test_warning_survives_quiet(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"])
+        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
         result = _run(repo, "--quiet", "check", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 0
         assert (
@@ -248,7 +258,7 @@ class TestDefaultWarnsButDoesNotBlock:
         assert run["status"] == "passed"
         assert run["exit_code"] == 0
         assert "griffe (griffe not installed)" in run["exit_reason"]
-        assert "fail-on-unavailable is off" in run["exit_reason"]
+        assert "fail-on-unavailable = false" in run["exit_reason"]
         assert run["unavailable_checks"] == [
             {
                 "check": "griffe",
@@ -260,7 +270,7 @@ class TestDefaultWarnsButDoesNotBlock:
         ]
 
     def test_griffe_subcommand_exits_zero(self, repo, tmp_path):
-        _write_config(repo, fail_on=["griffe"])
+        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
         result = _run(repo, "griffe", "--all", env=_hide_griffe(tmp_path))
         assert result.returncode == 0
         assert (
@@ -297,8 +307,8 @@ class TestAdvisoryCheckUnavailable:
         assert "error:" not in result.stderr
         assert "warning: griffe" not in result.stderr
 
-    def test_opt_in_does_not_block_a_check_outside_fail_on(self, repo, tmp_path):
-        _write_config(repo, fail_on=["enrichment"], fail_on_unavailable=True)
+    def test_default_does_not_block_a_check_outside_fail_on(self, repo, tmp_path):
+        _write_config(repo, fail_on=["enrichment"])
         result = _run(
             repo, "--format", "json", "check", "--all", env=_hide_griffe(tmp_path)
         )
@@ -312,7 +322,7 @@ class TestAllChecksAvailable:
     """A clean run reports no unavailable check."""
 
     def test_exits_zero_with_no_unavailable_status(self, repo):
-        _write_config(repo, fail_on=["griffe"], fail_on_unavailable=True)
+        _write_config(repo, fail_on=["griffe"])
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 0
         run = _run_block(result)
@@ -363,7 +373,12 @@ class TestDisabledPresenceGate:
 
     def test_json_names_the_disabled_gate_instead_of_claiming_a_clean_pass(self, repo):
         self._add_undocumented_symbol(repo)
-        _write_config(repo, fail_on=["presence"], presence_enabled=False)
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            fail_on_unavailable=False,
+        )
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 0
         run = _run_block(result)
@@ -386,14 +401,9 @@ class TestDisabledPresenceGate:
         )
         assert "no check in fail-on was unavailable" not in run["exit_reason"]
 
-    def test_opt_in_fails_the_run(self, repo):
+    def test_default_fails_the_run(self, repo):
         self._add_undocumented_symbol(repo)
-        _write_config(
-            repo,
-            fail_on=["presence"],
-            presence_enabled=False,
-            fail_on_unavailable=True,
-        )
+        _write_config(repo, fail_on=["presence"], presence_enabled=False)
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 1
         run = _run_block(result)
@@ -404,8 +414,13 @@ class TestDisabledPresenceGate:
         )
         assert run["unavailable_checks"][0]["blocking"] is True
 
-    def test_warning_survives_quiet_on_the_default_path(self, repo):
-        _write_config(repo, fail_on=["presence"], presence_enabled=False)
+    def test_warning_survives_quiet_on_the_opt_out_path(self, repo):
+        _write_config(
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            fail_on_unavailable=False,
+        )
         result = _run(repo, "--quiet", "check", "--all")
         assert result.returncode == 0
         assert (
@@ -417,12 +432,7 @@ class TestDisabledPresenceGate:
 
     def test_disabled_presence_outside_fail_on_is_an_ordinary_opt_out(self, repo):
         self._add_undocumented_symbol(repo)
-        _write_config(
-            repo,
-            fail_on=["enrichment"],
-            presence_enabled=False,
-            fail_on_unavailable=True,
-        )
+        _write_config(repo, fail_on=["enrichment"], presence_enabled=False)
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 0
         run = _run_block(result)
@@ -430,12 +440,7 @@ class TestDisabledPresenceGate:
         assert run["unavailable_checks"] == []
 
     def test_enabled_presence_gate_is_never_reported_unavailable(self, repo):
-        _write_config(
-            repo,
-            fail_on=["presence"],
-            presence_enabled=True,
-            fail_on_unavailable=True,
-        )
+        _write_config(repo, fail_on=["presence"], presence_enabled=True)
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 0
         assert _run_block(result)["unavailable_checks"] == []
@@ -452,7 +457,11 @@ class TestDisabledPresenceWithCoverageFloor:
     def test_unmeasured_floor_is_reported_instead_of_a_clean_pass(self, repo):
         self._add_undocumented_symbol(repo)
         _write_config(
-            repo, fail_on=["enrichment"], presence_enabled=False, min_coverage=95.0
+            repo,
+            fail_on=["enrichment"],
+            presence_enabled=False,
+            min_coverage=95.0,
+            fail_on_unavailable=False,
         )
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 0
@@ -475,14 +484,10 @@ class TestDisabledPresenceWithCoverageFloor:
         ]
         assert "95.0% min-coverage floor was never measured" in run["exit_reason"]
 
-    def test_opt_in_fails_the_run_without_presence_in_fail_on(self, repo):
+    def test_default_fails_the_run_without_presence_in_fail_on(self, repo):
         self._add_undocumented_symbol(repo)
         _write_config(
-            repo,
-            fail_on=["enrichment"],
-            presence_enabled=False,
-            min_coverage=95.0,
-            fail_on_unavailable=True,
+            repo, fail_on=["enrichment"], presence_enabled=False, min_coverage=95.0
         )
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 1
@@ -493,11 +498,7 @@ class TestDisabledPresenceWithCoverageFloor:
     def test_no_floor_and_no_fail_on_entry_stays_an_ordinary_opt_out(self, repo):
         self._add_undocumented_symbol(repo)
         _write_config(
-            repo,
-            fail_on=["enrichment"],
-            presence_enabled=False,
-            min_coverage=0.0,
-            fail_on_unavailable=True,
+            repo, fail_on=["enrichment"], presence_enabled=False, min_coverage=0.0
         )
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 0
@@ -520,12 +521,7 @@ class TestBlockedRunWithFindings:
     """A blocked run names the findings it also has."""
 
     def test_exit_reason_names_the_gate_and_the_findings(self, repo):
-        _write_config(
-            repo,
-            fail_on=["griffe", "enrichment"],
-            docstring_style="sphinx",
-            fail_on_unavailable=True,
-        )
+        _write_config(repo, fail_on=["griffe", "enrichment"], docstring_style="sphinx")
         (repo / "src" / "bad.py").write_text(
             textwrap.dedent(
                 '''\
@@ -565,12 +561,7 @@ class TestBlockedRunWithFindings:
     def test_blocked_run_names_only_the_gate_when_no_fail_on_check_has_findings(
         self, repo
     ):
-        _write_config(
-            repo,
-            fail_on=["griffe"],
-            docstring_style="sphinx",
-            fail_on_unavailable=True,
-        )
+        _write_config(repo, fail_on=["griffe"], docstring_style="sphinx")
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 1
         run = _run_block(result)
@@ -595,11 +586,7 @@ class TestPresenceGatedTwice:
     def test_record_names_both_gates_and_both_actions(self, repo):
         self._add_undocumented_symbol(repo)
         _write_config(
-            repo,
-            fail_on=["presence"],
-            presence_enabled=False,
-            min_coverage=100.0,
-            fail_on_unavailable=True,
+            repo, fail_on=["presence"], presence_enabled=False, min_coverage=100.0
         )
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 1
@@ -620,19 +607,19 @@ class TestPresenceGatedTwice:
 
     def test_remedy_is_printed_on_the_blocking_error(self, repo):
         _write_config(
-            repo,
-            fail_on=["presence"],
-            presence_enabled=False,
-            min_coverage=100.0,
-            fail_on_unavailable=True,
+            repo, fail_on=["presence"], presence_enabled=False, min_coverage=100.0
         )
         result = _run(repo, "check", "--all")
         assert result.returncode == 1
         assert f"  remedy: {self._BOTH_GATES_REMEDY}\n" in result.stderr
 
-    def test_remedy_is_printed_on_the_default_path_warning(self, repo):
+    def test_remedy_is_printed_on_the_opt_out_path_warning(self, repo):
         _write_config(
-            repo, fail_on=["presence"], presence_enabled=False, min_coverage=100.0
+            repo,
+            fail_on=["presence"],
+            presence_enabled=False,
+            min_coverage=100.0,
+            fail_on_unavailable=False,
         )
         result = _run(repo, "check", "--all")
         assert result.returncode == 0
@@ -642,11 +629,7 @@ class TestPresenceGatedTwice:
         """Dropping both named settings must pass, not fail differently."""
         self._add_undocumented_symbol(repo)
         _write_config(
-            repo,
-            fail_on=["presence"],
-            presence_enabled=False,
-            min_coverage=100.0,
-            fail_on_unavailable=True,
+            repo, fail_on=["presence"], presence_enabled=False, min_coverage=100.0
         )
         blocked = _run(repo, "--format", "json", "check", "--all")
         assert blocked.returncode == 1
@@ -654,9 +637,7 @@ class TestPresenceGatedTwice:
             self._BOTH_GATES_REMEDY
         )
 
-        _write_config(
-            repo, fail_on=[], presence_enabled=False, fail_on_unavailable=True
-        )
+        _write_config(repo, fail_on=[], presence_enabled=False)
         after = _run(repo, "--format", "json", "check", "--all")
         assert after.returncode == 0
         run = _run_block(after)
@@ -666,12 +647,7 @@ class TestPresenceGatedTwice:
     def test_dropping_only_min_coverage_still_reports_the_fail_on_gate(self, repo):
         """The remedy never offers an action that leaves a gate in place."""
         self._add_undocumented_symbol(repo)
-        _write_config(
-            repo,
-            fail_on=["presence"],
-            presence_enabled=False,
-            fail_on_unavailable=True,
-        )
+        _write_config(repo, fail_on=["presence"], presence_enabled=False)
         result = _run(repo, "--format", "json", "check", "--all")
         assert result.returncode == 1
         remedy = _run_block(result)["unavailable_checks"][0]["remedy"]

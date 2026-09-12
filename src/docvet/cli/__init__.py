@@ -349,14 +349,14 @@ def main(
         Path | None, typer.Option("--output", help="Write report to file.")
     ] = None,
     fail_on_unavailable: Annotated[
-        bool,
+        bool | None,
         typer.Option(
-            "--fail-on-unavailable",
+            "--fail-on-unavailable/--no-fail-on-unavailable",
             help="Exit 1 when a check listed in fail-on could not run"
-            " (e.g. griffe is not installed). Default: off — such a run"
-            " warns and still exits 0.",
+            " (e.g. griffe is not installed). Default: on — pass"
+            " --no-fail-on-unavailable to warn and exit 0 instead.",
         ),
-    ] = False,
+    ] = None,
     config: ConfigOption = None,
     version: Annotated[
         bool | None,
@@ -373,13 +373,13 @@ def main(
     Stores all global options in ``ctx.obj`` so subcommands can access
     them. The ``config`` path is stored as ``config_path`` for use by
     subcommands that need the raw pyproject.toml location.
-    ``--fail-on-unavailable`` is folded into the loaded
-    :class:`~docvet.config.DocvetConfig` so every check path sees one
-    resolved setting; the flag can only turn the behaviour on, never
-    off, so config stays authoritative when the flag is absent. The
-    keys it supplied are recorded in ``ctx.obj["cli_overrides"]`` so
-    ``docvet config`` can name the flag as the value's source instead
-    of mislabelling it as the built-in default.
+    ``--fail-on-unavailable/--no-fail-on-unavailable`` is folded into
+    the loaded :class:`~docvet.config.DocvetConfig` so every check path
+    sees one resolved setting; it is tri-state, so config stays
+    authoritative when neither form is passed. The keys it supplied are
+    recorded in ``ctx.obj["cli_overrides"]`` so ``docvet config`` can
+    name the flag as the value's source instead of mislabelling it as
+    the built-in default.
 
     Args:
         ctx: Typer invocation context.
@@ -390,8 +390,9 @@ def main(
         output: Optional file path for report output.
         fail_on_unavailable: Fail the run when a check listed in
             ``fail-on`` could not execute. Overrides
-            ``fail-on-unavailable`` in ``[tool.docvet]`` when passed;
-            off by default.
+            ``fail-on-unavailable`` in ``[tool.docvet]`` when either
+            form is passed; *None* when neither was, leaving config
+            (which itself defaults to on) authoritative.
         config: Explicit path to a ``pyproject.toml``.
         version: Show version and exit.
 
@@ -418,8 +419,8 @@ def main(
     except FileNotFoundError:
         raise typer.BadParameter(f"Config file not found: {config}") from None
     cli_overrides: list[str] = []
-    if fail_on_unavailable:
-        loaded = dataclasses.replace(loaded, fail_on_unavailable=True)
+    if fail_on_unavailable is not None:
+        loaded = dataclasses.replace(loaded, fail_on_unavailable=fail_on_unavailable)
         cli_overrides.append("fail-on-unavailable")
     ctx.obj["cli_overrides"] = cli_overrides
     ctx.obj["docvet_config"] = loaded

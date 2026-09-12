@@ -234,7 +234,8 @@ def _output_and_exit(
             or *None* when ``--summary`` is not active.
         unavailable: Checks that could not execute during this run.
             A check listed in ``fail-on`` that could not execute fails
-            the run only when ``fail-on-unavailable`` is enabled.
+            the run unless the project opted out with
+            ``fail-on-unavailable = false``.
 
     Raises:
         typer.Exit: With the exit code from

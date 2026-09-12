@@ -17,7 +17,7 @@ These keys go directly under `[tool.docvet]`:
 | `exclude` | `list[str]` | `["tests", "scripts"]` | Directory names to exclude from checks |
 | `extend-exclude` | `list[str]` | `[]` | Additional patterns appended to `exclude` |
 | `fail-on` | `list[str]` | `[]` | Check names that cause exit code 1 |
-| `fail-on-unavailable` | `bool` | `false` | Also exit 1 when a `fail-on` check could not run at all |
+| `fail-on-unavailable` | `bool` | `true` | Also exit 1 when a `fail-on` check could not run at all |
 | `warn-on` | `list[str]` | `["presence", "freshness", "enrichment", "griffe", "coverage"]` | Check names reported without failing |
 
 Valid check names for `fail-on` and `warn-on`: `presence`, `enrichment`, `freshness`, `coverage`, `griffe`.
@@ -42,7 +42,7 @@ When set to `"sphinx"`:
 - **Section detection** switches from colon-header matching to RST field-list pattern scanning (`:param`, `:type`, `:returns:`, `:rtype:`, `:raises`, `:ivar`, `:cvar`, `.. seealso::`, `>>>`, `::`, `.. code-block::`)
 - **Auto-disabled rules** — `require-yields`, `require-receives`, `require-warns`, `require-other-parameters`, and `prefer-fenced-code-blocks` are automatically disabled (these sections have no RST equivalent)
 - **Cross-references** — Sphinx roles (`:py:class:`, `:py:func:`, etc.) anywhere in the docstring body satisfy the `require-cross-references` check
-- **Griffe check** is auto-skipped (griffe's Google parser is incompatible with RST docstrings). Listing `griffe` in `fail-on` alongside `docstring-style = "sphinx"` is a contradiction; docvet warns about the gate that never ran, and exits 1 only under `fail-on-unavailable` — see [Checks that cannot run](ci-integration.md#checks-that-cannot-run)
+- **Griffe check** is auto-skipped (griffe's Google parser is incompatible with RST docstrings). Listing `griffe` in `fail-on` alongside `docstring-style = "sphinx"` is a contradiction; docvet reports the gate that never ran and exits 1 unless you opt out with `fail-on-unavailable = false` — see [Checks that cannot run](ci-integration.md#checks-that-cannot-run)
 
 !!! tip "Explicit override"
     If you explicitly set an auto-disabled rule to `true` in `[tool.docvet.enrichment]`, your setting takes priority — the rule will run even in sphinx mode.
@@ -65,19 +65,22 @@ If a check name appears in **both** `fail-on` and an explicitly set `warn-on`, d
 
 ### `fail-on-unavailable`
 
-A check in `fail-on` only gates anything if it actually executes. When it cannot — most commonly `griffe` in an environment that never installed `docvet[griffe]` — docvet prints the obstacle, its remedy, and the fact that the gate never ran, then exits 0. The failure is loud, but it is not fatal by default, so adding this fix to an existing project cannot turn a green build red on its own.
+A check in `fail-on` only gates anything if it actually executes. When it cannot — most commonly `griffe` in an environment that never installed `docvet[griffe]` — the gate you configured certified nothing, so docvet prints the obstacle and its remedy and **exits 1**. This is the default: a configured gate cannot report success without running.
 
-Opt in to make it fatal:
+!!! warning "Behavior change"
+    Before this default flipped, such a run warned and exited 0. A project that lists a check in `fail-on` and cannot run it in its environment will start failing where it previously passed. That is the intended effect — the previous exit 0 was certifying a gate that never executed.
+
+Opt out to restore the warn-and-continue behavior:
 
 ```toml
 [tool.docvet]
 fail-on = ["griffe"]
-fail-on-unavailable = true
+fail-on-unavailable = false
 ```
 
-Now a `fail-on` check that cannot execute exits 1. `--fail-on-unavailable` turns it on for a single run without editing `pyproject.toml`; the flag can only enable the behavior, so config stays authoritative when the flag is absent. `docvet --fail-on-unavailable config` annotates the key with `# (--fail-on-unavailable)` so the flag is visible as the value's source.
+`--fail-on-unavailable` and `--no-fail-on-unavailable` override the setting for a single run without editing `pyproject.toml`; config stays authoritative when neither flag is passed. `docvet --no-fail-on-unavailable config` annotates the key with `# (--fail-on-unavailable)` so the flag is visible as the value's source.
 
-An unavailable check that is not in `fail-on` is unaffected either way — it is reported as a skip and never fails the run. A future major release is expected to make `fail-on-unavailable` default to `true`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) for the stderr and JSON contract.
+An unavailable check that is not in `fail-on` is unaffected either way — it is reported as a skip and never fails the run. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run) for the stderr and JSON contract.
 
 ### `extend-exclude`
 

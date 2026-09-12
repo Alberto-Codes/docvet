@@ -167,7 +167,8 @@ runs:
         # checks the config gates on are annotated — an unavailable
         # check nothing gates on is a routine skip. Whether that gate
         # also failed the run is docvet's call, carried as `blocking`,
-        # which is set by the opt-in fail-on-unavailable setting.
+        # which is set unless the project opted out of
+        # fail-on-unavailable.
         UNAVAILABLE=""
         BLOCKING=""
         if [ -s "$MERGED_OUTPUT" ]; then
@@ -184,7 +185,7 @@ runs:
             echo "::${LEVEL}::docvet configured gate could not run — ${LINE}"
           done <<< "$UNAVAILABLE"
           if [ "${BLOCKING:-0}" -eq 0 ]; then
-            echo "::${LEVEL}::set fail-on-unavailable = true under [tool.docvet] to fail the build when a configured check cannot run"
+            echo "::${LEVEL}::this project set fail-on-unavailable = false under [tool.docvet]; drop it to fail the build when a configured check cannot run"
           fi
         fi
 

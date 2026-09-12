@@ -85,7 +85,8 @@ class UnavailableCheck:
         remedy (str): One-line instruction for making the check run.
         blocking (bool): ``True`` when this check failing to run must
             fail the run — the check was configured as a gate *and*
-            ``fail-on-unavailable`` is enabled.
+            ``fail-on-unavailable`` is enabled, which it is unless the
+            project opted out.
         configured_gate (bool): ``True`` when the config asked this
             check to gate the run: listed in ``fail-on``, or — for
             presence — enforcing a ``min-coverage`` floor, which gates
@@ -594,11 +595,13 @@ def determine_run_outcome(
 
     A check listed in ``fail-on`` that could not execute fails the run
     with :data:`RUN_STATUS_UNAVAILABLE` when ``fail-on-unavailable``
-    is enabled: the gate was configured, so a run that never executed
-    it cannot report success. That behaviour is opt-in, so by default
-    such a run still exits 0 (the caller is warned loudly instead).
-    Unavailable checks that are not in ``fail-on`` never affect the
-    exit code. Otherwise the run fails with :data:`RUN_STATUS_FINDINGS` when a
+    is enabled, which it is by default: the gate was configured, so a
+    run that never executed it cannot report success. The exit code is
+    the same 1 a findings failure uses, so *status* is what tells the
+    two apart. A project that opts out with ``fail-on-unavailable =
+    false`` still exits 0 for such a run (the caller is warned loudly
+    instead). Unavailable checks that are not in ``fail-on`` never
+    affect the exit code. Otherwise the run fails with :data:`RUN_STATUS_FINDINGS` when a
     ``fail-on`` check produced findings or the presence coverage
     threshold (compared via :attr:`PresenceStats.percentage`) is
     configured and not met. A run that passes while a ``fail-on``
@@ -631,7 +634,7 @@ def determine_run_outcome(
         )
         outcome = determine_run_outcome(
             {},
-            DocvetConfig(fail_on=["griffe"], fail_on_unavailable=True),
+            DocvetConfig(fail_on=["griffe"]),
             unavailable=[uc],
         )
         # outcome.exit_code == 1, outcome.status == "unavailable"
@@ -682,7 +685,8 @@ def determine_run_outcome(
             status=RUN_STATUS_PASSED,
             reason=(
                 "no check in fail-on reported findings, but these checks in"
-                f" fail-on could not run and fail-on-unavailable is off: {detail}"
+                " fail-on could not run and this project opted out with"
+                f" fail-on-unavailable = false: {detail}"
             ),
         )
 

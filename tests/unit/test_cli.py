@@ -1381,10 +1381,12 @@ def test_run_griffe_when_griffe_not_installed_and_fail_on_opt_in_fails_the_run(m
     mock_check.assert_not_called()
 
 
-def test_run_griffe_when_griffe_not_installed_and_fail_on_warns_but_exits_zero(mocker):
+def test_run_griffe_when_griffe_not_installed_and_opted_out_warns_but_exits_zero(
+    mocker,
+):
     mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
-    fake_config = DocvetConfig(fail_on=["griffe"])
+    fake_config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=False)
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["griffe"])
@@ -1396,16 +1398,34 @@ def test_run_griffe_when_griffe_not_installed_and_fail_on_warns_but_exits_zero(m
         " (griffe not installed), so that gate never executed" in output
     )
     assert "remedy: pip install 'docvet[griffe]'" in output
-    assert "this did not fail the run because fail-on-unavailable is off" in output
-    assert "fail-on-unavailable = true" in output
-    assert "a future major release will make this an error" in output
+    assert (
+        "this did not fail the run because this project opted out with"
+        " fail-on-unavailable = false" in output
+    )
+    assert "--fail-on-unavailable" in output
     mock_check.assert_not_called()
 
 
-def test_fail_on_unavailable_flag_turns_the_warning_into_an_error(mocker):
+def test_run_griffe_when_griffe_not_installed_and_fail_on_errors_by_default(mocker):
     mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
     fake_config = DocvetConfig(fail_on=["griffe"])
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert result.exit_code == 1
+    assert (
+        "error: griffe check was configured to gate the run but could not run" in output
+    )
+    assert "warning: griffe" not in output
+    mock_check.assert_not_called()
+
+
+def test_fail_on_unavailable_flag_overrides_an_opt_out_config(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=False)
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["--fail-on-unavailable", "griffe"])
@@ -1415,6 +1435,23 @@ def test_fail_on_unavailable_flag_turns_the_warning_into_an_error(mocker):
         "error: griffe check was configured to gate the run but could not run" in output
     )
     assert "warning: griffe" not in output
+    mock_check.assert_not_called()
+
+
+def test_no_fail_on_unavailable_flag_overrides_the_default(mocker):
+    mocker.patch("docvet.cli._run_griffe", side_effect=_run_griffe)
+    mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    fake_config = DocvetConfig(fail_on=["griffe"])
+    mocker.patch("docvet.cli.load_config", return_value=fake_config)
+    mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
+    result = runner.invoke(app, ["--no-fail-on-unavailable", "griffe"])
+    output = result.output + getattr(result, "stderr", "")
+    assert result.exit_code == 0
+    assert "error:" not in output
+    assert (
+        "warning: griffe check was configured to gate the run but could not run"
+        in output
+    )
     mock_check.assert_not_called()
 
 
