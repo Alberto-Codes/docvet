@@ -229,7 +229,7 @@ error: griffe check was configured to gate the run but could not run (griffe not
 ```
 
 !!! warning "Behavior change"
-    This run used to warn and exit 0. Any environment that lists a check in `fail-on` and cannot run it there will now fail where it previously passed. That is intended: the old exit 0 certified a gate that never executed. Install the missing extra, drop the check from `fail-on`, or opt out with `fail-on-unavailable = false`.
+    This run used to warn and exit 0. Any environment that lists a check in `fail-on` and cannot run it there will now fail where it previously passed, as will one that switches presence off with `[tool.docvet.presence] enabled = false` while a `min-coverage` floor still gates on it — that floor gates the run without `fail-on` ever naming `presence`. That is intended: the old exit 0 certified a gate that never executed. Install the missing extra, drop the check (or the floor) that cannot run, or opt out with `fail-on-unavailable = false`.
 
 To restore the old warn-and-continue behavior, opt out:
 
@@ -250,7 +250,7 @@ With the opt-out in place, the same situation exits 0 and the notice is a warnin
 ```text
 warning: griffe check was configured to gate the run but could not run (griffe not installed), so that gate never executed
   remedy: pip install 'docvet[griffe]', or drop griffe from fail-on
-  this did not fail the run because this project opted out with fail-on-unavailable = false; drop that setting (or pass --fail-on-unavailable) to make it an error
+  this did not fail the run because fail-on-unavailable is disabled for this run; set fail-on-unavailable = true under [tool.docvet] (or pass --fail-on-unavailable) to make it an error
 ```
 
 The warning is always printed, including under `--quiet`. It speaks only for that check — it is written mid-run, so another `fail-on` check with findings or a `min-coverage` shortfall can still fail the run.
@@ -264,7 +264,7 @@ JSON output carries the same information in a `run` object, so an agent or a scr
   "run": {
     "status": "unavailable",
     "exit_code": 1,
-    "exit_reason": "checks configured in fail-on could not run: griffe (griffe not installed)",
+    "exit_reason": "checks configured to gate the run could not run: griffe (griffe not installed)",
     "unavailable_checks": [
       {
         "check": "griffe",
@@ -278,10 +278,10 @@ JSON output carries the same information in a `run` object, so an agent or a scr
 }
 ```
 
-`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `configured_gate` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`, so the field is named for the gate rather than for membership of that list; `blocking` says that fact actually failed the run, which is the default unless the project set `fail-on-unavailable = false`. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With `fail-on-unavailable = false`, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"configured_gate": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
+`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `configured_gate` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`, so the field is named for the gate rather than for membership of that list; `blocking` says that fact actually failed the run, which is the default unless `fail-on-unavailable` is disabled. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With `fail-on-unavailable = false`, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"configured_gate": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
 
 ```text
-no check in fail-on reported findings, but these checks in fail-on could not run and this project opted out with fail-on-unavailable = false: griffe (griffe not installed)
+no check in fail-on reported findings, but these checks were configured to gate the run and could not run, with fail-on-unavailable disabled: griffe (griffe not installed)
 ```
 
 !!! tip "Default `warn-on` overlap"

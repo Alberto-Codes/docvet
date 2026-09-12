@@ -1198,8 +1198,9 @@ class TestDetermineRunOutcome:
         assert outcome.exit_code == 0
         assert outcome.status == RUN_STATUS_PASSED
         assert "griffe (griffe not installed)" in outcome.reason
-        assert "fail-on-unavailable = false" in outcome.reason
+        assert "fail-on-unavailable disabled" in outcome.reason
         assert "no check in fail-on was unavailable" not in outcome.reason
+        assert "this project" not in outcome.reason
 
     def test_advisory_check_outside_fail_on_keeps_the_clean_reason(self):
         outcome = determine_run_outcome(

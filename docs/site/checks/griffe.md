@@ -15,8 +15,8 @@ docvet griffe --all
 
     When griffe is not installed, docvet skips this check — no findings from it.
     The skip is reported rather than hidden: the `docvet griffe` subcommand says so,
-    and `docvet check` warns when `griffe` is listed in `fail-on`, since that gate
-    never ran. See
+    and `docvet check` reports an error and fails the run when `griffe` is listed
+    in `fail-on`, since that gate never ran. See
     [Checks that cannot run](../ci-integration.md#checks-that-cannot-run) for the
     full contract, including the `fail-on-unavailable` opt-out that turns it back into a warning.
 

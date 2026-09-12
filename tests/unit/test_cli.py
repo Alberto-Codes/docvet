@@ -1399,10 +1399,11 @@ def test_run_griffe_when_griffe_not_installed_and_opted_out_warns_but_exits_zero
     )
     assert "remedy: pip install 'docvet[griffe]'" in output
     assert (
-        "this did not fail the run because this project opted out with"
-        " fail-on-unavailable = false" in output
+        "this did not fail the run because fail-on-unavailable is disabled"
+        " for this run" in output
     )
     assert "--fail-on-unavailable" in output
+    assert "this project" not in output
     mock_check.assert_not_called()
 
 

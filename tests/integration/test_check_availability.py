@@ -175,6 +175,30 @@ class TestDefaultBlocksUnavailableCheck:
             in result.stderr
         )
 
+    def test_flag_opt_out_does_not_blame_a_config_key_that_is_absent(
+        self, repo, tmp_path
+    ):
+        _write_config(repo, fail_on=["griffe"])
+        result = _run(
+            repo,
+            "--format",
+            "json",
+            "--no-fail-on-unavailable",
+            "check",
+            "--all",
+            env=_hide_griffe(tmp_path),
+        )
+        assert result.returncode == 0
+        assert (
+            "fail-on-unavailable = false" not in (repo / "pyproject.toml").read_text()
+        )
+        assert (
+            "this did not fail the run because fail-on-unavailable is disabled"
+            " for this run" in result.stderr
+        )
+        assert "this project" not in result.stderr
+        assert "this project" not in _run_block(result)["exit_reason"]
+
     def test_json_distinguishes_unavailable_from_findings(self, repo, tmp_path):
         _write_config(repo, fail_on=["griffe"])
         result = _run(
@@ -233,8 +257,8 @@ class TestOptOutWarnsButDoesNotBlock:
         _write_config(repo, fail_on=["griffe"], fail_on_unavailable=False)
         result = _run(repo, "check", "--all", env=_hide_griffe(tmp_path))
         assert (
-            "this did not fail the run because this project opted out with"
-            " fail-on-unavailable = false" in result.stderr
+            "this did not fail the run because fail-on-unavailable is disabled"
+            " for this run" in result.stderr
         )
         assert "--fail-on-unavailable" in result.stderr
         assert "pip install 'docvet[griffe]'" in result.stderr
@@ -258,7 +282,7 @@ class TestOptOutWarnsButDoesNotBlock:
         assert run["status"] == "passed"
         assert run["exit_code"] == 0
         assert "griffe (griffe not installed)" in run["exit_reason"]
-        assert "fail-on-unavailable = false" in run["exit_reason"]
+        assert "fail-on-unavailable disabled" in run["exit_reason"]
         assert run["unavailable_checks"] == [
             {
                 "check": "griffe",
@@ -494,6 +518,10 @@ class TestDisabledPresenceWithCoverageFloor:
         run = _run_block(result)
         assert run["status"] == "unavailable"
         assert "95.0% min-coverage floor was never measured" in run["exit_reason"]
+        assert run["exit_reason"].startswith(
+            "checks configured to gate the run could not run:"
+        )
+        assert "fail-on" not in run["exit_reason"]
 
     def test_no_floor_and_no_fail_on_entry_stays_an_ordinary_opt_out(self, repo):
         self._add_undocumented_symbol(repo)

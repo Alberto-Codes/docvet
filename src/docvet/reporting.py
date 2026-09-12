@@ -85,8 +85,8 @@ class UnavailableCheck:
         remedy (str): One-line instruction for making the check run.
         blocking (bool): ``True`` when this check failing to run must
             fail the run — the check was configured as a gate *and*
-            ``fail-on-unavailable`` is enabled, which it is unless the
-            project opted out.
+            ``fail-on-unavailable`` is enabled, which it is by
+            default.
         configured_gate (bool): ``True`` when the config asked this
             check to gate the run: listed in ``fail-on``, or — for
             presence — enforcing a ``min-coverage`` floor, which gates
@@ -598,9 +598,11 @@ def determine_run_outcome(
     is enabled, which it is by default: the gate was configured, so a
     run that never executed it cannot report success. The exit code is
     the same 1 a findings failure uses, so *status* is what tells the
-    two apart. A project that opts out with ``fail-on-unavailable =
-    false`` still exits 0 for such a run (the caller is warned loudly
-    instead). Unavailable checks that are not in ``fail-on`` never
+    two apart. Disabling ``fail-on-unavailable`` still exits 0 for such
+    a run (the caller is warned loudly instead). The reason names the
+    gate as "configured to gate the run" rather than naming ``fail-on``,
+    because a ``min-coverage`` floor gates presence without that list
+    ever mentioning it. Unavailable checks that are not in ``fail-on`` never
     affect the exit code. Otherwise the run fails with :data:`RUN_STATUS_FINDINGS` when a
     ``fail-on`` check produced findings or the presence coverage
     threshold (compared via :attr:`PresenceStats.percentage`) is
@@ -644,7 +646,7 @@ def determine_run_outcome(
     blocking = [u for u in unavailable if u.blocking]
     if blocking:
         detail = "; ".join(f"{u.check} ({u.reason})" for u in blocking)
-        reason = f"checks configured in fail-on could not run: {detail}"
+        reason = f"checks configured to gate the run could not run: {detail}"
         if failed:
             reason += (
                 "; checks configured in fail-on also have findings:"
@@ -684,9 +686,9 @@ def determine_run_outcome(
             exit_code=0,
             status=RUN_STATUS_PASSED,
             reason=(
-                "no check in fail-on reported findings, but these checks in"
-                " fail-on could not run and this project opted out with"
-                f" fail-on-unavailable = false: {detail}"
+                "no check in fail-on reported findings, but these checks were"
+                " configured to gate the run and could not run, with"
+                f" fail-on-unavailable disabled: {detail}"
             ),
         )
 

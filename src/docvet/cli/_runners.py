@@ -456,11 +456,14 @@ def _write_unavailable_notice(
 
     A blocking check reports an error with its remedy, since the run
     exits non-zero because of it. A check configured as a gate but not
-    blocking — the project opted out with ``fail-on-unavailable =
-    false`` — reports an unconditional warning naming the check, why it
-    could not run, that this check did not fail the run because the
-    project opted out, and how to restore the default. That second
-    branch keys off the record's
+    blocking — ``fail-on-unavailable`` is disabled for this run —
+    reports an unconditional warning naming the check, why it could not
+    run, that this check did not fail the run because the setting is
+    disabled, and how to re-enable it. The warning describes the
+    effective setting rather than where it came from, because
+    ``--no-fail-on-unavailable`` reaches this branch with no
+    ``fail-on-unavailable`` key in ``pyproject.toml`` at all. That
+    second branch keys off the record's
     ``configured_gate`` flag, and both messages say "configured to
     gate the run" rather than naming ``fail-on``, because a
     ``min-coverage`` floor configures a gate without listing the check
@@ -486,9 +489,10 @@ def _write_unavailable_notice(
             f" but could not run ({unavailable.reason}),"
             " so that gate never executed\n"
             f"  remedy: {unavailable.remedy}\n"
-            "  this did not fail the run because this project opted out with"
-            " fail-on-unavailable = false; drop that setting (or pass"
-            " --fail-on-unavailable) to make it an error\n"
+            "  this did not fail the run because fail-on-unavailable is"
+            " disabled for this run; set fail-on-unavailable = true under"
+            " [tool.docvet] (or pass --fail-on-unavailable) to make it an"
+            " error\n"
         )
     elif note:
         sys.stderr.write(f"{unavailable.check}: skipped ({unavailable.reason})\n")

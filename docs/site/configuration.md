@@ -68,7 +68,7 @@ If a check name appears in **both** `fail-on` and an explicitly set `warn-on`, d
 A check in `fail-on` only gates anything if it actually executes. When it cannot — most commonly `griffe` in an environment that never installed `docvet[griffe]` — the gate you configured certified nothing, so docvet prints the obstacle and its remedy and **exits 1**. This is the default: a configured gate cannot report success without running.
 
 !!! warning "Behavior change"
-    Before this default flipped, such a run warned and exited 0. A project that lists a check in `fail-on` and cannot run it in its environment will start failing where it previously passed. That is the intended effect — the previous exit 0 was certifying a gate that never executed.
+    Before this default flipped, such a run warned and exited 0. A project that lists a check in `fail-on` and cannot run it in its environment will start failing where it previously passed — and so will a project that switches presence off with `[tool.docvet.presence] enabled = false` while a `min-coverage` floor still gates on it, since that floor gates the run without `fail-on` ever naming `presence`. That is the intended effect — the previous exit 0 was certifying a gate that never executed.
 
 Opt out to restore the warn-and-continue behavior:
 
