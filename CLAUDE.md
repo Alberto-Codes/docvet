@@ -95,7 +95,7 @@ The product vision (`docs/product-vision.md`) defines the full design. The codeb
 - **Google-style docstrings** assumed throughout
 - **No runtime deps** except typer (CLI) and optionally griffe; AST parsing and git are stdlib/system
 - **Configuration** via `[tool.docvet]` in pyproject.toml with sensible defaults
-- **A check in `fail-on` that cannot run warns by default, and fails the run only under the opt-in `fail-on-unavailable`** — `_griffe_unavailability` in `cli/_runners.py` is the single source of truth for griffe availability, and `determine_run_outcome` in `reporting.py` turns it into the exit code plus the JSON `run` status block
+- **A check in `fail-on` that cannot run fails the run by default; `fail-on-unavailable = false` opts back out to a warning** — `_griffe_unavailability` in `cli/_runners.py` is the single source of truth for griffe availability, and `determine_run_outcome` in `reporting.py` turns it into the exit code plus the JSON `run` status block
 - **Freshness diff mode** maps git diff hunks to AST symbols, flagging code changes without docstring updates at three severity levels (HIGH: signature change, MEDIUM: body change, LOW: imports/formatting)
 - **All files use** `from __future__ import annotations`
 
@@ -124,7 +124,7 @@ Dev: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-randomly`, `ruff`, `ty`
 - **Feature branches**: `feat/<scope>-<description>`, squash-merged to main via PR
 - **release-please**: `googleapis/release-please-action@v4` on push to `main`. Config in `release-please-config.json`. Manifest in `.release-please-manifest.json`.
 - **Publishing**: OIDC trusted publishing to PyPI (no API tokens). Triggered by `release: [published]` event.
-- **Floating tag**: `v1` tag updated on each release for GitHub Action consumers.
+- **Floating tag**: `v1` tag updated on each release whose major version is still 1, for GitHub Action consumers. A 2.x release leaves `v1` where it is rather than handing `docvet@v1` consumers a breaking action.
 
 ## CI/CD Pipeline Lessons
 

@@ -647,12 +647,24 @@ def test_load_config_overlap_auto_subtracts_from_warn_on(
 # ---------------------------------------------------------------------------
 
 
-def test_load_config_fail_on_unavailable_defaults_to_false(
+def test_load_config_fail_on_unavailable_defaults_to_true(
     tmp_path, monkeypatch, write_pyproject
 ):
     monkeypatch.chdir(tmp_path)
     write_pyproject('[tool.docvet]\nfail-on = ["griffe"]\n')
-    assert load_config().fail_on_unavailable is False
+    assert load_config().fail_on_unavailable is True
+
+
+def test_load_config_fail_on_unavailable_reads_false(
+    tmp_path, monkeypatch, write_pyproject
+):
+    monkeypatch.chdir(tmp_path)
+    write_pyproject(
+        '[tool.docvet]\nfail-on = ["griffe"]\nfail-on-unavailable = false\n'
+    )
+    cfg = load_config()
+    assert cfg.fail_on_unavailable is False
+    assert cfg.fail_on == ["griffe"]
 
 
 def test_load_config_fail_on_unavailable_reads_true(
@@ -1287,6 +1299,16 @@ def test_format_config_toml_cli_override_names_the_flag():
         config, {"fail-on": ["griffe"]}, ["fail-on-unavailable"]
     )
     assert _annotation_for(output, "fail-on-unavailable") == "(--fail-on-unavailable)"
+
+
+def test_format_config_toml_cli_override_to_false_names_the_negative_flag():
+    config = DocvetConfig(fail_on=["griffe"], fail_on_unavailable=False)
+    output = format_config_toml(
+        config, {"fail-on": ["griffe"]}, ["fail-on-unavailable"]
+    )
+    assert (
+        _annotation_for(output, "fail-on-unavailable") == "(--no-fail-on-unavailable)"
+    )
 
 
 def test_format_config_toml_cli_override_beats_a_user_key():

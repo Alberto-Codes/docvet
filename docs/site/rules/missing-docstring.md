@@ -67,6 +67,8 @@ To disable the presence check entirely, set `enabled = false`:
 enabled = false
 ```
 
+Disabling it while something still gates on presence — `presence` in `fail-on`, or a `min-coverage` floor — is a gate that cannot run, which fails the run by default; see [Checks that cannot run](../ci-integration.md#checks-that-cannot-run).
+
 To exclude specific symbol types from checking, use the ignore flags:
 
 ```toml
