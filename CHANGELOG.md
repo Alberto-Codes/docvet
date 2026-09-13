@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/Alberto-Codes/docvet/compare/v1.16.0...v2.0.0) (2026-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** fail the run when a configured check cannot execute ([#448](https://github.com/Alberto-Codes/docvet/issues/448))
+
+### Features
+
+* **cli:** fail the run when a configured check cannot execute ([#448](https://github.com/Alberto-Codes/docvet/issues/448)) ([e12870c](https://github.com/Alberto-Codes/docvet/commit/e12870c2cd2434929f9683cc99f0b0306e6e5508))
+
 ## [1.16.0](https://github.com/Alberto-Codes/docvet/compare/v1.15.2...v1.16.0) (2026-09-11)
 
 
