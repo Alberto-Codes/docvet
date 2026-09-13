@@ -57,7 +57,7 @@ lsp = [
     "pygls>=2.0,<3",
 ]
 mcp = [
-    "mcp>=1.6,<2",
+    "mcp>=1.6,<3",
 ]
 docs = [
     "mkdocs>=1.6,<2",
@@ -202,7 +202,7 @@ modules = [
 [dependency-groups]
 dev = [
     "griffelib>=2.2,<3",
-    "mcp>=1.6,<2",
+    "mcp>=1.6,<3",
     "pygls>=2.0,<3",
     "pyyaml>=6.0",
     "pytest>=9.0",
