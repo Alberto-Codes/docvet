@@ -54,8 +54,30 @@ def decode_source(raw: bytes) -> tuple[str, str]:
         assert text.encode(encoding) == Path("module.py").read_bytes()
         ```
     """
-    encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
+    encoding = _detect_encoding(raw)
     return raw.decode(encoding), encoding
+
+
+def _detect_encoding(raw: bytes) -> str:
+    """Detect the declared source encoding across every Python line terminator.
+
+    ``tokenize.detect_encoding`` splits lines only at line feeds, so a coding
+    cookie in a file using CR or CRLF terminators would be missed although the
+    interpreter accepts it. Detection runs on a line-normalized copy; the
+    original bytes are never altered.
+
+    Args:
+        raw: Source bytes as read from disk.
+
+    Returns:
+        Encoding name detected by ``tokenize``.
+
+    Raises:
+        SyntaxError: The encoding declaration is invalid or conflicts with a BOM.
+    """
+    normalized = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    encoding, _ = tokenize.detect_encoding(io.BytesIO(normalized).readline)
+    return encoding
 
 
 @dataclass(frozen=True)
@@ -125,7 +147,7 @@ class SourceDocument:
             raise UnicodeError("Source encoding cannot reproduce the original bytes")
         encoded = text.encode(self.encoding)
         try:
-            detected, _ = tokenize.detect_encoding(io.BytesIO(encoded).readline)
+            detected = _detect_encoding(encoded)
             decoded = encoded.decode(detected)
         except (SyntaxError, LookupError) as exc:
             raise UnicodeError(str(exc)) from exc

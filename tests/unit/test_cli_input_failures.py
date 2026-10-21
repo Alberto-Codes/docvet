@@ -82,36 +82,42 @@ def test_empty_selection_is_json_without_coverage(project):
     assert "presence_coverage" not in data
 
 
+@pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"], ids=["lf", "crlf", "cr"])
 @pytest.mark.parametrize(
     "encoding,cookie,bom",
     [
         ("utf-8", "", b""),
         ("utf-8", "", b"\xef\xbb\xbf"),
-        ("latin-1", "# coding: latin-1\r\n", b""),
+        ("latin-1", "# coding: latin-1\n", b""),
+        ("latin-1", "#!/usr/bin/env python\n# -*- coding: latin-1 -*-\n", b""),
     ],
+    ids=["utf8", "bom", "cookie-first", "cookie-second"],
 )
 def test_fix_preserves_encoding_newlines_and_dry_run_json(
-    project, encoding, cookie, bom
+    project, newline, encoding, cookie, bom
 ):
     """Fixes preserve source representation and dry-run output is valid JSON."""
     source = (
-        cookie + '"""Café module."""\r\ndef f():\r\n    """Do café work."""\r\n'
-        '    raise ValueError("café")\r\n# untouched café\r\n'
-    )
+        cookie + '"""Café module."""\ndef f():\n    """Do café work."""\n'
+        '    raise ValueError("café")\n# untouched café\n'
+    ).replace("\n", newline)
     path = project / "encoded.py"
     original = bom + source.encode(encoding)
     path.write_bytes(original)
     dry = runner.invoke(app, ["--format", "json", "fix", "--dry-run", str(path)])
     assert dry.exit_code == 0, dry.output
-    assert json.loads(dry.stdout)["diffs"]
+    data = json.loads(dry.stdout)
+    assert data["run"]["status"] == "passed"
+    assert data["diffs"]
     assert path.read_bytes() == original
     actual = runner.invoke(app, ["--format", "json", "fix", str(path)])
     assert actual.exit_code == 0, actual.output
     modified = path.read_bytes()
-    assert modified.startswith(bom + cookie.encode(encoding))
+    assert modified.startswith(bom + cookie.replace("\n", newline).encode(encoding))
     assert b"Raises:" in modified
-    assert modified.endswith("# untouched café\r\n".encode(encoding))
-    assert b"\n" not in modified.replace(b"\r\n", b"")
+    assert modified.endswith(f"# untouched café{newline}".encode(encoding))
+    stripped = modified.replace(newline.encode(encoding), b"")
+    assert b"\r" not in stripped and b"\n" not in stripped
 
 
 def test_read_failure_is_json_and_diagnostic_once(project, monkeypatch):

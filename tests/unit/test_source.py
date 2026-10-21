@@ -42,6 +42,73 @@ def test_valid_source_preserves_bytes_and_newlines(tmp_path, raw, encoding):
     assert cache.attempted_paths == cache.successful_paths == {path.resolve()}
 
 
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n", b"\r"], ids=["lf", "crlf", "cr"])
+@pytest.mark.parametrize(
+    "prefix,codec,encoding",
+    [
+        (b"# coding: latin-1\n", "latin-1", "iso-8859-1"),
+        (b"\n# coding: latin-1\n", "latin-1", "iso-8859-1"),
+        (
+            b"#!/usr/bin/env python\n# -*- coding: latin-1 -*-\n",
+            "latin-1",
+            "iso-8859-1",
+        ),
+        (b"\xef\xbb\xbf", "utf-8", "utf-8-sig"),
+        (b"\xef\xbb\xbf# coding: utf-8\n", "utf-8", "utf-8-sig"),
+    ],
+    ids=["cookie-first", "cookie-second", "cookie-after-shebang", "bom", "bom-cookie"],
+)
+def test_declared_encoding_is_detected_for_every_line_terminator(
+    tmp_path, newline, prefix, codec, encoding
+):
+    """A coding cookie counts on any interpreter-accepted line terminator."""
+    body = '"""Caf\u00e9."""\nx = 1\n'.encode(codec)
+    raw = (prefix + body).replace(b"\n", newline)
+    compile(raw, "<module>", "exec")
+    path = tmp_path / "module.py"
+    path.write_bytes(raw)
+    cache = SourceCache()
+    document = cache.get(path)
+    assert document is not None, cache.errors
+    assert document.encoding == encoding
+    assert document.original_bytes == raw
+    assert document.text == raw.decode(encoding)
+    assert document.tree.body[-1].lineno == raw.count(newline)
+    assert document.encode(document.text) == raw
+    assert document.encode(document.text.replace("x = 1", "x = 3")) == raw.replace(
+        b"x = 1", b"x = 3"
+    )
+    assert cache.errors == ()
+    assert cache.attempted_paths == cache.successful_paths == {path.resolve()}
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n", b"\r"], ids=["lf", "crlf", "cr"])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"\xef\xbb\xbf# coding: latin-1\nx = 1\n",
+        b"\n# coding: unknown-encoding\nx = 1\n",
+        b'x = 1\ny = 2\n# coding: latin-1\n"""Caf\xe9."""\n',
+    ],
+    ids=["bom-conflict", "unknown-codec", "cookie-too-late"],
+)
+def test_invalid_declared_encoding_fails_for_every_line_terminator(
+    tmp_path, newline, raw
+):
+    """Malformed or conflicting declarations fail in a controlled way."""
+    raw = raw.replace(b"\n", newline)
+    with pytest.raises(SyntaxError):
+        compile(raw, "<module>", "exec")
+    path = tmp_path / "invalid.py"
+    path.write_bytes(raw)
+    cache = SourceCache()
+    assert cache.get(path) is None
+    assert len(cache.errors) == 1
+    assert cache.errors[0].kind == "decode"
+    assert cache.errors[0].message
+    assert cache.successful_paths == set()
+
+
 @pytest.mark.parametrize(
     "raw,kind",
     [

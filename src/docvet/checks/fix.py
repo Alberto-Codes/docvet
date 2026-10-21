@@ -171,7 +171,7 @@ def _build_section_lines(
         section: The section header name (e.g. ``"Raises"``).
         node: The AST node for the symbol being scaffolded.
         indent: Whitespace prefix for section header lines.
-        newline: Line ending style (``"\n"`` or ``"\r\n"``).
+        newline: Line ending style (``"\n"``, ``"\r\n"``, or ``"\r"``).
 
     Returns:
         List of lines (including newlines) for the scaffold block.
@@ -310,6 +310,9 @@ def scaffold_missing_sections(
     for ln in lines:
         if ln.endswith("\r\n"):
             newline = "\r\n"
+            break
+        if ln.endswith("\r"):
+            newline = "\r"
             break
         if ln.endswith("\n"):
             break
