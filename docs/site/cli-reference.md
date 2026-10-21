@@ -211,7 +211,7 @@ Check for missing docstring sections.
 docvet enrichment --all
 ```
 
-Analyzes Python AST to detect missing Raises, Yields, Attributes, Examples, and other sections that should be present based on the code's behavior. 10 rules covering functions, classes, modules, and format conventions.
+Analyzes Python AST to detect missing Raises, Yields, Attributes, Examples, and other sections that should be present based on the code's behavior. {{ rule_count("enrichment") }} rules covering functions, classes, modules, and format conventions.
 
 ### `docvet freshness`
 

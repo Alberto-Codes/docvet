@@ -1,6 +1,6 @@
 # Griffe Check
 
-The griffe check implements **Layer 5 (Rendering)** of docvet's quality model. It captures warnings from the griffe docstring parser to detect issues that would cause broken rendering in mkdocs-material + mkdocstrings documentation sites. 3 rules.
+The griffe check implements **Layer 5 (Rendering)** of docvet's quality model. It captures warnings from the griffe docstring parser to detect issues that would cause broken rendering in mkdocs-material + mkdocstrings documentation sites. {{ rule_count("griffe") }} rules.
 
 ```bash
 docvet griffe --all

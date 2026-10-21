@@ -9,10 +9,15 @@ corruption (typos, missing fields, orphaned entries) that
 from __future__ import annotations
 
 import re
+import runpy
+from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
+
+from docvet.rules import _RULE_CATALOG
 
 pytestmark = pytest.mark.unit
 
@@ -220,3 +225,54 @@ class TestMkdocsNavConsistency:
             assert full_path.exists(), (
                 f"Nav entry '{rel_path}' does not exist at {full_path}"
             )
+
+
+class TestPublishedRuleCounts:
+    """Keep published counts aligned with the shipped rule catalog."""
+
+    def test_readme_total(self) -> None:
+        """The README's exact total and number of checks match the catalog."""
+        readme = (_REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        totals = re.findall(r"(\d+) rules across (\d+) checks", readme)
+        counts = Counter(rule["check"] for rule in _RULE_CATALOG)
+        assert totals == [(str(len(_RULE_CATALOG)), str(len(counts)))]
+
+    def test_readme_check_counts(self) -> None:
+        """Every check summary reports its catalog count exactly once."""
+        readme = (_REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        summaries = re.findall(
+            r"^\*\*(\w+)\*\* \([^\n)]+\) -- (\d+) rules?:", readme, re.MULTILINE
+        )
+        counts = Counter(rule["check"] for rule in _RULE_CATALOG)
+        assert len(summaries) == len(counts)
+        assert {check.lower(): int(count) for check, count in summaries} == counts
+
+    def test_readme_enrichment_comparison(self) -> None:
+        """The comparison's enrichment count agrees with its check summary."""
+        readme = (_REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        counts = Counter(rule["check"] for rule in _RULE_CATALOG)
+        assert re.findall(r"enrichment alone has (\d+) rules", readme) == [
+            str(counts["enrichment"])
+        ]
+
+    def test_documentation_catalog_matches_shipped_catalog(self) -> None:
+        """Documentation and runtime describe the same rules and checks."""
+        assert {rule["id"] for rule in _load_rules()} == {
+            rule["name"] for rule in _RULE_CATALOG
+        }
+        assert {rule["id"]: rule["check"] for rule in _load_rules()} == {
+            rule["name"]: rule["check"] for rule in _RULE_CATALOG
+        }
+
+    def test_rule_count_macro(self) -> None:
+        """The registered macro renders total and per-check YAML counts."""
+        macros = {}
+        env = SimpleNamespace(
+            project_dir=_REPO_ROOT, macro=lambda fn: macros.setdefault(fn.__name__, fn)
+        )
+        runpy.run_path(str(_REPO_ROOT / "docs" / "main.py"))["define_env"](env)
+        assert {"rule_header", "rule_fix", "rule_count"} <= macros.keys()
+        counts = Counter(rule["check"] for rule in _load_rules())
+        assert macros["rule_count"]() == len(_load_rules())
+        for check, count in counts.items():
+            assert macros["rule_count"](check) == count

@@ -40,7 +40,7 @@ Most tools stop at style. docvet covers everything else:
 
     ---
 
-    Detects public symbols without docstrings and reports coverage metrics. 1 rule. Built-in replacement for interrogate.
+    Detects public symbols without docstrings and reports coverage metrics. {{ rule_count("presence") }} rules. Built-in replacement for interrogate.
 
     [:octicons-arrow-right-24: Learn more](checks/presence.md)
 
@@ -48,7 +48,7 @@ Most tools stop at style. docvet covers everything else:
 
     ---
 
-    Detects missing Raises, Yields, Attributes, and Examples sections via AST analysis. 10 rules.
+    Detects missing Raises, Yields, Attributes, and Examples sections via AST analysis. {{ rule_count("enrichment") }} rules.
 
     [:octicons-arrow-right-24: Learn more](checks/enrichment.md)
 
@@ -56,7 +56,7 @@ Most tools stop at style. docvet covers everything else:
 
     ---
 
-    Flags code changes without docstring updates using git diff and git blame. 5 rules, two modes.
+    Flags code changes without docstring updates using git diff and git blame. {{ rule_count("freshness") }} rules, two modes.
 
     [:octicons-arrow-right-24: Learn more](checks/freshness.md)
 
@@ -72,7 +72,7 @@ Most tools stop at style. docvet covers everything else:
 
     ---
 
-    Captures griffe parser warnings that break mkdocs rendering. 3 rules.
+    Captures griffe parser warnings that break mkdocs rendering. {{ rule_count("griffe") }} rules.
 
     [:octicons-arrow-right-24: Learn more](checks/griffe.md)
 
