@@ -11,7 +11,7 @@ title: Getting Started
 [![License](https://img.shields.io/pypi/l/docvet)](https://github.com/Alberto-Codes/docvet/blob/main/LICENSE)
 [![docs vetted](https://img.shields.io/badge/docs%20vetted-docvet-purple)](https://github.com/Alberto-Codes/docvet)
 
-docvet vets your Python docstrings for **presence**, **completeness**, **accuracy**, and **rendering compatibility** — the layers beyond style that tools like ruff don't cover.
+docvet combines **presence** metrics, **structural completeness** checks, **history-based staleness signals**, and **rendering compatibility** diagnostics, with CLI, editor, and agent interfaces. These checks overlap with tools such as Ruff and pydoclint; see the [capability comparison](https://github.com/Alberto-Codes/docvet#why-docvet).
 
 ## Quick Start
 
@@ -21,14 +21,14 @@ pip install docvet && docvet check --all
 
 ## The Quality Model
 
-Most tools stop at style. docvet covers everything else:
+The model separates quality concerns. Structural checks and history heuristics help reviewers; they do not prove semantic correctness:
 
 | Layer | Check | What It Catches | Tool |
 |:-----:|-------|-----------------|------|
 | **1** | **Presence** | **Missing docstrings** | **docvet presence** |
 | 2 | Style | Formatting, conventions | ruff D rules |
 | **3** | **Completeness** | **Missing sections (Raises, Yields, Attributes)** | **docvet enrichment** |
-| **4** | **Accuracy** | **Stale docstrings after code changes** | **docvet freshness** |
+| **4** | **Accuracy** | **Potential staleness from git history** | **docvet freshness** |
 | **5** | **Rendering** | **Broken mkdocs output** | **docvet griffe** |
 | **6** | **Visibility** | **Packages hidden from doc generators** | **docvet coverage** |
 
@@ -40,7 +40,7 @@ Most tools stop at style. docvet covers everything else:
 
     ---
 
-    Detects public symbols without docstrings and reports coverage metrics. {{ rule_count("presence") }} rules. Built-in replacement for interrogate.
+    Detects public symbols without docstrings and reports coverage metrics. {{ rule_count("presence") }} rules. Includes coverage thresholds.
 
     [:octicons-arrow-right-24: Learn more](checks/presence.md)
 

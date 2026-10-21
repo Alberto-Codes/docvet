@@ -133,7 +133,7 @@ Findings are reported in two places:
 The step summary always includes a count disclosure: `"Found N findings (up to 10 shown as inline annotations)."` so reviewers know when findings exceed the annotation cap.
 
 !!! tip "Freshness checks need git history"
-    The freshness check uses `git blame` to detect stale docstrings. If your checkout step uses a shallow clone (the default), add `fetch-depth: 0` for full blame support:
+    The freshness check uses `git blame` to flag potential staleness. If your checkout step uses a shallow clone (the default), add `fetch-depth: 0` for full blame support:
 
     ```yaml
     - uses: actions/checkout@v6

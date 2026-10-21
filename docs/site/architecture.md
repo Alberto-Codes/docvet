@@ -52,7 +52,7 @@ The **LSP path** receives files directly from the editor via `textDocument/didOp
 | `discovery.py` | Finds target files via git diff, staged, `--all`, or positional args |
 | `checks/presence.py` | Missing docstring detection — {{ rule_count("presence") }} rules (AST analysis) |
 | `checks/enrichment.py` | Missing sections detection — {{ rule_count("enrichment") }} rules (AST analysis) |
-| `checks/freshness.py` | Stale docstring detection — {{ rule_count("freshness") }} rules (git diff + git blame) |
+| `checks/freshness.py` | Potential staleness signals — {{ rule_count("freshness") }} rules (git diff + git blame) |
 | `checks/coverage.py` | Missing `__init__.py` detection — {{ rule_count("coverage") }} rule (directory scan) |
 | `checks/griffe_compat.py` | Griffe parser warning capture — {{ rule_count("griffe") }} rules |
 | `reporting.py` | Formats findings as terminal, markdown, or JSON output |
