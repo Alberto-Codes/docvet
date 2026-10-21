@@ -245,4 +245,5 @@ dev = [
     # Runs from the lockfile in both pre-commit and CI, so one version
     # serves both gates.
     "yamllint>=1.38",
+    "identify>=2.6.20",
 ]

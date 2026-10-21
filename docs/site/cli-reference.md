@@ -135,7 +135,12 @@ coverage percentages, inspect `complete` before using a coverage value, and use
 Scripts that previously relied on ignored invalid targets, skipped parse
 failures, or a warned empty result when `git` could not compute the diff (a
 non-git checkout such as a tarball) must handle exit 1 or select files with
-`--all` or explicit paths. Valid-input finding rules, exclusion overrides,
+`--all` or explicit paths. Outside a repository, `--all` avoids the selection
+error but supplies no git history, so freshness is reported in
+`run.unavailable_checks` and gated by `fail-on-unavailable` rather than
+passing silently. The published pre-commit hook now passes only `.py` files;
+`.pyi` stubs and extensionless scripts are no longer selected because explicit
+non-`.py` targets are rejected. Valid-input finding rules, exclusion overrides,
 suppression, and quality denominator units remain unchanged.
 
 ### Quality Summary (`--summary`)
@@ -301,12 +306,16 @@ docvet freshness --all --mode drift   # drift mode
 
 **Drift mode** uses git blame timestamps to find docstrings that haven't been updated relative to their code. Sweeps the entire codebase for timestamp-based review signals, not semantic errors.
 
-Both modes require a `git` executable on `PATH`. With `--all` or explicit
-files, a missing executable is reported in `run.unavailable_checks` and follows
-the configured `fail-on-unavailable` policy. This also applies to freshness
-inside `check --all`, where other available checks can still analyze files.
-Diff or staged file selection itself requires git and reports an input failure
-when it cannot determine the requested scope.
+Both modes require a `git` executable on `PATH` and a repository containing
+the project root. With `--all` or explicit files, a missing executable or a
+working tree outside any repository (a tarball or exported archive) is reported
+in `run.unavailable_checks` and follows the configured `fail-on-unavailable`
+policy, the same prerequisite the MCP server applies. The repository probe
+ignores an inherited `GIT_DIR`, so a pre-commit hook still resolves the
+checkout docvet runs in. This also applies to freshness inside `check --all`,
+where other available checks can still analyze files. Diff or staged file
+selection itself requires git and reports an input failure when it cannot
+determine the requested scope.
 
 ### `docvet coverage`
 

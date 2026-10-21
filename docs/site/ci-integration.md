@@ -191,7 +191,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks Python fil
             exclude: ^tests/
     ```
 
-Pre-commit passes staged Python filenames as positional arguments to `docvet check`. The hook uses `require_serial: true` to prevent parallel invocations that could race on git state. Progress output is automatically suppressed because pre-commit pipes stderr.
+Pre-commit passes staged Python filenames as positional arguments to `docvet check`. The hook selects only files whose name ends in `.py` (`types: [python]` combined with `files: \.py$`), so `.pyi` stubs and extensionless scripts with a Python shebang are never passed; `docvet check` rejects explicit targets that are not `.py` files. The hook uses `require_serial: true` to prevent parallel invocations that could race on git state. Progress output is automatically suppressed because pre-commit pipes stderr.
 
 !!! note "Exclude patterns in pre-commit mode"
     When run as a pre-commit hook, docvet checks only the files pre-commit passes — your `[tool.docvet].exclude` patterns do not apply. Use pre-commit's own `exclude` key to filter files, as shown in the "With exclude" tab above.

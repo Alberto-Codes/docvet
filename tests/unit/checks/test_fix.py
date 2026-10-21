@@ -481,3 +481,59 @@ class TestEdgeCases:
             if ch == "\n":
                 assert i > 0 and result[i - 1] == "\r"
         ast.parse(result)
+
+
+# ---------------------------------------------------------------------------
+# Physical line offsets
+# ---------------------------------------------------------------------------
+
+
+_SEPARATORS = {
+    "ff": "\x0c",
+    "vt": "\x0b",
+    "fs": "\x1c",
+    "nel": "\x85",
+    "ls": "\u2028",
+    "ps": "\u2029",
+}
+
+
+class TestPhysicalLineOffsets:
+    """Scaffold placement counts only the terminators the parser counts."""
+
+    _BODY = (
+        "def g(x):",
+        '    """Do things.',
+        "",
+        "    Args:",
+        "        x: Value.",
+        '    """',
+        '    raise ValueError("bad")',
+    )
+    _RAISES = (
+        "",
+        "    Raises:",
+        "        ValueError: [TODO: describe when this is raised]",
+    )
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"], ids=["lf", "crlf", "cr"])
+    @pytest.mark.parametrize(
+        "lead",
+        [
+            *[f"# page{sep}break" for sep in _SEPARATORS.values()],
+            *[f'TITLE = "a{sep}b"' for sep in _SEPARATORS.values()],
+            _SEPARATORS["ff"],
+        ],
+        ids=[
+            *[f"comment-{name}" for name in _SEPARATORS],
+            *[f"string-{name}" for name in _SEPARATORS],
+            "bare-ff",
+        ],
+    )
+    def test_separator_before_symbol_keeps_scaffold_in_place(self, lead, newline):
+        lines = ['"""Module."""', lead, *self._BODY]
+        source = newline.join(lines) + newline
+        result = _scaffold(source, [_finding(line=3, rule="missing-raises")])
+        expected = newline.join([*lines[:7], *self._RAISES, *lines[7:]]) + newline
+        assert result == expected
+        ast.parse(result)

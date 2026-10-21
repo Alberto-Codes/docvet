@@ -219,6 +219,27 @@ def test_unavailable_checks_have_truthful_run_metadata(
         assert "could not run" in run["exit_reason"]
 
 
+@pytest.mark.parametrize("gated", [True, False])
+def test_non_repository_freshness_is_unavailable_like_the_cli(
+    project: Path, monkeypatch, gated: bool
+):
+    """With git installed, a tree outside any repository gates like the CLI."""
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(project.parent))
+    (project / "pyproject.toml").write_text(
+        f"[tool.docvet]\nfail-on = {json.dumps(['freshness'] if gated else [])}\n"
+    )
+    target = project / "valid.py"
+    target.write_text('"""Documented."""\n')
+    result = json.loads(docvet_check(str(target), ["freshness"]))
+    run = result["run"]
+    assert run["status"] == ("unavailable" if gated else "passed")
+    assert run["exit_code"] == int(gated)
+    assert [item["check"] for item in run["unavailable_checks"]] == ["freshness"]
+    assert "not a git repository" in run["unavailable_checks"][0]["reason"]
+    assert run["unavailable_checks"][0]["blocking"] is gated
+    assert run["unavailable_checks"][0]["configured_gate"] is gated
+
+
 def test_null_byte_target_is_structured_input_error():
     result = json.loads(docvet_check("x\x00.py", ["presence"]))
     assert result["run"]["status"] == "incomplete"

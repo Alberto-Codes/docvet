@@ -60,6 +60,7 @@ def _mock_check_internals(mocker):
         return_value=([], PresenceStats(documented=0, total=0)),
     )
     mocker.patch("docvet.cli._run_enrichment", return_value=([], 0))
+    mocker.patch("docvet.cli._freshness_unavailability", return_value=None)
     mocker.patch("docvet.cli._run_freshness", return_value=([], 0))
     mocker.patch("docvet.cli._run_coverage", return_value=([], 0))
     mocker.patch("docvet.cli._run_griffe", return_value=([], 0))

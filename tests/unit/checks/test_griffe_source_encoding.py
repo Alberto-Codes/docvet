@@ -64,3 +64,20 @@ def test_shared_source_loader_preserves_inherited_constructor(tmp_path: Path):
         '    """Child.\n\n    Args:\n        x: Value.\n    """\n'
     )
     assert check_griffe_compat(tmp_path, [module], source_cache=SourceCache()) == []
+
+
+def test_form_feed_line_does_not_shift_griffe_lines(tmp_path: Path):
+    pytest.importorskip("griffe")
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "__init__.py").write_text('"""Package."""\n')
+    body = 'def f(x):\n    """Describe.\n\n    Args:\n        x: Value.\n    """\n'
+    plain = package / "plain.py"
+    plain.write_text('"""Mod."""\n' + body)
+    paged = package / "paged.py"
+    paged.write_text('"""Mod."""\n\x0c\n' + body)
+    cache = SourceCache()
+    findings = check_griffe_compat(tmp_path, [plain, paged], source_cache=cache)
+    lines = {f.file: f.line for f in findings if f.rule == "griffe-missing-type"}
+    assert lines[paged.as_posix()] == lines[plain.as_posix()] + 1
+    assert not cache.errors

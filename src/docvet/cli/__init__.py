@@ -475,8 +475,9 @@ def check(
 ) -> None:
     """Run all enabled checks.
 
-    A missing git executable marks freshness unavailable under the same
-    availability gate policy as other optional checks.
+    A missing git executable or a working tree outside any repository marks
+    freshness unavailable under the same availability gate policy as other
+    optional checks.
 
     Input failures are retained in the invocation source cache and reported
     as incomplete analysis with a nonzero exit status.
@@ -803,8 +804,9 @@ def freshness(
 ) -> None:
     """Detect stale docstrings.
 
-    Both diff and drift require a git executable on PATH; a missing
-    executable is reported as unavailable before source analysis.
+    Both diff and drift require a git executable on PATH and a repository
+    containing the project root; a missing prerequisite is reported as
+    unavailable before source analysis.
 
     Input failures are retained in the invocation source cache and reported
     as incomplete analysis with a nonzero exit status.

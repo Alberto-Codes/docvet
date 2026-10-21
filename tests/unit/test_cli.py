@@ -1573,6 +1573,7 @@ def _patch_check_run(mocker, tmp_path, *, fail_on_unavailable: bool | None = Non
         else {"fail_on_unavailable": fail_on_unavailable}
     )
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=None)
+    mocker.patch("docvet.cli._freshness_unavailability", return_value=None)
     mocker.patch(
         "docvet.cli.load_config",
         return_value=DocvetConfig(

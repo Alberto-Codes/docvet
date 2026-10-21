@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from griffe import Module as GriffeModule
     from griffe import Object as GriffeObject
 
+from docvet.ast_utils import split_physical_lines
 from docvet.checks._finding import Finding
 from docvet.source import SourceCache
 
@@ -309,7 +310,7 @@ def _check_source_documents(
             # An empty shell retains package topology when an initializer failed;
             # the shared cache already carries the selected input's error.
             code = document.text if document is not None else ""
-            self.lines_collection[module_path] = code.splitlines(keepends=False)
+            self.lines_collection[module_path] = split_physical_lines(code)
             return griffe_api.visit(
                 module_name,
                 filepath=module_path,

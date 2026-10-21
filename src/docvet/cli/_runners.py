@@ -11,7 +11,8 @@ whether the griffe check can execute at all, and
 off with ``enabled = false`` while ``fail-on`` or a ``min-coverage``
 floor still gates on it; ``_write_unavailable_notice`` reports a
 check that could not run.  ``_freshness_unavailability`` detects a missing
-git executable before either diff or drift analysis begins.
+git executable or a working tree outside any repository before either
+diff or drift analysis begins, matching the MCP freshness gate.
 Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
 raw VCS data for the freshness runner, each running git through
 :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR`` cannot
@@ -35,6 +36,7 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import subprocess
 import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -369,22 +371,57 @@ def _run_coverage(files: list[Path], config: DocvetConfig) -> tuple[list[Finding
     return _cli_pkg.check_coverage(src_root, files), package_count
 
 
+def _in_git_repository(project_root: Path) -> bool:
+    """Probe whether *project_root* lies inside a git repository.
+
+    Git runs with :func:`docvet.discovery.git_env`, so an inherited
+    ``GIT_DIR`` cannot answer for a different checkout.
+
+    Args:
+        project_root: Directory from which git discovers the repository.
+
+    Returns:
+        *True* when ``git rev-parse --git-dir`` succeeds there.
+    """
+    try:
+        _cli_pkg.subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            check=True,
+            cwd=project_root,
+            env=git_env(),
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return True
+
+
 def _freshness_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
-    """Report a missing git executable before attempting freshness analysis.
+    """Report a missing git prerequisite before attempting freshness analysis.
+
+    Freshness needs a git executable and a repository containing the
+    project root; without either, diff and drift analysis would silently
+    produce no findings. The same prerequisite gates the MCP server.
 
     Args:
         config: Configuration supplying the finding and availability gates.
 
     Returns:
-        The unavailable prerequisite, or *None* when git is executable.
+        The unavailable prerequisite, or *None* when git history is reachable.
     """
-    if shutil.which("git") is not None:
+    if shutil.which("git") is None:
+        reason = "git is not installed or is not executable on PATH"
+        remedy = "Install git and make it available on PATH to run freshness"
+    elif not _in_git_repository(config.project_root):
+        reason = "not a git repository; freshness requires git history"
+        remedy = "Run docvet inside a git checkout, or drop freshness from fail-on"
+    else:
         return None
     configured_gate = "freshness" in config.fail_on
     return UnavailableCheck(
         check="freshness",
-        reason="git is not installed or is not executable on PATH",
-        remedy="Install git and make it available on PATH to run freshness",
+        reason=reason,
+        remedy=remedy,
         blocking=configured_gate and config.fail_on_unavailable,
         configured_gate=configured_gate,
     )

@@ -23,6 +23,7 @@ See Also:
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -137,6 +138,37 @@ def _node_end_line(node: ast.AST) -> int:
 # ---------------------------------------------------------------------------
 # Range helpers
 # ---------------------------------------------------------------------------
+
+
+_PHYSICAL_LINE_RE = re.compile(r"[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+")
+
+
+def split_physical_lines(text: str, *, keepends: bool = False) -> list[str]:
+    r"""Split source into the physical lines the Python parser counts.
+
+    ``str.splitlines`` also breaks on form feed, vertical tab, NEL, and the
+    Unicode line and paragraph separators, which the parser treats as
+    ordinary characters. Using it to position line-numbered edits shifts
+    every later index. This split recognizes only LF, CRLF, and CR, so the
+    result indexes align with AST line numbers.
+
+    Args:
+        text: Decoded source text with its original line endings.
+        keepends: Retain each line's terminator, as ``str.splitlines`` does.
+
+    Returns:
+        Physical lines of *text*; an empty text yields an empty list.
+
+    Examples:
+        ```python
+        split_physical_lines("a\x0cb\r\nc")
+        # ['a\x0cb', 'c']
+        ```
+    """
+    lines = _PHYSICAL_LINE_RE.findall(text)
+    if keepends:
+        return lines
+    return [line.rstrip("\r\n") for line in lines]
 
 
 def get_docstring_range(node: ast.AST) -> tuple[int, int] | None:

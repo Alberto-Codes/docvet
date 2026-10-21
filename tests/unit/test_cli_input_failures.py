@@ -1,6 +1,7 @@
 """Observable CLI contracts for failed input and Python source encodings."""
 
 import json
+import subprocess
 
 import pytest
 from typer.testing import CliRunner
@@ -13,8 +14,9 @@ runner = CliRunner()
 
 @pytest.fixture
 def project(tmp_path, monkeypatch):
-    """Create an isolated project with no finding gates and a coverage floor."""
+    """Create an isolated git project with no finding gates and a coverage floor."""
     monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     (tmp_path / "pyproject.toml").write_text(
         "[tool.docvet]\nfail-on = []\n[tool.docvet.presence]\nmin-coverage = 100\n"
     )
@@ -118,6 +120,27 @@ def test_fix_preserves_encoding_newlines_and_dry_run_json(
     assert modified.endswith(f"# untouched café{newline}".encode(encoding))
     stripped = modified.replace(newline.encode(encoding), b"")
     assert b"\r" not in stripped and b"\n" not in stripped
+
+
+def test_fix_keeps_offsets_past_non_newline_separators(project):
+    """A Latin-1 NEL byte before the symbol does not shift the scaffold."""
+    source = (
+        "# coding: latin-1\r\n# page\x85break caf\xe9\r\ndef f(x):\r\n"
+        '    """Do.\r\n\r\n    Args:\r\n        x: V.\r\n    """\r\n'
+        '    raise ValueError("x")\r\n'
+    )
+    path = project / "nel.py"
+    original = source.encode("latin-1")
+    path.write_bytes(original)
+    result = runner.invoke(app, ["--format", "json", "fix", str(path)])
+    assert result.exit_code == 0, result.output
+    modified = path.read_bytes()
+    head, tail = original.split(b'    """\r\n    raise', 1)
+    raises = b"\r\n    Raises:\r\n        ValueError: [TODO: describe when this is raised]\r\n"
+    assert modified.startswith(head + raises)
+    assert modified.endswith(b'    """\r\n    raise' + tail)
+    assert modified.count(b"\x85") == 1
+    assert b"\n" not in modified.replace(b"\r\n", b"")
 
 
 def test_read_failure_is_json_and_diagnostic_once(project, monkeypatch):
