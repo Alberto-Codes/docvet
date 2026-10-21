@@ -63,9 +63,65 @@ The `--format json` option produces a structured JSON object for programmatic co
 - The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"scaffold"` maps to `"medium"`, `"recommended"` maps to `"low"`. It is a convenience alias, not a separate signal.
 - The `summary` object includes `total`, `by_category` (with `required`, `recommended`, and `scaffold` counts), and `files_checked`.
 - A `suppressed` array is included containing findings that were suppressed by inline `# docvet: ignore` comments. Each entry has the same seven fields as a finding.
-- A `run` object reports the outcome of the run itself: `status` (`"passed"`, `"findings"`, or `"unavailable"`), `exit_code`, `exit_reason`, and an `unavailable_checks` array listing every check that could not execute. `status` names **which condition blocked the run**, not everything that happened — a run blocked by a gate that could not execute reports `"unavailable"` even when it also has findings, and `exit_reason` then names both facts. Read `summary.total` to decide whether there is anything to fix, regardless of `status`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
+- A `run` object reports the outcome of the run itself: `status` (`"passed"`, `"findings"`, `"unavailable"`, or `"incomplete"`), `exit_code`, `exit_reason`, and an `unavailable_checks` array listing every check that could not execute. `status` names **which condition blocked the run**, not everything that happened — a run blocked by a gate that could not execute reports `"unavailable"` even when it also has findings, and `exit_reason` then names both facts. Read `summary.total` to decide whether there is anything to fix, regardless of `status`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.
-- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check — or when a `fail_on` check could not run at all, unless the project set `fail-on-unavailable = false`. In JSON output `run.status` tells `findings` and `unavailable` apart.
+- Exit codes: `0` when no active (non-suppressed) findings match a `fail_on` check, `1` when active findings exist in a `fail_on` check — or when a `fail_on` check could not run at all, unless the project set `fail-on-unavailable = false`. Input failures always exit 1; `run.status` distinguishes `findings`, `unavailable`, and `incomplete`.
+
+### Input failures and incomplete analysis
+
+Input failures always exit **1**, independently of `fail-on` and
+`fail-on-unavailable`. Those options control docstring findings and unavailable
+optional checks; they do not waive invalid inputs or failed source analysis.
+`run.status` is `"incomplete"` when any input fails, taking precedence over
+`"unavailable"` and `"findings"`. Findings and unavailable-check details remain
+available alongside the errors.
+
+Every JSON scan result includes `run.input_errors`, an array of objects with
+`file`, `kind`, and `message`. Kinds are `input` (invalid selection), `read`,
+`decode`, `parse`, and `write` (fix failure). A shared failed source is reported
+once per invocation, even when several checks consume it. Empty findings alone
+never prove a successful scan.
+
+The summary retains `files_checked` as the historical selected-file count.
+Additional unique-path counts distinguish `files_attempted` (selected paths plus
+invalid requested targets), `files_analyzed` (successfully processed inputs), and
+`files_failed` (inputs with errors). Invalid explicit targets count as attempted
+but not selected. The analyzed count records successful source decoding/parsing or structural
+processing; it does not prove that every requested check ran. Read
+`run.unavailable_checks` to identify check prerequisites that prevented execution. The package-visibility `coverage` check does not require parsing Python;
+a syntax error alone cannot prevent that structural check from running.
+
+When presence analysis is incomplete, `presence_coverage.complete` and `passed`
+are both `false`. `percentage` is `null` if no input was successfully analyzed;
+otherwise it describes only the successfully analyzed subset. Such a result
+cannot satisfy a coverage threshold. A successfully analyzed file with no
+eligible symbols retains the existing 100% convention. A legitimate empty
+selection exits 0, emits JSON with zero counts, and omits `presence_coverage`
+because no coverage was measured.
+
+| Selection | Behavior |
+|-----------|----------|
+| Missing explicit file | Structured input error, exit 1 |
+| Explicit directory or non-`.py` file | Structured input error, exit 1; use `--all` for a tree |
+| Explicit file matching `exclude` | Checked; explicit files retain their exclusion override |
+| Empty diff, staged selection, or existing empty source tree | Successful empty JSON result |
+| Missing or invalid source root | Structured input error, exit 1 |
+| Mixed valid and invalid inputs | Analyze valid inputs and report the incomplete requested scope |
+
+Source loading follows Python encoding declarations, including ordinary UTF-8,
+UTF-8 BOM, and declared Latin-1. Invalid bytes, unknown encodings, and conflicting
+BOM/declarations are controlled decode failures. `fix` preserves the original
+encoding, BOM, line endings, and unaffected content. If replacement text cannot
+be represented safely, the source is left unchanged and a write failure is
+reported. `--format json fix --dry-run` emits its previews as a `diffs` array
+rather than mixing unified-diff text with JSON.
+
+**Migration from 2.x:** accept `"incomplete"` in status switches, allow nullable
+coverage percentages, inspect `complete` before using a coverage value, and use
+`files_analyzed` rather than interpreting `files_checked` as proof of analysis.
+Scripts that previously relied on ignored invalid targets or skipped parse
+failures must handle exit 1. Valid-input finding rules, exclusion overrides,
+suppression, and quality denominator units remain unchanged.
 
 ### Quality Summary (`--summary`)
 

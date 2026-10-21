@@ -3,7 +3,8 @@
 Resolves which Python files to check based on the selected discovery
 mode: git diff (default), staged files, explicit file list, or full
 codebase scan.  All modes return a sorted ``list[Path]`` of absolute
-file paths.
+file paths. Explicit invalid targets can be collected as structured input
+failures so reporting distinguishes them from legitimate empty selections.
 
 Every git subcommand runs with the environment built by
 :func:`git_env`, which strips the location variables git exports into
@@ -48,6 +49,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path, PurePosixPath
 
 from docvet.config import DocvetConfig
+from docvet.source import InputError
 
 __all__: list[str] = []
 
@@ -151,7 +153,9 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | No
     the repository, working tree, and path prefix from *cwd* rather than
     from any ``GIT_DIR`` inherited from a git hook. Path commands must use
     ``-z`` to disable Git quoting. Binary output avoids newline translation;
-    filesystem decoding preserves the original filenames.
+    filesystem decoding preserves the original filenames. A missing git executable
+    or another process-start failure returns ``None`` just like an unsuccessful
+    git command, allowing full-tree discovery to use its filesystem fallback.
 
     Args:
         args: Git subcommand and arguments (e.g. ``["diff", "--name-only", "-z"]``).
@@ -172,13 +176,18 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | No
         # ['src/foo.py', 'src/bar.py']
         ```
     """
-    result = subprocess.run(
-        ["git", *args],
-        capture_output=True,
-        check=False,
-        cwd=cwd,
-        env=git_env(),
-    )
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            check=False,
+            cwd=cwd,
+            env=git_env(),
+        )
+    except OSError as exc:
+        if warn:
+            print(f"docvet: git {args[0]} failed: {exc}", file=sys.stderr)
+        return None
     if result.returncode != 0:
         if warn:
             stderr = os.fsdecode(result.stderr).strip()
@@ -328,7 +337,9 @@ def _collect_python_files(
     return sorted(paths)
 
 
-def _walk_all(config: DocvetConfig) -> list[Path]:
+def _walk_all(
+    config: DocvetConfig, errors: list[InputError] | None = None
+) -> list[Path]:
     """Discover all Python files under the configured source root.
 
     Tries ``git ls-files`` first for automatic ``.gitignore`` respect,
@@ -338,16 +349,18 @@ def _walk_all(config: DocvetConfig) -> list[Path]:
     Args:
         config: Docvet configuration with ``project_root``, ``src_root``,
             and ``exclude`` fields.
+        errors: Optional structured failure collector; suppresses duplicate notices.
 
     Returns:
         Sorted list of absolute paths to discovered ``.py`` files.
     """
     root = config.project_root / config.src_root
-    if not root.exists():
-        print(
-            f"docvet: src-root '{config.src_root}' not found",
-            file=sys.stderr,
-        )
+    if not root.is_dir():
+        message = f"src-root '{config.src_root}' not found or not a directory"
+        if errors is not None:
+            errors.append(InputError(str(root.absolute()), "input", message))
+        else:
+            print(f"docvet: {message}", file=sys.stderr)
         return []
 
     lines = _run_git(
@@ -363,29 +376,44 @@ def _walk_all(config: DocvetConfig) -> list[Path]:
     return _collect_python_files(root.rglob("*.py"), config)
 
 
-def _discover_explicit_files(files: Sequence[Path]) -> list[Path]:
-    """Filter explicitly provided file paths.
+def _discover_explicit_files(
+    files: Sequence[Path], errors: list[InputError] | None = None
+) -> list[Path]:
+    """Validate explicit Python files without applying automatic exclusions.
 
-    Validates that each path exists and has a ``.py`` suffix, printing
-    a warning for missing files.
+    Explicit targets are deliberate overrides of configured exclusions.
+    Invalid targets are collected when a caller supplies an error list;
+    otherwise a diagnostic is written for direct discovery callers.
 
     Args:
         files: User-provided file paths to validate.
+        errors: Optional structured failure collector.
 
     Returns:
-        Sorted list of absolute paths to existing ``.py`` files.
+        Sorted absolute paths of existing regular Python files.
     """
     paths: list[Path] = []
     for path in files:
-        if path.suffix != ".py":
-            continue
-        if not path.exists():
-            print(
-                f"docvet: file not found: {path}",
-                file=sys.stderr,
-            )
-            continue
-        paths.append(path.resolve())
+        try:
+            resolved = path.resolve()
+            if not path.exists():
+                message = "file not found"
+            elif not path.is_file():
+                message = "target is not a regular Python file"
+            elif path.suffix != ".py":
+                message = "target is not a Python (.py) file"
+            else:
+                paths.append(resolved)
+                continue
+        except (OSError, RuntimeError, ValueError) as exc:
+            resolved = path.absolute()
+            message = f"cannot inspect target: {exc}"
+        if errors is not None:
+            error = InputError(str(resolved), "input", message)
+            if error not in errors:
+                errors.append(error)
+        else:
+            print(f"docvet: {message}: {path}", file=sys.stderr)
     return sorted(paths)
 
 
@@ -399,6 +427,7 @@ def discover_files(
     mode: DiscoveryMode,
     *,
     files: Sequence[Path] = (),
+    errors: list[InputError] | None = None,
 ) -> list[Path]:
     """Discover Python files according to the selected mode.
 
@@ -411,6 +440,8 @@ def discover_files(
         mode: The file discovery strategy to use.
         files: Explicit file paths for ``FILES`` mode. Ignored for
             other modes.
+        errors: Optional structured input failure collector. When supplied,
+            failures are collected instead of printed.
 
     Returns:
         Sorted list of absolute paths to discovered ``.py`` files.
@@ -423,10 +454,10 @@ def discover_files(
         raise ValueError(msg)
 
     if mode is DiscoveryMode.ALL:
-        return _walk_all(config)
+        return _walk_all(config, errors)
 
     if mode is DiscoveryMode.FILES:
-        return _discover_explicit_files(files)
+        return _discover_explicit_files(files, errors)
 
     if mode is DiscoveryMode.DIFF:
         git_args = ["diff", "--name-only", "-z", "--diff-filter=ACMR"]
@@ -434,8 +465,16 @@ def discover_files(
         # STAGED
         git_args = ["diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"]
 
-    lines = _run_git(git_args, cwd=config.project_root)
+    lines = _run_git(git_args, cwd=config.project_root, warn=errors is None)
     if lines is None:
+        if errors is not None:
+            errors.append(
+                InputError(
+                    str(config.project_root),
+                    "input",
+                    "git file discovery failed; check repository context",
+                )
+            )
         return []
 
     discovered: list[Path] = []

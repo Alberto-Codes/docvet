@@ -1,5 +1,7 @@
 """CLI output pipeline — format dispatch, suppression, and exit logic.
 
+Input failures produce incomplete JSON outcomes and one terminal diagnostic.
+
 Handles the unified output pipeline for all CLI commands: applies inline
 suppression filters, resolves output format, dispatches to formatters,
 writes quality summaries, and exits with the code from
@@ -38,6 +40,7 @@ from docvet.cli._suppression import (
 )
 from docvet.config import DocvetConfig
 from docvet.reporting import CheckQuality, RunOutcome, UnavailableCheck
+from docvet.source import InputError, SourceCache
 
 
 def _emit_findings(
@@ -53,6 +56,11 @@ def _emit_findings(
     suppressed: list[Finding] | None = None,
     run: RunOutcome | None = None,
     unavailable: Sequence[UnavailableCheck] = (),
+    input_errors: Sequence[InputError] = (),
+    files_attempted: int | None = None,
+    files_analyzed: int | None = None,
+    files_failed: int = 0,
+    diffs: Sequence[tuple[str, str, str]] | None = None,
 ) -> None:
     """Write findings to stdout or a file in the resolved format.
 
@@ -62,6 +70,11 @@ def _emit_findings(
     (no file is written and nothing is printed to stdout).
 
     Args:
+        input_errors: Structured input failures that make this run incomplete.
+        files_attempted: Unique requested inputs, including invalid targets.
+        files_analyzed: Unique inputs successfully consumed by analysis.
+        files_failed: Unique inputs with processing failures.
+        diffs: Dry-run source replacements, without filesystem mutation.
         resolved_fmt: One of ``"terminal"``, ``"markdown"``, or ``"json"``.
         all_findings: Flattened list of findings across all checks.
         output_path: File path to write to, or ``None`` for stdout.
@@ -84,6 +97,11 @@ def _emit_findings(
             suppressed=suppressed,
             run=run,
             unavailable=unavailable,
+            input_errors=input_errors,
+            files_attempted=files_attempted,
+            files_analyzed=files_analyzed,
+            files_failed=files_failed,
+            diffs=diffs,
         )
         if output_path:
             Path(output_path).write_text(json_output)
@@ -144,6 +162,8 @@ def _resolve_format(fmt_opt: str | None, output_path: str | None) -> str:
 
 def _apply_suppressions(
     findings_by_check: dict[str, list[Finding]],
+    *,
+    cache: SourceCache | None = None,
 ) -> tuple[dict[str, list[Finding]], list[Finding]]:
     """Filter suppressed findings from all checks.
 
@@ -154,6 +174,7 @@ def _apply_suppressions(
     suppression directives.
 
     Args:
+        cache: Shared source documents and input failures for this invocation.
         findings_by_check: Findings grouped by check name.
 
     Returns:
@@ -164,18 +185,22 @@ def _apply_suppressions(
     """
     # Collect unique file paths and cache source + suppression maps.
     all_files: set[str] = set()
-    for findings in findings_by_check.values():
+    for check, findings in findings_by_check.items():
+        if check == "coverage":
+            continue
         for f in findings:
             all_files.add(f.file)
 
+    cache = cache if cache is not None else SourceCache()
     suppression_cache: dict[str, SuppressionMap] = {}
     for file_path in all_files:
-        try:
-            source = Path(file_path).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        document = cache.get(Path(file_path))
+        if document is None:
             suppression_cache[file_path] = SuppressionMap()
             continue
-        suppression_cache[file_path] = parse_suppression_directives(source, file_path)
+        suppression_cache[file_path] = parse_suppression_directives(
+            document.text, file_path
+        )
 
     # Filter each check's findings.
     active_by_check: dict[str, list[Finding]] = {}
@@ -213,6 +238,9 @@ def _output_and_exit(
     coverage_pct: float | None = None,
 ) -> None:
     """Resolve output options, apply suppressions, emit findings, and exit.
+
+    Structured input errors take precedence over finding gates. Coverage is
+    reported as incomplete when any requested input fails.
 
     Implements the unified output pipeline: applies inline suppression
     filters (``# docvet: ignore[rule]``) to partition findings into
@@ -263,7 +291,28 @@ def _output_and_exit(
     )
 
     # 2. Apply suppressions before flattening
-    findings_by_check, all_suppressed = _apply_suppressions(findings_by_check)
+    cache = ctx.obj.get("source_cache", SourceCache())
+    findings_by_check, all_suppressed = _apply_suppressions(
+        findings_by_check, cache=cache
+    )
+    errors = cache.errors
+    selected = ctx.obj.get("selected_paths", set())
+    failed_paths = {Path(error.file).absolute() for error in errors}
+    attempted = (
+        {path.resolve() for path in selected}
+        | set(cache.attempted_paths)
+        | failed_paths
+    )
+    analyzed = set(cache.successful_paths)
+    if "coverage" in checks:
+        analyzed |= {path.resolve() for path in selected}
+    if errors:
+        coverage_pct = None
+        for error in errors:
+            sys.stderr.write(f"error: {error.file}: {error.kind}: {error.message}\n")
+        sys.stderr.write(
+            "Analysis incomplete; requested scope was not fully analyzed.\n"
+        )
 
     # 3. Flatten findings
     all_findings: list[Finding] = []
@@ -271,7 +320,13 @@ def _output_and_exit(
         all_findings.extend(findings)
 
     # 3b. Run summary line, counted from the post-suppression findings
-    if elapsed is not None and not quiet:
+    if elapsed is not None and not quiet and errors:
+        sys.stderr.write(
+            f"Analysis incomplete: {len(attempted)} files attempted, "
+            f"{len(analyzed - failed_paths)} analyzed, {len(failed_paths)} failed; "
+            f"{len(all_findings)} findings in the analyzed subset. ({elapsed:.1f}s)\n"
+        )
+    elif elapsed is not None and not quiet:
         sys.stderr.write(
             _cli_pkg.format_summary(
                 file_count, checks, all_findings, elapsed, coverage_pct=coverage_pct
@@ -283,7 +338,7 @@ def _output_and_exit(
         sys.stderr.write(_cli_pkg.format_verbose_header(file_count, checks))
 
     # 5. Verbose coverage line
-    if verbose and not quiet and presence_stats is not None:
+    if verbose and not quiet and presence_stats is not None and not errors:
         sys.stderr.write(
             _format_coverage_line(presence_stats, config.presence.min_coverage)
         )
@@ -298,7 +353,7 @@ def _output_and_exit(
 
     # 7. Compute quality if --summary and counts available
     quality = None
-    if summary and check_counts is not None:
+    if summary and check_counts is not None and (not errors or analyzed - failed_paths):
         quality = _cli_pkg.compute_quality(findings_by_check, check_counts)
 
     # 8. Resolve the run outcome so the exit code and JSON status agree
@@ -307,6 +362,7 @@ def _output_and_exit(
         config,
         presence_stats=presence_stats,
         unavailable=unavailable,
+        input_errors=errors,
     )
 
     # 9. Resolve format, emit findings
@@ -323,10 +379,19 @@ def _output_and_exit(
         suppressed=all_suppressed if resolved_fmt == "json" else None,
         run=outcome if resolved_fmt == "json" else None,
         unavailable=unavailable,
+        input_errors=errors,
+        files_attempted=len(attempted) if "selected_paths" in ctx.obj else file_count,
+        files_analyzed=len(analyzed - failed_paths)
+        if "selected_paths" in ctx.obj
+        else file_count,
+        files_failed=len(failed_paths),
+        diffs=ctx.obj.get("fix_diffs"),
     )
 
     # 10. Quality summary to stderr (after findings, before exit)
     if summary and not quiet and quality is not None:
+        if errors:
+            sys.stderr.write("Observed subset quality (analysis incomplete):\n")
         sys.stderr.write(_cli_pkg.format_quality_summary(quality))
 
     raise typer.Exit(outcome.exit_code)

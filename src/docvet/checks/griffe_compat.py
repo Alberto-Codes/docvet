@@ -2,7 +2,9 @@
 
 Captures warnings from griffe's Google-style docstring parser to detect
 parameter/type mismatches and formatting issues that would cause rendering
-problems in mkdocs-material + mkdocstrings documentation.
+problems in mkdocs-material + mkdocstrings documentation. CLI and MCP runs
+share decoded sources through an encoding-aware loader that retains griffe
+package context and inherited signatures.
 
 Examples:
     Run the griffe compatibility check on a list of files:
@@ -29,9 +31,11 @@ from typing import TYPE_CHECKING, Literal, cast
 
 if TYPE_CHECKING:
     from griffe import Alias as GriffeAlias
+    from griffe import Module as GriffeModule
     from griffe import Object as GriffeObject
 
 from docvet.checks._finding import Finding
+from docvet.source import SourceCache
 
 try:
     import griffe
@@ -248,7 +252,98 @@ def _load_and_check_packages(
     return findings
 
 
-def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
+def _check_source_documents(
+    src_root: Path,
+    file_set: set[Path],
+    handler: _WarningCollector,
+    source_cache: SourceCache,
+) -> list[Finding]:
+    """Parse selected package sources without reopening them as UTF-8.
+
+    Override the pinned griffe 2.x loader's source-reading hook, forwarding
+    decoded text to its public visitor. Retain package hierarchy, collections,
+    and inherited signatures. Unselected dependency failures use a separate
+    cache so loading context does not expand the requested diagnostic scope.
+
+    Args:
+        src_root: Root containing Python packages.
+        file_set: Selected absolute source paths.
+        handler: Collector for docstring parser warnings.
+        source_cache: Invocation cache shared by analysis consumers.
+
+    Returns:
+        Rendering findings from successfully decoded selected package files.
+    """
+    if griffe is None:
+        return []
+    auxiliary_cache = SourceCache()
+    griffe_api = griffe
+
+    class EncodingAwareLoader(griffe_api.GriffeLoader):
+        """Keep griffe's package context while supplying decoded source.
+
+        Examples:
+            Instantiate with the same options as ``griffe.GriffeLoader``.
+        """
+
+        def _visit_module(
+            self,
+            module_name: str,
+            module_path: Path,
+            parent: GriffeModule | None = None,
+        ) -> GriffeModule:
+            """Visit a decoded source while retaining loader package context.
+
+            Args:
+                module_name: Name assigned by the loader.
+                module_path: Source path selected by the loader.
+                parent: Containing package, when present.
+
+            Returns:
+                Visited module, or an empty shell for an unreadable source.
+            """
+            cache = (
+                source_cache if module_path.resolve() in file_set else auxiliary_cache
+            )
+            document = cache.get(module_path)
+            # An empty shell retains package topology when an initializer failed;
+            # the shared cache already carries the selected input's error.
+            code = document.text if document is not None else ""
+            self.lines_collection[module_path] = code.splitlines(keepends=False)
+            return griffe_api.visit(
+                module_name,
+                filepath=module_path,
+                code=code,
+                parent=parent,
+                extensions=self.extensions,
+                docstring_parser=self.docstring_parser,
+                docstring_options=self.docstring_options,
+                lines_collection=self.lines_collection,
+                modules_collection=self.modules_collection,
+            )
+
+    loader = EncodingAwareLoader(
+        search_paths=[str(src_root)], docstring_parser="google", allow_inspection=False
+    )
+    findings: list[Finding] = []
+    for child in sorted(src_root.iterdir()):
+        if not child.is_dir() or not (child / "__init__.py").exists():
+            continue
+        try:
+            package = loader.load(child.name)
+        except (griffe.LoadingError, ModuleNotFoundError, OSError, SyntaxError):
+            continue
+        for obj in _walk_objects(package, file_set):
+            findings.extend(_collect_object_findings(obj, handler))
+    return findings
+
+
+def check_griffe_compat(
+    src_root: Path,
+    files: Sequence[Path],
+    *,
+    source_cache: SourceCache | None = None,
+) -> list[Finding]:
     """Check Python packages for griffe docstring compatibility issues.
 
     Loads each package under src_root via griffe, captures parser warnings,
@@ -258,6 +353,9 @@ def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
     Args:
         src_root: Root source directory containing Python packages.
         files: Sequence of file paths to check (used to filter griffe objects).
+        source_cache: Shared decoded source cache. When supplied, use griffe's
+            source visitor so declared encodings and failed siblings cannot
+            prevent selected valid files from being checked.
 
     Returns:
         A list of Finding objects for docstring rendering compatibility issues.
@@ -272,7 +370,12 @@ def check_griffe_compat(src_root: Path, files: Sequence[Path]) -> list[Finding]:
     handler = _WarningCollector()
     griffe_logger.addHandler(handler)
     try:
-        findings = _load_and_check_packages(src_root, file_set, handler)
+        if source_cache is None:
+            findings = _load_and_check_packages(src_root, file_set, handler)
+        else:
+            findings = _check_source_documents(
+                src_root, file_set, handler, source_cache
+            )
     finally:
         griffe_logger.removeHandler(handler)
 

@@ -73,6 +73,7 @@ def _non_timing_lines(output: str) -> list[str]:
 
 @pytest.fixture(autouse=True)
 def _mock_config_and_discovery(mocker):
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mocker.patch("docvet.cli.load_config", return_value=DocvetConfig())
     mocker.patch("docvet.cli.discover_files", return_value=[Path("/fake/file.py")])
     mocker.patch(
@@ -482,7 +483,7 @@ def test_check_when_invoked_calls_discover_files_with_diff_mode(mocker):
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["check"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=(), errors=[])
 
 
 def test_check_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
@@ -490,7 +491,9 @@ def test_check_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["check", "--staged"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.STAGED, files=())
+    mock_discover.assert_called_once_with(
+        ANY, DiscoveryMode.STAGED, files=(), errors=[]
+    )
 
 
 def test_check_when_invoked_with_all_calls_discover_with_all_mode(mocker):
@@ -498,7 +501,7 @@ def test_check_when_invoked_with_all_calls_discover_with_all_mode(mocker):
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["check", "--all"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=())
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=(), errors=[])
 
 
 def test_check_when_invoked_with_files_calls_discover_with_files_mode(mocker):
@@ -507,7 +510,7 @@ def test_check_when_invoked_with_files_calls_discover_with_files_mode(mocker):
     )
     runner.invoke(app, ["check", "--files", "foo.py"])
     mock_discover.assert_called_once_with(
-        ANY, DiscoveryMode.FILES, files=[Path("foo.py")]
+        ANY, DiscoveryMode.FILES, files=[Path("foo.py")], errors=[]
     )
 
 
@@ -522,13 +525,17 @@ def test_check_when_invoked_passes_config_to_run_stubs(mocker):
     mock_griffe = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
     runner.invoke(app, ["check"])
     mock_enrichment.assert_called_once_with(
-        fake_files, fake_config, show_progress=False
+        fake_files, fake_config, show_progress=False, cache=mocker.ANY
     )
     mock_freshness.assert_called_once_with(
-        fake_files, fake_config, discovery_mode=DiscoveryMode.DIFF, show_progress=False
+        fake_files,
+        fake_config,
+        discovery_mode=DiscoveryMode.DIFF,
+        show_progress=False,
+        cache=mocker.ANY,
     )
     mock_coverage.assert_called_once_with(fake_files, fake_config)
-    mock_griffe.assert_called_once_with(fake_files, fake_config)
+    mock_griffe.assert_called_once_with(fake_files, fake_config, cache=mocker.ANY)
 
 
 def test_check_when_discovery_returns_empty_does_not_call_stubs(mocker):
@@ -550,7 +557,7 @@ def test_check_when_invoked_with_multiple_files_converts_all_paths(mocker):
     )
     runner.invoke(app, ["check", "--files", "foo.py", "--files", "bar.py"])
     mock_discover.assert_called_once_with(
-        ANY, DiscoveryMode.FILES, files=[Path("foo.py"), Path("bar.py")]
+        ANY, DiscoveryMode.FILES, files=[Path("foo.py"), Path("bar.py")], errors=[]
     )
 
 
@@ -564,6 +571,7 @@ def test_freshness_when_invoked_with_drift_passes_freshness_mode(mocker):
         freshness_mode=FreshnessMode.DRIFT,
         discovery_mode=DiscoveryMode.DIFF,
         show_progress=False,
+        cache=mocker.ANY,
     )
 
 
@@ -573,7 +581,7 @@ def test_coverage_when_invoked_calls_discover_and_run_coverage(mocker):
     )
     mock_run = mocker.patch("docvet.cli._run_coverage", return_value=([], 0))
     runner.invoke(app, ["coverage"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=(), errors=[])
     mock_run.assert_called_once_with([Path("/fake/file.py")], ANY)
 
 
@@ -582,7 +590,7 @@ def test_coverage_when_invoked_with_all_calls_discover_with_all_mode(mocker):
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["coverage", "--all"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=())
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=(), errors=[])
 
 
 def test_coverage_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
@@ -590,7 +598,9 @@ def test_coverage_when_invoked_with_staged_calls_discover_with_staged_mode(mocke
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["coverage", "--staged"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.STAGED, files=())
+    mock_discover.assert_called_once_with(
+        ANY, DiscoveryMode.STAGED, files=(), errors=[]
+    )
 
 
 def test_griffe_when_invoked_calls_discover_and_run_griffe(mocker):
@@ -599,8 +609,8 @@ def test_griffe_when_invoked_calls_discover_and_run_griffe(mocker):
     )
     mock_run = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
     runner.invoke(app, ["griffe"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
-    mock_run.assert_called_once_with([Path("/fake/file.py")], ANY)
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=(), errors=[])
+    mock_run.assert_called_once_with([Path("/fake/file.py")], ANY, cache=mocker.ANY)
 
 
 def test_griffe_subcommand_sphinx_mode_skips_with_message(mocker):
@@ -641,7 +651,9 @@ def test_enrichment_when_invoked_with_staged_calls_discover_with_staged_mode(moc
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["enrichment", "--staged"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.STAGED, files=())
+    mock_discover.assert_called_once_with(
+        ANY, DiscoveryMode.STAGED, files=(), errors=[]
+    )
 
 
 def test_freshness_when_verbose_and_files_found_shows_file_count(mocker):
@@ -680,7 +692,7 @@ def test_run_enrichment_when_file_has_findings_prints_formatted_output(mocker):
         ),
     ]
     mocker.patch("docvet.cli.check_enrichment", return_value=findings)
-    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def do_stuff(): pass\n")
     mocker.patch("docvet.cli.discover_files", return_value=[Path("src/app.py")])
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
@@ -690,7 +702,7 @@ def test_run_enrichment_when_file_has_findings_prints_formatted_output(mocker):
 def test_run_enrichment_when_no_findings_produces_no_output(mocker):
     mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
     mocker.patch("docvet.cli.check_enrichment", return_value=[])
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     result = runner.invoke(app, ["enrichment"])
     assert result.exit_code == 0
     assert _non_timing_lines(result.output) == []
@@ -698,21 +710,21 @@ def test_run_enrichment_when_no_findings_produces_no_output(mocker):
 
 def test_run_enrichment_when_syntax_error_skips_file_with_warning(mocker):
     mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
-    mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def bad(:\n")
     mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
     mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
     result = runner.invoke(app, ["enrichment"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     # Warning is emitted with err=True; consider both stdout and stderr.
     output = result.output + getattr(result, "stderr", "")
-    assert "warning:" in output
-    assert "failed to parse, skipping" in output
+    assert "error:" in output
+    assert ": parse:" in output
     mock_check.assert_not_called()
 
 
 def test_run_enrichment_when_multiple_files_processes_all(mocker):
     mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
     files = [Path("/a.py"), Path("/b.py"), Path("/c.py")]
     mocker.patch("docvet.cli.discover_files", return_value=files)
@@ -725,7 +737,7 @@ def test_run_enrichment_passes_config_enrichment_and_str_file_path(mocker):
     mocker.patch("docvet.cli._run_enrichment", side_effect=_run_enrichment)
     fake_config = DocvetConfig()
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
     file_path = Path("/fake/file.py")
     mocker.patch("docvet.cli.discover_files", return_value=[file_path])
@@ -761,7 +773,7 @@ def test_run_freshness_when_file_has_findings_prints_formatted_output(mocker):
     ]
     mocker.patch("docvet.cli.check_freshness_diff", return_value=findings)
     mocker.patch("docvet.cli.subprocess.run")
-    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def do_stuff(): pass\n")
     mocker.patch("docvet.cli.discover_files", return_value=[Path("src/app.py")])
     result = runner.invoke(app, ["freshness"])
     assert result.exit_code == 0
@@ -775,7 +787,7 @@ def test_run_freshness_when_no_findings_produces_no_output(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
     mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
     mocker.patch("docvet.cli.subprocess.run")
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     result = runner.invoke(app, ["freshness"])
     assert result.exit_code == 0
     assert _non_timing_lines(result.output) == []
@@ -783,20 +795,20 @@ def test_run_freshness_when_no_findings_produces_no_output(mocker):
 
 def test_run_freshness_when_syntax_error_skips_file_with_warning(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
-    mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def bad(:\n")
     mock_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
     mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
     result = runner.invoke(app, ["freshness"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     output = result.output + getattr(result, "stderr", "")
-    assert "warning:" in output
-    assert "failed to parse, skipping" in output
+    assert "error:" in output
+    assert ": parse:" in output
     mock_check.assert_not_called()
 
 
 def test_run_freshness_when_multiple_files_processes_all(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mocker.patch("docvet.cli.subprocess.run")
     mock_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
     files = [Path("/a.py"), Path("/b.py"), Path("/c.py")]
@@ -808,7 +820,7 @@ def test_run_freshness_when_multiple_files_processes_all(mocker):
 
 def test_run_freshness_passes_file_path_diff_output_and_tree(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mock_subprocess = mocker.patch("docvet.cli.subprocess.run")
     mock_subprocess.return_value.returncode = 0
     mock_subprocess.return_value.stdout = "diff --git a/f.py b/f.py\n"
@@ -829,7 +841,7 @@ def test_run_freshness_passes_file_path_diff_output_and_tree(mocker):
 
 def test_run_freshness_drift_calls_check_freshness_drift_per_file(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mock_blame = mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
     mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
     mock_diff_check = mocker.patch("docvet.cli.check_freshness_diff", return_value=[])
@@ -859,7 +871,7 @@ def test_run_freshness_drift_prints_findings_in_correct_format(mocker):
     ]
     mocker.patch("docvet.cli.check_freshness_drift", return_value=findings)
     mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
-    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def do_stuff(): pass\n")
     mocker.patch("docvet.cli.discover_files", return_value=[Path("src/app.py")])
     result = runner.invoke(app, ["freshness", "--mode", "drift"])
     assert result.exit_code == 0
@@ -871,7 +883,7 @@ def test_run_freshness_drift_no_findings_produces_no_output(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
     mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
     mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     result = runner.invoke(app, ["freshness", "--mode", "drift"])
     assert result.exit_code == 0
     assert _non_timing_lines(result.output) == []
@@ -885,7 +897,7 @@ def test_run_freshness_drift_passes_config_freshness_to_check(mocker):
         freshness=FreshnessConfig(drift_threshold=15, age_threshold=45)
     )
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
     mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
     file_path = Path("/fake/file.py")
@@ -899,20 +911,20 @@ def test_run_freshness_drift_passes_config_freshness_to_check(mocker):
 
 def test_run_freshness_drift_handles_syntax_error_with_warning(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
-    mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def bad(:\n")
     mock_check = mocker.patch("docvet.cli.check_freshness_drift", return_value=[])
     mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
     result = runner.invoke(app, ["freshness", "--mode", "drift"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     output = result.output + getattr(result, "stderr", "")
-    assert "warning:" in output
-    assert "failed to parse, skipping" in output
+    assert "error:" in output
+    assert ": parse:" in output
     mock_check.assert_not_called()
 
 
 def test_run_freshness_drift_processes_multiple_files(mocker):
     mocker.patch("docvet.cli._run_freshness", side_effect=_run_freshness)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     mocker.patch(
         "docvet.cli._get_git_blame",
         side_effect=lambda fp, _root: f"blame-{fp.stem}",
@@ -947,6 +959,8 @@ def test_get_git_diff_when_diff_mode_runs_git_diff(mocker):
         check=False,
         cwd=Path("/project"),
         env=_git_env_without_overrides(),
+        encoding="utf-8",
+        errors="replace",
     )
 
 
@@ -965,6 +979,8 @@ def test_get_git_diff_when_files_mode_runs_git_diff(mocker):
         check=False,
         cwd=Path("/project"),
         env=_git_env_without_overrides(),
+        encoding="utf-8",
+        errors="replace",
     )
 
 
@@ -983,6 +999,8 @@ def test_get_git_diff_when_staged_mode_runs_git_diff_cached(mocker):
         check=False,
         cwd=Path("/project"),
         env=_git_env_without_overrides(),
+        encoding="utf-8",
+        errors="replace",
     )
 
 
@@ -1001,6 +1019,8 @@ def test_get_git_diff_when_all_mode_runs_git_diff_head(mocker):
         check=False,
         cwd=Path("/project"),
         env=_git_env_without_overrides(),
+        encoding="utf-8",
+        errors="replace",
     )
 
 
@@ -1034,6 +1054,8 @@ def test_get_git_blame_runs_correct_command(mocker):
         check=False,
         cwd=Path("/project"),
         env=_git_env_without_overrides(),
+        encoding="utf-8",
+        errors="replace",
     )
 
 
@@ -1121,6 +1143,7 @@ def test_freshness_subcommand_passes_discovery_mode_to_run_freshness(mocker):
         freshness_mode=FreshnessMode.DIFF,
         discovery_mode=DiscoveryMode.STAGED,
         show_progress=False,
+        cache=mocker.ANY,
     )
 
 
@@ -1128,7 +1151,11 @@ def test_check_subcommand_passes_discovery_mode_to_run_freshness(mocker):
     mock_freshness = mocker.patch("docvet.cli._run_freshness", return_value=([], 0))
     runner.invoke(app, ["check", "--all"])
     mock_freshness.assert_called_once_with(
-        ANY, ANY, discovery_mode=DiscoveryMode.ALL, show_progress=False
+        ANY,
+        ANY,
+        discovery_mode=DiscoveryMode.ALL,
+        show_progress=False,
+        cache=mocker.ANY,
     )
 
 
@@ -1139,9 +1166,15 @@ def test_check_subcommand_passes_show_progress_true_when_tty(mocker):
     mock_enrichment = mocker.patch("docvet.cli._run_enrichment", return_value=([], 0))
     mock_freshness = mocker.patch("docvet.cli._run_freshness", return_value=([], 0))
     runner.invoke(app, ["check"])
-    mock_enrichment.assert_called_once_with(ANY, ANY, show_progress=True)
+    mock_enrichment.assert_called_once_with(
+        ANY, ANY, show_progress=True, cache=mocker.ANY
+    )
     mock_freshness.assert_called_once_with(
-        ANY, ANY, discovery_mode=DiscoveryMode.DIFF, show_progress=True
+        ANY,
+        ANY,
+        discovery_mode=DiscoveryMode.DIFF,
+        show_progress=True,
+        cache=mocker.ANY,
     )
 
 
@@ -1151,7 +1184,9 @@ def test_enrichment_subcommand_passes_show_progress_true_when_tty(mocker):
     mock_sys.stdout.isatty.return_value = True
     mock_enrichment = mocker.patch("docvet.cli._run_enrichment", return_value=([], 0))
     runner.invoke(app, ["enrichment"])
-    mock_enrichment.assert_called_once_with(ANY, ANY, show_progress=True)
+    mock_enrichment.assert_called_once_with(
+        ANY, ANY, show_progress=True, cache=mocker.ANY
+    )
 
 
 def test_freshness_subcommand_passes_show_progress_true_when_tty(mocker):
@@ -1166,6 +1201,7 @@ def test_freshness_subcommand_passes_show_progress_true_when_tty(mocker):
         freshness_mode=FreshnessMode.DIFF,
         discovery_mode=DiscoveryMode.DIFF,
         show_progress=True,
+        cache=mocker.ANY,
     )
 
 
@@ -1315,7 +1351,7 @@ def test_run_griffe_passes_correct_src_root_path(tmp_path, mocker):
     mocker.patch("docvet.cli.discover_files", return_value=[src_dir / "app.py"])
     result = runner.invoke(app, ["griffe"])
     assert result.exit_code == 0
-    mock_check.assert_called_once_with(src_dir, ANY)
+    mock_check.assert_called_once_with(src_dir, ANY, source_cache=mocker.ANY)
 
 
 def test_run_griffe_with_default_config_uses_project_root_dot(tmp_path, mocker):
@@ -1327,7 +1363,7 @@ def test_run_griffe_with_default_config_uses_project_root_dot(tmp_path, mocker):
     mocker.patch("docvet.cli.discover_files", return_value=[tmp_path / "app.py"])
     result = runner.invoke(app, ["griffe"])
     assert result.exit_code == 0
-    mock_check.assert_called_once_with(tmp_path / ".", ANY)
+    mock_check.assert_called_once_with(tmp_path / ".", ANY, source_cache=mocker.ANY)
 
 
 def test_run_griffe_passes_discovered_files(tmp_path, mocker):
@@ -1340,7 +1376,7 @@ def test_run_griffe_passes_discovered_files(tmp_path, mocker):
     mock_check = mocker.patch("docvet.cli.check_griffe_compat", return_value=[])
     result = runner.invoke(app, ["griffe"])
     assert result.exit_code == 0
-    mock_check.assert_called_once_with(ANY, files)
+    mock_check.assert_called_once_with(ANY, files, source_cache=mocker.ANY)
 
 
 def test_run_griffe_when_griffe_not_installed_skips_without_failing(mocker):
@@ -1482,7 +1518,7 @@ def test_check_runs_griffe_when_available(mocker):
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
     mock_griffe = mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
     runner.invoke(app, ["--verbose", "check"])
-    mock_griffe.assert_called_once_with(ANY, ANY)
+    mock_griffe.assert_called_once_with(ANY, ANY, cache=mocker.ANY)
 
 
 def test_griffe_when_invoked_with_all_calls_discover_with_all_mode(mocker):
@@ -1490,7 +1526,7 @@ def test_griffe_when_invoked_with_all_calls_discover_with_all_mode(mocker):
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["griffe", "--all"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=())
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.ALL, files=(), errors=[])
 
 
 def test_griffe_when_invoked_with_staged_calls_discover_with_staged_mode(mocker):
@@ -1498,7 +1534,9 @@ def test_griffe_when_invoked_with_staged_calls_discover_with_staged_mode(mocker)
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["griffe", "--staged"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.STAGED, files=())
+    mock_discover.assert_called_once_with(
+        ANY, DiscoveryMode.STAGED, files=(), errors=[]
+    )
 
 
 def test_run_griffe_when_griffe_not_installed_fail_on_takes_priority_over_verbose(
@@ -1593,7 +1631,7 @@ def test_run_enrichment_direct_returns_list_of_findings(mocker):
         ),
     ]
     mocker.patch("docvet.cli.check_enrichment", return_value=findings)
-    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def do_stuff(): pass\n")
     result, count = _run_enrichment([Path("src/app.py")], DocvetConfig())
     assert isinstance(result, list)
     assert len(result) == 1
@@ -1608,14 +1646,14 @@ def test_run_enrichment_direct_returns_list_of_findings(mocker):
 
 def test_run_enrichment_direct_empty_findings_returns_empty_list(mocker):
     mocker.patch("docvet.cli.check_enrichment", return_value=[])
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     result, count = _run_enrichment([Path("src/app.py")], DocvetConfig())
     assert result == []
     assert count > 0
 
 
 def test_run_enrichment_direct_syntax_error_skips_file(mocker):
-    mocker.patch.object(Path, "read_text", return_value="def bad(:\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def bad(:\n")
     mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("invalid syntax"))
     mock_check = mocker.patch("docvet.cli.check_enrichment", return_value=[])
     result, count = _run_enrichment([Path("src/bad.py")], DocvetConfig())
@@ -1644,7 +1682,7 @@ def test_run_enrichment_direct_multiple_files_accumulates_findings(mocker):
         ]
 
     mocker.patch("docvet.cli.check_enrichment", side_effect=_fake_check)
-    mocker.patch.object(Path, "read_text", return_value="x = 1\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
     result, count = _run_enrichment(
         [Path("a.py"), Path("b.py"), Path("c.py")], DocvetConfig()
     )
@@ -1675,7 +1713,7 @@ def test_run_freshness_diff_direct_returns_list_of_findings(mocker):
     ]
     mocker.patch("docvet.cli.check_freshness_diff", return_value=findings)
     mocker.patch("docvet.cli.subprocess.run")
-    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def do_stuff(): pass\n")
     result, count = _run_freshness([Path("src/app.py")], DocvetConfig())
     assert isinstance(result, list)
     assert len(result) == 1
@@ -1703,7 +1741,7 @@ def test_run_freshness_drift_direct_returns_list_of_findings(mocker):
     ]
     mocker.patch("docvet.cli.check_freshness_drift", return_value=findings)
     mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
-    mocker.patch.object(Path, "read_text", return_value="def do_stuff(): pass\n")
+    mocker.patch.object(Path, "read_bytes", return_value=b"def do_stuff(): pass\n")
     result, count = _run_freshness(
         [Path("src/app.py")], DocvetConfig(), freshness_mode=FreshnessMode.DRIFT
     )
@@ -1737,7 +1775,7 @@ def test_run_freshness_drift_direct_mixed_files_skips_syntax_errors(mocker):
             return "def bad(:\n"
         return "def func(): pass\n"
 
-    mocker.patch.object(Path, "read_text", _fake_read)
+    mocker.patch.object(Path, "read_bytes", lambda self: _fake_read(self).encode())
     mocker.patch("docvet.cli._get_git_blame", return_value="blame data")
     mocker.patch("docvet.cli.check_freshness_drift", return_value=good_findings)
     result, _count = _run_freshness(
@@ -2009,7 +2047,11 @@ class TestOutputAndExit:
         code = self._call(ctx, {"enrichment": [finding]}, config, 1, ["enrichment"])
         assert code == 1
         self.mock_determine_run_outcome.assert_called_once_with(
-            {"enrichment": [finding]}, config, presence_stats=None, unavailable=()
+            {"enrichment": [finding]},
+            config,
+            presence_stats=None,
+            unavailable=(),
+            input_errors=(),
         )
 
     def test_exit_code_0_when_fail_on_check_has_no_findings(self):
@@ -2019,7 +2061,11 @@ class TestOutputAndExit:
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
         self.mock_determine_run_outcome.assert_called_once_with(
-            findings_by_check, config, presence_stats=None, unavailable=()
+            findings_by_check,
+            config,
+            presence_stats=None,
+            unavailable=(),
+            input_errors=(),
         )
 
     def test_exit_code_0_when_fail_on_is_empty(self, make_finding):
@@ -2030,7 +2076,11 @@ class TestOutputAndExit:
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
         self.mock_determine_run_outcome.assert_called_once_with(
-            findings_by_check, config, presence_stats=None, unavailable=()
+            findings_by_check,
+            config,
+            presence_stats=None,
+            unavailable=(),
+            input_errors=(),
         )
 
     def test_no_color_env_var_suppresses_ansi(self, monkeypatch, make_finding):
@@ -2070,7 +2120,11 @@ class TestOutputAndExit:
         code = self._call(ctx, findings_by_check, config, 1, ["enrichment"])
         assert code == 0
         self.mock_determine_run_outcome.assert_called_once_with(
-            findings_by_check, config, presence_stats=None, unavailable=()
+            findings_by_check,
+            config,
+            presence_stats=None,
+            unavailable=(),
+            input_errors=(),
         )
 
     def test_format_json_calls_format_json_with_findings(self, capsys, make_finding):
@@ -2085,8 +2139,13 @@ class TestOutputAndExit:
             min_coverage=0.0,
             quality=None,
             suppressed=[],
+            files_attempted=5,
+            files_analyzed=5,
+            files_failed=0,
+            diffs=None,
             run=self.passed_outcome,
             unavailable=(),
+            input_errors=(),
         )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'
@@ -2102,8 +2161,13 @@ class TestOutputAndExit:
             min_coverage=0.0,
             quality=None,
             suppressed=[],
+            files_attempted=5,
+            files_analyzed=5,
+            files_failed=0,
+            diffs=None,
             run=self.passed_outcome,
             unavailable=(),
+            input_errors=(),
         )
         captured = capsys.readouterr()
         assert captured.out == '{"findings":[]}\n'
@@ -2546,7 +2610,7 @@ def test_check_when_invoked_with_positional_args_calls_discover_with_files_mode(
     )
     runner.invoke(app, ["check", "foo.py", "bar.py"])
     mock_discover.assert_called_once_with(
-        ANY, DiscoveryMode.FILES, files=[Path("foo.py"), Path("bar.py")]
+        ANY, DiscoveryMode.FILES, files=[Path("foo.py"), Path("bar.py")], errors=[]
     )
 
 
@@ -2563,7 +2627,7 @@ def test_check_when_invoked_without_args_uses_diff_mode(mocker):
         "docvet.cli.discover_files", return_value=[Path("/fake/file.py")]
     )
     runner.invoke(app, ["check"])
-    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=())
+    mock_discover.assert_called_once_with(ANY, DiscoveryMode.DIFF, files=(), errors=[])
 
 
 def test_enrichment_when_invoked_with_positional_args_exits_successfully():
@@ -2724,7 +2788,7 @@ class TestRunPresence:
             "docvet.cli.check_presence",
             side_effect=[([finding1], stats1), ([finding2], stats2)],
         )
-        mocker.patch("pathlib.Path.read_text", return_value="x = 1")
+        mocker.patch("pathlib.Path.read_bytes", return_value=b"x = 1")
 
         findings, agg = _run_presence([Path("a.py"), Path("b.py")], DocvetConfig())
         assert len(findings) == 2
@@ -2743,15 +2807,15 @@ class TestRunPresence:
         call_count = 0
         original_parse = __import__("ast").parse
 
-        def _fake_parse(source, **kwargs):
+        def _fake_parse(source, *args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 raise SyntaxError("bad")
-            return original_parse(source, **kwargs)
+            return original_parse(source, *args, **kwargs)
 
         mocker.patch("docvet.cli.ast.parse", side_effect=_fake_parse)
-        mocker.patch("pathlib.Path.read_text", return_value="x = 1")
+        mocker.patch("pathlib.Path.read_bytes", return_value=b"x = 1")
 
         findings, agg = _run_presence([Path("bad.py"), Path("good.py")], DocvetConfig())
         assert len(findings) == 1
@@ -2767,7 +2831,7 @@ class TestRunPresence:
 
     def test_all_syntax_errors_returns_zero_stats(self, mocker):
         """10.28: All files with SyntaxError returns PresenceStats(0, 0)."""
-        mocker.patch("pathlib.Path.read_text", return_value="def (")
+        mocker.patch("pathlib.Path.read_bytes", return_value=b"def (")
         mocker.patch("docvet.cli.ast.parse", side_effect=SyntaxError("bad"))
 
         findings, agg = _run_presence(
@@ -2845,6 +2909,7 @@ class TestPresenceInCheck:
             [Path("/fake/file.py")],
             DocvetConfig(),
             show_progress=False,
+            cache=mocker.ANY,
         )
 
     def test_presence_disabled_skips_the_check(self, mocker):

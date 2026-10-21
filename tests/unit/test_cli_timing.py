@@ -144,6 +144,7 @@ class TestCheckSummaryLine:
     def test_summary_includes_finding_count_when_findings_present(
         self, cli_runner, mocker, make_finding
     ):
+        mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
         mocker.patch(
             "docvet.cli._run_enrichment",
             return_value=([make_finding(category="required")], 10),

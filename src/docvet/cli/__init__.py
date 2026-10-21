@@ -1,5 +1,7 @@
 """Typer CLI application for docvet.
 
+Source loading and structured failures are shared across each invocation.
+
 Defines the ``typer.Typer`` app with subcommands for each check layer
 (``presence``, ``enrichment``, ``freshness``, ``coverage``, ``griffe``,
 ``lsp``, ``mcp``), the ``fix`` scaffolding command, the combined
@@ -100,6 +102,7 @@ from docvet.reporting import (
     format_verbose_header,  # noqa: F401 – re-exported for test mocks
     write_report,  # noqa: F401 – re-exported for test mocks
 )
+from docvet.source import InputError, SourceCache
 
 __all__: list[str] = []
 
@@ -257,7 +260,9 @@ def _discover_and_handle(
     Pulls config from ``ctx.obj["docvet_config"]``, converts the raw
     ``--files`` strings to :class:`~pathlib.Path` objects, calls
     :func:`discover_files`, and handles the empty-list case with a
-    user-friendly message. Prints file count to stderr when verbose
+    user-friendly message and a complete empty JSON result. Invalid explicit
+    targets are retained as structured errors for the output pipeline.
+    Prints file count to stderr when verbose
     is enabled and quiet is not.
 
     Args:
@@ -271,15 +276,22 @@ def _discover_and_handle(
         Discovered Python file paths.
 
     Raises:
-        typer.Exit: If no Python files are found (exit code 0).
+        typer.Exit: After reporting a legitimate empty selection (exit code 0).
     """
     config: DocvetConfig = ctx.obj["docvet_config"]
     explicit = [Path(f) for f in files] if files else ()
-    discovered = discover_files(config, mode, files=explicit)
+    errors: list[InputError] = []
+    cache = SourceCache()
+    ctx.obj["source_cache"] = cache
+    discovered = discover_files(config, mode, files=explicit, errors=errors)
+    ctx.obj["selected_paths"] = set(discovered)
+    for error in errors:
+        cache.record_error(error)
 
-    if not discovered:
-        typer.echo("No Python files to check.", err=True)
-        raise typer.Exit(0)
+    if not discovered and not errors:
+        if not ctx.obj.get("quiet"):
+            typer.echo("No Python files to check.", err=True)
+        _output_and_exit(ctx, {}, config, 0, [])
 
     if ctx.obj.get("verbose") and not ctx.obj.get("quiet"):
         typer.echo(f"Found {len(discovered)} file(s) to check", err=True)
@@ -375,6 +387,9 @@ def main(
 ) -> None:
     """Global options for docvet.
 
+    Input failures are retained in the invocation source cache and reported
+    as incomplete analysis with a nonzero exit status.
+
     Stores all global options in ``ctx.obj`` so subcommands can access
     them. The ``config`` path is stored as ``config_path`` for use by
     subcommands that need the raw pyproject.toml location.
@@ -410,6 +425,7 @@ def main(
 
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
+    ctx.obj["source_cache"] = SourceCache()
     ctx.obj["summary"] = summary
     ctx.obj["format"] = fmt.value if fmt is not None else None
     ctx.obj["output"] = str(output) if output is not None else None
@@ -457,6 +473,9 @@ def check(
     files: FilesOption = None,
 ) -> None:
     """Run all enabled checks.
+
+    Input failures are retained in the invocation source cache and reported
+    as incomplete analysis with a nonzero exit status.
 
     Runs presence (if enabled), enrichment, freshness, coverage, and
     griffe (if installed and compatible) checks in sequence. Each check
@@ -513,21 +532,28 @@ def check(
     if config.presence.enabled:
         start = time.perf_counter()
         presence_findings, agg_stats = _run_presence(
-            discovered, config, show_progress=show_progress
+            discovered,
+            config,
+            show_progress=show_progress,
+            cache=ctx.obj["source_cache"],
         )
         elapsed = time.perf_counter() - start
         _write_timing("presence", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     start = time.perf_counter()
     enrichment_findings, enrichment_count = _run_enrichment(
-        discovered, config, show_progress=show_progress
+        discovered, config, show_progress=show_progress, cache=ctx.obj["source_cache"]
     )
     elapsed = time.perf_counter() - start
     _write_timing("enrichment", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     start = time.perf_counter()
     freshness_findings, freshness_count = _run_freshness(
-        discovered, config, discovery_mode=discovery_mode, show_progress=show_progress
+        discovered,
+        config,
+        discovery_mode=discovery_mode,
+        show_progress=show_progress,
+        cache=ctx.obj["source_cache"],
     )
     elapsed = time.perf_counter() - start
     _write_timing("freshness", file_count, elapsed, verbose=verbose, quiet=quiet)
@@ -544,7 +570,9 @@ def check(
         _write_unavailable_notice(griffe_unavailable, note=verbose and not quiet)
     else:
         start = time.perf_counter()
-        griffe_findings, griffe_count = _run_griffe(discovered, config)
+        griffe_findings, griffe_count = _run_griffe(
+            discovered, config, cache=ctx.obj["source_cache"]
+        )
         elapsed = time.perf_counter() - start
         _write_timing("griffe", file_count, elapsed, verbose=verbose, quiet=quiet)
 
@@ -613,6 +641,9 @@ def presence(
 ) -> None:
     """Check for missing docstrings.
 
+    Input failures are retained in the invocation source cache and reported
+    as incomplete analysis with a nonzero exit status.
+
     Coverage percentage is derived from :attr:`PresenceStats.percentage`.
     Displays a progress bar on stderr when connected to a TTY.
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
@@ -642,7 +673,10 @@ def presence(
 
     start = time.perf_counter()
     findings, agg_stats = _run_presence(
-        discovered, config, show_progress=sys.stderr.isatty()
+        discovered,
+        config,
+        show_progress=sys.stderr.isatty(),
+        cache=ctx.obj["source_cache"],
     )
     elapsed = time.perf_counter() - start
     _output_and_exit(
@@ -679,6 +713,9 @@ def enrichment(
 ) -> None:
     """Check for missing docstring sections.
 
+    Input failures are retained in the invocation source cache and reported
+    as incomplete analysis with a nonzero exit status.
+
     Displays a progress bar on stderr when connected to a TTY.
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
@@ -708,7 +745,10 @@ def enrichment(
 
     start = time.perf_counter()
     findings, symbol_count = _run_enrichment(
-        discovered, config, show_progress=sys.stderr.isatty()
+        discovered,
+        config,
+        show_progress=sys.stderr.isatty(),
+        cache=ctx.obj["source_cache"],
     )
     elapsed = time.perf_counter() - start
     _output_and_exit(
@@ -747,6 +787,9 @@ def freshness(
 ) -> None:
     """Detect stale docstrings.
 
+    Input failures are retained in the invocation source cache and reported
+    as incomplete analysis with a nonzero exit status.
+
     Displays a progress bar on stderr when connected to a TTY.
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
@@ -782,6 +825,7 @@ def freshness(
         freshness_mode=mode,
         discovery_mode=discovery_mode,
         show_progress=sys.stderr.isatty(),
+        cache=ctx.obj["source_cache"],
     )
     elapsed = time.perf_counter() - start
     _output_and_exit(
@@ -879,6 +923,9 @@ def griffe(
 ) -> None:
     """Check mkdocs rendering compatibility via griffe.
 
+    Input failures are retained in the invocation source cache and reported
+    as incomplete analysis with a nonzero exit status.
+
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count. Passes file count to ``_output_and_exit``
@@ -924,7 +971,9 @@ def griffe(
         )
 
     start = time.perf_counter()
-    findings, griffe_file_count = _run_griffe(discovered, config)
+    findings, griffe_file_count = _run_griffe(
+        discovered, config, cache=ctx.obj["source_cache"]
+    )
     elapsed = time.perf_counter() - start
     _output_and_exit(
         ctx,
@@ -1009,6 +1058,9 @@ def fix(
 ) -> None:
     """Scaffold missing docstring sections.
 
+    Input failures are retained in the invocation source cache and reported
+    as incomplete analysis with a nonzero exit status.
+
     Runs enrichment to find missing sections, inserts scaffolded
     placeholders, and writes modified files.  Use ``--dry-run`` to
     preview changes as a unified diff without modifying files.
@@ -1044,8 +1096,15 @@ def fix(
         docvet_config,
         dry_run=dry_run,
         show_progress=sys.stderr.isatty() and not dry_run,
+        cache=ctx.obj["source_cache"],
     )
     elapsed = time.perf_counter() - start
+
+    if dry_run and ctx.obj.get("format") == "json":
+        ctx.obj["fix_diffs"] = diffs
+        _output_and_exit(
+            ctx, {"enrichment": findings}, docvet_config, len(discovered), ["fix"]
+        )
 
     if dry_run:
         # Print unified diffs to stdout, summary to stderr.
@@ -1057,7 +1116,7 @@ def fix(
                 tofile=f"b/{path}",
             )
             sys.stdout.writelines(diff_lines)
-        if not quiet:
+        if not quiet and not ctx.obj["source_cache"].errors:
             if files_modified:
                 sys.stderr.write(
                     f"Would fix {files_modified} of {len(discovered)} files"
@@ -1068,10 +1127,12 @@ def fix(
                     f"No fixes needed (0 of {len(discovered)} files)."
                     f" ({elapsed:.1f}s)\n"
                 )
-        raise typer.Exit(0)
+        _output_and_exit(
+            ctx, {"enrichment": findings}, docvet_config, len(discovered), ["fix"]
+        )
 
     # Non-dry-run: report scaffold findings via output pipeline.
-    if not quiet:
+    if not quiet and not ctx.obj["source_cache"].errors:
         if files_modified:
             sys.stderr.write(
                 f"Fixed {files_modified} of {len(discovered)} files"
