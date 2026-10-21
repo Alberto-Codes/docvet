@@ -4,6 +4,12 @@ Detects mismatches between function signature parameters and ``Args:``
 section entries.  Supports both Google-style and Sphinx/RST conventions
 via the module-level ``_active_style`` in the parent package.
 
+Documented names are compared with stars stripped, so ``*args:`` and
+``args:`` both match a ``*args`` parameter (and likewise for
+``**kwargs``).  ``exclude_args_kwargs`` only decides whether an
+undocumented star parameter counts as missing; a documented one is
+never reported as extra.
+
 See Also:
     [`docvet.checks.enrichment`][]: Orchestrator and dispatch table.
     [`docvet.checks._finding`][]: ``Finding`` dataclass.
@@ -215,6 +221,23 @@ def _extract_signature_params(
     return params
 
 
+def _star_param_names(node: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
+    """Return the bare names of a function's ``*vararg`` and ``**kwarg``.
+
+    Used by the extra-param rule so that a documented ``*args:`` or
+    ``args:`` entry always matches an existing star parameter,
+    independent of ``exclude_args_kwargs`` (which only governs whether
+    an undocumented star parameter counts as missing).
+
+    Args:
+        node: The function AST node whose star parameters to collect.
+
+    Returns:
+        A set holding zero, one, or two bare parameter names.
+    """
+    return {star.arg for star in (node.args.vararg, node.args.kwarg) if star}
+
+
 def _check_missing_param_in_docstring(
     symbol: Symbol,
     sections: set[str],
@@ -287,7 +310,9 @@ def _check_extra_param_in_docstring(
         file_path: Source file path for finding records.
 
     Returns:
-        A finding naming the extraneous entries, or ``None``.
+        A finding naming the extraneous entries, or ``None``.  A
+        documented ``*args``/``args`` or ``**kwargs``/``kwargs`` entry
+        matching the signature's star parameter is never extraneous.
     """
     if "Args" not in sections:
         return None
@@ -297,7 +322,9 @@ def _check_extra_param_in_docstring(
     if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
         return None
 
-    sig_params = _extract_signature_params(node, config)
+    # Star params exist in the signature whatever exclude_args_kwargs says,
+    # so a documented ``*args``/``args`` entry is never extraneous.
+    sig_params = _extract_signature_params(node, config) | _star_param_names(node)
     doc_params = _parse_args_entries(
         symbol.docstring, style=_enrichment_pkg._active_style
     )
