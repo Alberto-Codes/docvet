@@ -126,6 +126,12 @@ Dev: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-randomly`, `ruff`, `ty`
 - **Publishing**: OIDC trusted publishing to PyPI (no API tokens). Triggered by `release: [published]` event.
 - **Floating tag**: `v1` tag updated on each release whose major version is still 1, for GitHub Action consumers. A 2.x release leaves `v1` where it is rather than handing `docvet@v1` consumers a breaking action.
 
+## Issues
+
+- **Labels**: priority `P1`-`P4`, fit `pi-fit`/`judgment`, size `size-S/M/L`, state `needs-triage`/`question`/`ready`/`blocked`, kind `task`/`epic`; status is inferred, never labelled
+- **Triage how-to**: [`docs/triage.md`](docs/triage.md) — saved searches, groom procedure, contract comment, run receipt, release cycle, native `blocked by` relations
+- **New issues**: every form in `.github/ISSUE_TEMPLATE/` applies `needs-triage`
+
 ## CI/CD Pipeline Lessons
 
 Hard-won lessons from the v1.0.0 launch — reference these when modifying workflows:

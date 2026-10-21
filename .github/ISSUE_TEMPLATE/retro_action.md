@@ -2,7 +2,7 @@
 name: Retro Action
 about: Retrospective action item (typically created by retrospective workflow)
 title: 'Retro Action: '
-labels: 'retro-action'
+labels: 'retro-action, needs-triage'
 assignees: ''
 ---
 

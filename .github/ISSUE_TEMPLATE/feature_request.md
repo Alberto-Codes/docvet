@@ -2,7 +2,7 @@
 name: Feature Request
 about: Propose a new feature (feeds into BMAD Quick Spec)
 title: 'Feature: '
-labels: 'feature, backlog'
+labels: 'feature, needs-triage'
 assignees: ''
 ---
 
