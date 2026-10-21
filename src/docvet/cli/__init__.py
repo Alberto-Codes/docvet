@@ -460,10 +460,10 @@ def check(
     griffe (if installed and compatible) checks in sequence. Each check
     runner returns a ``(findings, item_count)`` tuple; item counts are
     collected into ``check_counts`` for per-check quality percentage
-    computation when ``--summary`` is active. Griffe is skipped when it
-    is not installed or ``docstring-style`` is ``"sphinx"`` (incompatible
-    parser), and a presence gate is skipped when ``enabled`` is
-    ``false``; either is then reported as unavailable rather than
+    computation. Griffe is skipped when it is not installed or
+    ``docstring-style`` is ``"sphinx"`` (incompatible parser), and a
+    presence gate is skipped when ``enabled`` is ``false``; either is
+    then reported as unavailable rather than
     counted as a check that ran. When the config gated on the skipped
     check -- listed in ``fail-on``, or a ``min-coverage`` floor gating
     presence -- that gate certified nothing, so the run reports an
@@ -701,7 +701,7 @@ def enrichment(
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count. Passes symbol count to ``_output_and_exit``
-    for ``--summary`` quality percentage computation.
+    for quality percentage computation.
 
     Args:
         ctx: Typer invocation context.
@@ -770,7 +770,7 @@ def freshness(
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count. Passes symbol count to ``_output_and_exit``
-    for ``--summary`` quality percentage computation.
+    for quality percentage computation.
 
     Args:
         ctx: Typer invocation context.
@@ -840,7 +840,7 @@ def coverage(
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count. Passes package directory count to
-    ``_output_and_exit`` for ``--summary`` quality percentage computation.
+    ``_output_and_exit`` for quality percentage computation.
 
     Args:
         ctx: Typer invocation context.
@@ -903,7 +903,7 @@ def griffe(
     Uses three-tier verbosity: ``--quiet`` suppresses all non-finding
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count. Passes file count to ``_output_and_exit``
-    for ``--summary`` quality percentage computation. Skips the check
+    for quality percentage computation. Skips the check
     when griffe is not installed or ``docstring-style`` is ``"sphinx"``
     (griffe's Google parser is incompatible with RST docstrings). When
     ``griffe`` is listed in ``fail-on`` the skip exits 1, since that
