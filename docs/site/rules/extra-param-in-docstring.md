@@ -41,7 +41,7 @@ Documenting parameters that don't exist misleads callers into passing arguments 
 
 ## Configuration
 
-By default, `*args` and `**kwargs` are excluded from agreement checks. When `exclude-args-kwargs = true` (the default), documenting `*args`/`**kwargs` in `Args:` triggers this rule because they are not in the checked parameter set. Set `exclude-args-kwargs = false` to include them in agreement checks (matches pydoclint's default behavior where `--should-document-star-arguments = true`).
+A documented `*args`/`**kwargs` entry never triggers this rule, whichever spelling it uses (`*args:` or `args:`; Google style recommends `*args:`). A star entry that names no signature parameter is still reported. The `exclude-args-kwargs` option does not affect this rule. It decides only whether an undocumented `*args`/`**kwargs` counts as missing (under `missing-param-in-docstring` and `undocumented-init-params`). Set `exclude-args-kwargs = false` to require their documentation (matches pydoclint's default behavior where `--should-document-star-arguments = true`).
 
 ```toml
 [tool.docvet.enrichment]
