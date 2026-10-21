@@ -1,10 +1,12 @@
 # Freshness Check
 
-The freshness check implements **Layer 4 (Accuracy)** of docvet's quality model. It detects stale docstrings — code that changed without a corresponding docstring update — using git history analysis. Two modes offer different trade-offs: **diff mode** for fast feedback on recent changes, and **drift mode** for a comprehensive sweep of historical staleness. {{ rule_count("freshness") }} rules across two modes.
+The freshness check implements **Layer 4 (Accuracy)** of docvet's quality model. It flags potentially stale docstrings using git history heuristics, including code changes without corresponding docstring updates and docstring age. Two modes offer different trade-offs: **diff mode** for fast feedback on recent changes, and **drift mode** for a codebase sweep for potential historical staleness. {{ rule_count("freshness") }} rules across two modes.
 
 ```bash
 docvet freshness --all
 ```
+
+These are review signals, not semantic verification. An implementation change may leave its docstring correct; an incorrect docstring may be edited alongside code and produce no finding. Structural agreement is checked separately by enrichment rules.
 
 ## Modes
 
@@ -25,7 +27,7 @@ If the docstring *was* updated in the same diff, the finding is suppressed entir
 
 ### Drift Mode
 
-Drift mode uses `git blame --line-porcelain` to extract per-line timestamps, then compares when code was last modified versus when the docstring was last touched. It finds docstrings that have gradually fallen behind over time.
+Drift mode uses `git blame --line-porcelain` to extract per-line timestamps, then compares when code was last modified versus when the docstring was last touched. It flags timestamp gaps and old docstrings for review; age alone does not imply incorrect prose.
 
 Two thresholds control sensitivity:
 

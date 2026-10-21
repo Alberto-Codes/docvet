@@ -10,13 +10,13 @@ A developer renames a parameter, adds a new exception path, removes a return val
 
 This isn't a hypothetical. Research shows that incorrect documentation degrades LLM task success by 22.6 percentage points — while missing documentation has no statistically significant effect ([Macke & Doyle, NAACL 2024](https://arxiv.org/abs/2404.03114)). Wrong is worse than absent.
 
-Most Python projects already lint docstring **style** with ruff's D rules. Some check **presence** — whether docstrings exist at all. But nobody checks whether docstrings are **true**. That's the gap docvet fills.
+Ruff's opt-in D rules cover style and presence; its preview DOC rules add structural checks. pydoclint checks structural agreement across arguments, returns, yields, raises, attributes, and type hints. docvet combines structural checks with history-based staleness signals and renderer diagnostics. See the [dated, source-linked comparison](https://github.com/Alberto-Codes/docvet#why-docvet). None of these checks proves that prose is semantically true.
 
 As the [2025 DORA report](https://cloud.google.com/resources/content/2025-dora-ai-assisted-software-development-report) puts it: "AI doesn't fix a team; it amplifies what's already there." Stale docstrings don't just confuse humans — they actively degrade the AI tools your team relies on.
 
 ## See It in Action
 
-Here's a function with real docstring gaps — the kind that pass ruff and exist (so interrogate is happy) but actively mislead:
+Here's a function whose docstring exists but omits parameters, returns, and raised exceptions:
 
 ```python
 def fetch_user(user_id: int, *, include_deleted: bool = False) -> User:
@@ -39,7 +39,7 @@ def fetch_user(user_id: int, *, include_deleted: bool = False) -> User:
     return result
 ```
 
-This docstring exists and is Google-style formatted. ruff sees no issues. A human reviewer can spot the missing `include_deleted` parameter, but docvet focuses on structural gaps that AST analysis can detect automatically — like the two `raise` statements with no `Raises` section:
+Presence alone does not catch these omissions. Ruff and pydoclint can report structural gaps depending on selected rules and configuration. docvet's AST checks include parameter agreement and missing sections; this excerpt shows the missing `Raises` finding:
 
 ```text
 src/myapp/users.py:4: missing-raises     Function 'fetch_user' raises LookupError, ValueError but has no Raises: section [required]
@@ -72,7 +72,7 @@ def fetch_user(user_id: int, *, include_deleted: bool = False) -> User:
     """
 ```
 
-That's the difference between a docstring that exists and one that's complete. The first passes style checks. The second passes quality checks — and gives AI agents the context they need to use the function correctly.
+The expanded docstring documents the omitted structure and gives readers more context. A reviewer still needs to verify that the descriptions match the intended behavior.
 
 ## The Six-Layer Quality Model
 
@@ -88,7 +88,7 @@ Is the docstring formatted consistently? Google-style, NumPy-style, or Sphinx-st
 Does the docstring cover what the code actually does? A function that raises exceptions needs a `Raises` section. A class with attributes needs an `Attributes` section. A generator needs `Yields`. docvet's [`enrichment`](checks/enrichment.md) check uses AST analysis to detect these gaps — [{{ rule_count("enrichment") }} rules](checks/enrichment.md) covering Raises, Yields, Receives, Warns, Attributes, Examples, and more.
 
 **Layer 4 — Accuracy.**
-Does the docstring still match the code? This is the most dangerous layer when it fails — research shows misleading documentation reduces LLM fault localization accuracy to 25.63% across 750,000 tasks ([Haroon et al., 2025](https://arxiv.org/abs/2504.04372)). docvet's [`freshness`](checks/freshness.md) check uses git diff and git blame to flag code that changed without a corresponding docstring update.
+Does the docstring still match the code? This is the most dangerous layer when it fails — research shows misleading documentation reduces LLM fault localization accuracy to 25.63% across 750,000 tasks ([Haroon et al., 2025](https://arxiv.org/abs/2504.04372)). docvet's [`freshness`](checks/freshness.md) check uses git diff and git blame as staleness heuristics. Changes without docstring updates and old timestamps suggest review; they do not establish an error. Updating code and prose together does not establish correctness either.
 
 **Layer 5 — Rendering.**
 Will the docstring render correctly in mkdocs? Griffe parser warnings indicate structural problems that produce broken or missing documentation on your site. docvet's [`griffe`](checks/griffe.md) check captures these warnings before they reach production.
@@ -96,7 +96,7 @@ Will the docstring render correctly in mkdocs? Griffe parser warnings indicate s
 **Layer 6 — Visibility.**
 Will documentation generators even find the file? A Python package missing `__init__.py` in a parent directory is invisible to mkdocstrings. docvet's [`coverage`](checks/coverage.md) check finds these gaps.
 
-Layer 1 was historically handled by tools like interrogate. docvet's `presence` check now covers this natively, so a single `docvet check` run covers layers 1 and 3–6. Combined with ruff for layer 2, two tools give you the complete stack.
+Layer 1 was historically handled by tools like interrogate. docvet's `presence` check now covers this natively, so a single `docvet check` run covers layers 1 and 3–6. Ruff can provide style checks alongside these signals; human review remains necessary for semantic accuracy.
 
 ## When to Use Each Check
 
@@ -114,14 +114,14 @@ Running `docvet check` executes all enabled checks in a single pass. You can als
 
 docvet is designed to complement ruff, not replace it:
 
-- **ruff** enforces docstring **style** — formatting, conventions, section ordering (D rules).
-- **docvet** enforces docstring **quality** — presence, completeness, accuracy, rendering, and visibility.
+- **ruff** offers style and presence checks (D rules), plus partial structural completeness checks (preview DOC rules).
+- **docvet** combines presence metrics, structural completeness, staleness heuristics, rendering diagnostics, and package visibility checks.
 
-Together, they cover the full quality stack. ruff makes sure your docstrings look right. docvet makes sure they're right.
+Enable the rules that fit your project. Passing checks does not certify semantic accuracy.
 
 ```text
-ruff check .          # Style (layer 2)
-docvet check --all    # Everything else (layers 1, 3–6)
+ruff check .          # Configured Ruff rules
+docvet check --all    # Structural checks and history/rendering signals
 ```
 
 !!! info "Further Reading"

@@ -1,14 +1,14 @@
 # docvet
 
-docvet is a Python CLI tool that checks whether docstrings are present, complete, accurate, and renderable. It covers layers 1 and 3-6 of its quality model; layer 2 (style) is handled by ruff.
+docvet is a Python CLI tool that checks docstring presence, structural completeness, potential staleness, and rendering compatibility. It covers layers 1 and 3-6 of its quality model; layer 2 (style) is handled by ruff.
 
 ## Quality Model
 
 | Layer | Check | What it catches |
 |-------|-------|-----------------|
 | 1. Presence | `presence` | Public symbols missing docstrings + coverage reporting |
-| 3. Completeness | `enrichment` | Missing Raises, Yields, Attributes, Examples, and 6 more sections |
-| 4. Accuracy | `freshness` | Docstrings that fell out of sync with code (git diff + blame) |
+| 3. Completeness | `enrichment` | Missing sections, parameter agreement, and other structural checks |
+| 4. Accuracy | `freshness` | Potentially stale docstrings (git diff + blame heuristics) |
 | 5. Rendering | `griffe` | Warnings that break mkdocs-material + mkdocstrings output |
 | 6. Visibility | `coverage` | Packages missing `__init__.py` (invisible to mkdocs) |
 
@@ -34,7 +34,7 @@ pip install docvet[griffe]
 | `docvet check` | Run all checks on files changed since last commit |
 | `docvet check --staged` | Run checks on staged files only |
 | `docvet enrichment` | Check for missing docstring sections |
-| `docvet freshness` | Detect stale docstrings via git |
+| `docvet freshness` | Flag potentially stale docstrings via git |
 | `docvet coverage` | Find packages invisible to mkdocs |
 | `docvet griffe` | Check mkdocs rendering compatibility |
 
@@ -60,8 +60,8 @@ A check in `fail-on` that cannot run — most often `griffe` without the `docvet
 
 ## What Each Check Does
 
-- **enrichment** -- Flags functions, classes, and modules missing required docstring sections (Raises, Yields, Receives, Warns, Attributes, Examples, cross-references, and more). 10 rules.
-- **freshness** -- Detects docstrings that no longer match the code, using git diff (immediate) and git blame (drift over time). 5 rules.
+- **enrichment** -- Flags functions, classes, and modules missing required docstring sections (Raises, Yields, Receives, Warns, Attributes, Examples, cross-references, and more). 21 rules.
+- **freshness** -- Flags potential staleness using git diff (immediate) and git blame (drift over time); it does not verify semantic accuracy. 5 rules.
 - **coverage** -- Finds package directories without `__init__.py`, which makes them invisible to mkdocs. 1 rule.
 - **griffe** -- Captures griffe parser warnings that would break mkdocs rendering. 3 rules.
 

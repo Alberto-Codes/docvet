@@ -215,7 +215,7 @@ Analyzes Python AST to detect missing Raises, Yields, Attributes, Examples, and 
 
 ### `docvet freshness`
 
-Detect stale docstrings.
+Flag potential staleness using git history heuristics.
 
 ```bash
 docvet freshness --all                # diff mode (default)
@@ -228,7 +228,7 @@ docvet freshness --all --mode drift   # drift mode
 
 **Diff mode** maps git diff hunks to AST symbols and flags code changes without matching docstring updates. Fast, targeted feedback.
 
-**Drift mode** uses git blame timestamps to find docstrings that haven't been updated relative to their code. Sweeps the entire codebase for long-stale documentation.
+**Drift mode** uses git blame timestamps to find docstrings that haven't been updated relative to their code. Sweeps the entire codebase for timestamp-based review signals, not semantic errors.
 
 ### `docvet coverage`
 

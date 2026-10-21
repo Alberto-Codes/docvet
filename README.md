@@ -13,18 +13,22 @@
 
 ## Why docvet?
 
-ruff checks how your docstrings look. interrogate checks if they exist (but is unmaintained). docvet checks if they're right — and now covers presence too. Existing tools cover style; docvet delivers the layers they miss:
+docvet combines docstring presence metrics, structural checks, history-based staleness signals, and renderer diagnostics in one CLI, with editor and agent interfaces. These checks help reviewers find documentation gaps; they do not prove that prose describes runtime behavior correctly.
 
 | Layer | Check | ruff | interrogate | pydoclint | **docvet** |
 |-------|-------|------|-------------|-----------|------------|
-| 1. Presence | "Does a docstring exist?" | -- | Yes (unmaintained) | -- | **Yes** |
-| 2. Style | "Is it formatted correctly?" | Yes | -- | -- | -- |
-| 3. Completeness | "Does it have all required sections?" | -- | -- | Partial | **Yes** |
-| 4. Accuracy | "Does it match the current code?" | -- | -- | -- | **Yes** |
-| 5. Rendering | "Will mkdocs render it correctly?" | -- | -- | -- | **Yes** |
-| 6. Visibility | "Will mkdocs even see the file?" | -- | -- | -- | **Yes** |
+| 1. Presence | "Does a docstring exist?" | Yes (D rules, opt-in) | Yes, with coverage metrics | Skips absent docstrings | **Yes, with coverage metrics** |
+| 2. Style | "Is it formatted consistently?" | Yes (D rules, opt-in) | -- | Some parsing/style checks | Limited format checks |
+| 3. Completeness | "Do sections and code structure agree?" | Partial (D rules; DOC rules in preview) | -- | Arguments, returns, yields, raises, attributes, type hints | **AST-based section and agreement checks** |
+| 4. Accuracy | "What needs review for staleness?" | Structural checks above | -- | Structural checks above | **Git diff/blame heuristics; no semantic proof** |
+| 5. Rendering | "Are there parser warnings?" | -- | -- | -- | **Griffe diagnostics** |
+| 6. Visibility | "Is package discovery incomplete?" | -- | -- | -- | **Missing `__init__.py` checks** |
 
-**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 21 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, cross-references, parameter agreement, and more. Add presence (coverage metrics + threshold enforcement), freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 32 rules across 5 checks, in territory no other tool touches.
+Comparison reviewed **2026-10-21** against primary documentation: Ruff's [D103 presence rule](https://docs.astral.sh/ruff/rules/undocumented-public-function/) and [DOC501 exception completeness rule](https://docs.astral.sh/ruff/rules/docstring-missing-exception/) (requires `--preview` and rule selection), [pydoclint's supported checks and styles](https://jsh9.github.io/pydoclint/), and [interrogate's coverage documentation](https://interrogate.readthedocs.io/en/latest/). Capabilities depend on enabled rules and configuration; `--` means no corresponding check is described in these sources.
+
+**pydoclint** checks arguments, returns, yields, raises, class attributes, and type hints across Google, NumPy, and Sphinx styles. docvet's enrichment alone has 21 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, cross-references, parameter agreement, and more. Add presence (coverage metrics + threshold enforcement), freshness (git diff/blame staleness signals), griffe rendering compatibility, and mkdocs coverage: 32 rules across 5 checks. Rule totals measure catalog entries, not equivalent coverage between tools.
+
+Structural agreement checks compare documented elements with code structure. Freshness uses change history to suggest review: code can change without invalidating prose, and simultaneous code/docstring edits can still leave incorrect prose. Neither establishes semantic correctness.
 
 **[Quickstart](#quickstart)** | **[GitHub Action](#github-action)** | **[Pre-commit](#pre-commit)** | **[Configuration](#configuration)** | **[AI Agent Integration](#ai-agent-integration)** | **[Docs](https://alberto-codes.github.io/docvet/)**
 
@@ -34,9 +38,9 @@ ruff checks how your docstrings look. interrogate checks if they exist (but is u
 `missing-docstring` `overload-has-docstring`
 
 **Enrichment** (completeness) -- 21 rules:
-`missing-raises` `missing-returns` `missing-yields` `missing-receives` `missing-warns` `missing-deprecation` `missing-param-in-docstring` `extra-param-in-docstring` `missing-other-parameters` `missing-attributes` `undocumented-init-params` `missing-typed-attributes` `missing-examples` `missing-cross-references` `extra-raises-in-docstring` `extra-yields-in-docstring` `extra-returns-in-docstring` `missing-return-type` `trivial-docstring` `prefer-fenced-code-blocks`
+`missing-raises` `missing-returns` `missing-yields` `missing-receives` `missing-warns` `missing-deprecation` `missing-param-in-docstring` `extra-param-in-docstring` `missing-other-parameters` `missing-attributes` `undocumented-init-params` `missing-typed-attributes` `missing-examples` `missing-cross-references` `extra-raises-in-docstring` `extra-yields-in-docstring` `extra-returns-in-docstring` `missing-return-type` `trivial-docstring` `prefer-fenced-code-blocks` `scaffold-incomplete`
 
-**Freshness** (accuracy) -- 5 rules:
+**Freshness** (staleness signals) -- 5 rules:
 `stale-signature` `stale-body` `stale-import` `stale-drift` `stale-age`
 
 **Griffe** (rendering) -- 3 rules:
@@ -159,8 +163,8 @@ fail-on = ["enrichment", "freshness", "coverage", "griffe"]
 | `docvet check --staged` | Run all checks on staged files only |
 | `docvet presence` | Check for missing docstrings with coverage metrics |
 | `docvet enrichment` | Check for missing docstring sections |
-| `docvet freshness` | Detect stale docstrings via git |
-| `docvet freshness --mode drift` | Sweep for long-stale docstrings via git blame |
+| `docvet freshness` | Flag potentially stale docstrings via git |
+| `docvet freshness --mode drift` | Review potential staleness via git blame |
 | `docvet coverage` | Find files invisible to mkdocs |
 | `docvet griffe` | Check mkdocs rendering compatibility |
 | `docvet fix` | Scaffold missing docstring sections |
@@ -180,7 +184,7 @@ AI coding agents rely on docstrings as context when generating and modifying cod
 
 As the [2025 DORA report](https://cloud.google.com/resources/content/2025-dora-ai-assisted-software-development-report) puts it: "AI doesn't fix a team; it amplifies what's already there." The [only signal correlating with AI productivity is code quality](https://stackoverflow.blog/2026/02/04/code-smells-for-ai-agents-q-and-a-with-eno-reyes-of-factory).
 
-docvet's freshness checking catches the accuracy gap that stale docs create, and its enrichment rules ensure the docstring sections that agents use as context are complete. Run `docvet check` in your CI, pre-commit hooks, or agent toolchain.
+docvet's freshness heuristics flag potential staleness for review, and its enrichment rules check supported docstring sections against code structure. Run `docvet check` in your CI, pre-commit hooks, or agent toolchain.
 
 ## Badge
 

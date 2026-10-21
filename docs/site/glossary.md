@@ -53,8 +53,8 @@ highlighted terms on any page to see their tooltip definitions.
     sections such as Raises, Yields, Attributes, and Examples.
 
 **Freshness check**
-:   Docvet's layer 4 check that detects stale docstrings — code that has
-    changed without a corresponding docstring update.
+:   Docvet's layer 4 check that flags potential staleness using git history
+    and age heuristics. It does not verify semantic accuracy.
 
 **Coverage check**
 :   Docvet's layer 6 check that detects missing `__init__.py` files in Python
@@ -117,7 +117,8 @@ highlighted terms on any page to see their tooltip definitions.
 
 **Stale docstring**
 :   A docstring that has not been updated to reflect recent code changes.
-    Detected by the freshness check in both diff mode and drift mode.
+    Freshness flags potential staleness in diff and drift modes; review is
+    needed to determine whether prose is actually outdated.
 
 ## Infrastructure & Tooling
 
@@ -154,8 +155,8 @@ highlighted terms on any page to see their tooltip definitions.
 
 **Interrogate**
 :   A third-party Python tool for docstring presence checking. Docvet's
-    presence check supersedes it by adding coverage metrics and fail-on
-    integration.
+    presence check also offers coverage metrics, with docvet's fail-on
+    integration. Interrogate provides its own coverage reporting and thresholds.
 
 ## CLI & Configuration
 
