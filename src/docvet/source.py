@@ -232,7 +232,7 @@ class SourceCache:
         self._documents[path] = None
         try:
             raw = path.read_bytes()
-        except (OSError, UnicodeError) as exc:
+        except (OSError, UnicodeError, ValueError) as exc:
             self.record_error(InputError(str(path), "read", str(exc)))
             return None
         try:

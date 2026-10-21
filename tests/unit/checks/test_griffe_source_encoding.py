@@ -30,7 +30,7 @@ def test_griffe_checks_declared_encoding_with_shared_cache(
     cache = SourceCache()
     findings = check_griffe_compat(tmp_path, [module], source_cache=cache)
     assert [f.rule for f in findings] == ["griffe-missing-type"]
-    assert findings[0].file == str(module)
+    assert findings[0].file == module.as_posix()
     assert not cache.errors
 
 
