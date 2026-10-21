@@ -2,6 +2,16 @@
 
 ## [2.0.3](https://github.com/Alberto-Codes/docvet/compare/v2.0.2...v2.0.3) (2026-10-21)
 
+### Compatibility and guidance
+
+This patch corrects published guidance and metadata; detection behavior is unchanged.
+
+- CLI findings for `missing-other-parameters` now explain that `**kwargs` needs either an entry for the actual var-keyword parameter in `Args:` (starred or bare spelling) or an `Other Parameters:` section. The MCP `docvet_rules` catalog reports the matching `recommended` category and documents both remedies; it no longer suggests that `*args` triggers this rule.
+- `exclude-args-kwargs` controls whether undocumented star parameters count as missing under `missing-param-in-docstring` and `undocumented-init-params`; it does not control extra-parameter findings.
+- README counts now match the 32-rule catalog (21 enrichment rules), with regression checks and generated documentation counts. Competitor comparisons now acknowledge Ruff presence/preview checks and pydoclint's supported checks/styles. Freshness is described as a history-based review heuristic, not semantic proof.
+
+The 2.x release leaves the floating `v1` GitHub Action tag unchanged.
+
 
 ### Bug Fixes
 
