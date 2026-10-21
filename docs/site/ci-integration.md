@@ -41,7 +41,7 @@ against.
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v6
-          - uses: Alberto-Codes/docvet@v1
+          - uses: Alberto-Codes/docvet@v3.0.0
     ```
 
 === "Selective checks"
@@ -54,7 +54,7 @@ against.
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v6
-          - uses: Alberto-Codes/docvet@v1
+          - uses: Alberto-Codes/docvet@v3.0.0
             with:
               checks: 'enrichment,freshness'
     ```
@@ -67,9 +67,9 @@ against.
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v6
-          - uses: Alberto-Codes/docvet@v1
+          - uses: Alberto-Codes/docvet@v3.0.0
             with:
-              docvet-version: '1.9.0'
+              docvet-version: '3.0.0'
     ```
 
 !!! warning "Behavior change — this can turn a passing build red"
@@ -109,13 +109,15 @@ The action sets step outputs that downstream steps can consume:
 
 A gate listed in `fail-on` that could not run and failed the build publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. When such a run also has findings, the badge keeps the count and the failure colour (`3 findings, gate unavailable` / `red`), so it never hides what a findings-only badge would have shown. The badge is unchanged when a project opts out with `fail-on-unavailable = false`, where such a run still exits 0.
 
+The examples pin Action version `v3.0.0`. The floating `v1` tag remains on major 1 and does not include the incomplete-analysis reporting described here. Upgrade the Action reference as well as any pinned docvet package version to use this behavior.
+
 Input failures produce an `analysis incomplete` / `red` badge and fail the step with exit 1, even when there are no findings. The Action emits error annotations and an incomplete step summary, deduplicating the same input failure across selective checks. Findings remain visible (`3 findings, analysis incomplete`); blocking unavailable gates also remain in the badge (`3 findings, analysis incomplete, gate unavailable`). See [Input failures and incomplete analysis](cli-reference.md#input-failures-and-incomplete-analysis). Older pinned docvet versions that do not report input failures retain their existing behavior; the Action cannot infer failures absent from their JSON.
 
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
 {% raw %}
 ```yaml
-- uses: Alberto-Codes/docvet@v1
+- uses: Alberto-Codes/docvet@v3.0.0
   id: docvet
   with:
     checks: "all"
@@ -164,7 +166,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks Python fil
     ```yaml
     repos:
       - repo: https://github.com/Alberto-Codes/docvet
-        rev: v1.2.0
+        rev: v3.0.0
         hooks:
           - id: docvet
     ```
@@ -174,7 +176,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks Python fil
     ```yaml
     repos:
       - repo: https://github.com/Alberto-Codes/docvet
-        rev: v1.2.0
+        rev: v3.0.0
         hooks:
           - id: docvet
             additional_dependencies: [griffe]
@@ -185,7 +187,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks Python fil
     ```yaml
     repos:
       - repo: https://github.com/Alberto-Codes/docvet
-        rev: v1.2.0
+        rev: v3.0.0
         hooks:
           - id: docvet
             exclude: ^tests/
@@ -197,7 +199,7 @@ Pre-commit passes staged Python filenames as positional arguments to `docvet che
     When run as a pre-commit hook, docvet checks only the files pre-commit passes — your `[tool.docvet].exclude` patterns do not apply. Use pre-commit's own `exclude` key to filter files, as shown in the "With exclude" tab above.
 
 !!! info "Pin `rev` to a release tag"
-    Replace `v1.2.0` with the [latest release tag](https://github.com/Alberto-Codes/docvet/releases). Pre-commit caches the hook environment per `rev`, so pinning to a tag avoids unnecessary reinstalls.
+    Replace `v3.0.0` with the [latest release tag](https://github.com/Alberto-Codes/docvet/releases). Pre-commit caches the hook environment per `rev`, so pinning to a tag avoids unnecessary reinstalls.
 
 ## Exit Codes and CI Behavior
 
@@ -293,7 +295,7 @@ no check in fail-on reported findings, but these checks were configured to gate 
     Use `-q` (quiet mode) when you only need the exit code and don't want summary or timing output:
 
     ```yaml
-    - uses: Alberto-Codes/docvet@v1
+    - uses: Alberto-Codes/docvet@v3.0.0
       with:
         checks: 'enrichment'
     ```
@@ -330,7 +332,7 @@ For teams that want a live badge showing pass/fail status from the latest CI run
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v6
-          - uses: Alberto-Codes/docvet@v1
+          - uses: Alberto-Codes/docvet@v3.0.0
             id: docvet
             with:
               checks: "all"

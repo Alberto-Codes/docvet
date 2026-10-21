@@ -11,6 +11,23 @@
 
 * **cli:** report incomplete input analysis ([#519](https://github.com/Alberto-Codes/docvet/issues/519)) ([16eec13](https://github.com/Alberto-Codes/docvet/commit/16eec13b877d7a40e4d1ade65b15b40881efdc65)), closes [#495](https://github.com/Alberto-Codes/docvet/issues/495) [#498](https://github.com/Alberto-Codes/docvet/issues/498) [#499](https://github.com/Alberto-Codes/docvet/issues/499) [#515](https://github.com/Alberto-Codes/docvet/issues/515) [#516](https://github.com/Alberto-Codes/docvet/issues/516) [#517](https://github.com/Alberto-Codes/docvet/issues/517)
 
+### Migration from 2.x
+
+This targeted correctness release fixes #495, #498, and #499. It is a major release because documented machine-readable and exit-code contracts change.
+
+- Accept `incomplete` in `run.status` and inspect `run.input_errors`. Input selection, read, decode, parse, and write failures exit 1 independently of finding gates and the unavailable-check opt-out.
+- Treat `presence_coverage.percentage` as nullable when all requested analysis fails. Check `presence_coverage.complete` and `passed`; a percentage measured from valid files does not certify a mixed valid/invalid scope.
+- `files_checked` retains its selected-file meaning. Use the added unique `files_attempted`, `files_analyzed`, and `files_failed` counts to understand analysis completion. Optional-check availability remains separately reported.
+- Legitimate empty selections still return successful JSON, with zero counts and no measured presence coverage. Invalid explicit CLI targets fail clearly. MCP directory inputs remain supported.
+- A default diff scan outside a Git repository now fails to select its scope. Use `--all` or explicit files for source archives; freshness still reports unavailable when Git or repository history is absent and follows the configured availability gate.
+- JSON `fix --dry-run` returns previews in a `diffs` array within its structured result.
+- MCP reports optional-check availability and configured gate outcomes alongside the same structured input errors; legacy `error` and `errors` fields remain available.
+- Python-declared source encodings, UTF-8 BOMs, and physical newlines are preserved during fixes. Malformed encodings return controlled failures.
+- Pin the GitHub Action to `Alberto-Codes/docvet@v3.0.0` for incomplete-analysis annotations, summaries, and red badges. The existing floating `v1` tag remains on its compatible major and does not acquire this behavior.
+- Pre-commit now selects `.py` files explicitly; extensionless Python scripts are no longer submitted to a CLI that rejects those targets. `.pyi` files were already excluded by the hook's Python type filter.
+
+Freshness remains a heuristic, not semantic verification. Separate follow-ups track freshness diff payload line handling (#520), Git prerequisite diagnostic precision (#521), and module-size refactors (#392 and #518).
+
 ## [2.0.3](https://github.com/Alberto-Codes/docvet/compare/v2.0.2...v2.0.3) (2026-10-21)
 
 ### Compatibility and guidance

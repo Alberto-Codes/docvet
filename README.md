@@ -93,7 +93,7 @@ Add to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/Alberto-Codes/docvet
-    rev: v1.2.0
+    rev: v3.0.0
     hooks:
       - id: docvet
 ```
@@ -103,7 +103,7 @@ For griffe rendering checks, add the optional dependency:
 ```yaml
 repos:
   - repo: https://github.com/Alberto-Codes/docvet
-    rev: v1.2.0
+    rev: v3.0.0
     hooks:
       - id: docvet
         additional_dependencies: [griffe]
@@ -114,16 +114,16 @@ repos:
 Add docvet to your GitHub Actions workflow — findings appear as inline annotations on your PR:
 
 ```yaml
-- uses: Alberto-Codes/docvet@v1
+- uses: Alberto-Codes/docvet@v3.0.0
 ```
 
 Select specific checks or pin a version:
 
 ```yaml
-- uses: Alberto-Codes/docvet@v1
+- uses: Alberto-Codes/docvet@v3.0.0
   with:
     checks: 'enrichment,freshness'
-    docvet-version: '1.9.0'
+    docvet-version: '3.0.0'
     python-version: '3.13'
 ```
 
