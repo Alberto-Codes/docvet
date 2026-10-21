@@ -4,7 +4,7 @@
 
 ## What it detects
 
-This rule flags public symbols — modules, classes, functions, and methods — that lack a docstring. Symbols filtered by `ignore-init`, `ignore-magic`, or `ignore-private` configuration are excluded from checking.
+This rule flags public symbols — modules, classes, functions, and methods — that lack a docstring. Symbols filtered by `ignore-init`, `ignore-magic`, or `ignore-private` configuration are excluded from checking. Definitions nested inside a function body — closures, local helpers, local classes and their methods — are skipped as well, because they are unreachable by import and never listed by griffe or mkdocstrings.
 
 ## Why is this a problem?
 
