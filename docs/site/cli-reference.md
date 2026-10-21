@@ -138,9 +138,10 @@ non-git checkout such as a tarball) must handle exit 1 or select files with
 `--all` or explicit paths. Outside a repository, `--all` avoids the selection
 error but supplies no git history, so freshness is reported in
 `run.unavailable_checks` and gated by `fail-on-unavailable` rather than
-passing silently. The published pre-commit hook now passes only `.py` files;
-`.pyi` stubs and extensionless scripts are no longer selected because explicit
-non-`.py` targets are rejected. Valid-input finding rules, exclusion overrides,
+passing silently. The published pre-commit hook now adds a `files: \.py$`
+filter because explicit non-`.py` targets are rejected: extensionless scripts
+with a Python shebang are no longer passed, while `.pyi` stubs were never
+selected by `types: [python]`. Valid-input finding rules, exclusion overrides,
 suppression, and quality denominator units remain unchanged.
 
 ### Quality Summary (`--summary`)
