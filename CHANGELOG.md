@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.1](https://github.com/Alberto-Codes/docvet/compare/v2.0.0...v2.0.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **cli:** count only post-suppression findings in the summary line ([d13f041](https://github.com/Alberto-Codes/docvet/commit/d13f041a0fd4d052eeed3470a9893ece99c72471)), closes [#429](https://github.com/Alberto-Codes/docvet/issues/429)
+* **enrichment:** accept **kwargs documented under Args for other-parameters ([adbe69c](https://github.com/Alberto-Codes/docvet/commit/adbe69cc71ed7ee311d97f76ab72f79f31eeb94a)), closes [#470](https://github.com/Alberto-Codes/docvet/issues/470)
+
+
+### Documentation
+
+* **enrichment:** describe the shipped exclude-args-kwargs behaviour ([73cfa8b](https://github.com/Alberto-Codes/docvet/commit/73cfa8bc3b00d3b848edc78fcf18aa91f247245e)), closes [#469](https://github.com/Alberto-Codes/docvet/issues/469)
+* **glossary:** describe fail-on as a config list in the hover tooltip ([ece0de6](https://github.com/Alberto-Codes/docvet/commit/ece0de6c14c136ca242d4241c1a34a335d4cfb33)), closes [#475](https://github.com/Alberto-Codes/docvet/issues/475)
+* **maintainers:** port the triage how-to and apply needs-triage on every form ([0774fae](https://github.com/Alberto-Codes/docvet/commit/0774faeaa0a6cdd4dfec7342dbb626cdbd200488)), closes [#466](https://github.com/Alberto-Codes/docvet/issues/466)
+* **presence:** state that function-scoped definitions are skipped ([b3248b8](https://github.com/Alberto-Codes/docvet/commit/b3248b82ab6112daa4088b3595d70f814a6aacd0)), closes [#471](https://github.com/Alberto-Codes/docvet/issues/471)
+
 ## [2.0.0](https://github.com/Alberto-Codes/docvet/compare/v1.16.0...v2.0.0) (2026-10-21)
 
 
