@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.0.0](https://github.com/Alberto-Codes/docvet/compare/v1.16.0...v2.0.0) (2026-10-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** fail the run when a configured check cannot execute ([#448](https://github.com/Alberto-Codes/docvet/issues/448))
+
+### Features
+
+* **cli:** fail the run when a configured check cannot execute ([#448](https://github.com/Alberto-Codes/docvet/issues/448)) ([e12870c](https://github.com/Alberto-Codes/docvet/commit/e12870c2cd2434929f9683cc99f0b0306e6e5508))
+
+
+### Bug Fixes
+
+* **enrichment:** match documented *args and **kwargs to star parameters ([3e056ed](https://github.com/Alberto-Codes/docvet/commit/3e056ed36bc6a1099b9c09bc0845dc35fa729b2e)), closes [#455](https://github.com/Alberto-Codes/docvet/issues/455)
+* **presence:** skip definitions nested inside a function body ([3cfa94a](https://github.com/Alberto-Codes/docvet/commit/3cfa94a79a84cf9e1800d0edaed3d30fc3f95a15)), closes [#456](https://github.com/Alberto-Codes/docvet/issues/456)
+
+
+### Documentation
+
+* **cli:** put --summary before the subcommand in every example ([9c3e01f](https://github.com/Alberto-Codes/docvet/commit/9c3e01fb94eb40de8812b4f7e271840906411371)), closes [#457](https://github.com/Alberto-Codes/docvet/issues/457)
+* **glossary:** describe fail-on as a list of check names ([43ed421](https://github.com/Alberto-Codes/docvet/commit/43ed421556ea9a357ddaa331ebdc3d56f76b0882)), closes [#450](https://github.com/Alberto-Codes/docvet/issues/450)
+
 ## [1.16.0](https://github.com/Alberto-Codes/docvet/compare/v1.15.2...v1.16.0) (2026-09-11)
 
 
