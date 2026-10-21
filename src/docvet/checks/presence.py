@@ -2,7 +2,8 @@
 
 Detects public symbols (modules, classes, functions, methods) that lack
 a docstring, flags ``@overload``-decorated functions that have docstrings
-(misplaced documentation), and reports per-file coverage statistics via
+(misplaced documentation), skips definitions nested inside a function
+body (unreachable by import), and reports per-file coverage statistics via
 :class:`PresenceStats`.  Module-kind findings use
 :func:`~docvet.ast_utils.module_display_name` for human-readable
 symbol names.  Complements ruff D100–D107 by adding coverage metrics
@@ -153,6 +154,40 @@ def _check_overload_docstrings(
     return findings
 
 
+_FunctionNode = (ast.FunctionDef, ast.AsyncFunctionDef)
+_ScopeNode = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+
+
+def _function_scoped_lines(tree: ast.Module) -> set[int]:
+    """Collect line numbers of definitions that live inside a function.
+
+    A function, method or class is function-scoped when any ancestor in
+    its definition chain is a ``def`` or ``async def``.  Such symbols
+    (closures, local helpers, classes built inside a factory and their
+    methods) are unreachable by import and griffe does not list them,
+    so presence does not require a docstring on them.  Definitions whose
+    ancestors are only the module and classes (methods, nested classes)
+    are not included.
+
+    Args:
+        tree: Parsed AST module.
+
+    Returns:
+        The ``lineno`` of every function-scoped ``FunctionDef``,
+        ``AsyncFunctionDef`` and ``ClassDef`` node.
+    """
+    lines: set[int] = set()
+    stack: list[tuple[ast.AST, bool]] = [(tree, False)]
+    while stack:
+        node, inside_function = stack.pop()
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, _ScopeNode) and inside_function:
+                lines.add(child.lineno)
+            child_inside = inside_function or isinstance(child, _FunctionNode)
+            stack.append((child, child_inside))
+    return lines
+
+
 def check_presence(
     source: str,
     file_path: str,
@@ -167,7 +202,10 @@ def check_presence(
     Module symbols use the dotted display name in findings.
     ``@overload``-decorated stubs are unconditionally excluded from
     missing-docstring checks and coverage stats (documentation belongs
-    on the implementation function).  When
+    on the implementation function).  Functions and classes defined
+    inside a function body (closures, local helpers, local classes and
+    their methods) are likewise excluded from both findings and stats,
+    because they are unreachable by import.  When
     ``config.check_overload_docstrings`` is enabled, also flags
     ``@overload``-decorated functions that have docstrings.
 
@@ -203,12 +241,15 @@ def check_presence(
         ) and _has_overload_decorator(node):
             overload_lines.add(node.lineno)
 
+    # Symbols inside a function scope are not part of the public API.
+    skip_lines = overload_lines | _function_scoped_lines(tree)
+
     findings: list[Finding] = []
     documented = 0
     total = 0
 
     for symbol in symbols:
-        if symbol.line in overload_lines:
+        if symbol.line in skip_lines:
             continue
 
         if _should_skip(symbol, config):
