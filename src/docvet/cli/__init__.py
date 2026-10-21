@@ -8,7 +8,9 @@ and the output pipeline is in ``_output``.  This module retains enums,
 discovery helpers, the app callback, and all typer subcommands.  A check
 that cannot execute — griffe unusable, or a presence gate switched off
 — is reported to ``_output_and_exit`` as unavailable rather than as a
-check that ran and found nothing.  Whether that fails the run is
+check that ran and found nothing.  The ``Vetted ...`` summary line is
+written by ``_output_and_exit`` from the post-suppression findings so it
+agrees with the JSON summary and the exit code.  Whether that fails the run is
 governed by ``fail-on-unavailable``, which defaults to ``True`` so a
 configured gate that never executed cannot report success; the
 tri-state ``--fail-on-unavailable/--no-fail-on-unavailable`` flag pair
@@ -93,7 +95,7 @@ from docvet.reporting import (
     format_json,  # noqa: F401 – re-exported for test mocks
     format_markdown,  # noqa: F401 – re-exported for test mocks
     format_quality_summary,  # noqa: F401 – re-exported for test mocks
-    format_summary,
+    format_summary,  # noqa: F401 – looked up late by ``_output``
     format_terminal,  # noqa: F401 – re-exported for test mocks
     format_verbose_header,  # noqa: F401 – re-exported for test mocks
     write_report,  # noqa: F401 – re-exported for test mocks
@@ -477,6 +479,9 @@ def check(
     the summary line with coverage percentage, ``--verbose`` adds
     per-check timing, file discovery count, and detailed coverage status.
 
+    The summary line is written by ``_output_and_exit`` from the findings
+    left after inline suppression, so it matches JSON ``summary.total``.
+
     Args:
         ctx: Typer invocation context.
         files_pos: Positional file paths to check.
@@ -556,24 +561,6 @@ def check(
     if agg_stats is not None:
         coverage_pct = agg_stats.percentage
 
-    all_findings_flat = (
-        presence_findings
-        + enrichment_findings
-        + freshness_findings
-        + coverage_findings
-        + griffe_findings
-    )
-    if not quiet:
-        sys.stderr.write(
-            format_summary(
-                file_count,
-                checks,
-                all_findings_flat,
-                total_elapsed,
-                coverage_pct=coverage_pct,
-            )
-        )
-
     findings_by_check = {
         "presence": presence_findings,
         "enrichment": enrichment_findings,
@@ -596,6 +583,8 @@ def check(
         checks,
         presence_stats=agg_stats,
         check_counts=check_counts,
+        elapsed=total_elapsed,
+        coverage_pct=coverage_pct,
         unavailable=[
             u for u in (presence_unavailable, griffe_unavailable) if u is not None
         ],
@@ -630,6 +619,9 @@ def presence(
     stderr output, default shows the summary line, ``--verbose`` adds
     file discovery count.
 
+    The summary line is written by ``_output_and_exit`` from the findings
+    left after inline suppression, so it matches JSON ``summary.total``.
+
     Args:
         ctx: Typer invocation context.
         files_pos: Positional file paths to check.
@@ -653,18 +645,6 @@ def presence(
         discovered, config, show_progress=sys.stderr.isatty()
     )
     elapsed = time.perf_counter() - start
-    coverage_pct = agg_stats.percentage
-    if not quiet:
-        sys.stderr.write(
-            format_summary(
-                len(discovered),
-                ["presence"],
-                findings,
-                elapsed,
-                coverage_pct=coverage_pct,
-            )
-        )
-
     _output_and_exit(
         ctx,
         {"presence": findings},
@@ -672,6 +652,8 @@ def presence(
         len(discovered),
         ["presence"],
         presence_stats=agg_stats,
+        elapsed=elapsed,
+        coverage_pct=agg_stats.percentage,
     )
 
 
@@ -703,6 +685,9 @@ def enrichment(
     file discovery count. Passes symbol count to ``_output_and_exit``
     for quality percentage computation.
 
+    The summary line is written by ``_output_and_exit`` from the findings
+    left after inline suppression, so it matches JSON ``summary.total``.
+
     Args:
         ctx: Typer invocation context.
         files_pos: Positional file paths to check.
@@ -726,11 +711,6 @@ def enrichment(
         discovered, config, show_progress=sys.stderr.isatty()
     )
     elapsed = time.perf_counter() - start
-    if not quiet:
-        sys.stderr.write(
-            format_summary(len(discovered), ["enrichment"], findings, elapsed)
-        )
-
     _output_and_exit(
         ctx,
         {"enrichment": findings},
@@ -738,6 +718,7 @@ def enrichment(
         len(discovered),
         ["enrichment"],
         check_counts={"enrichment": symbol_count},
+        elapsed=elapsed,
     )
 
 
@@ -772,6 +753,9 @@ def freshness(
     file discovery count. Passes symbol count to ``_output_and_exit``
     for quality percentage computation.
 
+    The summary line is written by ``_output_and_exit`` from the findings
+    left after inline suppression, so it matches JSON ``summary.total``.
+
     Args:
         ctx: Typer invocation context.
         files_pos: Positional file paths to check.
@@ -800,11 +784,6 @@ def freshness(
         show_progress=sys.stderr.isatty(),
     )
     elapsed = time.perf_counter() - start
-    if not quiet:
-        sys.stderr.write(
-            format_summary(len(discovered), ["freshness"], findings, elapsed)
-        )
-
     _output_and_exit(
         ctx,
         {"freshness": findings},
@@ -812,6 +791,7 @@ def freshness(
         len(discovered),
         ["freshness"],
         check_counts={"freshness": symbol_count},
+        elapsed=elapsed,
     )
 
 
@@ -842,6 +822,9 @@ def coverage(
     file discovery count. Passes package directory count to
     ``_output_and_exit`` for quality percentage computation.
 
+    The summary line is written by ``_output_and_exit`` from the findings
+    left after inline suppression, so it matches JSON ``summary.total``.
+
     Args:
         ctx: Typer invocation context.
         files_pos: Positional file paths to check.
@@ -863,11 +846,6 @@ def coverage(
     start = time.perf_counter()
     findings, package_count = _run_coverage(discovered, config)
     elapsed = time.perf_counter() - start
-    if not quiet:
-        sys.stderr.write(
-            format_summary(len(discovered), ["coverage"], findings, elapsed)
-        )
-
     _output_and_exit(
         ctx,
         {"coverage": findings},
@@ -875,6 +853,7 @@ def coverage(
         len(discovered),
         ["coverage"],
         check_counts={"coverage": package_count},
+        elapsed=elapsed,
     )
 
 
@@ -911,6 +890,9 @@ def griffe(
     ``--no-fail-on-unavailable``) opts back out to a warning and exit
     0. A skip with ``griffe`` outside ``fail-on`` never fails the run.
 
+    The summary line is written by ``_output_and_exit`` from the findings
+    left after inline suppression, so it matches JSON ``summary.total``.
+
     Args:
         ctx: Typer invocation context.
         files_pos: Positional file paths to check.
@@ -944,9 +926,6 @@ def griffe(
     start = time.perf_counter()
     findings, griffe_file_count = _run_griffe(discovered, config)
     elapsed = time.perf_counter() - start
-    if not quiet:
-        sys.stderr.write(format_summary(len(discovered), ["griffe"], findings, elapsed))
-
     _output_and_exit(
         ctx,
         {"griffe": findings},
@@ -954,6 +933,7 @@ def griffe(
         len(discovered),
         ["griffe"],
         check_counts={"griffe": griffe_file_count},
+        elapsed=elapsed,
     )
 
 

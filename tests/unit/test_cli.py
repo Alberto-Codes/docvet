@@ -2177,7 +2177,7 @@ def test_check_when_verbose_on_both_positions_produces_verbose_output():
 
 def test_check_when_quiet_suppresses_summary_on_stderr(mocker):
     mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
-    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli._output._emit_findings")
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
     result = runner.invoke(app, ["check", "--all", "-q"])
     assert result.exit_code == 0
@@ -2198,7 +2198,7 @@ def test_check_when_quiet_suppresses_timing_on_stderr(mocker):
 
 def test_check_when_quiet_and_verbose_quiet_wins(mocker):
     mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
-    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli._output._emit_findings")
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
     result = runner.invoke(app, ["check", "--all", "-q", "--verbose"])
     assert result.exit_code == 0
@@ -2330,7 +2330,7 @@ def test_check_when_quiet_with_output_flag_writes_file_no_stderr(mocker, tmp_pat
 
 def test_check_when_app_quiet_and_subcommand_verbose_quiet_wins(mocker):
     mocker.patch("docvet.cli._discover_and_handle", return_value=[Path("/f.py")])
-    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli._output._emit_findings")
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
     result = runner.invoke(app, ["-q", "check", "--all", "--verbose"])
     assert result.exit_code == 0

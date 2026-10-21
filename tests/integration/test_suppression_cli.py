@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import textwrap
 
@@ -183,3 +184,83 @@ class TestSuppressionCliRoundtrip:
         # All findings on validate should be suppressed
         active_symbols = [f["symbol"] for f in data["findings"]]
         assert "validate" not in active_symbols
+
+
+_FULLY_SUPPRESSED = '''\
+    # docvet: ignore-file
+    def validate(data):
+        """Validate input data."""
+        if not data:
+            raise ValueError("empty")
+    '''
+
+_PARTIALLY_SUPPRESSED = '''\
+    """Module with one suppressed and one active missing-raises."""
+
+
+    def validate(data):  # docvet: ignore[missing-raises]
+        """Validate input data."""
+        if not data:
+            raise ValueError("empty")
+
+
+    def parse(text):
+        """Parse input text."""
+        if not text:
+            raise ValueError("empty")
+    '''
+
+_SUMMARY_RE = re.compile(r"Vetted \d+ files \[[^\]]*\] — (no findings|\d+ findings)")
+
+
+def _run_docvet(repo, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run the docvet CLI in ``repo`` and capture its output."""
+    return subprocess.run(
+        ["uv", "run", "docvet", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _terminal_summary_count(stderr: str) -> int:
+    """Extract the finding count from the terminal summary line."""
+    match = _SUMMARY_RE.search(stderr)
+    assert match is not None, f"no summary line in stderr: {stderr!r}"
+    detail = match.group(1)
+    return 0 if detail == "no findings" else int(detail.split()[0])
+
+
+class TestSummaryCountsActiveFindings:
+    """The terminal summary line counts only post-suppression findings."""
+
+    @pytest.mark.parametrize("command", ["enrichment", "presence", "check"])
+    def test_fully_suppressed_file_summary_matches_json(self, git_repo, command):
+        """A fully suppressed file reports no findings in both outputs."""
+        _commit_file(git_repo, "mod.py", _FULLY_SUPPRESSED)
+
+        terminal = _run_docvet(git_repo, command, "--all")
+        as_json = _run_docvet(git_repo, "--format", "json", command, "--all")
+        data = json.loads(as_json.stdout)
+
+        assert data["suppressed"], "fixture must produce suppressed findings"
+        assert data["summary"]["total"] == 0
+        assert "no findings" in terminal.stderr
+        assert _terminal_summary_count(terminal.stderr) == data["summary"]["total"]
+
+    @pytest.mark.parametrize("command", ["enrichment", "check"])
+    def test_partially_suppressed_file_summary_matches_json(self, git_repo, command):
+        """A partially suppressed file counts exactly the active findings."""
+        _commit_file(git_repo, "mod.py", _PARTIALLY_SUPPRESSED)
+
+        terminal = _run_docvet(git_repo, command, "--all")
+        as_json = _run_docvet(git_repo, "--format", "json", command, "--all")
+        data = json.loads(as_json.stdout)
+
+        suppressed_rules = [f["rule"] for f in data["suppressed"]]
+        active = [(f["symbol"], f["rule"]) for f in data["findings"]]
+        assert suppressed_rules == ["missing-raises"]
+        assert ("parse", "missing-raises") in active
+        assert data["summary"]["total"] == len(data["findings"])
+        assert _terminal_summary_count(terminal.stderr) == data["summary"]["total"]

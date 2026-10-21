@@ -209,12 +209,16 @@ def _output_and_exit(
     presence_stats: PresenceStats | None = None,
     check_counts: dict[str, int] | None = None,
     unavailable: Sequence[UnavailableCheck] = (),
+    elapsed: float | None = None,
+    coverage_pct: float | None = None,
 ) -> None:
     """Resolve output options, apply suppressions, emit findings, and exit.
 
     Implements the unified output pipeline: applies inline suppression
     filters (``# docvet: ignore[rule]``) to partition findings into
-    active and suppressed, resolves ``no_color`` from environment and
+    active and suppressed, writes the one-line run summary to stderr
+    from the active findings (so it agrees with the JSON summary and
+    the exit code), resolves ``no_color`` from environment and
     TTY state, optionally prints a verbose header and suppressed listing
     to stderr, resolves the output format via a three-tier precedence
     chain (explicit ``--format``, then ``--output`` implies markdown,
@@ -235,6 +239,11 @@ def _output_and_exit(
         unavailable: Checks that could not execute during this run.
             A check listed in ``fail-on`` that could not execute fails
             the run unless ``fail-on-unavailable`` is disabled.
+        elapsed: Wall-clock seconds the checks took. When given and
+            ``--quiet`` is off, the run summary line is written to
+            stderr; *None* skips the summary line.
+        coverage_pct: Docstring coverage percentage appended to the
+            run summary line, or *None* to omit it.
 
     Raises:
         typer.Exit: With the exit code from
@@ -260,6 +269,14 @@ def _output_and_exit(
     all_findings: list[Finding] = []
     for findings in findings_by_check.values():
         all_findings.extend(findings)
+
+    # 3b. Run summary line, counted from the post-suppression findings
+    if elapsed is not None and not quiet:
+        sys.stderr.write(
+            _cli_pkg.format_summary(
+                file_count, checks, all_findings, elapsed, coverage_pct=coverage_pct
+            )
+        )
 
     # 4. Verbose header to stderr (only for multi-check runs)
     if verbose and not quiet and len(checks) > 1:
