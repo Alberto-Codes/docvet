@@ -716,7 +716,8 @@ def _check_missing_other_parameters(
         rule="missing-other-parameters",
         message=(
             f"Function '{symbol.name}' accepts **{kwarg_name} "
-            f"but has no Other Parameters: section"
+            f"but has neither an Args: entry for {kwarg_name} "
+            "nor an Other Parameters: section"
         ),
         category="recommended",
     )

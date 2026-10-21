@@ -163,14 +163,18 @@ _RULE_CATALOG: list[RuleCatalogEntry] = [
     {
         "name": "missing-other-parameters",
         "check": "enrichment",
-        "description": "Function has *args or **kwargs not documented in Other Parameters.",
-        "category": "required",
+        "description": (
+            "Function accepts **kwargs but has neither an Args: entry for the"
+            " var-keyword parameter nor an Other Parameters: section."
+        ),
+        "category": "recommended",
         "guidance": (
-            "Add an Other Parameters: section documenting *args and/or **kwargs."
+            "Document the var-keyword parameter under Args: (e.g. **kwargs: or"
+            " kwargs:), or add an Other Parameters: section describing the"
+            " accepted keyword arguments."
         ),
         "fix_example": (
-            "Other Parameters:\n    **kwargs: Arbitrary keyword arguments"
-            " passed to the\n        underlying handler."
+            "Args:\n    **kwargs: Arbitrary keyword arguments passed to the handler."
         ),
     },
     {

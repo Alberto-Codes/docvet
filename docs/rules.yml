@@ -232,10 +232,17 @@
   check: enrichment
   category: recommended
   applies_to: functions, methods
-  summary: Function accepts **kwargs but has no Other Parameters section
+  summary: Function accepts **kwargs but has neither an Args entry for the var-keyword parameter nor an Other Parameters section
   since: "1.0.0"
   fix: |
-    Add an `Other Parameters:` section documenting the keyword arguments passed via `**kwargs`:
+    Document the var-keyword parameter under `Args:` (either `**kwargs:` or `kwargs:`):
+
+    ```python
+    Args:
+        **kwargs: Additional keyword arguments passed to the handler.
+    ```
+
+    Alternatively, add an `Other Parameters:` section describing the accepted keyword arguments:
 
     ```python
     Other Parameters:

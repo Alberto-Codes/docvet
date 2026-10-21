@@ -194,7 +194,7 @@ These keys go under `[tool.docvet.enrichment]`:
 | `require-yields` | `bool` | `true` | Require `Yields:` sections in generators. Gates both `missing-yields` and `extra-yields-in-docstring` rules. |
 | `require-receives` | `bool` | `true` | Require `Receives:` sections for `.send()` generators |
 | `require-warns` | `bool` | `true` | Require `Warns:` sections when `warnings.warn()` is called |
-| `require-other-parameters` | `bool` | `true` | Require `Other Parameters:` for `**kwargs` |
+| `require-other-parameters` | `bool` | `true` | Require an `Args:` entry for the var-keyword parameter (starred or bare) or an `Other Parameters:` section |
 | `require-attributes` | `bool` | `true` | Require `Attributes:` sections on classes and modules |
 | `require-typed-attributes` | `bool` | `true` | Require typed format in `Attributes:` entries |
 | `require-cross-references` | `bool` | `true` | Require `See Also:` in module docstrings |
