@@ -9,13 +9,12 @@ produces warnings and empty brackets suppress nothing, rather than
 silently falling back to blanket suppression. Operates as a
 post-filter on the findings list — no ``_check_*`` functions are modified.
 
-The rule ID registry is imported from the MCP catalog when available.
-When the ``mcp`` extra is not installed, rule validation is skipped
-and suppression operates without unknown-rule warnings.
+Rule IDs are validated against the core rule catalog in
+:mod:`docvet.rules`, which needs no optional extra, so unknown-rule
+warnings fire on every install.
 
 Attributes:
     KNOWN_RULES: Set of all valid docvet rule IDs for validation.
-        Empty when the ``mcp`` extra is not installed.
 
 Examples:
     Parse and filter in one pass:
@@ -30,6 +29,7 @@ Examples:
 See Also:
     [`docvet.cli._output`][]: Output pipeline that invokes the filter.
     [`docvet.checks`][]: Check modules that produce findings.
+    [`docvet.rules`][]: Rule catalog that defines the valid rule IDs.
 """
 
 from __future__ import annotations
@@ -41,15 +41,9 @@ import tokenize
 from dataclasses import dataclass, field
 
 from docvet.checks import Finding
-
-try:
-    from docvet.mcp._catalog import _RULE_TO_CHECK
-except ImportError:
-    # MCP extra not installed — rule validation unavailable.
-    _RULE_TO_CHECK: dict[str, str] = {}
+from docvet.rules import _RULE_TO_CHECK
 
 # Complete set of known rule IDs for validation.
-# Empty when the MCP extra is not installed; validation is skipped.
 KNOWN_RULES: frozenset[str] = frozenset(_RULE_TO_CHECK)
 
 # Regex for the directive payload after ``# docvet:``.
@@ -159,8 +153,9 @@ def _parse_rules(
 ) -> set[str] | None:
     """Parse and validate rule IDs from bracket content.
 
-    When :data:`KNOWN_RULES` is empty (MCP extra not installed),
-    validation is skipped and no unknown-rule warnings are emitted.
+    Rule IDs not in :data:`KNOWN_RULES` produce a warning on stderr but
+    are still recorded, so a rule added in a newer docvet release does
+    not break suppression.
 
     Args:
         raw: Comma-separated rule string from the bracket group, or
@@ -180,7 +175,7 @@ def _parse_rules(
         rule = part.strip()
         if not rule:
             continue
-        if KNOWN_RULES and rule not in KNOWN_RULES:
+        if rule not in KNOWN_RULES:
             sys.stderr.write(
                 f"warning: {file_path}:{line_no}: "
                 f"unknown rule {rule!r} in suppression comment\n"

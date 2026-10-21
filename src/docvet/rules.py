@@ -1,29 +1,37 @@
-"""Rule catalog for the docvet MCP server.
+"""Rule catalog for docvet.
 
-Static catalog of all 32 docvet rules with descriptions, categories,
-fix guidance, and examples. Used by the ``docvet_rules`` MCP tool
-to provide rule discovery for AI agents.
+Static catalog of all docvet rules with their owning check,
+description, category, fix guidance, and an optional fix example. This
+is the single source of truth for rule IDs: the CLI validates
+``# docvet: ignore[...]`` suppression comments against it, and the MCP
+server serves it through the ``docvet_rules`` tool. The module is pure
+data with no dependencies on :mod:`docvet.cli` or :mod:`docvet.mcp`, so
+it is available on a base install without the ``mcp`` extra.
 
 Attributes:
-    _RULE_CATALOG: Complete list of rule entries across all 5 checks.
+    _RULE_CATALOG: Complete list of rule entries across all checks.
     _RULE_TO_CHECK: Mapping from rule name to owning check module.
-
-See Also:
-    [`docvet.mcp`][]: MCP server and tool handlers.
 
 Examples:
     Look up which check owns a rule:
 
     ```python
-    from docvet.mcp._catalog import _RULE_TO_CHECK
+    from docvet.rules import _RULE_TO_CHECK
 
     check = _RULE_TO_CHECK["missing-raises"]  # "enrichment"
     ```
+
+See Also:
+    [`docvet.cli`][]: CLI whose suppression comments are validated
+        against this catalog.
+    [`docvet.mcp`][]: MCP server that serves the catalog.
 """
 
 from __future__ import annotations
 
 from typing import TypedDict
+
+__all__ = ["RuleCatalogEntry"]
 
 
 class RuleCatalogEntry(TypedDict):
