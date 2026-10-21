@@ -196,6 +196,35 @@ modules = [
     "docvet.checks.presence",
 ]
 
+[[tool.importlinter.contracts]]
+# docvet.rules is pure data: docvet.mcp and docvet.cli import it, never
+# the reverse (issue #428).
+name = "Rule catalog imports neither the CLI nor the MCP server"
+type = "forbidden"
+source_modules = ["docvet.rules"]
+forbidden_modules = ["docvet.mcp", "docvet.cli"]
+
+[[tool.importlinter.contracts]]
+# The MCP server is an optional extra; core modules must not pull it in.
+name = "Core modules do not import the MCP server"
+type = "forbidden"
+source_modules = [
+    "docvet.ast_utils",
+    "docvet.checks",
+    "docvet.cli",
+    "docvet.config",
+    "docvet.discovery",
+    "docvet.lsp",
+    "docvet.reporting",
+    "docvet.rules",
+]
+forbidden_modules = ["docvet.mcp"]
+ignore_imports = [
+    # Function-local import inside the `docvet mcp` command, so the MCP
+    # SDK loads only when that command runs.
+    "docvet.cli -> docvet.mcp",
+]
+
 # --------------------------------------------------------------------------- #
 # Dev dependencies
 # --------------------------------------------------------------------------- #
