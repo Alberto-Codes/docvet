@@ -612,23 +612,9 @@ def test_kwargs_template_unfiltered_enrichment_findings():
 
     findings = check_enrichment(source, tree, EnrichmentConfig(), "test.py")
 
-    # No param-agreement finding.  missing-other-parameters still fires even
-    # though **kwargs is documented under Args:; that cross-rule conflict is
-    # tracked separately and pinned here so a change to it is noticed.
-    assert len(findings) == 1
-    assert findings == [
-        Finding(
-            file="test.py",
-            line=1,
-            symbol="configure",
-            rule="missing-other-parameters",
-            message=(
-                "Function 'configure' accepts **kwargs but has no "
-                "Other Parameters: section"
-            ),
-            category="recommended",
-        )
-    ]
+    # **kwargs documented under Args: satisfies both param agreement and
+    # missing-other-parameters, so the function produces no findings.
+    assert findings == []
 
 
 # ---------------------------------------------------------------------------
