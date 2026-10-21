@@ -8,7 +8,7 @@ Defines the ``typer.Typer`` app with subcommands for each check layer
 ``check`` entry point, and the ``config`` introspection command.  Check runners are in ``_runners``
 and the output pipeline is in ``_output``.  This module retains enums,
 discovery helpers, the app callback, and all typer subcommands.  A check
-that cannot execute — griffe unusable, or a presence gate switched off
+that cannot execute — griffe unusable, freshness without git, or a presence gate switched off
 — is reported to ``_output_and_exit`` as unavailable rather than as a
 check that ran and found nothing.  The ``Vetted ...`` summary line is
 written by ``_output_and_exit`` from the post-suppression findings so it
@@ -305,6 +305,7 @@ from ._output import (  # noqa: E402
     _resolve_format,  # noqa: F401 – re-exported for tests
 )
 from ._runners import (  # noqa: E402
+    _freshness_unavailability,
     _get_git_blame,  # noqa: F401 – re-exported for tests
     _get_git_diff,  # noqa: F401 – re-exported for tests
     _griffe_unavailability,
@@ -474,6 +475,9 @@ def check(
 ) -> None:
     """Run all enabled checks.
 
+    A missing git executable marks freshness unavailable under the same
+    availability gate policy as other optional checks.
+
     Input failures are retained in the invocation source cache and reported
     as incomplete analysis with a nonzero exit status.
 
@@ -547,16 +551,22 @@ def check(
     elapsed = time.perf_counter() - start
     _write_timing("enrichment", file_count, elapsed, verbose=verbose, quiet=quiet)
 
-    start = time.perf_counter()
-    freshness_findings, freshness_count = _run_freshness(
-        discovered,
-        config,
-        discovery_mode=discovery_mode,
-        show_progress=show_progress,
-        cache=ctx.obj["source_cache"],
-    )
-    elapsed = time.perf_counter() - start
-    _write_timing("freshness", file_count, elapsed, verbose=verbose, quiet=quiet)
+    freshness_unavailable = _freshness_unavailability(config)
+    freshness_findings: list[Finding] = []
+    freshness_count = 0
+    if freshness_unavailable is not None:
+        _write_unavailable_notice(freshness_unavailable, note=verbose and not quiet)
+    else:
+        start = time.perf_counter()
+        freshness_findings, freshness_count = _run_freshness(
+            discovered,
+            config,
+            discovery_mode=discovery_mode,
+            show_progress=show_progress,
+            cache=ctx.obj["source_cache"],
+        )
+        elapsed = time.perf_counter() - start
+        _write_timing("freshness", file_count, elapsed, verbose=verbose, quiet=quiet)
 
     start = time.perf_counter()
     coverage_findings, coverage_count = _run_coverage(discovered, config)
@@ -581,7 +591,10 @@ def check(
     checks: list[str] = []
     if config.presence.enabled:
         checks.append("presence")
-    checks.extend(["enrichment", "freshness", "coverage"])
+    checks.append("enrichment")
+    if freshness_unavailable is None:
+        checks.append("freshness")
+    checks.append("coverage")
     if griffe_unavailable is None:
         checks.append("griffe")
 
@@ -598,9 +611,10 @@ def check(
     }
     check_counts: dict[str, int] = {
         "enrichment": enrichment_count,
-        "freshness": freshness_count,
         "coverage": coverage_count,
     }
+    if freshness_unavailable is None:
+        check_counts["freshness"] = freshness_count
     if griffe_unavailable is None:
         check_counts["griffe"] = griffe_count
     _output_and_exit(
@@ -614,7 +628,9 @@ def check(
         elapsed=total_elapsed,
         coverage_pct=coverage_pct,
         unavailable=[
-            u for u in (presence_unavailable, griffe_unavailable) if u is not None
+            u
+            for u in (presence_unavailable, freshness_unavailable, griffe_unavailable)
+            if u is not None
         ],
     )
 
@@ -787,6 +803,9 @@ def freshness(
 ) -> None:
     """Detect stale docstrings.
 
+    Both diff and drift require a git executable on PATH; a missing
+    executable is reported as unavailable before source analysis.
+
     Input failures are retained in the invocation source cache and reported
     as incomplete analysis with a nonzero exit status.
 
@@ -817,6 +836,13 @@ def freshness(
     ctx.obj["quiet"] = quiet
     discovered = _discover_and_handle(ctx, discovery_mode, files)
     config = ctx.obj["docvet_config"]
+
+    unavailable = _freshness_unavailability(config)
+    if unavailable is not None:
+        _write_unavailable_notice(unavailable, note=not quiet)
+        _output_and_exit(
+            ctx, {}, config, len(discovered), [], unavailable=[unavailable]
+        )
 
     start = time.perf_counter()
     findings, symbol_count = _run_freshness(

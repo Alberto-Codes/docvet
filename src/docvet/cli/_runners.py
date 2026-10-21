@@ -10,7 +10,8 @@ whether the griffe check can execute at all, and
 ``_presence_unavailability`` the same for a presence gate switched
 off with ``enabled = false`` while ``fail-on`` or a ``min-coverage``
 floor still gates on it; ``_write_unavailable_notice`` reports a
-check that could not run.
+check that could not run.  ``_freshness_unavailability`` detects a missing
+git executable before either diff or drift analysis begins.
 Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
 raw VCS data for the freshness runner, each running git through
 :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR`` cannot
@@ -33,6 +34,7 @@ Examples:
 from __future__ import annotations
 
 import importlib.util
+import shutil
 import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -365,6 +367,27 @@ def _run_coverage(files: list[Path], config: DocvetConfig) -> tuple[list[Finding
     src_root = config.project_root / config.src_root
     package_count = len({f.parent for f in files})
     return _cli_pkg.check_coverage(src_root, files), package_count
+
+
+def _freshness_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
+    """Report a missing git executable before attempting freshness analysis.
+
+    Args:
+        config: Configuration supplying the finding and availability gates.
+
+    Returns:
+        The unavailable prerequisite, or *None* when git is executable.
+    """
+    if shutil.which("git") is not None:
+        return None
+    configured_gate = "freshness" in config.fail_on
+    return UnavailableCheck(
+        check="freshness",
+        reason="git is not installed or is not executable on PATH",
+        remedy="Install git and make it available on PATH to run freshness",
+        blocking=configured_gate and config.fail_on_unavailable,
+        configured_gate=configured_gate,
+    )
 
 
 def _griffe_unavailability(config: DocvetConfig) -> UnavailableCheck | None:

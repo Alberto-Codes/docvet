@@ -103,13 +103,13 @@ The action sets step outputs that downstream steps can consume:
 
 | Output | Description | Example |
 |--------|-------------|---------|
-| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, `"gate unavailable"`, or `"3 findings, gate unavailable"` |
+| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, `"gate unavailable"`, `"3 findings, gate unavailable"`, or `"analysis incomplete"` |
 | `badge_color` | shields.io badge color | `brightgreen`, `yellow`, `red`, or `orange` |
 | `total_findings` | Total findings count | `0`, `3` |
 
 A gate listed in `fail-on` that could not run and failed the build publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. When such a run also has findings, the badge keeps the count and the failure colour (`3 findings, gate unavailable` / `red`), so it never hides what a findings-only badge would have shown. The badge is unchanged when a project opts out with `fail-on-unavailable = false`, where such a run still exits 0.
 
-The badge outputs do not yet reflect incomplete analysis. A run with `run.status: "incomplete"` (see [Input failures and incomplete analysis](cli-reference.md#input-failures-and-incomplete-analysis)) fails the step with exit 1, but the badge reads findings and unavailable gates only, so a run with no findings and no unavailable gate still publishes `passing` / `brightgreen`. Treat the step result, not the badge, as the signal that every requested input was analyzed.
+Input failures produce an `analysis incomplete` / `red` badge and fail the step with exit 1, even when there are no findings. The Action emits error annotations and an incomplete step summary, deduplicating the same input failure across selective checks. Findings remain visible (`3 findings, analysis incomplete`); blocking unavailable gates also remain in the badge (`3 findings, analysis incomplete, gate unavailable`). See [Input failures and incomplete analysis](cli-reference.md#input-failures-and-incomplete-analysis). Older pinned docvet versions that do not report input failures retain their existing behavior; the Action cannot infer failures absent from their JSON.
 
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
@@ -365,8 +365,10 @@ For teams that want a live badge showing pass/fail status from the latest CI run
 | Required findings present | `N findings` | ![red](https://img.shields.io/badge/-red-red) |
 | A gate in `fail-on` could not run and failed the build | `gate unavailable` | ![orange](https://img.shields.io/badge/-orange-orange) |
 | That gate plus findings | `N findings, gate unavailable` | ![red](https://img.shields.io/badge/-red-red) |
+| Input selection or analysis failed | `analysis incomplete` | ![red](https://img.shields.io/badge/-red-red) |
+| Input failures plus findings | `N findings, analysis incomplete` | ![red](https://img.shields.io/badge/-red-red) |
 
-Incomplete analysis (`run.status: "incomplete"`) has no badge state of its own; see [Outputs](#outputs). The step still fails with exit 1.
+Incomplete runs fail the step with exit 1 and retain any blocking unavailable gate in the badge; see [Outputs](#outputs).
 
 !!! tip "Freshness checks need git history"
     If your workflow includes the `freshness` check (or `checks: "all"`), add `fetch-depth: 0` to your checkout step for full `git blame` support. See [Annotation behavior](#annotation-behavior) above for details.

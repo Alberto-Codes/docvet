@@ -301,6 +301,13 @@ docvet freshness --all --mode drift   # drift mode
 
 **Drift mode** uses git blame timestamps to find docstrings that haven't been updated relative to their code. Sweeps the entire codebase for timestamp-based review signals, not semantic errors.
 
+Both modes require a `git` executable on `PATH`. With `--all` or explicit
+files, a missing executable is reported in `run.unavailable_checks` and follows
+the configured `fail-on-unavailable` policy. This also applies to freshness
+inside `check --all`, where other available checks can still analyze files.
+Diff or staged file selection itself requires git and reports an input failure
+when it cannot determine the requested scope.
+
 ### `docvet coverage`
 
 Find files invisible to mkdocs.

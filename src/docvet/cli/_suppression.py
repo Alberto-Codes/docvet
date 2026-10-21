@@ -90,7 +90,9 @@ def parse_suppression_directives(
     """Parse suppression comments from Python source code.
 
     Uses the ``tokenize`` module to extract only real ``COMMENT`` tokens,
-    avoiding false positives from ``#`` inside string literals. Validates
+    avoiding false positives from ``#`` inside string literals. Normalizes
+    line endings only for tokenization so LF, CRLF, and CR directives retain
+    Python line positions without changing the source. Validates
     rule IDs against the known rule set and emits warnings to stderr for
     malformed directives and unknown or invalid rules. Malformed directives
     suppress nothing. Unknown rule IDs are recorded for forward-
@@ -117,7 +119,9 @@ def parse_suppression_directives(
         return result
 
     try:
-        tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+        # Token positions must follow Python universal-newline semantics.
+        # Normalize only this parser view; source documents retain their bytes.
+        tokens = tokenize.generate_tokens(io.StringIO(source, newline=None).readline)
         for tok in tokens:
             if tok.type != tokenize.COMMENT:
                 continue
