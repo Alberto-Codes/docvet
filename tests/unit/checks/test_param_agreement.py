@@ -307,22 +307,328 @@ def test_star_prefixed_args_in_docstring_match_signature():
     assert extra is None
 
 
-def test_documented_args_kwargs_flagged_as_extra_when_excluded():
-    """Star-prefixed entries in docs are flagged as extra when exclude=True."""
+def test_documented_args_kwargs_not_extra_when_excluded():
+    """Documented *args/**kwargs are not extra when exclude=True (#455)."""
     symbol, node_index, _ = _make_symbol_and_index(_ARGS_KWARGS_DOCUMENTED_SOURCE)
+    assert symbol.kind == "function"
+    assert symbol.name == "handler"
     sections = _parse_sections(symbol.docstring)
     config = EnrichmentConfig(exclude_args_kwargs=True)
 
-    # When exclude_args_kwargs=True, sig_params won't contain args/kwargs,
-    # but doc_params will contain them -> extra finding expected.
     extra = _check_extra_param_in_docstring(
         symbol, sections, node_index, config, "test.py"
     )
 
-    assert extra is not None
-    assert extra.rule == "extra-param-in-docstring"
-    assert "args" in extra.message
-    assert "kwargs" in extra.message
+    assert extra is None
+
+
+# ---------------------------------------------------------------------------
+# Issue #455: either spelling of a vararg/kwarg entry matches the signature
+# ---------------------------------------------------------------------------
+
+
+_RUN_GIT_TEMPLATE = '''\
+from pathlib import Path
+
+
+def run_git(root: Path, *args: str) -> str:
+    """Run one git command in the checkout and return its stdout.
+
+    Args:
+        root: The checkout root.
+        {entry}: Arguments after ``git``.
+
+    Returns:
+        Stripped stdout.
+    """
+    return ""
+'''
+
+_KWARGS_TEMPLATE = '''\
+def configure(name, **{kwarg}):
+    """Configure a component.
+
+    Args:
+        name: The component name.
+        {entry}: Extra options.
+    """
+'''
+
+_KEY_COLUMNS_SOURCE = '''\
+def _key(*columns):
+    """Build a composite key.
+
+    Args:
+        *columns: Column values that form the key.
+
+    Returns:
+        The joined key.
+    """
+    return "|".join(columns)
+'''
+
+_EXCLUDE_VALUES = pytest.mark.parametrize(
+    "exclude", [True, False], ids=["exclude", "opt-in"]
+)
+
+
+@_EXCLUDE_VALUES
+@pytest.mark.parametrize("entry", ["*args", "args"])
+def test_vararg_either_spelling_not_extra(entry, exclude):
+    """Issue repro: ``*args:`` and ``args:`` both match ``*args``."""
+    source = _RUN_GIT_TEMPLATE.format(entry=entry)
+    symbol, node_index, _ = _make_named_symbol(source, "run_git")
+    assert symbol.kind == "function"
+    assert symbol.name == "run_git"
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(exclude_args_kwargs=exclude)
+
+    extra = _check_extra_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+    missing = _check_missing_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert extra is None
+    assert missing is None
+
+
+@_EXCLUDE_VALUES
+@pytest.mark.parametrize(
+    ("kwarg", "entry"),
+    [
+        ("kwargs", "**kwargs"),
+        ("kwargs", "kwargs"),
+        ("options", "**options"),
+        ("options", "options"),
+    ],
+)
+def test_kwarg_either_spelling_not_extra(kwarg, entry, exclude):
+    """``**name:`` and ``name:`` both match a ``**name`` parameter."""
+    source = _KWARGS_TEMPLATE.format(kwarg=kwarg, entry=entry)
+    symbol, node_index, _ = _make_named_symbol(source, "configure")
+    assert symbol.kind == "function"
+    assert symbol.name == "configure"
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(exclude_args_kwargs=exclude)
+
+    extra = _check_extra_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+    missing = _check_missing_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert extra is None
+    assert missing is None
+
+
+@_EXCLUDE_VALUES
+def test_vararg_not_named_args_not_extra(exclude):
+    """``_key(*columns)`` documented as ``*columns:`` is not extra (#458)."""
+    symbol, node_index, _ = _make_named_symbol(_KEY_COLUMNS_SOURCE, "_key")
+    assert symbol.kind == "function"
+    assert symbol.name == "_key"
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(exclude_args_kwargs=exclude)
+
+    extra = _check_extra_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert extra is None
+
+
+@_EXCLUDE_VALUES
+@pytest.mark.parametrize("entry", ["*args", "args"])
+def test_issue_repro_unfiltered_enrichment_zero_findings(entry, exclude):
+    """The full enrichment check on the issue repro yields no finding."""
+    source = _RUN_GIT_TEMPLATE.format(entry=entry)
+    tree = ast.parse(source)
+    config = EnrichmentConfig(exclude_args_kwargs=exclude)
+
+    findings = check_enrichment(source, tree, config, "test.py")
+
+    assert findings == []
+
+
+@_EXCLUDE_VALUES
+def test_star_entry_naming_no_signature_param_still_extra(exclude):
+    """A documented star entry that names no signature param is still extra."""
+    source = '''\
+def run(root, *args):
+    """Run something.
+
+    Args:
+        root: The root.
+        *args: Positional arguments.
+        *extras: Not in the signature.
+    """
+'''
+    symbol, node_index, _ = _make_named_symbol(source, "run")
+    assert symbol.kind == "function"
+    assert symbol.name == "run"
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(exclude_args_kwargs=exclude)
+
+    extra = _check_extra_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert extra == Finding(
+        file="test.py",
+        line=symbol.line,
+        symbol="run",
+        rule="extra-param-in-docstring",
+        message="Function 'run' documents parameters not in signature: extras",
+        category="required",
+    )
+
+
+@pytest.mark.parametrize(("star", "bare"), [("*args", "args"), ("**kwargs", "kwargs")])
+def test_undocumented_star_param_missing_only_when_opt_in(star, bare):
+    """Missing-param semantics for undocumented ``*args``/``**kwargs`` hold."""
+    source = f'''\
+def run(root, {star}):
+    """Run something.
+
+    Args:
+        root: The root.
+    """
+'''
+    symbol, node_index, _ = _make_named_symbol(source, "run")
+    assert symbol.kind == "function"
+    assert symbol.name == "run"
+    sections = _parse_sections(symbol.docstring)
+
+    excluded = _check_missing_param_in_docstring(
+        symbol, sections, node_index, EnrichmentConfig(), "test.py"
+    )
+    opted_in = _check_missing_param_in_docstring(
+        symbol,
+        sections,
+        node_index,
+        EnrichmentConfig(exclude_args_kwargs=False),
+        "test.py",
+    )
+
+    assert excluded is None
+    assert opted_in == Finding(
+        file="test.py",
+        line=symbol.line,
+        symbol="run",
+        rule="missing-param-in-docstring",
+        message=f"Function 'run' has parameters not documented in Args: {bare}",
+        category="required",
+    )
+
+
+@pytest.mark.parametrize(
+    ("signature", "entry"), [("*args", "**args"), ("**opts", "*opts")]
+)
+def test_star_count_not_checked_default_config(signature, entry):
+    """A mismatched star count still matches the bare parameter name."""
+    # Contract #455 strips leading stars and compares bare names, so the
+    # star count is deliberately not checked.
+    source = f'''\
+def run(root, {signature}):
+    """Run something.
+
+    Args:
+        root: The root.
+        {entry}: Star parameter with the other star count.
+    """
+'''
+    symbol, node_index, _ = _make_named_symbol(source, "run")
+    assert symbol.kind == "function"
+    assert symbol.name == "run"
+    sections = _parse_sections(symbol.docstring)
+
+    extra = _check_extra_param_in_docstring(
+        symbol, sections, node_index, EnrichmentConfig(), "test.py"
+    )
+
+    assert extra is None
+
+
+_METHOD_TEMPLATE = '''\
+class Box:
+    """A box."""
+
+    def m(self, x, *rest, **extra):
+        """Do something.
+
+        Args:
+            x: The value.
+            {rest}: Extra positional values.
+            {extra}: Extra keyword values.
+        """
+
+    async def am(self, *items):
+        """Do something asynchronously.
+
+        Args:
+            {items}: The items.
+        """
+'''
+
+
+@_EXCLUDE_VALUES
+@pytest.mark.parametrize("stars", [True, False], ids=["starred", "bare"])
+@pytest.mark.parametrize("name", ["m", "am"])
+def test_method_and_async_star_params_not_extra(name, stars, exclude):
+    """Method and async-method star params match in either spelling."""
+    source = _METHOD_TEMPLATE.format(
+        rest="*rest" if stars else "rest",
+        extra="**extra" if stars else "extra",
+        items="*items" if stars else "items",
+    )
+    symbol, node_index, _ = _make_named_symbol(source, name)
+    assert symbol.kind == "method"
+    assert symbol.name == name
+    assert isinstance(
+        node_index[symbol.line],
+        ast.AsyncFunctionDef if name == "am" else ast.FunctionDef,
+    )
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig(exclude_args_kwargs=exclude)
+
+    extra = _check_extra_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+    missing = _check_missing_param_in_docstring(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert extra is None
+    assert missing is None
+
+
+def test_kwargs_template_unfiltered_enrichment_findings():
+    """Unfiltered enrichment on a documented ``**kwargs`` function."""
+    source = _KWARGS_TEMPLATE.format(kwarg="kwargs", entry="**kwargs")
+    tree = ast.parse(source)
+
+    findings = check_enrichment(source, tree, EnrichmentConfig(), "test.py")
+
+    # No param-agreement finding.  missing-other-parameters still fires even
+    # though **kwargs is documented under Args:; that cross-rule conflict is
+    # tracked separately and pinned here so a change to it is noticed.
+    assert len(findings) == 1
+    assert findings == [
+        Finding(
+            file="test.py",
+            line=1,
+            symbol="configure",
+            rule="missing-other-parameters",
+            message=(
+                "Function 'configure' accepts **kwargs but has no "
+                "Other Parameters: section"
+            ),
+            category="recommended",
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
