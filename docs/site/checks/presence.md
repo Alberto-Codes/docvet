@@ -13,7 +13,7 @@ docvet presence --all
 | [`missing-docstring`](../rules/missing-docstring.md) | required | Public symbol has no docstring |
 | [`overload-has-docstring`](../rules/overload-has-docstring.md) | required | `@overload`-decorated function has a docstring — document the implementation instead |
 
-The check parses each file with the standard library `ast` module, extracts all documentable symbols (modules, classes, functions, methods), applies filtering rules (init, magic, private), and reports one finding per undocumented symbol. Coverage statistics are aggregated across all files.
+The check parses each file with the standard library `ast` module, extracts all documentable symbols (modules, classes, functions, methods), applies filtering rules (init, magic, private), and reports one finding per undocumented symbol. Coverage statistics are aggregated across all files. Definitions nested inside a function body — closures, local helpers, local classes and their methods — are excluded from `missing-docstring` findings and the coverage denominator, because they are unreachable by import and never listed by griffe or mkdocstrings; methods and classes nested only inside classes stay checked.
 
 !!! tip "When this matters"
     Docstrings are the primary signal AI coding agents use to understand your code. Missing docstrings mean agents operate on guesswork — and research shows absent documentation degrades LLM task success significantly.
