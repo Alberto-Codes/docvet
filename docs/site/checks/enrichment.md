@@ -69,7 +69,7 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `prefer-fenced-code-blocks` | `bool` | `true` | Prefer fenced code blocks over doctest `>>>` format |
 | `require-param-agreement` | `bool` | `true` | Require parameter agreement between function signatures and `Args:` sections |
 | `require-deprecation-notice` | `bool` | `true` | Require deprecation notice when function uses deprecation patterns |
-| `exclude-args-kwargs` | `bool` | `true` | Exclude `*args` and `**kwargs` from parameter agreement checks |
+| `exclude-args-kwargs` | `bool` | `true` | Do not require `*args`/`**kwargs` to be documented in `Args:`; documenting them is never reported as extra |
 | `check-trivial-docstrings` | `bool` | `true` | Flag docstrings whose summary line trivially restates the symbol name |
 | `require-return-type` | `bool` | `false` | Require return type via typed `Returns:` entry or `->` annotation (opt-in) |
 | `require-init-params` | `bool` | `false` | Require `Args:` section when `__init__` takes parameters (opt-in) |

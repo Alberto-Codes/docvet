@@ -134,8 +134,10 @@ class EnrichmentConfig:
             in the docstring when the function uses deprecation patterns
             (``warnings.warn(..., DeprecationWarning)`` or
             ``@deprecated`` decorator). Defaults to ``True``.
-        exclude_args_kwargs (bool): Exclude ``*args`` and ``**kwargs``
-            from parameter agreement checks. Defaults to ``True``.
+        exclude_args_kwargs (bool): Do not report an undocumented
+            ``*args`` or ``**kwargs`` as missing from ``Args:``. A
+            documented ``*args``/``**kwargs`` entry is never reported
+            as extra, regardless of this value. Defaults to ``True``.
         check_trivial_docstrings (bool): Flag docstrings whose summary
             line trivially restates the symbol name without adding
             information. Defaults to ``True``.
