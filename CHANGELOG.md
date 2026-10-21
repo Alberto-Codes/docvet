@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.2](https://github.com/Alberto-Codes/docvet/compare/v2.0.1...v2.0.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **cli:** reject malformed suppression directives ([2bd682a](https://github.com/Alberto-Codes/docvet/commit/2bd682a2a8d8f5afb8dec4020c7c7a8cc7515fb2)), closes [#497](https://github.com/Alberto-Codes/docvet/issues/497)
+* **discovery:** preserve verbatim Git filenames ([4601bad](https://github.com/Alberto-Codes/docvet/commit/4601badaa383bec4d2458b8ba98553c5459b8b40)), closes [#496](https://github.com/Alberto-Codes/docvet/issues/496)
+
 ## [2.0.1](https://github.com/Alberto-Codes/docvet/compare/v2.0.0...v2.0.1) (2026-10-21)
 
 
