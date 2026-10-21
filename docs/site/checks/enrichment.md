@@ -18,7 +18,7 @@ docvet enrichment --all
 | [`missing-deprecation`](../rules/missing-deprecation.md) | required | functions, methods | Function uses deprecation patterns but has no deprecation notice in docstring |
 | [`missing-param-in-docstring`](../rules/missing-param-in-docstring.md) | required | functions, methods | Signature parameter not documented in `Args:` section |
 | [`extra-param-in-docstring`](../rules/extra-param-in-docstring.md) | required | functions, methods | `Args:` section documents a parameter not in the function signature |
-| [`missing-other-parameters`](../rules/missing-other-parameters.md) | recommended | functions, methods | Function accepts `**kwargs` but has no `Other Parameters:` section |
+| [`missing-other-parameters`](../rules/missing-other-parameters.md) | recommended | functions, methods | Function accepts `**kwargs` but has neither an `Args:` entry for the var-keyword parameter nor an `Other Parameters:` section |
 | [`missing-attributes`](../rules/missing-attributes.md) | required | classes, modules | Class or `__init__.py` module has undocumented attributes |
 | [`undocumented-init-params`](../rules/undocumented-init-params.md) | required | classes | Class `__init__` takes parameters but neither class nor `__init__` docstring has an `Args:` section |
 | [`missing-typed-attributes`](../rules/missing-typed-attributes.md) | recommended | classes | `Attributes:` section entries lack typed format `name (type): description` |
@@ -46,7 +46,7 @@ docvet enrichment --all
 src/myapp/utils.py:42: missing-raises Function 'parse_config' raises ValueError but has no Raises: section [required]
 src/myapp/models.py:15: missing-attributes Dataclass 'UserProfile' has no Attributes: section [required]
 src/myapp/generators.py:28: missing-yields Function 'stream_results' yields but has no Yields: section [required]
-src/myapp/api.py:73: missing-other-parameters Function 'create_client' accepts **kwargs but has no Other Parameters: section [recommended]
+src/myapp/api.py:73: missing-other-parameters Function 'create_client' accepts **kwargs but has neither an Args: entry for kwargs nor an Other Parameters: section [recommended]
 
 4 findings (3 required, 1 recommended)
 ```
@@ -62,7 +62,7 @@ The enrichment check is configured under `[tool.docvet.enrichment]` in your `pyp
 | `require-yields` | `bool` | `true` | Require `Yields:` sections in generators |
 | `require-receives` | `bool` | `true` | Require `Receives:` sections for `.send()` generators |
 | `require-warns` | `bool` | `true` | Require `Warns:` sections when `warnings.warn()` is called |
-| `require-other-parameters` | `bool` | `true` | Require `Other Parameters:` for `**kwargs` |
+| `require-other-parameters` | `bool` | `true` | Require an `Args:` entry for the var-keyword parameter (starred or bare) or an `Other Parameters:` section |
 | `require-attributes` | `bool` | `true` | Require `Attributes:` sections on classes and modules |
 | `require-typed-attributes` | `bool` | `true` | Require typed format in `Attributes:` entries |
 | `require-cross-references` | `bool` | `true` | Require `See Also:` in module docstrings |

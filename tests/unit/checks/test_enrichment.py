@@ -34,6 +34,7 @@ from docvet.checks.enrichment import (
     check_enrichment,
 )
 from docvet.config import EnrichmentConfig
+from docvet.rules import _RULE_CATALOG
 
 pytestmark = pytest.mark.unit
 
@@ -1454,7 +1455,8 @@ def configure(name, **kwargs):
         symbol="configure",
         rule="missing-other-parameters",
         message=(
-            "Function 'configure' accepts **kwargs but has no Other Parameters: section"
+            "Function 'configure' accepts **kwargs but has neither an Args: entry for kwargs "
+            "nor an Other Parameters: section"
         ),
         category="recommended",
     )
@@ -1484,7 +1486,8 @@ def configure(**options):
         symbol="configure",
         rule="missing-other-parameters",
         message=(
-            "Function 'configure' accepts **options but has no Other Parameters: section"
+            "Function 'configure' accepts **options but has neither an Args: entry for options "
+            "nor an Other Parameters: section"
         ),
         category="recommended",
     )
@@ -3842,3 +3845,18 @@ class Foo:
     assert result is not None
     assert result.rule == "missing-cross-references"
     assert "lacks cross-reference syntax" in result.message
+
+
+def test_missing_other_parameters_catalog_matches_emitted_category():
+    source = '\ndef configure(**kwargs):\n    """Configure a component."""\n    pass\n'
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    result = _check_missing_other_parameters(
+        symbol,
+        _parse_sections(symbol.docstring),
+        node_index,
+        EnrichmentConfig(),
+        "test.py",
+    )
+    assert result is not None
+    entry = next(r for r in _RULE_CATALOG if r["name"] == result.rule)
+    assert entry["category"] == result.category == "recommended"
