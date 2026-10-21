@@ -8,6 +8,10 @@ shared helpers for stub detection (``_is_stub_function``,
 ``_is_stub_statement``) and abstract decorator detection
 (``_is_abstract``, ``_ABSTRACT_DECORATORS``).
 
+The Other Parameters check also reads ``Args:`` entries through the
+package-level ``_parse_args_entries`` so that a ``**kwargs`` documented
+there satisfies the rule.
+
 See Also:
     [`docvet.checks.enrichment`][]: Orchestrator and dispatch table.
     [`docvet.checks._finding`][]: ``Finding`` dataclass.
@@ -24,6 +28,7 @@ from __future__ import annotations
 
 import ast
 
+import docvet.checks.enrichment as _enrichment_pkg
 from docvet.ast_utils import Symbol
 from docvet.checks._finding import Finding
 from docvet.config import EnrichmentConfig
@@ -656,14 +661,17 @@ def _check_missing_other_parameters(
     config: EnrichmentConfig,
     file_path: str,
 ) -> Finding | None:
-    """Detect a function with ``**kwargs`` without an Other Parameters section.
+    """Detect a function whose ``**kwargs`` is documented nowhere.
 
     Inspects the function signature for a ``**kwargs`` parameter via
-    ``node.args.kwarg``. Returns a finding when ``**kwargs`` is present
-    but no ``Other Parameters:`` section exists in the docstring.
+    ``node.args.kwarg``. The rule is satisfied when the docstring has an
+    ``Other Parameters:`` section, or when the var-keyword parameter is
+    documented under ``Args:`` (either ``**kwargs:`` or ``kwargs:``, as
+    parsed by ``_parse_args_entries``). Returns a finding only when
+    ``**kwargs`` is present and documented in neither place.
 
     No body walk is needed — this rule only inspects the function
-    signature.
+    signature and docstring.
 
     Args:
         symbol: The documented symbol to inspect.
@@ -675,7 +683,8 @@ def _check_missing_other_parameters(
 
     Returns:
         A ``Finding`` with ``rule="missing-other-parameters"`` when
-        ``**kwargs`` exists without documentation, or ``None`` otherwise.
+        ``**kwargs`` is documented under neither ``Args:`` nor
+        ``Other Parameters:``, or ``None`` otherwise.
     """
     if symbol.kind not in ("function", "method"):
         return None
@@ -693,6 +702,13 @@ def _check_missing_other_parameters(
         return None
 
     kwarg_name = node.args.kwarg.arg
+    if "Args" in sections and symbol.docstring is not None:
+        documented = _enrichment_pkg._parse_args_entries(
+            symbol.docstring, style=_enrichment_pkg._active_style
+        )
+        if kwarg_name in documented:
+            return None
+
     return Finding(
         file=file_path,
         line=symbol.line,

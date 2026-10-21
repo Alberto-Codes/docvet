@@ -1402,6 +1402,94 @@ class Foo:
     assert result is None
 
 
+@pytest.mark.parametrize("entry", ["**kwargs", "kwargs"])
+def test_missing_other_parameters_when_kwargs_documented_in_args_returns_none(
+    entry,
+):
+    source = f'''\
+def configure(name, **kwargs):
+    """Configure a component.
+
+    Args:
+        name: The component name.
+        {entry}: Extra options.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    assert "Args" in sections
+    assert "Other Parameters" not in sections
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result is None
+
+
+def test_missing_other_parameters_when_args_omits_kwargs_returns_finding():
+    source = '''\
+def configure(name, **kwargs):
+    """Configure a component.
+
+    Args:
+        name: The component name.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    assert "Args" in sections
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result == Finding(
+        file="test.py",
+        line=1,
+        symbol="configure",
+        rule="missing-other-parameters",
+        message=(
+            "Function 'configure' accepts **kwargs but has no Other Parameters: section"
+        ),
+        category="recommended",
+    )
+
+
+def test_missing_other_parameters_when_args_documents_other_kwarg_name_returns_finding():
+    source = '''\
+def configure(**options):
+    """Configure a component.
+
+    Args:
+        **kwargs: Extra options.
+    """
+    pass
+'''
+    symbol, node_index, _ = _make_symbol_and_index(source)
+    sections = _parse_sections(symbol.docstring)
+    config = EnrichmentConfig()
+
+    result = _check_missing_other_parameters(
+        symbol, sections, node_index, config, "test.py"
+    )
+
+    assert result == Finding(
+        file="test.py",
+        line=1,
+        symbol="configure",
+        rule="missing-other-parameters",
+        message=(
+            "Function 'configure' accepts **options but has no Other Parameters: section"
+        ),
+        category="recommended",
+    )
+
+
 # ---------------------------------------------------------------------------
 # check_enrichment orchestrator tests (warns/other-parameters)
 # ---------------------------------------------------------------------------
