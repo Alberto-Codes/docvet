@@ -42,7 +42,10 @@ def cli_runner():
 
 @pytest.fixture
 def _mock_check_internals(mocker):
-    """Mock discovery, config, _run_* functions, and _output_and_exit.
+    """Mock discovery, config, _run_* functions, and findings emission.
+
+    ``_output_and_exit`` runs for real because it writes the summary line
+    from the post-suppression findings; only ``_emit_findings`` is mocked.
 
     Also mocks ``importlib.util.find_spec`` to report griffe as installed,
     ensuring tests are hermetic regardless of the test environment.
@@ -60,7 +63,7 @@ def _mock_check_internals(mocker):
     mocker.patch("docvet.cli._run_freshness", return_value=([], 0))
     mocker.patch("docvet.cli._run_coverage", return_value=([], 0))
     mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
-    mocker.patch("docvet.cli._output_and_exit")
+    mocker.patch("docvet.cli._output._emit_findings")
     mocker.patch("docvet.cli.load_config", return_value=fake_config)
     mocker.patch("docvet.cli.importlib.util.find_spec", return_value=MagicMock())
 
