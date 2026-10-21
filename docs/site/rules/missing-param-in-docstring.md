@@ -40,7 +40,7 @@ When signature parameters are missing from the `Args:` section, callers don't kn
 
 ## Configuration
 
-By default, `*args` and `**kwargs` are excluded from agreement checks — undocumented star arguments are not flagged. Set `exclude-args-kwargs = false` to require their documentation (matches pydoclint's default behavior where `--should-document-star-arguments = true`).
+The `exclude-args-kwargs` option decides only whether undocumented `*args` and `**kwargs` count as missing (under `missing-param-in-docstring` and `undocumented-init-params`); by default, they are not flagged. Set `exclude-args-kwargs = false` to require their documentation (matches pydoclint's default behavior where `--should-document-star-arguments = true`).
 
 ```toml
 [tool.docvet.enrichment]
