@@ -50,11 +50,11 @@ The **LSP path** receives files directly from the editor via `textDocument/didOp
 | `cli.py` | Typer CLI — config loading, file discovery, check dispatch, output |
 | `config.py` | Reads `[tool.docvet]` from `pyproject.toml` |
 | `discovery.py` | Finds target files via git diff, staged, `--all`, or positional args |
-| `checks/presence.py` | Missing docstring detection — 1 rule (AST analysis) |
-| `checks/enrichment.py` | Missing sections detection — 10 rules (AST analysis) |
-| `checks/freshness.py` | Stale docstring detection — 5 rules (git diff + git blame) |
-| `checks/coverage.py` | Missing `__init__.py` detection — 1 rule (directory scan) |
-| `checks/griffe_compat.py` | Griffe parser warning capture — 3 rules |
+| `checks/presence.py` | Missing docstring detection — {{ rule_count("presence") }} rules (AST analysis) |
+| `checks/enrichment.py` | Missing sections detection — {{ rule_count("enrichment") }} rules (AST analysis) |
+| `checks/freshness.py` | Stale docstring detection — {{ rule_count("freshness") }} rules (git diff + git blame) |
+| `checks/coverage.py` | Missing `__init__.py` detection — {{ rule_count("coverage") }} rule (directory scan) |
+| `checks/griffe_compat.py` | Griffe parser warning capture — {{ rule_count("griffe") }} rules |
 | `reporting.py` | Formats findings as terminal, markdown, or JSON output |
 | `lsp.py` | LSP server — reuses checks for real-time editor diagnostics |
 

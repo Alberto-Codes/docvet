@@ -1,7 +1,8 @@
 """Macros hook for mkdocs-macros-plugin.
 
 Loads rule metadata from docs/rules.yml and provides Jinja macros
-for rendering consistent rule page headers and fix guidance sections.
+for rendering consistent rule page headers, fix guidance sections, and
+catalog-derived counts.
 
 Examples:
     Configure in ``mkdocs.yml``:
@@ -25,6 +26,7 @@ See Also:
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -33,13 +35,27 @@ import yaml
 def define_env(env):
     """Define macros and variables for mkdocs-macros-plugin.
 
-    Registers the ``rule_header`` and ``rule_fix`` macros which render
-    breadcrumb back-links, metadata tables, and "How to Fix" sections
-    on rule reference pages.
+    Registers ``rule_count`` for total and per-check catalog counts, plus
+    ``rule_header`` and ``rule_fix`` for breadcrumb back-links, metadata
+    tables, and "How to Fix" sections on rule reference pages.
     """
     rules_path = Path(env.project_dir) / "docs" / "rules.yml"
     rules_data = yaml.safe_load(rules_path.read_text())
     rules_by_id = {rule["id"]: rule for rule in rules_data}
+
+    counts = Counter(rule["check"] for rule in rules_data)
+
+    @env.macro
+    def rule_count(check: str | None = None) -> int:
+        """Return the catalog total or the number of rules for a check.
+
+        Args:
+            check: Check name, or None for the total across all checks.
+
+        Returns:
+            Number of matching rules in docs/rules.yml.
+        """
+        return len(rules_data) if check is None else counts[check]
 
     @env.macro
     def rule_header() -> str:

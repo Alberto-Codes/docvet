@@ -1,6 +1,6 @@
 # Presence Check
 
-The presence check implements **Layer 1 (Presence)** of docvet's quality model. It detects public symbols — modules, classes, functions, and methods — that lack a docstring, flags misplaced docstrings on `@overload` functions, and reports per-file coverage statistics. 2 rules. This is docvet's built-in replacement for interrogate, with zero extra dependencies.
+The presence check implements **Layer 1 (Presence)** of docvet's quality model. It detects public symbols — modules, classes, functions, and methods — that lack a docstring, flags misplaced docstrings on `@overload` functions, and reports per-file coverage statistics. {{ rule_count("presence") }} rules. This is docvet's built-in replacement for interrogate, with zero extra dependencies.
 
 ```bash
 docvet presence --all

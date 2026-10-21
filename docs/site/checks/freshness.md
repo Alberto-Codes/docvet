@@ -1,6 +1,6 @@
 # Freshness Check
 
-The freshness check implements **Layer 4 (Accuracy)** of docvet's quality model. It detects stale docstrings — code that changed without a corresponding docstring update — using git history analysis. Two modes offer different trade-offs: **diff mode** for fast feedback on recent changes, and **drift mode** for a comprehensive sweep of historical staleness. 5 rules across two modes.
+The freshness check implements **Layer 4 (Accuracy)** of docvet's quality model. It detects stale docstrings — code that changed without a corresponding docstring update — using git history analysis. Two modes offer different trade-offs: **diff mode** for fast feedback on recent changes, and **drift mode** for a comprehensive sweep of historical staleness. {{ rule_count("freshness") }} rules across two modes.
 
 ```bash
 docvet freshness --all

@@ -1,6 +1,6 @@
 # Coverage Check
 
-The coverage check implements **Layer 6 (Visibility)** of docvet's quality model. It detects missing `__init__.py` files in your source tree that would make Python packages invisible to mkdocs and other documentation generators. 1 rule.
+The coverage check implements **Layer 6 (Visibility)** of docvet's quality model. It detects missing `__init__.py` files in your source tree that would make Python packages invisible to mkdocs and other documentation generators. {{ rule_count("coverage") }} rule.
 
 ```bash
 docvet coverage --all

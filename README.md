@@ -24,7 +24,7 @@ ruff checks how your docstrings look. interrogate checks if they exist (but is u
 | 5. Rendering | "Will mkdocs render it correctly?" | -- | -- | -- | **Yes** |
 | 6. Visibility | "Will mkdocs even see the file?" | -- | -- | -- | **Yes** |
 
-**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 20 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, cross-references, parameter agreement, and more. Add presence (coverage metrics + threshold enforcement), freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 31 rules across 5 checks, in territory no other tool touches.
+**pydoclint** covers 3 structural categories (Args, Returns, Raises). docvet's enrichment alone has 21 rules, including Raises, Yields, Receives, Warns, Attributes, Examples, cross-references, parameter agreement, and more. Add presence (coverage metrics + threshold enforcement), freshness (git diff/blame staleness detection), griffe rendering compatibility, and mkdocs coverage: 32 rules across 5 checks, in territory no other tool touches.
 
 **[Quickstart](#quickstart)** | **[GitHub Action](#github-action)** | **[Pre-commit](#pre-commit)** | **[Configuration](#configuration)** | **[AI Agent Integration](#ai-agent-integration)** | **[Docs](https://alberto-codes.github.io/docvet/)**
 
@@ -33,7 +33,7 @@ ruff checks how your docstrings look. interrogate checks if they exist (but is u
 **Presence** (existence) -- 2 rules:
 `missing-docstring` `overload-has-docstring`
 
-**Enrichment** (completeness) -- 20 rules:
+**Enrichment** (completeness) -- 21 rules:
 `missing-raises` `missing-returns` `missing-yields` `missing-receives` `missing-warns` `missing-deprecation` `missing-param-in-docstring` `extra-param-in-docstring` `missing-other-parameters` `missing-attributes` `undocumented-init-params` `missing-typed-attributes` `missing-examples` `missing-cross-references` `extra-raises-in-docstring` `extra-yields-in-docstring` `extra-returns-in-docstring` `missing-return-type` `trivial-docstring` `prefer-fenced-code-blocks`
 
 **Freshness** (accuracy) -- 5 rules:

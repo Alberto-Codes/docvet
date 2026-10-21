@@ -85,7 +85,7 @@ Does every public symbol have a docstring? A function without a docstring is inv
 Is the docstring formatted consistently? Google-style, NumPy-style, or Sphinx-style — pick one and enforce it. This is ruff's domain (D rules). docvet doesn't duplicate it.
 
 **Layer 3 — Completeness.**
-Does the docstring cover what the code actually does? A function that raises exceptions needs a `Raises` section. A class with attributes needs an `Attributes` section. A generator needs `Yields`. docvet's [`enrichment`](checks/enrichment.md) check uses AST analysis to detect these gaps — [10 rules](checks/enrichment.md) covering Raises, Yields, Receives, Warns, Attributes, Examples, and more.
+Does the docstring cover what the code actually does? A function that raises exceptions needs a `Raises` section. A class with attributes needs an `Attributes` section. A generator needs `Yields`. docvet's [`enrichment`](checks/enrichment.md) check uses AST analysis to detect these gaps — [{{ rule_count("enrichment") }} rules](checks/enrichment.md) covering Raises, Yields, Receives, Warns, Attributes, Examples, and more.
 
 **Layer 4 — Accuracy.**
 Does the docstring still match the code? This is the most dangerous layer when it fails — research shows misleading documentation reduces LLM fault localization accuracy to 25.63% across 750,000 tasks ([Haroon et al., 2025](https://arxiv.org/abs/2504.04372)). docvet's [`freshness`](checks/freshness.md) check uses git diff and git blame to flag code that changed without a corresponding docstring update.
