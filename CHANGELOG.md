@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/Alberto-Codes/docvet/compare/v2.0.3...v3.0.0) (2026-10-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** JSON run.status adds incomplete; presence_coverage.percentage is null when analysis wholly failed; invalid requested inputs and read/decode/parse/write failures exit 1 independently of finding and availability opt-outs. Consumers must accept the new status and nullable percentage, inspect presence_coverage.complete, and use files_analyzed rather than treating files_checked as proof of analysis. MCP availability metadata follows configured gates. These documented contract changes require a major release.
+
+### Bug Fixes
+
+* **cli:** report incomplete input analysis ([#519](https://github.com/Alberto-Codes/docvet/issues/519)) ([16eec13](https://github.com/Alberto-Codes/docvet/commit/16eec13b877d7a40e4d1ade65b15b40881efdc65)), closes [#495](https://github.com/Alberto-Codes/docvet/issues/495) [#498](https://github.com/Alberto-Codes/docvet/issues/498) [#499](https://github.com/Alberto-Codes/docvet/issues/499) [#515](https://github.com/Alberto-Codes/docvet/issues/515) [#516](https://github.com/Alberto-Codes/docvet/issues/516) [#517](https://github.com/Alberto-Codes/docvet/issues/517)
+
 ## [2.0.3](https://github.com/Alberto-Codes/docvet/compare/v2.0.2...v2.0.3) (2026-10-21)
 
 ### Compatibility and guidance
