@@ -204,7 +204,7 @@ docvet uses `fail-on` and `warn-on` to control whether findings cause a non-zero
 | Exit Code | Meaning |
 |-----------|---------|
 | **0** | No findings in `fail-on` checks — CI passes |
-| **1** | A `fail-on` check produced findings, or could not run at all — CI fails. `run.status` in JSON output distinguishes the two (`findings` vs `unavailable`) |
+| **1** | A `fail-on` check produced findings, or could not run at all, or an input could not be selected or analyzed — CI fails. `run.status` in JSON output distinguishes the three (`findings`, `unavailable`, `incomplete`); see [Input failures and incomplete analysis](cli-reference.md#input-failures-and-incomplete-analysis) |
 | **2** | Usage error (invalid arguments or configuration) |
 
 ### How `fail-on` works

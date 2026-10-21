@@ -194,6 +194,9 @@ By default, freshness is excluded because it requires git context, and griffe is
     "total": 5,
     "by_category": {"required": 3, "recommended": 2},
     "files_checked": 10,
+    "files_attempted": 10,
+    "files_analyzed": 10,
+    "files_failed": 0,
     "by_check": {"enrichment": 3, "presence": 2}
   },
   "presence_coverage": {
@@ -201,7 +204,15 @@ By default, freshness is excluded because it requires git context, and griffe is
     "total": 10,
     "percentage": 80.0,
     "threshold": 95.0,
-    "passed": false
+    "passed": false,
+    "complete": true
+  },
+  "run": {
+    "status": "findings",
+    "exit_code": 1,
+    "exit_reason": "checks configured in fail-on have findings: enrichment",
+    "input_errors": [],
+    "unavailable_checks": []
   }
 }
 ```

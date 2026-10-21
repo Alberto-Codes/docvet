@@ -54,14 +54,24 @@ The `--format json` option produces a structured JSON object for programmatic co
   "summary": {
     "total": 1,
     "by_category": { "required": 1, "recommended": 0, "scaffold": 0 },
-    "files_checked": 42
+    "files_checked": 42,
+    "files_attempted": 42,
+    "files_analyzed": 42,
+    "files_failed": 0
+  },
+  "run": {
+    "status": "findings",
+    "input_errors": [],
+    "exit_code": 1,
+    "exit_reason": "checks configured in fail-on have findings: enrichment",
+    "unavailable_checks": []
   }
 }
 ```
 
 - Each finding has seven fields: `file`, `line`, `symbol`, `rule`, `message`, `category`, `severity`.
 - The `severity` field is derived from `category`: `"required"` maps to `"high"`, `"scaffold"` maps to `"medium"`, `"recommended"` maps to `"low"`. It is a convenience alias, not a separate signal.
-- The `summary` object includes `total`, `by_category` (with `required`, `recommended`, and `scaffold` counts), and `files_checked`.
+- The `summary` object includes `total`, `by_category` (with `required`, `recommended`, and `scaffold` counts), `files_checked`, and the unique-path counts `files_attempted`, `files_analyzed`, and `files_failed` described under [Input failures and incomplete analysis](#input-failures-and-incomplete-analysis).
 - A `suppressed` array is included containing findings that were suppressed by inline `# docvet: ignore` comments. Each entry has the same seven fields as a finding.
 - A `run` object reports the outcome of the run itself: `status` (`"passed"`, `"findings"`, `"unavailable"`, or `"incomplete"`), `exit_code`, `exit_reason`, and an `unavailable_checks` array listing every check that could not execute. `status` names **which condition blocked the run**, not everything that happened — a run blocked by a gate that could not execute reports `"unavailable"` even when it also has findings, and `exit_reason` then names both facts. Read `summary.total` to decide whether there is anything to fix, regardless of `status`. See [Checks that cannot run](ci-integration.md#checks-that-cannot-run).
 - Whitespace and indentation are not part of the schema contract — always parse with a JSON parser.

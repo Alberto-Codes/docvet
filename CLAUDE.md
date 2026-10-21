@@ -79,6 +79,7 @@ The product vision (`docs/product-vision.md`) defines the full design. The codeb
 - **`config.py`** — reads `[tool.docvet]` from pyproject.toml
 - **`discovery.py`** — file discovery via git diff, git diff --cached, --all, positional args, or --files
 - **`ast_utils.py`** — shared AST helpers (docstring ranges, node walking, symbol mapping)
+- **`source.py`** — `SourceCache`: one per invocation, encoding-aware (PEP 263, BOM) read/decode/parse shared by all checks; its recorded errors drive `run.status = "incomplete"`
 - **`reporting.py`** — markdown/terminal/JSON report generation
 - **`lsp.py`** — LSP server for real-time editor diagnostics
 - **`checks/`** — one module per check layer (enrichment, freshness, coverage, griffe_compat)
