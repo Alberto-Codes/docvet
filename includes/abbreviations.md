@@ -74,8 +74,8 @@
 *[interrogate]: A third-party Python tool for docstring presence checking, superseded by docvet's presence check.
 
 <!-- CLI & Configuration -->
-*[fail-on]: A CLI flag controlling which severity levels cause a non-zero exit code.
-*[Fail-on]: A CLI flag controlling which severity levels cause a non-zero exit code.
+*[fail-on]: A [tool.docvet] list of check names whose findings, or failure to run, make docvet exit 1 (see fail-on-unavailable).
+*[Fail-on]: A [tool.docvet] list of check names whose findings, or failure to run, make docvet exit 1 (see fail-on-unavailable).
 *[threshold]: A configurable numeric limit used by checks (e.g., drift-threshold, age-threshold, min-coverage).
 *[Threshold]: A configurable numeric limit used by checks (e.g., drift-threshold, age-threshold, min-coverage).
 *[staged]: The git staging area; the --staged flag restricts checks to staged files.
