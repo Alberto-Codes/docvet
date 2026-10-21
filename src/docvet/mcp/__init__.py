@@ -19,7 +19,9 @@ prevent cross-file hunk contamination in freshness mode; those git
 commands run with :func:`docvet.discovery.git_env` so an inherited
 ``GIT_DIR`` cannot redirect them away from the project root, and
 ``SystemExit`` from invalid configuration is caught and returned as
-a structured error rather than crashing the server.
+a structured error rather than crashing the server. Source loading shares
+Python encoding detection and reports incomplete input analysis through
+additive run metadata, preserving legacy error fields and selection counts.
 
 Attributes:
     mcp_server: The FastMCP server instance.
@@ -53,14 +55,17 @@ from __future__ import annotations
 import json
 import logging
 import subprocess  # noqa: F401 - kept reachable as docvet.mcp.subprocess
+from dataclasses import asdict
 from pathlib import Path
 
 from docvet.checks import Finding, PresenceStats, check_coverage
 from docvet.config import _VALID_CHECK_NAMES, DocvetConfig
 from docvet.discovery import DiscoveryMode, discover_files
+from docvet.reporting import UnavailableCheck, determine_run_outcome
 from docvet.rules import _RULE_CATALOG
 from docvet.rules import _RULE_TO_CHECK as _RULE_TO_CHECK
 from docvet.rules import RuleCatalogEntry as RuleCatalogEntry
+from docvet.source import InputError, SourceCache
 
 from ._runner import (
     _build_summary,
@@ -103,6 +108,7 @@ _DEFAULT_MCP_CHECKS: frozenset[str] = frozenset(
 def _run_griffe(
     src_root: Path,
     files: list[Path],
+    source_cache: SourceCache | None = None,
 ) -> tuple[list[Finding], str | None]:
     """Run the griffe compatibility check.
 
@@ -112,6 +118,7 @@ def _run_griffe(
     Args:
         src_root: Source root directory for griffe package loading.
         files: List of absolute paths to Python files.
+        source_cache: Shared decoded sources for encoding-aware griffe checks.
 
     Returns:
         A tuple of ``(findings, error)`` where *error* is ``None``
@@ -120,7 +127,11 @@ def _run_griffe(
     if not _GRIFFE_AVAILABLE:
         return [], "griffe check requires the griffe extra: pip install docvet[griffe]"
     try:
-        return list(check_griffe_compat(src_root, files)), None
+        if source_cache is None:
+            return list(check_griffe_compat(src_root, files)), None
+        return list(
+            check_griffe_compat(src_root, files, source_cache=source_cache)
+        ), None
     except (ImportError, OSError, AttributeError) as exc:
         return [], f"griffe check failed: {exc}"
 
@@ -129,6 +140,8 @@ def _run_checks(
     files: list[Path],
     config: DocvetConfig,
     checks: frozenset[str],
+    source_cache: SourceCache | None = None,
+    unavailable: list[UnavailableCheck] | None = None,
 ) -> tuple[list[Finding], PresenceStats | None, list[str]]:
     """Run the requested docvet checks on discovered files.
 
@@ -142,6 +155,8 @@ def _run_checks(
         files: List of absolute paths to Python files.
         config: The loaded docvet configuration.
         checks: Set of check names to run.
+        source_cache: Shared invocation source cache.
+        unavailable: Optional sink for structured check execution failures.
 
     Returns:
         A tuple of ``(findings, presence_stats, errors)`` where
@@ -151,7 +166,15 @@ def _run_checks(
     """
     errors: list[str] = []
 
-    findings, presence_stats = _run_per_file_checks(files, config, checks)
+    cache = source_cache if source_cache is not None else SourceCache()
+    analysis_files = files
+    if checks & {"presence", "enrichment", "freshness"} or (
+        "griffe" in checks and _GRIFFE_AVAILABLE
+    ):
+        analysis_files = [path for path in files if cache.get(path) is not None]
+    findings, presence_stats = _run_per_file_checks(
+        analysis_files, config, checks, cache
+    )
 
     src_root = config.project_root / config.src_root
 
@@ -159,18 +182,142 @@ def _run_checks(
         findings.extend(check_coverage(src_root, files))
 
     if "griffe" in checks:
-        griffe_findings, griffe_error = _run_griffe(src_root, files)
+        griffe_findings, griffe_error = _run_griffe(src_root, analysis_files, cache)
         findings.extend(griffe_findings)
         if griffe_error:
             errors.append(griffe_error)
+            if unavailable is not None:
+                unavailable.append(_unavailable_check("griffe", griffe_error, config))
 
     if "freshness" in checks:
-        freshness_findings, freshness_error = _run_freshness(files, config)
+        freshness_findings, freshness_error = _run_freshness(
+            analysis_files, config, cache
+        )
         findings.extend(freshness_findings)
         if freshness_error:
             errors.append(freshness_error)
+            if unavailable is not None:
+                unavailable.append(
+                    _unavailable_check("freshness", freshness_error, config)
+                )
 
     return findings, presence_stats, errors
+
+
+def _unavailable_check(
+    check: str, reason: str, config: DocvetConfig
+) -> UnavailableCheck:
+    """Describe an unavailable check using the shared configured-gate policy.
+
+    Args:
+        check: Name of the check that could not execute.
+        reason: Legacy error message explaining the execution failure.
+        config: Configuration controlling availability gating.
+
+    Returns:
+        Structured availability record with a remedy and gate state.
+    """
+    configured_gate = check in config.fail_on
+    remedy = (
+        "Install docvet[griffe] and verify source loading"
+        if check == "griffe"
+        else "Install git and run freshness within a git repository"
+    )
+    return UnavailableCheck(
+        check=check,
+        reason=reason,
+        remedy=remedy,
+        blocking=configured_gate and config.fail_on_unavailable,
+        configured_gate=configured_gate,
+    )
+
+
+def _build_response(
+    files: list[Path],
+    config: DocvetConfig,
+    checks: frozenset[str],
+    findings: list[Finding],
+    presence_stats: PresenceStats | None,
+    cache: SourceCache,
+    unavailable: list[UnavailableCheck] | None = None,
+) -> dict[str, object]:
+    """Build additive run metadata without changing finding serialization.
+
+    Args:
+        files: Selected files, preserving legacy selection counts.
+        config: Loaded configuration for gates and coverage thresholds.
+        checks: Requested checks.
+        findings: Findings produced by successfully analyzed inputs.
+        presence_stats: Observed presence statistics, when available.
+        cache: Shared sources and deduplicated input failures.
+        unavailable: Structured check execution failures.
+
+    Returns:
+        The complete MCP result with input accounting and run outcome.
+    """
+    failed = {Path(error.file).absolute() for error in cache.errors}
+    attempted = set(files) | set(cache.attempted_paths) | failed
+    analyzed = set(cache.successful_paths)
+    if "coverage" in checks:
+        analyzed.update(files)
+    analyzed -= failed
+    summary = _build_summary(findings, len(files), checks)
+    summary.update(
+        files_attempted=len(attempted),
+        files_analyzed=len(analyzed),
+        files_failed=len(failed),
+    )
+    grouped = {
+        check: [f for f in findings if _RULE_TO_CHECK.get(f.rule) == check]
+        for check in checks
+    }
+    outcome = determine_run_outcome(
+        grouped,
+        config,
+        presence_stats=presence_stats,
+        input_errors=cache.errors,
+        unavailable=unavailable or (),
+    )
+    result: dict[str, object] = {
+        "findings": [_serialize_finding(f) for f in findings],
+        "summary": summary,
+        "run": {
+            "status": outcome.status,
+            "exit_code": outcome.exit_code,
+            "exit_reason": outcome.reason,
+            "input_errors": [asdict(error) for error in cache.errors],
+            "unavailable_checks": [asdict(item) for item in unavailable or ()],
+        },
+    }
+    if presence_stats is not None or ("presence" in checks and cache.errors):
+        stats = presence_stats or PresenceStats(documented=0, total=0)
+        complete = not cache.errors
+        result["presence_coverage"] = {
+            "documented": stats.documented,
+            "total": stats.total,
+            "percentage": round(stats.percentage, 1) if analyzed else None,
+            "threshold": config.presence.min_coverage,
+            "passed": complete and stats.percentage >= config.presence.min_coverage,
+            "complete": complete,
+        }
+    return result
+
+
+def _invalid_target(target: Path, message: str, cache: SourceCache) -> str:
+    """Serialize invalid targets with the legacy error and structured metadata.
+
+    Args:
+        target: Invalid requested path.
+        message: Existing human-readable error text.
+        cache: Invocation source cache.
+
+    Returns:
+        JSON response retaining the legacy error field.
+    """
+    cache.record_error(InputError(str(target), "input", message))
+    result = _build_response([], DocvetConfig(), frozenset(), [], None, cache)
+    result["error"] = message
+    return json.dumps(result)
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +338,11 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
     entire project). Returns a JSON object with findings, summary
     statistics, and optional presence coverage data. Invalid
     configuration triggers a structured error response instead of
-    crashing the server.
+    crashing the server. Input, read, decode, and parse failures report
+    an incomplete run with unique attempted, analyzed, and failed file counts.
+    Presence coverage explicitly marks incomplete results, with a null
+    percentage when no input could be analyzed. Legitimate empty selections
+    succeed without requiring optional check dependencies or git context.
 
     Args:
         path: Path to a Python file or directory to check.
@@ -205,11 +356,16 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
         invalid path, unknown check name, or malformed configuration.
         Call docvet_rules() for per-rule fix guidance and format examples.
     """
-    target = Path(path).resolve()
+    cache = SourceCache()
+    target = Path(path).absolute()
+    try:
+        target = target.resolve()
+    except (OSError, RuntimeError, ValueError) as exc:
+        return _invalid_target(target, str(exc), cache)
 
     # Validate path
     if not target.exists():
-        return json.dumps({"error": f"Path does not exist: {path}"})
+        return _invalid_target(target, f"Path does not exist: {path}", cache)
 
     # Find pyproject.toml by walking up from target
     try:
@@ -232,32 +388,32 @@ def docvet_check(path: str, checks: list[str] | None = None) -> str:
         requested = _DEFAULT_MCP_CHECKS
 
     # Discover files
+    discovery_errors: list[InputError] = []
     if target.is_file() and target.suffix == ".py":
-        discovered = discover_files(config, DiscoveryMode.FILES, files=[target])
+        discovered = discover_files(
+            config, DiscoveryMode.FILES, files=[target], errors=discovery_errors
+        )
     elif target.is_dir():
-        all_files = discover_files(config, DiscoveryMode.ALL)
+        all_files = discover_files(config, DiscoveryMode.ALL, errors=discovery_errors)
         discovered = [f for f in all_files if f.is_relative_to(target)]
     else:
-        return json.dumps({"error": f"Path is not a Python file or directory: {path}"})
+        return _invalid_target(
+            target, f"Path is not a Python file or directory: {path}", cache
+        )
 
+    for error in discovery_errors:
+        cache.record_error(error)
+    if not discovered and not cache.errors:
+        return json.dumps(_build_response([], config, requested, [], None, cache))
     # Run checks
-    findings, presence_stats, errors = _run_checks(discovered, config, requested)
+    unavailable: list[UnavailableCheck] = []
+    findings, presence_stats, errors = _run_checks(
+        discovered, config, requested, cache, unavailable
+    )
 
-    # Build response
-    result: dict[str, object] = {
-        "findings": [_serialize_finding(f) for f in findings],
-        "summary": _build_summary(findings, len(discovered), requested),
-    }
-
-    if presence_stats is not None:
-        pct = presence_stats.percentage
-        result["presence_coverage"] = {
-            "documented": presence_stats.documented,
-            "total": presence_stats.total,
-            "percentage": round(pct, 1),
-            "threshold": config.presence.min_coverage,
-            "passed": pct >= config.presence.min_coverage,
-        }
+    result = _build_response(
+        discovered, config, requested, findings, presence_stats, cache, unavailable
+    )
 
     if errors:
         result["errors"] = errors

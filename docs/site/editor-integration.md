@@ -194,6 +194,9 @@ By default, freshness is excluded because it requires git context, and griffe is
     "total": 5,
     "by_category": {"required": 3, "recommended": 2},
     "files_checked": 10,
+    "files_attempted": 10,
+    "files_analyzed": 10,
+    "files_failed": 0,
     "by_check": {"enrichment": 3, "presence": 2}
   },
   "presence_coverage": {
@@ -201,12 +204,34 @@ By default, freshness is excluded because it requires git context, and griffe is
     "total": 10,
     "percentage": 80.0,
     "threshold": 95.0,
-    "passed": false
+    "passed": false,
+    "complete": true
+  },
+  "run": {
+    "status": "findings",
+    "exit_code": 1,
+    "exit_reason": "checks configured in fail-on have findings: enrichment",
+    "input_errors": [],
+    "unavailable_checks": []
   }
 }
 ```
 
-The `presence_coverage` key only appears when the presence check runs. An `errors` key appears if any check encounters an internal error (e.g., griffe not installed, git unavailable). If the request itself is invalid (nonexistent path, unknown check name, or malformed configuration), the response contains only an `error` string instead of findings.
+The `presence_coverage` key appears when presence analysis was attempted on a
+nonempty selection. Input/read/decode/parse failures use the same `run.status:
+"incomplete"`, `run.exit_code: 1`, `run.input_errors`, unique attempted/analyzed/
+failed counts, and incomplete coverage contract as the
+[CLI](cli-reference.md#input-failures-and-incomplete-analysis). An empty directory
+returns zero counts without a measured coverage value. Directories remain valid
+MCP targets; CLI explicit arguments accept files only.
+
+The legacy `errors` array remains available for optional-check problems such as
+missing griffe or unavailable git context. Invalid paths retain their `error`
+string alongside the structured incomplete result. Unknown check names and
+malformed configuration retain their existing error-only response. The new run metadata applies the shared `fail-on` and
+`fail-on-unavailable` policy to unavailable requested checks while retaining the
+legacy error strings. Consumers should inspect `run.unavailable_checks` even
+when a non-gated or opted-out check leaves `run.exit_code` at zero.
 
 #### `docvet_rules`
 

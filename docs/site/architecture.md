@@ -50,6 +50,7 @@ The **LSP path** receives files directly from the editor via `textDocument/didOp
 | `cli.py` | Typer CLI — config loading, file discovery, check dispatch, output |
 | `config.py` | Reads `[tool.docvet]` from `pyproject.toml` |
 | `discovery.py` | Finds target files via git diff, staged, `--all`, or positional args |
+| `source.py` | Encoding-aware source cache shared by every check — reads, decodes, and parses each file once and records structured input failures |
 | `checks/presence.py` | Missing docstring detection — {{ rule_count("presence") }} rules (AST analysis) |
 | `checks/enrichment.py` | Missing sections detection — {{ rule_count("enrichment") }} rules (AST analysis) |
 | `checks/freshness.py` | Potential staleness signals — {{ rule_count("freshness") }} rules (git diff + git blame) |

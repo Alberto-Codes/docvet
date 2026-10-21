@@ -28,7 +28,7 @@ from __future__ import annotations
 import ast
 import re
 
-from docvet.ast_utils import get_docstring_range
+from docvet.ast_utils import get_docstring_range, split_physical_lines
 from docvet.checks._finding import Finding
 
 __all__ = ["scaffold_missing_sections"]
@@ -171,7 +171,7 @@ def _build_section_lines(
         section: The section header name (e.g. ``"Raises"``).
         node: The AST node for the symbol being scaffolded.
         indent: Whitespace prefix for section header lines.
-        newline: Line ending style (``"\n"`` or ``"\r\n"``).
+        newline: Line ending style (``"\n"``, ``"\r\n"``, or ``"\r"``).
 
     Returns:
         List of lines (including newlines) for the scaffold block.
@@ -303,13 +303,16 @@ def scaffold_missing_sections(
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             node_map[node.lineno] = node
 
-    lines = source.splitlines(keepends=True)
+    lines = split_physical_lines(source, keepends=True)
 
     # Detect newline style from file content.
     newline = "\n"
     for ln in lines:
         if ln.endswith("\r\n"):
             newline = "\r\n"
+            break
+        if ln.endswith("\r"):
+            newline = "\r"
             break
         if ln.endswith("\n"):
             break

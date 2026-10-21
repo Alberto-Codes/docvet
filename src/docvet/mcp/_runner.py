@@ -6,7 +6,9 @@ diff run, summary aggregation by check module, and config discovery.
 None of these touch the MCP SDK, which keeps the server module in
 :mod:`docvet.mcp` focused on tool registration. Freshness git commands
 run with :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR``
-cannot redirect them away from the project root.
+cannot redirect them away from the project root. Source consumers share an
+invocation cache that detects Python encodings and retains structured failures
+without duplicate logging. Git diff decoding tolerates non-UTF-8 source bytes.
 
 The griffe dispatch stays in :mod:`docvet.mcp` because callers patch
 ``docvet.mcp._GRIFFE_AVAILABLE`` and ``docvet.mcp.check_griffe_compat``.
@@ -29,7 +31,6 @@ See Also:
 
 from __future__ import annotations
 
-import ast
 import logging
 import subprocess
 from pathlib import Path
@@ -44,6 +45,7 @@ from docvet.checks.freshness import check_freshness_diff
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import git_env
 from docvet.rules import _RULE_TO_CHECK
+from docvet.source import SourceCache
 
 __all__: list[str] = []
 
@@ -90,6 +92,7 @@ def _run_per_file_checks(
     files: list[Path],
     config: DocvetConfig,
     checks: frozenset[str],
+    source_cache: SourceCache | None = None,
 ) -> tuple[list[Finding], PresenceStats | None]:
     """Run per-file checks (presence, enrichment) on all files.
 
@@ -101,6 +104,7 @@ def _run_per_file_checks(
         files: List of absolute paths to Python files.
         config: The loaded docvet configuration.
         checks: Set of check names to run.
+        source_cache: Shared invocation source cache.
 
     Returns:
         A tuple of ``(findings, presence_stats)`` where
@@ -110,17 +114,14 @@ def _run_per_file_checks(
     findings: list[Finding] = []
     all_presence_stats: list[PresenceStats] = []
 
+    if not checks & {"presence", "enrichment"}:
+        return findings, None
+    cache = source_cache if source_cache is not None else SourceCache()
     for file_path in files:
-        try:
-            source = file_path.read_text(encoding="utf-8")
-        except OSError:
-            logger.warning("Cannot read file: %s", file_path)
+        document = cache.get(file_path)
+        if document is None:
             continue
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            logger.warning("Cannot parse file: %s", file_path)
-            continue
+        source, tree = document.text, document.tree
 
         rel_path = str(file_path)
 
@@ -144,6 +145,7 @@ def _run_per_file_checks(
 def _run_freshness(
     files: list[Path],
     config: DocvetConfig,
+    source_cache: SourceCache | None = None,
 ) -> tuple[list[Finding], str | None]:
     """Run the freshness diff check on files with git context.
 
@@ -158,6 +160,7 @@ def _run_freshness(
     Args:
         files: List of absolute paths to Python files.
         config: The loaded docvet configuration.
+        source_cache: Shared invocation source cache.
 
     Returns:
         A tuple of ``(findings, error)`` where *error* is ``None``
@@ -178,17 +181,19 @@ def _run_freshness(
         )
 
     findings: list[Finding] = []
+    cache = source_cache if source_cache is not None else SourceCache()
     for file_path in files:
-        try:
-            source = file_path.read_text(encoding="utf-8")
-            tree = ast.parse(source)
-        except (OSError, SyntaxError):
+        document = cache.get(file_path)
+        if document is None:
             continue
+        tree = document.tree
         # Per-file diff to avoid cross-file hunk contamination
         result = subprocess.run(
             ["git", "diff", "HEAD", "--", str(file_path)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             check=False,
             cwd=str(config.project_root),
             env=git_env(),

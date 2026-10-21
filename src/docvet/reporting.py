@@ -1,5 +1,7 @@
 """Markdown, terminal, JSON, and summary report generation for docstring findings.
 
+Incomplete input analysis is represented independently from finding gates.
+
 Renders check findings as terminal output (default), markdown reports, or
 structured JSON for programmatic consumption. Computes per-check quality
 percentages via :func:`compute_quality` and formats them for terminal
@@ -49,6 +51,7 @@ import typer
 from docvet.checks import Finding
 from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
+from docvet.source import InputError
 
 __all__: list[str] = []
 
@@ -69,6 +72,7 @@ _SYMBOL_BASED_CHECKS: frozenset[str] = frozenset({"enrichment", "freshness"})
 # Run status contract
 # ---------------------------------------------------------------------------
 
+RUN_STATUS_INCOMPLETE = "incomplete"
 RUN_STATUS_PASSED = "passed"
 RUN_STATUS_FINDINGS = "findings"
 RUN_STATUS_UNAVAILABLE = "unavailable"
@@ -126,7 +130,7 @@ class RunOutcome:
         exit_code (int): Process exit code (0 or 1).
         status (str): One of :data:`RUN_STATUS_PASSED`,
             :data:`RUN_STATUS_FINDINGS`, or
-            :data:`RUN_STATUS_UNAVAILABLE`.
+            :data:`RUN_STATUS_UNAVAILABLE`, or :data:`RUN_STATUS_INCOMPLETE`.
         reason (str): Human-readable explanation of *status*.
 
     Examples:
@@ -362,6 +366,11 @@ def format_json(
     suppressed: list[Finding] | None = None,
     run: RunOutcome | None = None,
     unavailable: Sequence[UnavailableCheck] = (),
+    input_errors: Sequence[InputError] = (),
+    files_attempted: int | None = None,
+    files_analyzed: int | None = None,
+    files_failed: int = 0,
+    diffs: Sequence[tuple[str, str, str]] | None = None,
 ) -> str:
     """Format findings as a structured JSON object.
 
@@ -383,6 +392,11 @@ def format_json(
     Always returns a valid JSON object, even when there are no findings.
 
     Args:
+        input_errors: Structured input failures that make this run incomplete.
+        files_attempted: Unique requested inputs, including invalid targets.
+        files_analyzed: Unique inputs successfully consumed by analysis.
+        files_failed: Unique inputs with processing failures.
+        diffs: Dry-run source replacements, without filesystem mutation.
         findings: List of findings to format.
         file_count: Number of files that were checked.
         presence_stats: Aggregate presence coverage stats, or *None*
@@ -435,6 +449,11 @@ def format_json(
                 "scaffold": counts.get("scaffold", 0),
             },
             "files_checked": file_count,
+            "files_attempted": file_count
+            if files_attempted is None
+            else files_attempted,
+            "files_analyzed": file_count if files_analyzed is None else files_analyzed,
+            "files_failed": files_failed,
         },
     }
     if suppressed is not None:
@@ -456,15 +475,19 @@ def format_json(
         obj["presence_coverage"] = {
             "documented": presence_stats.documented,
             "total": presence_stats.total,
-            "percentage": round(pct, 1),
+            "percentage": None
+            if input_errors and files_analyzed == 0
+            else round(pct, 1),
+            "complete": not input_errors,
             "threshold": min_coverage,
-            "passed": pct >= min_coverage,
+            "passed": not input_errors and pct >= min_coverage,
         }
     if quality is not None:
         obj["quality"] = {name: dataclasses.asdict(cq) for name, cq in quality.items()}
     if run is not None:
         obj["run"] = {
             "status": run.status,
+            "input_errors": [dataclasses.asdict(error) for error in input_errors],
             "exit_code": run.exit_code,
             "exit_reason": run.reason,
             "unavailable_checks": [
@@ -472,6 +495,11 @@ def format_json(
                 for u in sorted(unavailable, key=lambda u: u.check)
             ],
         }
+    if diffs is not None:
+        obj["diffs"] = [
+            {"file": path, "original": original, "modified": modified}
+            for path, original, modified in diffs
+        ]
     return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -590,6 +618,7 @@ def determine_run_outcome(
     *,
     presence_stats: PresenceStats | None = None,
     unavailable: Sequence[UnavailableCheck] = (),
+    input_errors: Sequence[InputError] = (),
 ) -> RunOutcome:
     """Determine the exit code and run status for a completed run.
 
@@ -617,6 +646,7 @@ def determine_run_outcome(
     inferring it from *status*.
 
     Args:
+        input_errors: Structured input failures that make this run incomplete.
         findings_by_check: Findings grouped by check name.
         config: The docvet configuration with fail_on list.
         presence_stats: Aggregate presence coverage stats, or *None*
@@ -643,6 +673,10 @@ def determine_run_outcome(
         # outcome.exit_code == 1, outcome.status == "unavailable"
         ```
     """
+    if input_errors:
+        return RunOutcome(
+            1, RUN_STATUS_INCOMPLETE, "requested input analysis is incomplete"
+        )
     failed = [c for c in config.fail_on if findings_by_check.get(c, [])]
     blocking = [u for u in unavailable if u.blocking]
     if blocking:

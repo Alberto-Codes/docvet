@@ -103,11 +103,13 @@ The action sets step outputs that downstream steps can consume:
 
 | Output | Description | Example |
 |--------|-------------|---------|
-| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, `"gate unavailable"`, or `"3 findings, gate unavailable"` |
+| `badge_message` | shields.io badge message | `"passing"`, `"3 findings"`, `"gate unavailable"`, `"3 findings, gate unavailable"`, or `"analysis incomplete"` |
 | `badge_color` | shields.io badge color | `brightgreen`, `yellow`, `red`, or `orange` |
 | `total_findings` | Total findings count | `0`, `3` |
 
 A gate listed in `fail-on` that could not run and failed the build publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. When such a run also has findings, the badge keeps the count and the failure colour (`3 findings, gate unavailable` / `red`), so it never hides what a findings-only badge would have shown. The badge is unchanged when a project opts out with `fail-on-unavailable = false`, where such a run still exits 0.
+
+Input failures produce an `analysis incomplete` / `red` badge and fail the step with exit 1, even when there are no findings. The Action emits error annotations and an incomplete step summary, deduplicating the same input failure across selective checks. Findings remain visible (`3 findings, analysis incomplete`); blocking unavailable gates also remain in the badge (`3 findings, analysis incomplete, gate unavailable`). See [Input failures and incomplete analysis](cli-reference.md#input-failures-and-incomplete-analysis). Older pinned docvet versions that do not report input failures retain their existing behavior; the Action cannot infer failures absent from their JSON.
 
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
@@ -189,7 +191,7 @@ docvet ships a [pre-commit](https://pre-commit.com/) hook that checks Python fil
             exclude: ^tests/
     ```
 
-Pre-commit passes staged Python filenames as positional arguments to `docvet check`. The hook uses `require_serial: true` to prevent parallel invocations that could race on git state. Progress output is automatically suppressed because pre-commit pipes stderr.
+Pre-commit passes staged Python filenames as positional arguments to `docvet check`. The hook selects only files whose name ends in `.py` (`types: [python]` combined with `files: \.py$`), so `.pyi` stubs and extensionless scripts with a Python shebang are never passed; `docvet check` rejects explicit targets that are not `.py` files. The hook uses `require_serial: true` to prevent parallel invocations that could race on git state. Progress output is automatically suppressed because pre-commit pipes stderr.
 
 !!! note "Exclude patterns in pre-commit mode"
     When run as a pre-commit hook, docvet checks only the files pre-commit passes — your `[tool.docvet].exclude` patterns do not apply. Use pre-commit's own `exclude` key to filter files, as shown in the "With exclude" tab above.
@@ -204,7 +206,7 @@ docvet uses `fail-on` and `warn-on` to control whether findings cause a non-zero
 | Exit Code | Meaning |
 |-----------|---------|
 | **0** | No findings in `fail-on` checks — CI passes |
-| **1** | A `fail-on` check produced findings, or could not run at all — CI fails. `run.status` in JSON output distinguishes the two (`findings` vs `unavailable`) |
+| **1** | A `fail-on` check produced findings, or could not run at all, or an input could not be selected or analyzed — CI fails. `run.status` in JSON output distinguishes the three (`findings`, `unavailable`, `incomplete`); see [Input failures and incomplete analysis](cli-reference.md#input-failures-and-incomplete-analysis) |
 | **2** | Usage error (invalid arguments or configuration) |
 
 ### How `fail-on` works
@@ -255,7 +257,7 @@ warning: griffe check was configured to gate the run but could not run (griffe n
 
 The notice is always printed, including under `--quiet` — the error on the default path, and the warning when you opt out. It speaks only for that check — it is written mid-run, so another `fail-on` check with findings or a `min-coverage` shortfall can still fail the run.
 
-The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). The presence check cannot run when it is switched off with `[tool.docvet.presence] enabled = false` while something still gates on it — `presence` listed in `fail-on`, or a `min-coverage` floor, which `determine_run_outcome` enforces without consulting `fail-on` at all. Either way the gate was configured never to execute, and the reason names the floor that went unmeasured. A check disabled with nothing gating on it is an ordinary opt-out and is not reported. A check that is unavailable and that **nothing gates on** never fails the run either way: it exits 0. Membership of `fail-on` is not the test — the `min-coverage` floor above gates `presence` without that list naming it, and an unmeasured floor fails the run just the same. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
+The griffe check cannot run when `griffe` is not importable, or when `docstring-style` is `"sphinx"` (griffe's Google parser cannot read RST field lists). The freshness check cannot run without a `git` executable on `PATH` or when the project root lies outside any git repository — see [`docvet freshness`](cli-reference.md#docvet-freshness) for that prerequisite and how it differs from a diff or staged selection that cannot be computed. The presence check cannot run when it is switched off with `[tool.docvet.presence] enabled = false` while something still gates on it — `presence` listed in `fail-on`, or a `min-coverage` floor, which `determine_run_outcome` enforces without consulting `fail-on` at all. Either way the gate was configured never to execute, and the reason names the floor that went unmeasured. A check disabled with nothing gating on it is an ordinary opt-out and is not reported. A check that is unavailable and that **nothing gates on** never fails the run either way: it exits 0. Membership of `fail-on` is not the test — the `min-coverage` floor above gates `presence` without that list naming it, and an unmeasured floor fails the run just the same. `docvet check` mentions the skip only under `--verbose`, since the check was one of many it ran; the `docvet griffe` subcommand always reports it, because you asked for that check by name and it did not run.
 
 JSON output carries the same information in a `run` object, so an agent or a script can tell an incomplete run from one whose gates found problems — the exit code is 1 for both:
 
@@ -278,7 +280,7 @@ JSON output carries the same information in a `run` object, so an agent or a scr
 }
 ```
 
-`status` is `"passed"`, `"findings"`, or `"unavailable"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `configured_gate` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`, so the field is named for the gate rather than for membership of that list; `blocking` says that fact actually failed the run, which is the default unless `fail-on-unavailable` is disabled. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With `fail-on-unavailable = false`, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"configured_gate": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
+`status` is `"passed"`, `"findings"`, `"unavailable"`, or `"incomplete"`. `unavailable_checks` lists every check that could not run and is empty when every check executed. `configured_gate` says the config asked that check to gate the run — listed in `fail-on`, or, for presence, enforcing a `min-coverage` floor, which gates without appearing in `fail-on`, so the field is named for the gate rather than for membership of that list; `blocking` says that fact actually failed the run, which is the default unless `fail-on-unavailable` is disabled. `status` names which condition blocked the run rather than everything that happened, so read `summary.total` for findings regardless of `status`. With `fail-on-unavailable = false`, a configured gate that never ran reports `status: "passed"`, `exit_code: 0`, and an entry with `"configured_gate": true, "blocking": false` — read `unavailable_checks`, not the exit code, to detect it. `exit_reason` names that gate too, so it never contradicts `unavailable_checks`:
 
 ```text
 no check in fail-on reported findings, but these checks were configured to gate the run and could not run, with fail-on-unavailable disabled: griffe (griffe not installed)
@@ -363,6 +365,10 @@ For teams that want a live badge showing pass/fail status from the latest CI run
 | Required findings present | `N findings` | ![red](https://img.shields.io/badge/-red-red) |
 | A gate in `fail-on` could not run and failed the build | `gate unavailable` | ![orange](https://img.shields.io/badge/-orange-orange) |
 | That gate plus findings | `N findings, gate unavailable` | ![red](https://img.shields.io/badge/-red-red) |
+| Input selection or analysis failed | `analysis incomplete` | ![red](https://img.shields.io/badge/-red-red) |
+| Input failures plus findings | `N findings, analysis incomplete` | ![red](https://img.shields.io/badge/-red-red) |
+
+Incomplete runs fail the step with exit 1 and retain any blocking unavailable gate in the badge; see [Outputs](#outputs).
 
 !!! tip "Freshness checks need git history"
     If your workflow includes the `freshness` check (or `checks: "all"`), add `fetch-depth: 0` to your checkout step for full `git blame` support. See [Annotation behavior](#annotation-behavior) above for details.

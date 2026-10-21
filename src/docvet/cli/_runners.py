@@ -1,5 +1,7 @@
 """CLI check runners, fix runner, and git helpers.
 
+Source consumers share decoded documents and failures through SourceCache.
+
 Each ``_run_*`` function reads files, invokes the corresponding check
 module, and returns findings.  The ``_run_fix`` runner additionally
 writes scaffolded sections back to files (or collects diffs in dry-run
@@ -8,7 +10,9 @@ whether the griffe check can execute at all, and
 ``_presence_unavailability`` the same for a presence gate switched
 off with ``enabled = false`` while ``fail-on`` or a ``min-coverage``
 floor still gates on it; ``_write_unavailable_notice`` reports a
-check that could not run.
+check that could not run.  ``_freshness_unavailability`` detects a missing
+git executable or a working tree outside any repository before either
+diff or drift analysis begins, matching the MCP freshness gate.
 Git helpers (``_get_git_diff``, ``_get_git_blame``) provide
 raw VCS data for the freshness runner, each running git through
 :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR`` cannot
@@ -31,6 +35,8 @@ Examples:
 from __future__ import annotations
 
 import importlib.util
+import shutil
+import subprocess
 import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -43,6 +49,7 @@ from docvet.checks import Finding
 from docvet.checks.presence import PresenceStats
 from docvet.config import DocvetConfig
 from docvet.reporting import UnavailableCheck
+from docvet.source import InputError, SourceCache
 
 from ..discovery import git_env
 from . import DiscoveryMode, FreshnessMode
@@ -82,6 +89,9 @@ def _get_git_diff(
 ) -> str:
     """Get git diff output for a single file.
 
+    Git output is decoded with replacement for non-UTF-8 source bytes;
+    freshness consumes the ASCII diff or porcelain metadata.
+
     Runs the appropriate ``git diff`` variant based on the discovery
     mode and returns the raw unified diff output. Git runs with the
     environment from :func:`docvet.discovery.git_env`, so it resolves
@@ -108,6 +118,8 @@ def _get_git_diff(
         args,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
         cwd=project_root,
         env=git_env(),
@@ -119,6 +131,9 @@ def _get_git_diff(
 
 def _get_git_blame(file_path: Path, project_root: Path) -> str:
     """Get git blame porcelain output for a single file.
+
+    Git output is decoded with replacement for non-UTF-8 source bytes;
+    freshness consumes the ASCII diff or porcelain metadata.
 
     Runs ``git blame --line-porcelain`` and returns the raw output
     for drift/age analysis. Git runs with the environment from
@@ -137,6 +152,8 @@ def _get_git_blame(file_path: Path, project_root: Path) -> str:
         ["git", "blame", "--line-porcelain", "--", str(file_path)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
         cwd=project_root,
         env=git_env(),
@@ -180,16 +197,18 @@ def _run_enrichment(
     config: DocvetConfig,
     *,
     show_progress: bool = False,
+    cache: SourceCache | None = None,
 ) -> tuple[list[Finding], int]:
     """Run the enrichment check on discovered files.
 
     Reads each file, parses its AST, and runs all enabled enrichment
     rules. Passes ``config.docstring_style`` to the enrichment checker
     for style-aware section detection and rule gating. Files that fail
-    to parse are skipped with a warning. Uses ``_maybe_progressbar``
+    to load are retained as structured errors in the shared cache. Uses ``_maybe_progressbar``
     for click-compatible progress display.
 
     Args:
+        cache: Shared source documents and input failures for this invocation.
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         show_progress: Display a progress bar on stderr via
@@ -199,19 +218,18 @@ def _run_enrichment(
         A tuple of ``(findings, symbol_count)`` where *symbol_count*
         is the total documented symbols analyzed across all files.
     """
+    cache = cache if cache is not None else SourceCache()
     all_findings: list[Finding] = []
     symbol_count = 0
     with _maybe_progressbar(files, label="enrichment", show=show_progress) as progress:
         for file_path in progress:
-            source = file_path.read_text(encoding="utf-8")
-            try:
-                tree = _cli_pkg.ast.parse(source, filename=str(file_path))
-            except SyntaxError:
-                typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+            document = cache.get(file_path)
+            if document is None:
                 continue
+            tree = document.tree
             symbol_count += len(_cli_pkg.get_documented_symbols(tree))
             findings = _cli_pkg.check_enrichment(
-                source,
+                document.text,
                 tree,
                 config.enrichment,
                 str(file_path),
@@ -226,15 +244,17 @@ def _run_presence(
     config: DocvetConfig,
     *,
     show_progress: bool = False,
+    cache: SourceCache | None = None,
 ) -> tuple[list[Finding], PresenceStats]:
     """Run the presence check on discovered files.
 
     Reads each file, parses its AST, and checks for missing docstrings.
-    Files that fail to parse are skipped with a warning. Aggregates
+    Files that fail to load are recorded in the shared cache. Aggregates
     per-file coverage statistics into a single :class:`PresenceStats`.
     Uses ``_maybe_progressbar`` for click-compatible progress display.
 
     Args:
+        cache: Shared source documents and input failures for this invocation.
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         show_progress: Display a progress bar on stderr via
@@ -245,17 +265,16 @@ def _run_presence(
         presence findings and *stats* is the aggregate coverage across
         all files.
     """
+    cache = cache if cache is not None else SourceCache()
     all_findings: list[Finding] = []
     total_documented = 0
     total_total = 0
     with _maybe_progressbar(files, label="presence", show=show_progress) as progress:
         for file_path in progress:
-            source = file_path.read_text(encoding="utf-8")
-            try:
-                _cli_pkg.ast.parse(source, filename=str(file_path))
-            except SyntaxError:
-                typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+            document = cache.get(file_path)
+            if document is None:
                 continue
+            source = document.text
             findings, stats = _cli_pkg.check_presence(
                 source, str(file_path), config.presence
             )
@@ -272,6 +291,7 @@ def _run_freshness(
     discovery_mode: DiscoveryMode = DiscoveryMode.DIFF,
     *,
     show_progress: bool = False,
+    cache: SourceCache | None = None,
 ) -> tuple[list[Finding], int]:
     """Run the freshness check on discovered files.
 
@@ -282,6 +302,7 @@ def _run_freshness(
     for click-compatible progress display.
 
     Args:
+        cache: Shared source documents and input failures for this invocation.
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         freshness_mode: The freshness check strategy (diff or drift).
@@ -294,20 +315,17 @@ def _run_freshness(
         is the total documented symbols analyzed across all files.
     """
     if freshness_mode is not FreshnessMode.DIFF:
+        cache = cache if cache is not None else SourceCache()
         all_findings: list[Finding] = []
         symbol_count = 0
         with _maybe_progressbar(
             files, label="freshness", show=show_progress
         ) as progress:
             for file_path in progress:
-                source = file_path.read_text(encoding="utf-8")
-                try:
-                    tree = _cli_pkg.ast.parse(source, filename=str(file_path))
-                except SyntaxError:
-                    typer.echo(
-                        f"warning: {file_path}: failed to parse, skipping", err=True
-                    )
+                document = cache.get(file_path)
+                if document is None:
                     continue
+                tree = document.tree
                 symbol_count += len(_cli_pkg.get_documented_symbols(tree))
                 blame_output = _cli_pkg._get_git_blame(file_path, config.project_root)
                 findings = _cli_pkg.check_freshness_drift(
@@ -316,16 +334,15 @@ def _run_freshness(
                 all_findings.extend(findings)
         return all_findings, symbol_count
 
+    cache = cache if cache is not None else SourceCache()
     all_findings: list[Finding] = []
     symbol_count = 0
     with _maybe_progressbar(files, label="freshness", show=show_progress) as progress:
         for file_path in progress:
-            source = file_path.read_text(encoding="utf-8")
-            try:
-                tree = _cli_pkg.ast.parse(source, filename=str(file_path))
-            except SyntaxError:
-                typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+            document = cache.get(file_path)
+            if document is None:
                 continue
+            tree = document.tree
             symbol_count += len(_cli_pkg.get_documented_symbols(tree))
             diff_output = _cli_pkg._get_git_diff(
                 file_path, config.project_root, discovery_mode
@@ -352,6 +369,62 @@ def _run_coverage(files: list[Path], config: DocvetConfig) -> tuple[list[Finding
     src_root = config.project_root / config.src_root
     package_count = len({f.parent for f in files})
     return _cli_pkg.check_coverage(src_root, files), package_count
+
+
+def _in_git_repository(project_root: Path) -> bool:
+    """Probe whether *project_root* lies inside a git repository.
+
+    Git runs with :func:`docvet.discovery.git_env`, so an inherited
+    ``GIT_DIR`` cannot answer for a different checkout.
+
+    Args:
+        project_root: Directory from which git discovers the repository.
+
+    Returns:
+        *True* when ``git rev-parse --git-dir`` succeeds there.
+    """
+    try:
+        _cli_pkg.subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            check=True,
+            cwd=project_root,
+            env=git_env(),
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return True
+
+
+def _freshness_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
+    """Report a missing git prerequisite before attempting freshness analysis.
+
+    Freshness needs a git executable and a repository containing the
+    project root; without either, diff and drift analysis would silently
+    produce no findings. The same prerequisite gates the MCP server.
+
+    Args:
+        config: Configuration supplying the finding and availability gates.
+
+    Returns:
+        The unavailable prerequisite, or *None* when git history is reachable.
+    """
+    if shutil.which("git") is None:
+        reason = "git is not installed or is not executable on PATH"
+        remedy = "Install git and make it available on PATH to run freshness"
+    elif not _in_git_repository(config.project_root):
+        reason = "not a git repository; freshness requires git history"
+        remedy = "Run docvet inside a git checkout, or drop freshness from fail-on"
+    else:
+        return None
+    configured_gate = "freshness" in config.fail_on
+    return UnavailableCheck(
+        check="freshness",
+        reason=reason,
+        remedy=remedy,
+        blocking=configured_gate and config.fail_on_unavailable,
+        configured_gate=configured_gate,
+    )
 
 
 def _griffe_unavailability(config: DocvetConfig) -> UnavailableCheck | None:
@@ -498,13 +571,16 @@ def _write_unavailable_notice(
         sys.stderr.write(f"{unavailable.check}: skipped ({unavailable.reason})\n")
 
 
-def _run_griffe(files: list[Path], config: DocvetConfig) -> tuple[list[Finding], int]:
+def _run_griffe(
+    files: list[Path], config: DocvetConfig, *, cache: SourceCache | None = None
+) -> tuple[list[Finding], int]:
     """Run the griffe compatibility check on discovered files.
 
     Returns no findings when griffe cannot execute; callers decide
     what that means for the run via :func:`_griffe_unavailability`.
 
     Args:
+        cache: Shared source documents and failures for this invocation.
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
 
@@ -517,7 +593,9 @@ def _run_griffe(files: list[Path], config: DocvetConfig) -> tuple[list[Finding],
     src_root = config.project_root / config.src_root
     if not src_root.is_dir():
         return [], 0
-    return _cli_pkg.check_griffe_compat(src_root, files), len(files)
+    cache = cache if cache is not None else SourceCache()
+    valid = [path for path in files if cache.get(path) is not None]
+    return _cli_pkg.check_griffe_compat(src_root, valid, source_cache=cache), len(valid)
 
 
 # ---------------------------------------------------------------------------
@@ -531,6 +609,7 @@ def _run_fix(
     *,
     dry_run: bool = False,
     show_progress: bool = False,
+    cache: SourceCache | None = None,
 ) -> tuple[list[Finding], int, int, list[tuple[str, str, str]]]:
     """Run the fix pipeline on discovered files.
 
@@ -542,6 +621,7 @@ def _run_fix(
     click-compatible progress display.
 
     Args:
+        cache: Shared source documents and input failures for this invocation.
         files: Discovered Python file paths.
         config: Loaded docvet configuration.
         dry_run: When ``True``, collect diffs without writing files
@@ -557,6 +637,7 @@ def _run_fix(
     """
     from docvet.checks.fix import RULE_TO_SECTION, scaffold_missing_sections
 
+    cache = cache if cache is not None else SourceCache()
     all_findings: list[Finding] = []
     files_modified = 0
     sections_scaffolded = 0
@@ -564,16 +645,14 @@ def _run_fix(
 
     with _maybe_progressbar(files, label="fix", show=show_progress) as progress:
         for file_path in progress:
-            source = file_path.read_text(encoding="utf-8")
-            try:
-                tree = _cli_pkg.ast.parse(source, filename=str(file_path))
-            except SyntaxError:
-                typer.echo(f"warning: {file_path}: failed to parse, skipping", err=True)
+            document = cache.get(file_path)
+            if document is None:
                 continue
+            source, tree = document.text, document.tree
 
             # Step 1: enrichment to find missing sections.
             findings = _cli_pkg.check_enrichment(
-                source,
+                document.text,
                 tree,
                 config.enrichment,
                 str(file_path),
@@ -588,6 +667,14 @@ def _run_fix(
             if modified == source:
                 continue
 
+            try:
+                encoded = document.encode(modified)
+                if not dry_run:
+                    file_path.write_bytes(encoded)
+            except (OSError, UnicodeError, LookupError) as exc:
+                cache.record_error(InputError(str(file_path), "write", str(exc)))
+                continue
+
             section_count = len(scaffoldable)
             sections_scaffolded += section_count
             files_modified += 1
@@ -596,13 +683,11 @@ def _run_fix(
                 diffs.append((str(file_path), source, modified))
                 continue
 
-            file_path.write_text(modified, encoding="utf-8")
-
-            # Step 3: re-check for scaffold-incomplete findings.
-            try:
-                new_tree = _cli_pkg.ast.parse(modified, filename=str(file_path))
-            except SyntaxError:
+            # Refresh suppression line positions and share the modified AST.
+            updated = cache.refresh(file_path)
+            if updated is None:
                 continue
+            new_tree = updated.tree
             new_findings = _cli_pkg.check_enrichment(
                 modified,
                 new_tree,

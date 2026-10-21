@@ -29,7 +29,9 @@ inputs:
     default: ''
 outputs:
   badge_message:
-    description: 'Badge message for shields.io (e.g., "passing", "N findings", or "gate unavailable")'
+    description: >-
+      Badge message for shields.io (e.g., "passing", "N findings",
+      "analysis incomplete", or "gate unavailable")
     value: ${{ steps.run-docvet.outputs.badge_message }}
   badge_color:
     description: 'Badge color for shields.io (brightgreen, yellow, orange, or red)'
@@ -143,6 +145,8 @@ runs:
                 files_checked: (map(.summary.files_checked) | max)
               },
               run: {
+                status: (if any(.run.status == "incomplete") then "incomplete" else null end),
+                input_errors: (map(.run.input_errors // []) | add | unique_by([.file, .kind, .message])),
                 unavailable_checks: (map(.run.unavailable_checks // []) | add | unique)
               }
             }' "${PARTIAL_FILES[@]}" > "$MERGED_OUTPUT"
@@ -160,6 +164,26 @@ runs:
 
         if [ "$TOTAL" -gt 0 ]; then
           jq -r '.findings[] | "::warning file=\(.file | gsub(":";"%3A") | gsub(",";"%2C")),line=\(.line),title=\(.rule)::\(.message | gsub("%";"%25") | gsub("\n";"%0A") | gsub("\r";"%0D"))"' "$MERGED_OUTPUT"
+        fi
+
+        # Input failures are not findings: retain them across selective runs
+        # and never certify the requested scope from an empty findings array.
+        INCOMPLETE=false
+        if [ -s "$MERGED_OUTPUT" ]; then
+          INCOMPLETE=$(jq '.run.status == "incomplete" or ((.run.input_errors // []) | length > 0)' "$MERGED_OUTPUT")
+        fi
+        if [ "$INCOMPLETE" = true ]; then
+          EXIT_CODE=1
+          jq -r '
+            def data: gsub("%";"%25") | gsub("\r";"%0D") | gsub("\n";"%0A");
+            def property: data | gsub(":";"%3A") | gsub(",";"%2C");
+            (.run.input_errors // [] | unique_by([.file, .kind, .message])) as $errors |
+            if ($errors | length) == 0 then
+              "::error::docvet analysis incomplete; requested scope was not fully analyzed"
+            else $errors[] |
+              "::error file=\(.file | property),title=docvet input failure::\((.kind + ": " + .message) | data)"
+            end
+          ' "$MERGED_OUTPUT"
         fi
 
         # Surface gates that never executed: without this, a run whose
@@ -195,6 +219,15 @@ runs:
         {
           echo "### Docvet Findings"
           echo ""
+          if [ "$INCOMPLETE" = true ]; then
+            echo "**Analysis incomplete: requested scope was not fully analyzed.**"
+            echo ""
+            # HTML-escape diagnostics inside preformatted text so filenames
+            # and multiline parser messages cannot become Markdown or HTML.
+            jq -r '(.run.input_errors // [] | unique_by([.file, .kind, .message]))[] |
+              "<pre>\((.file + ": " + .kind + ": " + .message) | @html)</pre>"' "$MERGED_OUTPUT"
+            echo ""
+          fi
           if [ -n "$UNAVAILABLE" ]; then
             echo "**Configured gates that could not run:**"
             echo ""
@@ -209,6 +242,8 @@ runs:
             echo "| File | Line | Rule | Message | Severity |"
             echo "|------|------|------|---------|----------|"
             jq -r '.findings[] | "| `\(.file)` | \(.line) | `\(.rule)` | \(.message | gsub("\\|";"\\\\|")) | \(.severity) |"' "$MERGED_OUTPUT"
+          elif [ "$INCOMPLETE" = true ]; then
+            echo "No findings from the inputs that could be analyzed."
           elif [ -n "$UNAVAILABLE" ]; then
             echo "No findings from the checks that ran."
           else
@@ -224,7 +259,17 @@ runs:
         # badge names the worst thing that happened without dropping what a
         # narrower badge would have shown, so a run with both an unrunnable
         # gate and findings keeps the count and the failure colour.
-        if [ "${BLOCKING:-0}" -gt 0 ] && [ "$BADGE_TOTAL" -gt 0 ]; then
+        if [ "$INCOMPLETE" = true ]; then
+          BADGE_MESSAGE="analysis incomplete"
+          if [ "$BADGE_TOTAL" -gt 0 ]; then
+            BADGE_MESSAGE="${BADGE_TOTAL} findings, ${BADGE_MESSAGE}"
+          fi
+          if [ "${BLOCKING:-0}" -gt 0 ]; then
+            BADGE_MESSAGE="${BADGE_MESSAGE}, gate unavailable"
+          fi
+          echo "badge_message=${BADGE_MESSAGE}" >> "$GITHUB_OUTPUT"
+          echo "badge_color=red" >> "$GITHUB_OUTPUT"
+        elif [ "${BLOCKING:-0}" -gt 0 ] && [ "$BADGE_TOTAL" -gt 0 ]; then
           echo "badge_message=${BADGE_TOTAL} findings, gate unavailable" >> "$GITHUB_OUTPUT"
           echo "badge_color=red" >> "$GITHUB_OUTPUT"
         elif [ "${BLOCKING:-0}" -gt 0 ]; then

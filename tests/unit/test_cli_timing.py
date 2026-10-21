@@ -60,6 +60,7 @@ def _mock_check_internals(mocker):
         return_value=([], PresenceStats(documented=0, total=0)),
     )
     mocker.patch("docvet.cli._run_enrichment", return_value=([], 0))
+    mocker.patch("docvet.cli._freshness_unavailability", return_value=None)
     mocker.patch("docvet.cli._run_freshness", return_value=([], 0))
     mocker.patch("docvet.cli._run_coverage", return_value=([], 0))
     mocker.patch("docvet.cli._run_griffe", return_value=([], 0))
@@ -144,6 +145,7 @@ class TestCheckSummaryLine:
     def test_summary_includes_finding_count_when_findings_present(
         self, cli_runner, mocker, make_finding
     ):
+        mocker.patch.object(Path, "read_bytes", return_value=b"x = 1\n")
         mocker.patch(
             "docvet.cli._run_enrichment",
             return_value=([make_finding(category="required")], 10),
