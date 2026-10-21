@@ -2,7 +2,7 @@
 name: Story
 about: BMAD user story (typically created by create-story workflow)
 title: 'Story N.N: '
-labels: 'story'
+labels: 'story, needs-triage'
 assignees: ''
 ---
 

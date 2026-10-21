@@ -2,7 +2,7 @@
 name: Refactor
 about: Restructure internals without changing behavior
 title: 'Refactor: '
-labels: 'refactor'
+labels: 'refactor, needs-triage'
 assignees: ''
 ---
 

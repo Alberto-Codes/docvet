@@ -2,7 +2,7 @@
 name: Enhancement
 about: Improve existing functionality
 title: 'Enhancement: '
-labels: 'enhancement, backlog'
+labels: 'enhancement, needs-triage'
 assignees: ''
 ---
 

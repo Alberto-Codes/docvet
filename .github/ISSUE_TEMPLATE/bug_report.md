@@ -2,7 +2,7 @@
 name: Bug Report
 about: Report something that's broken
 title: 'Bug: '
-labels: 'bug'
+labels: 'bug, needs-triage'
 assignees: ''
 ---
 

@@ -2,7 +2,7 @@
 name: Chore
 about: Maintenance work — dependencies, toolchain, CI, packaging
 title: 'Chore: '
-labels: 'chore'
+labels: 'chore, needs-triage'
 assignees: ''
 ---
 
