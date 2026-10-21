@@ -19,6 +19,8 @@ docvet [GLOBAL OPTIONS] COMMAND [COMMAND OPTIONS]
 | `--config` | `PATH` | auto-detected | Path to `pyproject.toml` |
 | `--version` | flag | | Show version and exit |
 
+Global options go before the subcommand: `docvet --summary check --all` works, while `docvet check --all --summary` is rejected with `No such option`. The exception is `--verbose` and `--quiet`, which the check subcommands and `fix` also accept after the subcommand name (see [Quality Summary](#quality-summary-summary) below).
+
 When `--output` is specified without `--format`, the format defaults to `markdown`. When `--format json` is used, output is always a JSON object (even when no findings exist).
 
 ### JSON Output
@@ -67,10 +69,10 @@ The `--format json` option produces a structured JSON object for programmatic co
 
 ### Quality Summary (`--summary`)
 
-The `--summary` flag prints per-check quality percentages to stderr after findings:
+The global `--summary` flag prints per-check quality percentages to stderr after findings. It goes before the subcommand:
 
 ```bash
-docvet check --all --summary
+docvet --summary check --all
 ```
 
 ```
@@ -83,7 +85,7 @@ docvet check --all --summary
 Only checks that actually ran appear in the output. When combined with `--format json`, a `quality` object is added to the JSON output:
 
 ```bash
-docvet check --all --summary --format json
+docvet --summary --format json check --all
 ```
 
 ```json
@@ -99,7 +101,7 @@ docvet check --all --summary --format json
 }
 ```
 
-When `--quiet` and `--summary` are both set, the terminal summary is suppressed (`--quiet` wins). The machine-readable path is `--format json --summary`.
+When `--quiet` and `--summary` are both set, the terminal summary is suppressed (`--quiet` wins). The machine-readable path is `docvet --summary --format json check --all`.
 
 `--verbose` and `--quiet` can be placed before **or** after the subcommand name (dual-registered). Both positions are equivalent:
 
