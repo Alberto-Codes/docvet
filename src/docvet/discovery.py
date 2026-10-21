@@ -145,20 +145,22 @@ def git_env() -> dict[str, str]:
 
 
 def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | None:
-    """Run a git command and return stripped, non-empty stdout lines.
+    """Run a git command and return verbatim NUL-delimited paths.
 
     Git runs with the environment from :func:`git_env`, so it discovers
     the repository, working tree, and path prefix from *cwd* rather than
-    from any ``GIT_DIR`` inherited from a git hook.
+    from any ``GIT_DIR`` inherited from a git hook. Path commands must use
+    ``-z`` to disable Git quoting. Binary output avoids newline translation;
+    filesystem decoding preserves the original filenames.
 
     Args:
-        args: Git subcommand and arguments (e.g. ``["diff", "--name-only"]``).
+        args: Git subcommand and arguments (e.g. ``["diff", "--name-only", "-z"]``).
         cwd: Working directory for the git process.
         warn: If *True*, print a warning to stderr on failure. When
             *False*, fail silently (used by ``_walk_all`` fallback).
 
     Returns:
-        List of stripped, non-empty stdout lines on success, or *None*
+        List of decoded, non-empty path records on success, or *None*
         on failure. An empty list means git succeeded but produced no
         output.
 
@@ -166,27 +168,26 @@ def _run_git(args: list[str], cwd: Path, *, warn: bool = True) -> list[str] | No
         List changed files:
 
         ```python
-        _run_git(["diff", "--name-only"], cwd=Path("/repo"))
+        _run_git(["diff", "--name-only", "-z"], cwd=Path("/repo"))
         # ['src/foo.py', 'src/bar.py']
         ```
     """
     result = subprocess.run(
         ["git", *args],
         capture_output=True,
-        text=True,
         check=False,
         cwd=cwd,
         env=git_env(),
     )
     if result.returncode != 0:
         if warn:
-            stderr = result.stderr.strip()
+            stderr = os.fsdecode(result.stderr).strip()
             print(
                 f"docvet: git {args[0]} failed: {stderr}",
                 file=sys.stderr,
             )
         return None
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return [os.fsdecode(path) for path in result.stdout.split(b"\0") if path]
 
 
 def _matches_trailing_slash(
@@ -331,7 +332,8 @@ def _walk_all(config: DocvetConfig) -> list[Path]:
     """Discover all Python files under the configured source root.
 
     Tries ``git ls-files`` first for automatic ``.gitignore`` respect,
-    then falls back to ``rglob`` for non-git directories.
+    then falls back to ``rglob`` for non-git directories. NUL-delimited
+    Git output preserves whitespace and quoted characters in filenames.
 
     Args:
         config: Docvet configuration with ``project_root``, ``src_root``,
@@ -349,7 +351,7 @@ def _walk_all(config: DocvetConfig) -> list[Path]:
         return []
 
     lines = _run_git(
-        ["ls-files", "--cached", "--others", "--exclude-standard", "--", "*.py"],
+        ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.py"],
         cwd=root,
         warn=False,
     )
@@ -400,6 +402,9 @@ def discover_files(
 ) -> list[Path]:
     """Discover Python files according to the selected mode.
 
+    Git modes consume verbatim NUL-delimited filenames, independent of
+    ``core.quotePath`` and without stripping meaningful whitespace.
+
     Args:
         config: Docvet configuration providing ``project_root``,
             ``src_root``, and ``exclude`` settings.
@@ -424,10 +429,10 @@ def discover_files(
         return _discover_explicit_files(files)
 
     if mode is DiscoveryMode.DIFF:
-        git_args = ["diff", "--name-only", "--diff-filter=ACMR"]
+        git_args = ["diff", "--name-only", "-z", "--diff-filter=ACMR"]
     else:
         # STAGED
-        git_args = ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]
+        git_args = ["diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"]
 
     lines = _run_git(git_args, cwd=config.project_root)
     if lines is None:
