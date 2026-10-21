@@ -264,3 +264,50 @@ class TestSummaryCountsActiveFindings:
         assert ("parse", "missing-raises") in active
         assert data["summary"]["total"] == len(data["findings"])
         assert _terminal_summary_count(terminal.stderr) == data["summary"]["total"]
+
+
+@pytest.mark.parametrize("kind", ["ignore", "ignore-file"])
+@pytest.mark.parametrize("suffix", ["[missing-docstring", "d", "-next-line"])
+def test_malformed_suppression_keeps_json_findings_and_failure(git_repo, kind, suffix):
+    """Malformed syntax warns and leaves the configured presence gate failing."""
+    _write_config(git_repo, fail_on=["presence"])
+    _commit_file(
+        git_repo,
+        "mod.py",
+        f'"""Documented module."""\ndef undocumented():  # docvet: {kind}{suffix}\n    pass\n',
+    )
+    result = _run_docvet(git_repo, "--format", "json", "presence", "--all")
+    data = json.loads(result.stdout)
+    assert result.returncode == 1
+    assert [(f["symbol"], f["rule"]) for f in data["findings"]] == [
+        ("undocumented", "missing-docstring")
+    ]
+    assert data["suppressed"] == []
+    assert "warning:" in result.stderr
+    assert "mod.py:2:" in result.stderr
+    assert data["presence_coverage"]["percentage"] == 50.0
+
+
+@pytest.mark.parametrize("kind", ["ignore", "ignore-file"])
+@pytest.mark.parametrize(
+    "rules", ["", "[missing-docstring]", "[missing-docstring,missing-raises]"]
+)
+def test_valid_suppression_json_scope_and_coverage(git_repo, kind, rules):
+    """Valid directives preserve JSON scope without changing presence coverage."""
+    _write_config(git_repo, fail_on=["presence"])
+    _commit_file(
+        git_repo,
+        "mod.py",
+        f'"""Documented module."""\ndef first():  # docvet: {kind}{rules} # intentional\n'
+        "    pass\ndef second():\n    pass\n",
+    )
+    result = _run_docvet(git_repo, "--format", "json", "presence", "--all")
+    data = json.loads(result.stdout)
+    assert [f["symbol"] for f in data["findings"]] == (
+        ["second"] if kind == "ignore" else []
+    )
+    assert [f["symbol"] for f in data["suppressed"]] == (
+        ["first"] if kind == "ignore" else ["first", "second"]
+    )
+    assert result.returncode == (1 if kind == "ignore" else 0)
+    assert data["presence_coverage"]["percentage"] == pytest.approx(33.3, abs=0.1)

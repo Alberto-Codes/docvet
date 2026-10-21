@@ -58,6 +58,8 @@ Common rules to suppress:
 - **Exit code** — suppressed findings do not count toward exit code 1. Only active findings determine pass/fail.
 - **Verbose output** — `--verbose` lists suppressed findings on stderr with a `[suppressed]` tag.
 - **JSON output** — `--format json` includes a `"suppressed"` array alongside `"findings"`.
+- **Invalid syntax** — unknown directive names (such as `ignored` or `ignore-next-line`) and malformed brackets emit a warning with the file and line, and suppress nothing. Rule lists must immediately follow `ignore` or `ignore-file` and have one matching pair of brackets.
+- **Explanations** — append explanatory text after whitespace, such as `# docvet: ignore[missing-raises]  # intentional` or `# docvet: ignore-file -- generated code`.
 - **Invalid rules** — a warning is emitted to stderr. The directive is recorded for forward-compatibility, but only matching rule IDs suppress findings — a typo will not hide anything.
 - **Unused suppressions** — a comment suppressing a rule that has no finding is silently ignored (no `RUF100`-style check in v1).
 
