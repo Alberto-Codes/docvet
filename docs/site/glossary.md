@@ -160,13 +160,18 @@ highlighted terms on any page to see their tooltip definitions.
 ## CLI & Configuration
 
 **Fail-on**
-:   A CLI flag that controls which severity levels cause a non-zero exit code.
-    For example, `--fail-on required` fails only on required findings.
+:   A `[tool.docvet]` list of check names (`presence`, `enrichment`,
+    `freshness`, `coverage`, `griffe`) whose findings make docvet exit 1;
+    checks in `warn-on` are reported without failing. A listed check that
+    cannot run, such as `griffe` without `docvet[griffe]` installed, also
+    fails the run unless `fail-on-unavailable = false`. See
+    [Configuration](configuration.md#fail-on-unavailable).
 
 **Threshold**
-:   A configurable numeric limit used by checks. Examples include
-    `drift-threshold` (days), `age-threshold` (days), and `min-coverage`
-    (percentage).
+:   A configurable numeric limit used by checks. Examples include the
+    freshness `drift-threshold` (days) and `age-threshold` (days), and the
+    presence `min-coverage` (percentage, 0.0–100.0), a floor that fails the
+    run when coverage falls below it and is off at its default of `0.0`.
 
 **Staged**
 :   The git staging area. The `--staged` flag restricts checks to files in the
