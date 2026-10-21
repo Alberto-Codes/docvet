@@ -109,6 +109,8 @@ The action sets step outputs that downstream steps can consume:
 
 A gate listed in `fail-on` that could not run and failed the build publishes `gate unavailable` / `orange` rather than `passing` / `brightgreen` — the gate produced no findings because it never executed, not because the code was clean. When such a run also has findings, the badge keeps the count and the failure colour (`3 findings, gate unavailable` / `red`), so it never hides what a findings-only badge would have shown. The badge is unchanged when a project opts out with `fail-on-unavailable = false`, where such a run still exits 0.
 
+The badge outputs do not yet reflect incomplete analysis. A run with `run.status: "incomplete"` (see [Input failures and incomplete analysis](cli-reference.md#input-failures-and-incomplete-analysis)) fails the step with exit 1, but the badge reads findings and unavailable gates only, so a run with no findings and no unavailable gate still publishes `passing` / `brightgreen`. Treat the step result, not the badge, as the signal that every requested input was analyzed.
+
 To consume outputs, give the docvet step an `id` and reference its outputs in later steps:
 
 {% raw %}
@@ -363,6 +365,8 @@ For teams that want a live badge showing pass/fail status from the latest CI run
 | Required findings present | `N findings` | ![red](https://img.shields.io/badge/-red-red) |
 | A gate in `fail-on` could not run and failed the build | `gate unavailable` | ![orange](https://img.shields.io/badge/-orange-orange) |
 | That gate plus findings | `N findings, gate unavailable` | ![red](https://img.shields.io/badge/-red-red) |
+
+Incomplete analysis (`run.status: "incomplete"`) has no badge state of its own; see [Outputs](#outputs). The step still fails with exit 1.
 
 !!! tip "Freshness checks need git history"
     If your workflow includes the `freshness` check (or `checks: "all"`), add `fetch-depth: 0` to your checkout step for full `git blame` support. See [Annotation behavior](#annotation-behavior) above for details.
