@@ -1,9 +1,11 @@
 """Shared AST helpers for docstring range extraction and symbol mapping.
 
 Provides the ``Symbol`` dataclass, utilities for walking an AST tree
-to extract documented symbols, and :func:`module_display_name` for
-converting file paths to dotted Python module names.  Used by all
-check modules to map source locations to semantic symbols.
+to extract documented symbols, :func:`module_display_name` for
+converting file paths to dotted Python module names, and
+:func:`split_physical_lines` for line splits that agree with the
+parser's line numbering.  Used by all check modules to map source
+locations to semantic symbols.
 
 Examples:
     Extract documented symbols from a source file:
