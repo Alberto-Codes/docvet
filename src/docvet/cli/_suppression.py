@@ -2,7 +2,9 @@
 
 Parses ``# docvet: ignore[rule]`` and ``# docvet: ignore-file[rule]``
 comments from Python source files using the ``tokenize`` module, then
-filters findings into active and suppressed partitions. Bracket content
+filters findings into active and suppressed partitions. Complete directive
+names and balanced brackets are required; malformed syntax warns and
+suppresses nothing. Whitespace-separated explanations are accepted. Bracket content
 is captured broadly (including empty brackets) and validated in
 :func:`_parse_rules` so that non-standard input (uppercase, underscores)
 produces warnings and empty brackets suppress nothing, rather than
@@ -46,18 +48,14 @@ from docvet.rules import _RULE_TO_CHECK
 # Complete set of known rule IDs for validation.
 KNOWN_RULES: frozenset[str] = frozenset(_RULE_TO_CHECK)
 
-# Regex for the directive payload after ``# docvet:``.
-# Matches: ignore, ignore[rule], ignore[rule1,rule2], ignore-file, ignore-file[rule], etc.
-# The bracket character class is deliberately broad (``[^\]]*``) so that
-# non-standard input (uppercase, underscores) is captured and forwarded
-# to ``_parse_rules`` for validation, rather than silently falling back
-# to blanket suppression. Zero-or-more (``*``) allows empty brackets
-# (``ignore[]``) to be captured as an empty string instead of falling
-# through to blanket suppression.
+# Match the whole payload so a broken list or directive name cannot fall
+# back to a valid bare prefix. Explanations start after whitespace; a
+# bracket there is malformed syntax, not an explanation.
+_COMMENT_RE = re.compile(r"#\s*docvet\s*:\s*(?P<payload>.*)")
 _DIRECTIVE_RE = re.compile(
-    r"#\s*docvet\s*:\s*"
     r"(?P<kind>ignore-file|ignore)"
-    r"(?:\[\s*(?P<rules>[^\]]*)\s*\])?"
+    r"(?:\[(?P<rules>[^\[\]]*)\])?"
+    r"(?:\s+[^\s\[\]].*)?\s*"
 )
 
 
@@ -94,7 +92,8 @@ def parse_suppression_directives(
     Uses the ``tokenize`` module to extract only real ``COMMENT`` tokens,
     avoiding false positives from ``#`` inside string literals. Validates
     rule IDs against the known rule set and emits warnings to stderr for
-    unknown or invalid rules. Such rule IDs are recorded for forward-
+    malformed directives and unknown or invalid rules. Malformed directives
+    suppress nothing. Unknown rule IDs are recorded for forward-
     compatibility but only suppress findings when they match exactly.
 
     Args:
@@ -122,8 +121,15 @@ def parse_suppression_directives(
         for tok in tokens:
             if tok.type != tokenize.COMMENT:
                 continue
-            match = _DIRECTIVE_RE.match(tok.string)
+            comment = _COMMENT_RE.fullmatch(tok.string)
+            if not comment:
+                continue
+            match = _DIRECTIVE_RE.fullmatch(comment.group("payload"))
             if not match:
+                sys.stderr.write(
+                    f"warning: {file_path}:{tok.start[0]}: "
+                    "invalid suppression directive; suppressing nothing\n"
+                )
                 continue
 
             kind = match.group("kind")
