@@ -2,6 +2,18 @@
 
 ## [2.0.2](https://github.com/Alberto-Codes/docvet/compare/v2.0.1...v2.0.2) (2026-10-21)
 
+### Compatibility notes
+
+Git discovery now checks supported Unicode, whitespace, quoted, and control-character
+filenames in all, diff, and staged modes, independent of `core.quotePath`. Files
+previously skipped can now produce findings.
+
+Malformed suppression directives now warn and suppress nothing. Correct invalid
+names such as `ignored` or `ignore-next-line` and unterminated rule lists; findings
+previously hidden by those comments can now fail configured checks. Valid `ignore`
+and `ignore-file` directives, rule lists, whitespace-separated explanations, and
+presence coverage calculations retain their behavior.
+
 
 ### Bug Fixes
 
