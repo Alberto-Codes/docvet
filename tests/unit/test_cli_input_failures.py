@@ -208,3 +208,56 @@ def test_fix_suppression_uses_updated_line_positions(project):
     assert any(f["symbol"] == "first" for f in data["findings"])
     assert not any(f["symbol"] == "second" for f in data["findings"])
     assert any(f["symbol"] == "second" for f in data["suppressed"])
+
+
+@pytest.mark.parametrize("command", ["coverage", "check"])
+def test_ignore_file_suppresses_missing_init(project, command):
+    """Coverage findings keep their inline suppression contract."""
+    (project / "pyproject.toml").write_text(
+        '[tool.docvet]\nfail-on = ["coverage"]\nsrc-root = "."\n'
+    )
+    package = project / "pkg" / "sub"
+    package.mkdir(parents=True)
+    (project / "pkg" / "__init__.py").write_text('"""Package."""\n')
+    (package / "mod.py").write_text(
+        '# docvet: ignore-file[missing-init]\n"""Module."""\n'
+    )
+    result = runner.invoke(app, ["--format", "json", command, "--all"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert data["run"]["status"] == "passed"
+    assert data["run"]["input_errors"] == []
+    assert not any(f["rule"] == "missing-init" for f in data["findings"])
+    assert [f["rule"] for f in data["suppressed"]] == ["missing-init"]
+
+
+def test_coverage_only_suppression_reads_unparseable_source(project):
+    """Structural suppression needs decoded comments, not a valid parse."""
+    (project / "pyproject.toml").write_text(
+        '[tool.docvet]\nfail-on = ["coverage"]\nsrc-root = "."\n'
+    )
+    package = project / "pkg"
+    package.mkdir()
+    (package / "broken.py").write_text(
+        "# docvet: ignore-file[missing-init]\ndef broken(:\n"
+    )
+    result = runner.invoke(app, ["--format", "json", "coverage", "--all"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert data["run"]["input_errors"] == []
+    assert data["summary"]["files_analyzed"] == 1
+    assert data["findings"] == []
+    assert [f["rule"] for f in data["suppressed"]] == ["missing-init"]
+
+
+def test_fix_terminal_reports_incomplete_counts(project):
+    """Terminal fix output carries the same attempted/failed counts as JSON."""
+    good = project / "good.py"
+    good.write_text('def f():\n    """Work."""\n    raise ValueError()\n')
+    bad = project / "bad.py"
+    bad.write_text("def broken(:\n")
+    result = runner.invoke(app, ["fix", "--dry-run", str(bad), str(good)])
+    assert result.exit_code == 1
+    assert "2 files attempted, 1 analyzed, 1 failed" in result.stderr
+    assert "Would fix" not in result.stderr
+    assert "+++ b/" in result.stdout

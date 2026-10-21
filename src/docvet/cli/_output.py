@@ -1,6 +1,8 @@
 """CLI output pipeline — format dispatch, suppression, and exit logic.
 
 Input failures produce incomplete JSON outcomes and one terminal diagnostic.
+Suppression directives for structural coverage findings are decoded without
+parsing, so they never add a source failure to the shared cache.
 
 Handles the unified output pipeline for all CLI commands: applies inline
 suppression filters, resolves output format, dispatches to formatters,
@@ -40,7 +42,7 @@ from docvet.cli._suppression import (
 )
 from docvet.config import DocvetConfig
 from docvet.reporting import CheckQuality, RunOutcome, UnavailableCheck
-from docvet.source import InputError, SourceCache
+from docvet.source import InputError, SourceCache, decode_source
 
 
 def _emit_findings(
@@ -171,7 +173,9 @@ def _apply_suppressions(
     findings into active and suppressed. Source files are cached to avoid
     redundant reads when multiple checks produce findings in the same file.
     Files that cannot be read or decoded are treated as having no
-    suppression directives.
+    suppression directives. Files named only by structural ``coverage``
+    findings are decoded without parsing, so they never add a source
+    failure to the shared cache.
 
     Args:
         cache: Shared source documents and input failures for this invocation.
@@ -185,11 +189,11 @@ def _apply_suppressions(
     """
     # Collect unique file paths and cache source + suppression maps.
     all_files: set[str] = set()
+    structural_files: set[str] = set()
     for check, findings in findings_by_check.items():
-        if check == "coverage":
-            continue
+        target = structural_files if check == "coverage" else all_files
         for f in findings:
-            all_files.add(f.file)
+            target.add(f.file)
 
     cache = cache if cache is not None else SourceCache()
     suppression_cache: dict[str, SuppressionMap] = {}
@@ -201,6 +205,13 @@ def _apply_suppressions(
         suppression_cache[file_path] = parse_suppression_directives(
             document.text, file_path
         )
+    for file_path in structural_files - all_files:
+        try:
+            text, _ = decode_source(Path(file_path).read_bytes())
+        except (OSError, SyntaxError, UnicodeError, LookupError):
+            suppression_cache[file_path] = SuppressionMap()
+            continue
+        suppression_cache[file_path] = parse_suppression_directives(text, file_path)
 
     # Filter each check's findings.
     active_by_check: dict[str, list[Finding]] = {}

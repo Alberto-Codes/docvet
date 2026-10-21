@@ -3,6 +3,8 @@
 One cache belongs to one invocation. Consumers share both successful documents
 and failed attempts, reading and parsing once unless refreshed after a fix. Documents
 retain the original bytes and line endings for encoding-preserving fixes.
+[`decode_source`][docvet.source.decode_source] exposes the same encoding
+detection for consumers that need decoded text without parsing.
 
 Examples:
     Load a document and inspect structured failures:
@@ -25,6 +27,35 @@ import tokenize
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+
+
+def decode_source(raw: bytes) -> tuple[str, str]:
+    """Decode Python source bytes using their declared encoding.
+
+    Follows the same detection as the interpreter: a UTF-8 BOM or a PEP 263
+    declaration selects the codec, and ordinary UTF-8 is the default. No
+    parsing happens, so comments in a file with syntax errors remain readable.
+
+    Args:
+        raw: Source bytes as read from disk.
+
+    Returns:
+        Tuple of the decoded text with original line endings and the encoding
+        name detected by ``tokenize``.
+
+    Raises:
+        SyntaxError: The encoding declaration is invalid or conflicts with a BOM.
+        UnicodeError: The bytes are not valid in the detected encoding.
+        LookupError: The declared codec is unavailable.
+
+    Examples:
+        ```python
+        text, encoding = decode_source(Path("module.py").read_bytes())
+        assert text.encode(encoding) == Path("module.py").read_bytes()
+        ```
+    """
+    encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
+    return raw.decode(encoding), encoding
 
 
 @dataclass(frozen=True)
@@ -179,8 +210,9 @@ class SourceCache:
     def get(self, path: Path) -> SourceDocument | None:
         """Read, decode, and parse a source once per resolved path.
 
-        Failures are cached and exposed through ``errors``. No consumer needs
-        to catch ordinary filesystem, encoding, or Python syntax failures.
+        Decoding follows :func:`decode_source`. Failures are cached and exposed
+        through ``errors``. No consumer needs to catch ordinary filesystem,
+        encoding, or Python syntax failures.
 
         Args:
             path: Python source path to load.
@@ -204,8 +236,7 @@ class SourceCache:
             self.record_error(InputError(str(path), "read", str(exc)))
             return None
         try:
-            encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
-            text = raw.decode(encoding)
+            text, encoding = decode_source(raw)
         except (SyntaxError, UnicodeError, LookupError) as exc:
             self.record_error(InputError(str(path), "decode", str(exc)))
             return None

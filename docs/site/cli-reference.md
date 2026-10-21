@@ -86,7 +86,9 @@ The summary retains `files_checked` as the historical selected-file count.
 Additional unique-path counts distinguish `files_attempted` (selected paths plus
 invalid requested targets), `files_analyzed` (successfully processed inputs), and
 `files_failed` (inputs with errors). Invalid explicit targets count as attempted
-but not selected. The analyzed count records successful source decoding/parsing or structural
+but not selected. A scope-level failure (git discovery that cannot run, or a
+missing source root) reports the scope path as its one attempted and failed
+input. The analyzed count records successful source decoding/parsing or structural
 processing; it does not prove that every requested check ran. Read
 `run.unavailable_checks` to identify check prerequisites that prevented execution. The package-visibility `coverage` check does not require parsing Python;
 a syntax error alone cannot prevent that structural check from running.
@@ -105,6 +107,7 @@ because no coverage was measured.
 | Explicit directory or non-`.py` file | Structured input error, exit 1; use `--all` for a tree |
 | Explicit file matching `exclude` | Checked; explicit files retain their exclusion override |
 | Empty diff, staged selection, or existing empty source tree | Successful empty JSON result |
+| Diff or staged selection outside a git repository, or without `git` | Structured input error for the repository scope, exit 1; use `--all` or explicit files |
 | Missing or invalid source root | Structured input error, exit 1 |
 | Mixed valid and invalid inputs | Analyze valid inputs and report the incomplete requested scope |
 
@@ -119,8 +122,10 @@ rather than mixing unified-diff text with JSON.
 **Migration from 2.x:** accept `"incomplete"` in status switches, allow nullable
 coverage percentages, inspect `complete` before using a coverage value, and use
 `files_analyzed` rather than interpreting `files_checked` as proof of analysis.
-Scripts that previously relied on ignored invalid targets or skipped parse
-failures must handle exit 1. Valid-input finding rules, exclusion overrides,
+Scripts that previously relied on ignored invalid targets, skipped parse
+failures, or a warned empty result when `git` could not compute the diff (a
+non-git checkout such as a tarball) must handle exit 1 or select files with
+`--all` or explicit paths. Valid-input finding rules, exclusion overrides,
 suppression, and quality denominator units remain unchanged.
 
 ### Quality Summary (`--summary`)

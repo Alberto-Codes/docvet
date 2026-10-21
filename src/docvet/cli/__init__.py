@@ -1059,7 +1059,9 @@ def fix(
     """Scaffold missing docstring sections.
 
     Input failures are retained in the invocation source cache and reported
-    as incomplete analysis with a nonzero exit status.
+    as incomplete analysis with a nonzero exit status; the terminal summary
+    then carries the attempted, analyzed, and failed file counts instead of
+    the fixed-file line.
 
     Runs enrichment to find missing sections, inserts scaffolded
     placeholders, and writes modified files.  Use ``--dry-run`` to
@@ -1099,11 +1101,18 @@ def fix(
         cache=ctx.obj["source_cache"],
     )
     elapsed = time.perf_counter() - start
+    errors = ctx.obj["source_cache"].errors
+    incomplete_elapsed = elapsed if errors else None
 
     if dry_run and ctx.obj.get("format") == "json":
         ctx.obj["fix_diffs"] = diffs
         _output_and_exit(
-            ctx, {"enrichment": findings}, docvet_config, len(discovered), ["fix"]
+            ctx,
+            {"enrichment": findings},
+            docvet_config,
+            len(discovered),
+            ["fix"],
+            elapsed=incomplete_elapsed,
         )
 
     if dry_run:
@@ -1116,7 +1125,7 @@ def fix(
                 tofile=f"b/{path}",
             )
             sys.stdout.writelines(diff_lines)
-        if not quiet and not ctx.obj["source_cache"].errors:
+        if not quiet and not errors:
             if files_modified:
                 sys.stderr.write(
                     f"Would fix {files_modified} of {len(discovered)} files"
@@ -1128,11 +1137,16 @@ def fix(
                     f" ({elapsed:.1f}s)\n"
                 )
         _output_and_exit(
-            ctx, {"enrichment": findings}, docvet_config, len(discovered), ["fix"]
+            ctx,
+            {"enrichment": findings},
+            docvet_config,
+            len(discovered),
+            ["fix"],
+            elapsed=incomplete_elapsed,
         )
 
     # Non-dry-run: report scaffold findings via output pipeline.
-    if not quiet and not ctx.obj["source_cache"].errors:
+    if not quiet and not errors:
         if files_modified:
             sys.stderr.write(
                 f"Fixed {files_modified} of {len(discovered)} files"
@@ -1151,6 +1165,7 @@ def fix(
         docvet_config,
         len(discovered),
         ["fix"],
+        elapsed=incomplete_elapsed,
     )
 
 
