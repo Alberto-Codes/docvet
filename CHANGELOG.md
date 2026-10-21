@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.0.3](https://github.com/Alberto-Codes/docvet/compare/v2.0.2...v2.0.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **docs:** enforce accurate rule counts ([#512](https://github.com/Alberto-Codes/docvet/issues/512)) ([d10491f](https://github.com/Alberto-Codes/docvet/commit/d10491f08091f64548b9aafcd042cf16ab3e4b04))
+* **enrichment:** correct kwargs rule guidance ([#511](https://github.com/Alberto-Codes/docvet/issues/511)) ([3848d92](https://github.com/Alberto-Codes/docvet/commit/3848d923ad83f04db79a526673505b79792561e8))
+
+
+### Documentation
+
+* **config:** clarify star-parameter scope ([#510](https://github.com/Alberto-Codes/docvet/issues/510)) ([528cf55](https://github.com/Alberto-Codes/docvet/commit/528cf555425538e8b2a3ff8173042be765289db4))
+* correct capability and freshness claims ([#513](https://github.com/Alberto-Codes/docvet/issues/513)) ([896287e](https://github.com/Alberto-Codes/docvet/commit/896287e37410fa0081aa98eefdeef30dcb4fbbad))
+
 ## [2.0.2](https://github.com/Alberto-Codes/docvet/compare/v2.0.1...v2.0.2) (2026-10-21)
 
 ### Compatibility notes
