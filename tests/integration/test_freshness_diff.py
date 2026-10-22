@@ -3,13 +3,51 @@
 from __future__ import annotations
 
 import ast
+import json
 import subprocess
 
 import pytest
+from typer.testing import CliRunner
 
 from docvet.checks.freshness import check_freshness_diff
+from docvet.cli import app
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize("separator", ["\f", "\v", "\x85", "\u2028", "\u2029"])
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_payload_separator_preserves_cli_finding(
+    git_repo, monkeypatch, separator, newline
+):
+    """A changed signature after a payload separator must not become docstring-only."""
+    monkeypatch.chdir(git_repo)
+    module = git_repo / "module.py"
+    source = (
+        '"""Module."""\n'
+        f"# comment {separator} continuation\n"
+        "def greet(name):\n"
+        '    """Say hello."""\n'
+        "    return name\n"
+    )
+    module.write_bytes(source.replace("\n", newline).encode())
+    (git_repo / "pyproject.toml").write_text('[tool.docvet]\nfail-on=["freshness"]\n')
+    subprocess.run(["git", "add", "."], cwd=git_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "-qm", "initial"],
+        cwd=git_repo,
+        check=True,
+        capture_output=True,
+    )
+    modified = source.replace("def greet(name):", "def greet(name, extra=None):")
+    module.write_bytes(modified.replace("\n", newline).encode())
+    result = CliRunner().invoke(app, ["--format", "json", "freshness", str(module)])
+    assert result.exit_code == 1, result.output
+    data = json.loads(result.stdout)
+    assert data["run"]["status"] == "findings"
+    assert [(f["symbol"], f["rule"], f["line"]) for f in data["findings"]] == [
+        ("greet", "stale-signature", 3)
+    ]
 
 
 class TestFreshnessDiffFalsePositives:

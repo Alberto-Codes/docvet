@@ -456,8 +456,12 @@ class TestFreshnessGitUnavailable:
         ):
             result = json.loads(docvet_check(str(py_file), checks=["freshness"]))
 
-        assert "errors" in result
-        assert any("freshness" in e for e in result["errors"])
+        unavailable = result["run"]["unavailable_checks"]
+        assert [item["check"] for item in unavailable] == ["freshness"]
+        assert unavailable[0]["reason"] == (
+            "could not execute git repository probe: git not found"
+        )
+        assert result["errors"] == [unavailable[0]["reason"]]
 
 
 # ---------------------------------------------------------------------------

@@ -78,6 +78,7 @@ The product vision (`docs/product-vision.md`) defines the full design. The codeb
 - **`cli.py`** — typer CLI: config loading, file discovery, check dispatch, unified output pipeline (`_output_and_exit`)
 - **`config.py`** — reads `[tool.docvet]` from pyproject.toml
 - **`discovery.py`** — file discovery via git diff, git diff --cached, --all, positional args, or --files
+- **`_git.py`** — `freshness_unavailability`: the one git prerequisite probe (missing executable, non-repository, dubious ownership, other git failure) whose reason/remedy/gate record both the CLI and the MCP server report
 - **`ast_utils.py`** — shared AST helpers (docstring ranges, node walking, symbol mapping)
 - **`source.py`** — `SourceCache`: one per invocation, encoding-aware (PEP 263, BOM) read/decode/parse shared by all checks; its recorded errors drive `run.status = "incomplete"`
 - **`reporting.py`** — markdown/terminal/JSON report generation
@@ -96,7 +97,7 @@ The product vision (`docs/product-vision.md`) defines the full design. The codeb
 - **Google-style docstrings** assumed throughout
 - **No runtime deps** except typer (CLI) and optionally griffe; AST parsing and git are stdlib/system
 - **Configuration** via `[tool.docvet]` in pyproject.toml with sensible defaults
-- **A check in `fail-on` that cannot run fails the run by default; `fail-on-unavailable = false` opts back out to a warning** — `_griffe_unavailability`, `_presence_unavailability`, and `_freshness_unavailability` in `cli/_runners.py` are the single source of truth for each check's availability, and `determine_run_outcome` in `reporting.py` turns it into the exit code plus the JSON `run` status block
+- **A check in `fail-on` that cannot run fails the run by default; `fail-on-unavailable = false` opts back out to a warning** — `_griffe_unavailability` and `_presence_unavailability` in `cli/_runners.py` are the single source of truth for those checks' availability, `_freshness_unavailability` there delegates to `freshness_unavailability` in `_git.py` so the CLI and MCP server share one freshness probe, and `determine_run_outcome` in `reporting.py` turns it into the exit code plus the JSON `run` status block
 - **Freshness diff mode** maps git diff hunks to AST symbols, flagging code changes without docstring updates at three severity levels (HIGH: signature change, MEDIUM: body change, LOW: imports/formatting)
 - **All files use** `from __future__ import annotations`
 

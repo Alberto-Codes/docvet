@@ -308,15 +308,21 @@ docvet freshness --all --mode drift   # drift mode
 **Drift mode** uses git blame timestamps to find docstrings that haven't been updated relative to their code. Sweeps the entire codebase for timestamp-based review signals, not semantic errors.
 
 Both modes require a `git` executable on `PATH` and a repository containing
-the project root. With `--all` or explicit files, a missing executable or a
-working tree outside any repository (a tarball or exported archive) is reported
-in `run.unavailable_checks` and follows the configured `fail-on-unavailable`
-policy, the same prerequisite the MCP server applies. The repository probe
-ignores an inherited `GIT_DIR`, so a pre-commit hook still resolves the
-checkout docvet runs in. This also applies to freshness inside `check --all`,
-where other available checks can still analyze files. Diff or staged file
-selection itself requires git and reports an input failure when it cannot
-determine the requested scope.
+the project root that git agrees to inspect. With `--all` or explicit files, a
+prerequisite failure is reported in `run.unavailable_checks` and follows the
+configured `fail-on-unavailable` policy, the same probe the MCP server applies.
+The reason names which prerequisite failed, each with its own remedy: no `git`
+executable on `PATH`; a working tree outside any repository (a tarball or
+exported archive); a repository git refuses because of dubious ownership, where
+the remedy is to verify the checkout's owner and your git trust configuration
+rather than to trust it blindly; or any other git failure, quoted from git's
+own `fatal:` line. A generic git failure is never reported as a missing
+repository. The repository probe ignores an inherited `GIT_DIR`, so a
+pre-commit hook still resolves the checkout docvet runs in, and it keeps your
+git trust configuration untouched. This also applies to freshness inside
+`check --all`, where other available checks can still analyze files. Diff or
+staged file selection itself requires git and reports an input failure when it
+cannot determine the requested scope.
 
 ### `docvet coverage`
 

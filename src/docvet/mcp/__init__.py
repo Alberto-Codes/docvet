@@ -149,7 +149,8 @@ def _run_checks(
     checks (coverage, griffe, freshness) based on the *checks* set.
     Returns findings, optional presence stats, and a list of error
     messages for checks that could not run (e.g., griffe not installed,
-    git unavailable).
+    git unavailable). Freshness retains the shared prerequisite record's
+    reason and remedy while also populating the legacy errors list.
 
     Args:
         files: List of absolute paths to Python files.
@@ -187,7 +188,7 @@ def _run_checks(
         if griffe_error:
             errors.append(griffe_error)
             if unavailable is not None:
-                unavailable.append(_unavailable_check("griffe", griffe_error, config))
+                unavailable.append(_griffe_unavailable(griffe_error, config))
 
     if "freshness" in checks:
         freshness_findings, freshness_error = _run_freshness(
@@ -195,38 +196,28 @@ def _run_checks(
         )
         findings.extend(freshness_findings)
         if freshness_error:
-            errors.append(freshness_error)
+            errors.append(freshness_error.reason)
             if unavailable is not None:
-                unavailable.append(
-                    _unavailable_check("freshness", freshness_error, config)
-                )
+                unavailable.append(freshness_error)
 
     return findings, presence_stats, errors
 
 
-def _unavailable_check(
-    check: str, reason: str, config: DocvetConfig
-) -> UnavailableCheck:
-    """Describe an unavailable check using the shared configured-gate policy.
+def _griffe_unavailable(reason: str, config: DocvetConfig) -> UnavailableCheck:
+    """Describe an unavailable griffe check using the configured-gate policy.
 
     Args:
-        check: Name of the check that could not execute.
         reason: Legacy error message explaining the execution failure.
         config: Configuration controlling availability gating.
 
     Returns:
         Structured availability record with a remedy and gate state.
     """
-    configured_gate = check in config.fail_on
-    remedy = (
-        "Install docvet[griffe] and verify source loading"
-        if check == "griffe"
-        else "Install git and run freshness within a git repository"
-    )
+    configured_gate = "griffe" in config.fail_on
     return UnavailableCheck(
-        check=check,
+        check="griffe",
         reason=reason,
-        remedy=remedy,
+        remedy="Install docvet[griffe] and verify source loading",
         blocking=configured_gate and config.fail_on_unavailable,
         configured_gate=configured_gate,
     )

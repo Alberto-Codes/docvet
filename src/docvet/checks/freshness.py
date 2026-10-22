@@ -121,7 +121,8 @@ def _parse_diff_hunks(diff_output: str) -> set[int]:
     Only addition lines (``+`` prefix) contribute to the changed set;
     context lines (space prefix) and deletion lines (``-`` prefix) are
     excluded.  This prevents false positives when git's default 3 context
-    lines overlap adjacent unchanged symbols.
+    lines overlap adjacent unchanged symbols. Records are delimited by LF;
+    control and Unicode separators in payloads do not advance line numbers.
 
     Args:
         diff_output: Raw unified diff output from ``git diff``.
@@ -136,7 +137,9 @@ def _parse_diff_hunks(diff_output: str) -> set[int]:
     changed: set[int] = set()
     current_line: int | None = None
 
-    for line in diff_output.splitlines():
+    # Git records end at LF; CR in CRLF and Unicode/control separators are
+    # payload, not additional records. Python source-line rules differ here.
+    for line in diff_output.split("\n"):
         if line.startswith(("--- /dev/null", "Binary files")):
             return set()
 

@@ -118,6 +118,15 @@ class TestDiffLineDelta:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("separator", ["\f", "\v", "\x85", "\u2028", "\u2029"])
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_diff_payload_separators_are_not_records(separator, newline):
+    diff = newline.join(
+        ["@@ -1,2 +1,2 @@", f" # comment {separator} continuation", "-old", "+new", ""]
+    )
+    assert _parse_diff_hunks(diff) == {2}
+
+
 class TestParseDiffHunks:
     """Tests for _parse_diff_hunks."""
 
