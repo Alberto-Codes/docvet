@@ -149,7 +149,8 @@ def _run_checks(
     checks (coverage, griffe, freshness) based on the *checks* set.
     Returns findings, optional presence stats, and a list of error
     messages for checks that could not run (e.g., griffe not installed,
-    git unavailable).
+    git unavailable). Freshness retains the shared prerequisite record's
+    reason and remedy while also populating the legacy errors list.
 
     Args:
         files: List of absolute paths to Python files.
@@ -195,11 +196,9 @@ def _run_checks(
         )
         findings.extend(freshness_findings)
         if freshness_error:
-            errors.append(freshness_error)
+            errors.append(freshness_error.reason)
             if unavailable is not None:
-                unavailable.append(
-                    _unavailable_check("freshness", freshness_error, config)
-                )
+                unavailable.append(freshness_error)
 
     return findings, presence_stats, errors
 

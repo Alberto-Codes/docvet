@@ -9,6 +9,8 @@ run with :func:`docvet.discovery.git_env` so an inherited ``GIT_DIR``
 cannot redirect them away from the project root. Source consumers share an
 invocation cache that detects Python encodings and retains structured failures
 without duplicate logging. Git diff decoding tolerates non-UTF-8 source bytes.
+Freshness prerequisite failures share the CLI's reasons, remedies and gating
+through :mod:`docvet._git`, including Git ownership rejection.
 
 The griffe dispatch stays in :mod:`docvet.mcp` because callers patch
 ``docvet.mcp._GRIFFE_AVAILABLE`` and ``docvet.mcp.check_griffe_compat``.
@@ -35,6 +37,7 @@ import logging
 import subprocess
 from pathlib import Path
 
+from docvet._git import freshness_unavailability
 from docvet.checks import (
     Finding,
     PresenceStats,
@@ -44,6 +47,7 @@ from docvet.checks import (
 from docvet.checks.freshness import check_freshness_diff
 from docvet.config import DocvetConfig, load_config
 from docvet.discovery import git_env
+from docvet.reporting import UnavailableCheck
 from docvet.rules import _RULE_TO_CHECK
 from docvet.source import SourceCache
 
@@ -146,7 +150,7 @@ def _run_freshness(
     files: list[Path],
     config: DocvetConfig,
     source_cache: SourceCache | None = None,
-) -> tuple[list[Finding], str | None]:
+) -> tuple[list[Finding], UnavailableCheck | None]:
     """Run the freshness diff check on files with git context.
 
     Verifies git is available, then retrieves a per-file diff for each
@@ -154,8 +158,8 @@ def _run_freshness(
     hunk contamination. Both git invocations use
     :func:`docvet.discovery.git_env`, so they resolve the repository
     from ``config.project_root`` rather than from an inherited
-    ``GIT_DIR``. Returns findings and an optional error message when
-    git is unavailable.
+    ``GIT_DIR``. Returns findings and an optional availability record
+    with the same reason, remedy and gate policy as the CLI.
 
     Args:
         files: List of absolute paths to Python files.
@@ -163,22 +167,12 @@ def _run_freshness(
         source_cache: Shared invocation source cache.
 
     Returns:
-        A tuple of ``(findings, error)`` where *error* is ``None``
+        A tuple of ``(findings, unavailable)`` where *unavailable* is ``None``
         when the check executed successfully.
     """
-    try:
-        subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            capture_output=True,
-            check=True,
-            cwd=str(config.project_root),
-            env=git_env(),
-        )
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        return [], (
-            "freshness check requires git context: "
-            "not a git repository or git is not installed"
-        )
+    unavailable = freshness_unavailability(config)
+    if unavailable is not None:
+        return [], unavailable
 
     findings: list[Finding] = []
     cache = source_cache if source_cache is not None else SourceCache()

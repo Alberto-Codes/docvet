@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import subprocess
 import sys
 import textwrap
@@ -155,6 +156,136 @@ async def _call_tool(
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("optout", [False, True])
+@pytest.mark.parametrize("case", ["ownership", "nonrepository", "missing", "healthy"])
+def test_freshness_prerequisite_cli_mcp_parity(isolated_project, case, optout):
+    """Real processes report identical prerequisites without changing Git trust."""
+    root = isolated_project
+    target = root / "a.py"
+    target.write_text('"""Module."""\n', encoding="utf-8")
+    (root / "pyproject.toml").write_text(
+        '[tool.docvet]\nfail-on=["freshness"]\n'
+        f"fail-on-unavailable={str(not optout).lower()}\n",
+        encoding="utf-8",
+    )
+    env = {
+        key: os.environ[key]
+        for key in ("PATH", "HOME", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR")
+        if key in os.environ
+    }
+    env["GIT_CEILING_DIRECTORIES"] = str(root.parent)
+    if case in {"ownership", "healthy"}:
+        subprocess.run(["git", "init", "-q"], cwd=root, env=env, check=True)
+        subprocess.run(["git", "add", "."], cwd=root, env=env, check=True)
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "-qm",
+                "initial",
+            ],
+            cwd=root,
+            env=env,
+            check=True,
+        )
+    config_path = root / ".git" / "config"
+    config_before = config_path.read_bytes() if config_path.exists() else None
+    if case == "ownership":
+        env.update(
+            GIT_TEST_ASSUME_DIFFERENT_OWNER="1",
+            GIT_CONFIG_COUNT="1",
+            GIT_CONFIG_KEY_0="safe.directory",
+            GIT_CONFIG_VALUE_0="",
+            LC_ALL="C",
+        )
+        probe = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert probe.returncode != 0
+        assert "dubious ownership" in probe.stderr
+    elif case == "missing":
+        env["PATH"] = str(root / "no-bin")
+
+    cli_args = [
+        _docvet_executable(),
+        "--format",
+        "json",
+        "freshness",
+        str(target),
+    ]
+    cli = subprocess.run(
+        cli_args,
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    cli_run = json.loads(cli.stdout)["run"]
+
+    async def call():
+        params = StdioServerParameters(
+            command=_docvet_executable(), args=["mcp"], env=env, cwd=str(root)
+        )
+        async with (
+            stdio_client(params) as (read, write),
+            ClientSession(read, write) as session,
+        ):
+            await session.initialize()
+            return await _call_tool(
+                session,
+                "docvet_check",
+                {"path": str(target), "checks": ["freshness"]},
+            )
+
+    response = asyncio.run(asyncio.wait_for(call(), timeout=_SERVER_TIMEOUT))
+    assert response["run"] == cli_run
+    assert cli.returncode == int(case != "healthy" and not optout)
+    assert cli_run["status"] == (
+        "unavailable" if case != "healthy" and not optout else "passed"
+    )
+    if case == "healthy":
+        assert cli_run["unavailable_checks"] == []
+        assert response["summary"]["files_analyzed"] == 1
+    else:
+        unavailable = cli_run["unavailable_checks"][0]
+        expected = {
+            "ownership": "dubious ownership",
+            "nonrepository": "not a git repository",
+            "missing": "not installed",
+        }[case]
+        assert expected in unavailable["reason"]
+        assert response["errors"] == [unavailable["reason"]]
+        assert unavailable["configured_gate"] is True
+        assert unavailable["blocking"] is (not optout)
+        # MCP preloads valid source before dispatch; unavailable is reported
+        # by the run record, not inferred from the source-analysis count.
+        assert response["summary"]["files_analyzed"] == 1
+        terminal = subprocess.run(
+            [_docvet_executable(), "freshness", str(target)],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert terminal.returncode == cli.returncode
+        assert unavailable["reason"] in terminal.stderr
+        assert unavailable["remedy"] in terminal.stderr
+    assert (config_path.read_bytes() if config_path.exists() else None) == config_before
 
 
 class TestDocvetCheck:

@@ -8,7 +8,7 @@ This rule flags symbols where the code was modified more recently than the docst
 
 ## Why is this a problem?
 
-A growing gap between code modification dates and docstring dates means the documentation is gradually falling behind. Even if no single change was large enough to trigger a diff-mode finding, the cumulative drift means the docstring may now describe outdated behavior. Catching drift early prevents documentation from becoming unreliable over time.
+A growing gap between code modification dates and docstring dates is a signal to review the docstring for potential staleness. Git blame timestamps show when lines were last touched; they do not establish whether the prose is semantically accurate. Code changes may preserve the documented contract, so even a large timestamp gap does not prove that the documentation is outdated. Review the changes against the docstring before deciding whether it needs an update.
 
 {{ rule_fix() }}
 
