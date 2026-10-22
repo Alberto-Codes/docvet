@@ -53,7 +53,7 @@ def _probe_failure(project_root: Path) -> tuple[str, str] | None:
     """
     if shutil.which("git") is None:
         return (
-            "freshness: git is not installed or is not executable on PATH",
+            "git is not installed or is not executable on PATH",
             "Install git and make it executable on PATH to run freshness",
         )
     env = git_env()
@@ -73,7 +73,7 @@ def _probe_failure(project_root: Path) -> tuple[str, str] | None:
         detail = _fatal_line(exc.stderr or "")
         if "fatal: detected dubious ownership" in detail:
             return (
-                "freshness: git rejected the repository due to dubious ownership",
+                "git rejected the repository due to dubious ownership",
                 (
                     "Verify the repository ownership and git trust configuration; "
                     "only trust a checkout after verifying its owner"
@@ -86,12 +86,12 @@ def _probe_failure(project_root: Path) -> tuple[str, str] | None:
             )
         detail = detail or f"exit status {exc.returncode}"
         return (
-            f"freshness: git repository probe failed: {detail}",
+            f"git repository probe failed: {detail}",
             "Resolve the reported git error and retry freshness",
         )
     except OSError as exc:
         return (
-            f"freshness: could not execute git repository probe: {exc}",
+            f"could not execute git repository probe: {exc}",
             (
                 "Check the git executable, permissions, and project directory, "
                 "then retry freshness"
