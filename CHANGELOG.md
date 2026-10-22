@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/Alberto-Codes/docvet/compare/v3.0.0...v3.0.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **freshness:** preserve diff offsets and explain Git prerequisite failures ([8c61076](https://github.com/Alberto-Codes/docvet/commit/8c6107647371b3b5959736c65e27c17297880417))
+
 ## [3.0.0](https://github.com/Alberto-Codes/docvet/compare/v2.0.3...v3.0.0) (2026-10-21)
 
 
