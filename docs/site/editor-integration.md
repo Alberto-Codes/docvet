@@ -230,8 +230,12 @@ missing griffe or unavailable git context. Invalid paths retain their `error`
 string alongside the structured incomplete result. Unknown check names and
 malformed configuration retain their existing error-only response. The new run metadata applies the shared `fail-on` and
 `fail-on-unavailable` policy to unavailable requested checks while retaining the
-legacy error strings. Consumers should inspect `run.unavailable_checks` even
-when a non-gated or opted-out check leaves `run.exit_code` at zero.
+legacy error strings. A freshness entry in `run.unavailable_checks` carries the
+same `reason` and `remedy` the CLI reports for that git prerequisite failure
+(see [`docvet freshness`](cli-reference.md#docvet-freshness)), and the matching
+legacy `errors` string is that reason. Consumers should inspect
+`run.unavailable_checks` even when a non-gated or opted-out check leaves
+`run.exit_code` at zero.
 
 #### `docvet_rules`
 
