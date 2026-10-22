@@ -209,6 +209,7 @@ forbidden_modules = ["docvet.mcp", "docvet.cli"]
 name = "Core modules do not import the MCP server"
 type = "forbidden"
 source_modules = [
+    "docvet._git",
     "docvet.ast_utils",
     "docvet.checks",
     "docvet.cli",

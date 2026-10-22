@@ -26,6 +26,22 @@ from docvet.discovery import git_env
 from docvet.reporting import UnavailableCheck
 
 
+def _fatal_line(stderr: str) -> str:
+    """Return Git's fatal diagnostic line, skipping trace and warning noise.
+
+    Args:
+        stderr: Raw standard error captured from a failed Git command.
+
+    Returns:
+        The first ``fatal:`` line, else the first non-empty line, else ``""``.
+    """
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    for line in lines:
+        if line.startswith("fatal:"):
+            return line
+    return lines[0] if lines else ""
+
+
 def _probe_failure(project_root: Path) -> tuple[str, str] | None:
     """Return a reason and remedy when Git cannot inspect the project.
 
@@ -54,7 +70,7 @@ def _probe_failure(project_root: Path) -> tuple[str, str] | None:
             errors="replace",
         )
     except subprocess.CalledProcessError as exc:
-        detail = (exc.stderr or "").strip()
+        detail = _fatal_line(exc.stderr or "")
         if "fatal: detected dubious ownership" in detail:
             return (
                 "freshness: git rejected the repository due to dubious ownership",
@@ -68,8 +84,7 @@ def _probe_failure(project_root: Path) -> tuple[str, str] | None:
                 "not a git repository; freshness requires git history",
                 "Run docvet inside a git checkout, or drop freshness from fail-on",
             )
-        # Keep the actual diagnostic without copying Git's multi-line commands.
-        detail = detail.split("\n", 1)[0] if detail else f"exit status {exc.returncode}"
+        detail = detail or f"exit status {exc.returncode}"
         return (
             f"freshness: git repository probe failed: {detail}",
             "Resolve the reported git error and retry freshness",

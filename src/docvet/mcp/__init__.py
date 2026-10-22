@@ -188,7 +188,7 @@ def _run_checks(
         if griffe_error:
             errors.append(griffe_error)
             if unavailable is not None:
-                unavailable.append(_unavailable_check("griffe", griffe_error, config))
+                unavailable.append(_griffe_unavailable(griffe_error, config))
 
     if "freshness" in checks:
         freshness_findings, freshness_error = _run_freshness(
@@ -203,29 +203,21 @@ def _run_checks(
     return findings, presence_stats, errors
 
 
-def _unavailable_check(
-    check: str, reason: str, config: DocvetConfig
-) -> UnavailableCheck:
-    """Describe an unavailable check using the shared configured-gate policy.
+def _griffe_unavailable(reason: str, config: DocvetConfig) -> UnavailableCheck:
+    """Describe an unavailable griffe check using the configured-gate policy.
 
     Args:
-        check: Name of the check that could not execute.
         reason: Legacy error message explaining the execution failure.
         config: Configuration controlling availability gating.
 
     Returns:
         Structured availability record with a remedy and gate state.
     """
-    configured_gate = check in config.fail_on
-    remedy = (
-        "Install docvet[griffe] and verify source loading"
-        if check == "griffe"
-        else "Install git and run freshness within a git repository"
-    )
+    configured_gate = "griffe" in config.fail_on
     return UnavailableCheck(
-        check=check,
+        check="griffe",
         reason=reason,
-        remedy=remedy,
+        remedy="Install docvet[griffe] and verify source loading",
         blocking=configured_gate and config.fail_on_unavailable,
         configured_gate=configured_gate,
     )

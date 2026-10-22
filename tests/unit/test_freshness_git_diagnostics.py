@@ -41,6 +41,38 @@ pytestmark = pytest.mark.unit
             "bad config line 1",
             "reported git error",
         ),
+        (
+            subprocess.CalledProcessError(
+                128,
+                ["git"],
+                stderr=(
+                    "06:11:48.272180 git.c:502 trace: built-in: git rev-parse\n"
+                    "fatal: not a git repository (or any of the parent directories)\n"
+                ),
+            ),
+            "not a git repository",
+            "checkout",
+        ),
+        (
+            subprocess.CalledProcessError(
+                128,
+                ["git"],
+                stderr=(
+                    "warning: safe.directory is ignored\r\n"
+                    "06:11:48.272180 git.c:502 trace: built-in: git rev-parse\r\n"
+                    "fatal: bad config line 1 in file config\r\n"
+                ),
+            ),
+            "probe failed: fatal: bad config line 1",
+            "reported git error",
+        ),
+        (
+            subprocess.CalledProcessError(
+                128, ["git"], stderr="\nerror: something unusual\nhint: try again\n"
+            ),
+            "probe failed: error: something unusual",
+            "reported git error",
+        ),
         (subprocess.CalledProcessError(128, ["git"]), "exit status 128", "git error"),
     ],
 )
@@ -69,6 +101,8 @@ def test_probe_failure_parity(tmp_path, monkeypatch, failure, reason, remedy, op
     unavailable = cli_run["unavailable_checks"][0]
     assert reason in unavailable["reason"]
     assert remedy in unavailable["remedy"]
+    assert "trace:" not in unavailable["reason"]
+    assert ("not a git repository" in unavailable["reason"]) is ("checkout" in remedy)
     assert unavailable["configured_gate"] is True
     assert unavailable["blocking"] is (not optout)
     assert mcp["errors"] == [unavailable["reason"]]
